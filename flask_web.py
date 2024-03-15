@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template("test.html")
+    return render_template("index.html")
 
 def main():
     app.run(host='127.0.0.1', debug=False, port=80)
@@ -22,12 +22,14 @@ def calculate():
     print("Param2 = ", param2)
 
     df = pd.read_excel('ITGC_template.xlsx', engine='openpyxl')
-    pbc_df = df[df['Major P. Name']==param1]
+    df1 = df[df['Major P. Name']==param1]
+    df2 = df[df['Major P. Name']==param2]
 
     output_path = 'pbc.xlsx'
-    pbc_df.to_excel(output_path, index=False)
-    print(pbc_df)
-
+    with pd.ExcelWriter(output_path) as writer:
+        df1.to_excel(writer, sheet_name=param1, index=False)
+        df2.to_excel(writer, sheet_name=param2, index=False)
+    
     return send_file(output_path, as_attachment=True)
 
 if __name__ == '__main__':
