@@ -8,7 +8,7 @@ def index():
     return render_template("index.html")
 
 def main():
-    app.run(host='127.0.0.1', debug=False, port=80)
+    app.run(host='0.0.0.0', debug=False, port=8001)
 
 @app.route('/calculate', methods=['POST'])
 def calculate():
