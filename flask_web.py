@@ -1,7 +1,5 @@
 from flask import Flask, render_template, request, send_file
 from openpyxl import load_workbook
-from openpyxl.drawing.image import Image
-import pandas as pd
 import openpyxl
 
 app = Flask(__name__)
