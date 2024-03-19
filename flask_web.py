@@ -1,5 +1,8 @@
 from flask import Flask, render_template, request, send_file
+from openpyxl import load_workbook
+from openpyxl.drawing.image import Image
 import pandas as pd
+import openpyxl
 
 app = Flask(__name__)
 
@@ -8,28 +11,46 @@ def index():
     return render_template("index.html")
 
 def main():
-    app.run(host='0.0.0.0', debug=False, port=8001)
+    #app.run(host='0.0.0.0', debug=False, port=8001)
+    app.run(host='127.0.0.1', debug=False, port=8001)
 
-@app.route('/calculate', methods=['POST'])
+@app.route('/generate', methods=['POST'])
 def calculate():
     print("Python function called")
     form_data = request.form.to_dict()
 
     param1 = form_data.get('param1')
     param2 = form_data.get('param2')
+    param3 = form_data.get('param3')
 
     print("Param1 = ", param1)
     print("Param2 = ", param2)
+    print("Param3 = ", param3)
 
-    df = pd.read_excel('ITGC_template.xlsx', engine='openpyxl')
-    df1 = df[df['Major P. Name']==param1]
-    df2 = df[df['Major P. Name']==param2]
+    output_path = 'pbc.xlsx' 
+    workbook = openpyxl.load_workbook('PBC_template.xlsx')
 
-    output_path = 'pbc.xlsx'
-    with pd.ExcelWriter(output_path) as writer:
-        df1.to_excel(writer, sheet_name=param1, index=False)
-        df2.to_excel(writer, sheet_name=param2, index=False)
+
+    if param1 == 'SAP':
+        sheets_to_delete = ['APD01_Oracle', 'APD06_Oracle']
+    elif param1 == 'Oracle':
+        sheets_to_delete = ['APD01_SAP', 'APD06_SAP']
+
+    # 시트 삭제
+    for sheet_name in sheets_to_delete:
+        if sheet_name in workbook.sheetnames:
+            sheet_to_delete = workbook[sheet_name]
+            workbook.remove(sheet_to_delete)
     
+    # 시트명 변경
+    for sheet in workbook:
+        if '_' in sheet.title:
+            index = sheet.title.index('_')
+            sheet.title = sheet.title[:index]
+
+    workbook.save(output_path)
+    workbook.close()
+
     return send_file(output_path, as_attachment=True)
 
 if __name__ == '__main__':

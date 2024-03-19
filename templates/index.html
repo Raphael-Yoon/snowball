@@ -4,21 +4,26 @@
     <title>My Flask App</title>
 </head>
 <body>
-	<form class = "grid" action = "/calculate" method = "POST">
-	<lable for = "Name">Parameter1 :</lable>
+	<form class = "grid" action = "/generate" method = "POST">
+	<lable for = "Name">System :</lable>
 	<select name="param1">
-		<option value="APD">APD</option>
-		<option value="PC">PC</option>
-		<option value="CO">CO</option>
-		<option value="PD">PD</option>
+		<option value="SAP">SAP</option>
+		<option value="Oracle">Oracle</option>
+		<option value="Lagacy">Legacy</option>
 	</select>
 	</br>
-	<lable for = "Name">Parameter2 :</lable>
+	<lable for = "Name">OS</lable>
 	<select name="param2">
-		<option value="APD">APD</option>
-		<option value="PC">PC</option>
-		<option value="CO">CO</option>
-		<option value="PD">PD</option>
+		<option value="Unix">Unix</option>
+		<option value="Windows">Windwos</option>
+		<option value="Linux">Linux</option>
+	</select>
+	</br>
+	<lable for = "Name">DB</lable>
+	<select name="param3">
+		<option value="Oracle">Oracle</option>
+		<option value="MSDB">MS-SQL</option>
+		<option value="ETC">ETC</option>
 	</select>
 	<center><input class="file_submit" type="Submit" value="실행"></center>
 	</form>
