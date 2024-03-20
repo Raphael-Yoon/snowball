@@ -9,8 +9,8 @@ def index():
     return render_template("index.html")
 
 def main():
-    #app.run(host='0.0.0.0', debug=False, port=8001)
-    app.run(host='127.0.0.1', debug=False, port=8001)
+    app.run(host='0.0.0.0', debug=False, port=8001)
+    #app.run(host='127.0.0.1', debug=False, port=8001)
 
 @app.route('/generate', methods=['POST'])
 def calculate():
@@ -20,10 +20,12 @@ def calculate():
     param1 = form_data.get('param1')
     param2 = form_data.get('param2')
     param3 = form_data.get('param3')
+    param4 = form_data.get('param4')
 
     print("Param1 = ", param1)
     print("Param2 = ", param2)
     print("Param3 = ", param3)
+    print("Param4 = ", param4)
 
     output_path = 'pbc.xlsx' 
     workbook = openpyxl.load_workbook('PBC_template.xlsx')
