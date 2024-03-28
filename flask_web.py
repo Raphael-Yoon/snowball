@@ -28,7 +28,7 @@ def link3():
     return render_template('link3.html')
 
 @app.route('/link4')
-def link5():
+def link4():
     print("PBC Function")
     return render_template('link4.html')
 
