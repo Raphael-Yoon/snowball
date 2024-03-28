@@ -27,6 +27,11 @@ def link3():
     print("PBC Function")
     return render_template('link3.html')
 
+@app.route('/link4')
+def link5():
+    print("PBC Function")
+    return render_template('link4.html')
+
 @app.route('/generate', methods=['POST'])
 def calculate():
     print("Python function called")
