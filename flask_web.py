@@ -6,11 +6,26 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template("index.jsp")
 
 def main():
     app.run(host='0.0.0.0', debug=False, port=8001)
     #app.run(host='127.0.0.1', debug=False, port=8001)
+
+@app.route('/link1')
+def link1():
+    print("PBC Function")
+    return render_template('link1.html')
+
+@app.route('/link2')
+def link2():
+    print("PBC Function")
+    return render_template('link2.html')
+
+@app.route('/link3')
+def link3():
+    print("PBC Function")
+    return render_template('link3.html')
 
 @app.route('/generate', methods=['POST'])
 def calculate():
