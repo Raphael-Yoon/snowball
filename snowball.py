@@ -19,17 +19,17 @@ def link1():
 
 @app.route('/link2')
 def link2():
-    print("PBC Function")
+    print("RCM Function")
     return render_template('link2.html')
 
 @app.route('/link3')
 def link3():
-    print("PBC Function")
+    print("Paper Function")
     return render_template('link3.html')
 
 @app.route('/link4')
-def link5():
-    print("PBC Function")
+def link4():
+    print("ETC Function")
     return render_template('link4.html')
 
 @app.route('/generate', methods=['POST'])
