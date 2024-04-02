@@ -7,7 +7,7 @@
 <body>
     {% include 'navi.jsp' %}
     <div style="text-align: center;">
-        <img src="./img/boot.jpg" alt="None">
+        <img src="{{ url_for('static', filename='img/snowball.jpg')}}" width="500" alt="None">
     </div>
 </body>
 </html>
