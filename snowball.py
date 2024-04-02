@@ -32,6 +32,24 @@ def link4():
     print("ETC Function")
     return render_template('link4.html')
 
+@app.route('/param_test', methods=['POST'])
+def param_test():
+    print("Param Function")
+    form_data = request.form.to_dict()
+    param1 = form_data.get('param1')
+    param2 = form_data.get('param2')
+    param3 = form_data.get('param3')
+    param4 = form_data.get('param4')
+    param5 = form_data.get('param5')
+
+    print("Param1 = ", param1)
+    print("Param2 = ", param2)
+    print("Param3 = ", param3)
+    print("Param4 = ", param4)
+    print("Param5 = ", param5)
+    return render_template('link1.html')
+
+
 @app.route('/generate', methods=['POST'])
 def calculate():
     print("Python function called")
