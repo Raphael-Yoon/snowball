@@ -9,8 +9,9 @@
 		<form class = "grid" action = "/pbc_generate" method = "POST">
 			<table>
 				<tr>
-					<td>클라이언트명</td>
-					<td><input type="text" id="param1" name="param1"></td>
+					<td style="width: 150px;">클라이언트명</td>
+					<td style="width: 600px;"><input type="text" id="param1" name="param1"></td>
+					<td rowspan="7"><img src="{{ url_for('static', filename='img/pbc.jpg')}}" width="300" alt="None"></td>
 				</tr>
 				<tr>
 					<td>시스템명</td>
@@ -19,6 +20,12 @@
 				<tr>
 					<td>회신요청일</td>
 					<td><input type="date" id="param3" name="param3"></td>
+					<script>
+						const today = new Date();
+						const nextWeek = new Date(today);
+						nextWeek.setDate(today.getDate()+7);
+						document.getElementById("param3").valueAsDate = nextWeek;
+					</script>
 				</tr>
 				<tr>
 					<td>System</td>
