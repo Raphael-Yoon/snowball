@@ -3,6 +3,7 @@ from openpyxl import load_workbook
 
 import link1_pbc
 import link2_rcm
+import link3_paper
 
 app = Flask(__name__)
 
@@ -36,8 +37,8 @@ def link4():
 
 @app.route('/pbc_generate', methods=['POST'])
 def pbc_generate():
-    form_data = request.form.to_dict()
 
+    form_data = request.form.to_dict()
     output_path = link1_pbc.pbc_generate(form_data)
 
     return send_file(output_path, as_attachment=True)
@@ -47,10 +48,17 @@ def rcm_generate():
     print("RCM Generate called")
 
     form_data = request.form.to_dict()
-
     output_path = link2_rcm.rcm_generate(form_data)
 
     #return send_file(output_path, as_attachment=True)
+
+@app.route('/paper_generate', methods=['POST'])
+def paper_generate():
+
+    form_data = request.form.to_dict()
+    output_path = link3_paper.paper_generate(form_data)
+
+    return send_file(output_path, as_attachment=True)
 
 if __name__ == '__main__':
     main()
