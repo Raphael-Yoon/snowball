@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dynamic Content Based on Listbox Selection</title>
+    <title>SnowBall</title>
 </head>
 <body>
     {% include 'navi.jsp' %}
