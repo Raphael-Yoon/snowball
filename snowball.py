@@ -57,6 +57,14 @@ def rcm_generate():
 
     #return send_file(output_path, as_attachment=True)
 
+@app.route('/paper_template_download', methods=['POST'])
+def paper_template_download():
+
+    form_data = request.form.to_dict()
+    output_path = link3_paper.paper_template_download(form_data)
+
+    return send_file(output_path, as_attachment=True)
+
 @app.route('/paper_generate', methods=['POST'])
 def paper_generate():
 

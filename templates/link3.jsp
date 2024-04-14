@@ -6,7 +6,7 @@
 </head>
 <body>
     {% include 'navi.jsp' %}
-    <form class = "grid" action = "/paper_generate" method="post">
+    <form class = "grid" action = "/paper_template_download" method="post">
         <select name="param1" id="param1">
             <option value="APD" checked>Access Program & Data</option>
             <option value="PC">Program Change</option>
@@ -28,9 +28,14 @@
             <option value="APD13">OS 패스워드</option>
             <option value="APD14">OS 관리자 권한 제한</option>
         </select>
-        <input type="submit" value="Run!!!">
+        <input type="submit" value="Download">
+    </form>
+    <form class = "grid" action = "/paper_generate" method="post" enctype="multipart/form-data">
         <div id="contentContainer">
-            <p>Select an option to see content.</p>
+            <p>Upload</p>
+            <input type="hidden" id="param3" name="param3" value="APD01">
+            <input type="file" id="param4" name="param4">
+            <input type="submit" value="Generate">
         </div>
     </form>
 
@@ -87,41 +92,12 @@
             const selectedValue = listBox.value;
             const contentContainer = document.getElementById("contentContainer");
             // Clear existing content
-            contentContainer.innerHTML = "";
-
-            // Add new content based on selected value
-            switch (selectedValue) {
-                case "APD01":
-                    contentContainer.innerHTML = "<p>Option 1 content goes here.</p>";
-                    break;
-                case "APD02":
-                    contentContainer.innerHTML = `
-                        <p>Option 2 content goes here.</p>
-                        <input type="text" placeholder="Edit Box 1">
-                        <input type="text" placeholder="Edit Box 2">
-                    `;
-                    break;
-                case "APD05":
-                    contentContainer.innerHTML = `
-                        <table>
-                            <tr>
-                                <td>최소자리</td>
-                                <td><input type="text" id="param3" name="param3"></td>
-                            </tr>
-                            <tr>
-                                <td>복잡성</td>
-                                <td><input type="text" id="param4" name="param4"></td>
-                            </tr>
-                            <tr>
-                                <td>변경주기</td>
-                                <td><input type="text" id="param5" name="param5"></td>
-                            </tr>
-                        </table>
-                    `;
-                    break;
-                default:
-                    contentContainer.innerHTML = "<p>Select an option to see content.</p>";
-            }
+            contentContainer.innerHTML = `
+                <p>Upload</P>
+                <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                <input type="file" id="param4" name="param4">                
+                <input type="submit" value="Generate">
+            `;
         }
     </script>
 
