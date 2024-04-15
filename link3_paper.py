@@ -33,9 +33,11 @@ def paper_generate(form_data):
 
     param3 = form_data.get('param3')
     param4 = form_data.get('param4')
+    param5 = form_data.get('param5')
 
     print("Param3 = ", param3)
     print("Param4 = ", param4)
+    print("Param5 = ", param5)
 
     uploaded_file = request.files['param4']
     print('upload 1')
