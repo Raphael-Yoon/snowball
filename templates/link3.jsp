@@ -6,7 +6,7 @@
 </head>
 <body>
     {% include 'navi.jsp' %}
-    <form class = "grid" action = "/paper_generate" method="post">
+    <form class = "grid" action = "/paper_template_download" method="post">
         <select name="param1" id="param1">
             <option value="APD" checked>Access Program & Data</option>
             <option value="PC">Program Change</option>
@@ -17,8 +17,8 @@
             <option value="APD02">Application 권한 회수</option> 
             <option value="APD03">Application 계정 삭제</option>
             <option value="APD04">Application 관리자 권한 제한</option>
-            <option value="APD05">Application 패스워드</option>
-            <option value="APD06">Application 권한 Monitoring</option>
+            <option value="APD05">Application 권한 Monitoring</option>
+            <option value="APD06">Application 패스워드</option>
             <option value="APD07">Data 직접변경 승인</option>
             <option value="APD08">Data 직접변경 권한 제한</option>
             <option value="APD09">DB 접근권한 승인</option>
@@ -28,9 +28,14 @@
             <option value="APD13">OS 패스워드</option>
             <option value="APD14">OS 관리자 권한 제한</option>
         </select>
-        <input type="submit" value="Run!!!">
+        <input type="submit" value="Download">
+    </form>
+    <form class = "grid" action = "/paper_generate" method="post" enctype="multipart/form-data">
         <div id="contentContainer">
-            <p>Select an option to see content.</p>
+            <p>Upload</p>
+            <input type="hidden" id="param3" name="param3" value="APD01">
+            <input type="file" id="param4" name="param4">
+            <input type="submit" value="Generate">
         </div>
     </form>
 
@@ -43,8 +48,8 @@
                 {value: "APD02", text: "Application 권한 회수"},
                 {value: "APD03", text: "Application 계정 삭제"},
                 {value: "APD04", text: "Application 관리자 권한 제한"},
-                {value: "APD05", text: "Application 패스워드"},
-                {value: "APD06", text: "Application 권한 Monitoring"},
+                {value: "APD05", text: "Application 권한 Monitoring"},
+                {value: "APD06", text: "Application 패스워드"},
                 {value: "APD07", text: "Data 직접변경 승인"},
                 {value: "APD08", text: "Data 직접변경 권한 제한"},
                 {value: "APD09", text: "DB 접근권한 승인"},
@@ -59,9 +64,9 @@
                 {value: "PC02", text: "프로그램 변경 사용자 테스트"},
                 {value: "PC03", text: "프로그램 이관 승인"},
                 {value: "PC04", text: "개발/운영 환경 분리"},
-                {value: "PC04", text: "이관담당자 권한 제한"},
-                {value: "PC05", text: "인프라 설정변경_DB"},
-                {value: "PC06", text: "인프라 설정변경_OS"}
+                {value: "PC05", text: "이관담당자 권한 제한"},
+                {value: "PC06", text: "인프라 설정변경_DB"},
+                {value: "PC07", text: "인프라 설정변경_OS"}
             ],
             CO: [
                 { value: "CO01", text: "배치잡 스케줄 등록 승인" },
@@ -87,38 +92,195 @@
             const selectedValue = listBox.value;
             const contentContainer = document.getElementById("contentContainer");
             // Clear existing content
-            contentContainer.innerHTML = "";
-
-            // Add new content based on selected value
+            contentContainer.innerHTML = ``;
             switch (selectedValue) {
-                case "APD01":
-                    contentContainer.innerHTML = "<p>Option 1 content goes here.</p>";
-                    break;
-                case "APD02":
+                case "APD01": // 권한부여 승인
                     contentContainer.innerHTML = `
-                        <p>Option 2 content goes here.</p>
-                        <input type="text" placeholder="Edit Box 1">
-                        <input type="text" placeholder="Edit Box 2">
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
                     `;
                     break;
-                case "APD05":
+                case "APD02": // 권한 회수
                     contentContainer.innerHTML = `
-                        <table>
-                            <tr>
-                                <td>최소자리</td>
-                                <td><input type="text" id="param3" name="param3"></td>
-                            </tr>
-                            <tr>
-                                <td>복잡성</td>
-                                <td><input type="text" id="param4" name="param4"></td>
-                            </tr>
-                            <tr>
-                                <td>변경주기</td>
-                                <td><input type="text" id="param5" name="param5"></td>
-                            </tr>
-                        </table>
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
                     `;
                     break;
+                case "APD03": // 계정 삭제
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="checkbox" id="param5" name="param5">전수검토 여부
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+                case "APD04": // 관리자 권한제한
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                    `;
+                    break;
+                case "APD05": // 권한 Monitoring
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+                case "APD06": // Application 패스워드
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                    `;
+                    break;
+                case "APD07": // Data 직접변경 승인
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+                case "APD08": // Data 직접변경 권한제한
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                    `;
+                    break;
+                case "APD09": // DB 접근권한 승인
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+                case "APD10": // DB 패스워드
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                    `;
+                    break;
+                case "APD11": // DB 관리자 권한제한
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                    `;
+                    break;
+                case "APD12": // OS 접근권한 승인
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+                case "APD13": // OS 패스워드
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                    `;
+                    break;
+                case "APD14": // OS 관리자 권한제한
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                    `;
+                    break;
+
+                case "PC01": // 프로그램 변경 승인
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="checkbox" id="param5" name="param5">프로그램변경 통제 통합
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+                case "PC02": // 프로그램 변경 사용자 테스트
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+                case "PC03": // 프로그램 이관 승인
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+                case "PC04": // 개발/운영 환경분리
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                    `;
+                    break;
+                case "PC05": // 이관담당자 권한제한
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                    `;
+                    break;
+                case "PC06": // 인프라 설정변경 DB
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+                case "PC07": // 인프라 설정변경 OS
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+
+                case "CO01": // 배치잡 스케줄 등록 승인
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+                case "CO02": // 배치잡 스케줄 등록 권한 제한
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                    `;
+                    break;
+                case "CO03": // 배치잡 스케줄 Monitoring
+                    contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;
+                    break;
+
                 default:
                     contentContainer.innerHTML = "<p>Select an option to see content.</p>";
             }
