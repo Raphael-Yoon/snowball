@@ -12,8 +12,8 @@ def index():
     return render_template("index.jsp")
 
 def main():
-    #app.run(host='0.0.0.0', debug=False, port=8001)
-    app.run(host='127.0.0.1', debug=False, port=8001)
+    app.run(host='0.0.0.0', debug=False, port=8001)
+    #app.run(host='127.0.0.1', debug=False, port=8001)
 
 @app.route('/link0')
 def link0():
