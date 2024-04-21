@@ -28,7 +28,7 @@
             <option value="APD13">OS 패스워드</option>
             <option value="APD14">OS 관리자 권한 제한</option>
         </select>
-        <input type="submit" value="모집단 Download">
+        <input type="submit" value="Template Download">
     </form>
     <form class = "grid" action = "/paper_generate" method="post" enctype="multipart/form-data">
         <div id="contentContainer">
