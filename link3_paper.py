@@ -20,13 +20,7 @@ def paper_template_download(form_data):
     print("Param4 = ", param4)
     print("Param5 = ", param5)
 
-    output_path = './paper_templates/' + param2 + '.xlsx'
-
-    #workbook = openpyxl.load_workbook('./paper_templates/APD05_template.xlsx')
-        
-    #output_path = './paper_templates/' + param2 + '.xlsx'
-    #workbook.save(output_path)
-    #workbook.close()
+    output_path = './paper_templates/' + param2 + '_template.xlsx'
 
     print("output = ", output_path)
 
@@ -50,9 +44,8 @@ def paper_generate(form_data):
     print('upload complete')
 
     if(param3=="APD01"):
-        #output_path = paper_generate_population(param3, file_path)
-        #output_path = paper_generate_apd01(output_path)
-        paper_test()
+        output_path = paper_generate_population(param3, file_path)
+        output_path = paper_generate_apd01(output_path)
     else:
         workbook = openpyxl.load_workbook(file_path)
         sheet = workbook['모집단']
@@ -94,65 +87,93 @@ def paper_generate_population(control_code, upload_file):
 def paper_generate_apd01(output_path):
     print("into paper generate apd01")
 
-    paper_workbook = openpyxl.load_workbook('./uploads/APD01_paper.xlsx')
-    paper_sheet = paper_workbook['Testing Table']
-    paper_sheet["C5"] = "Test"
-
-    paper_workbook.save(output_path)
-    paper_workbook.close()
-    
-    print("end papaer generate apd01")
-    
-    return output_path
-
-def paper_test():
-    print("into paper_test")
-    paper_workbook = openpyxl.load_workbook('./uploads/APD01_paper.xlsx')
+    paper_workbook = openpyxl.load_workbook(output_path)
     sheet_pop = paper_workbook['Population']
     sheet_test = paper_workbook['Testing Table']
 
-    mapping_list = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
-
-    sample_col = mapping_list[sheet_pop.max_column]
-    max_row = sheet_pop.max_row
-    sample_size = 0
-    if(max_row > 250): # multiple
-        sample_size = 25
-    elif(max_row > 52): # daily
-        sample_size = 15
-    elif(max_row > 12): # weekly
-        sample_size = 2
-    elif(max_row > 4): # monthly
-        sample_size = 2
-    elif(max_row > 1): # quarterly
-        sample_size = 2
-    else: # annually
-        sample_size = 1
-
-    print("max_row = ", max_row)
-    print("sample_col = ", sample_col)
+    max_row = sheet_pop.max_row-1
+    sample_size = get_sample_size(max_row, 'LOW')
     print("sample Size = ", sample_size)
 
     random_row_indices = random.sample(range(1, max_row), sample_size)
     selected_row_data = []
 
+    sheet_pop.insert_cols(1)
+    sheet_pop['A1'] = "Sample"
     i=1
     for row_index in random_row_indices:
         row_data = [cell.value for cell in sheet_pop[row_index]]
         selected_row_data.append(row_data)
-        sheet_pop[sample_col+str(row_index)] = "Sample #" + str(i)
+        sheet_pop['A'+str(row_index)] = "#" + str(i).zfill(2)
         i=i+1
     print("Random index = ", random_row_indices)
     print("Selected:")
     i=5
     for row_data in selected_row_data:
         print(row_data)
-        sheet_test["C" + str(i)] = row_data[0] # 사용자ID
-        sheet_test["D" + str(i)] = row_data[1] # 사용자명
-        sheet_test["E" + str(i)] = row_data[2] # 부서명
-        sheet_test["F" + str(i)] = row_data[3] # 권한명
-        sheet_test["G" + str(i)] = row_data[4] # 권한부여일
+        sheet_test["C" + str(i)] = str(row_data[1]) # 사용자ID
+        sheet_test["D" + str(i)] = str(row_data[2]) # 사용자명
+        sheet_test["E" + str(i)] = str(row_data[3]) # 부서명
+        sheet_test["F" + str(i)] = str(row_data[4]) # 권한명
+        sheet_test["G" + str(i)] = str(row_data[5].date()) # 권한부여일
         i=i+1
+    
+    '''
+    sheet_test.delete_rows(25, 5)
+    for row in sheet_test.iter_rows(min_row=5, max_row=29, min_col=1, max_col=10000):
+        if row[2] == "":
+            sheet_test.delete_rows(row[0].row)
+    '''
     
     paper_workbook.save('./uploads/APD01_paper.xlsx')
     paper_workbook.close()
+
+    print("end papaer generate apd01")
+    
+    return output_path
+
+def get_sample_size(max_row, risk_level):
+    print("into paper_test")
+
+    sample_size = 0
+    if(risk_level == "LOW"):
+        if(max_row > 250): # multiple
+            sample_size = 25
+        elif(max_row > 52): # daily
+            sample_size = 20
+        elif(max_row > 12): # weekly
+            sample_size = 5
+        elif(max_row > 4): # monthly
+            sample_size = 2
+        elif(max_row > 1): # quarterly
+            sample_size = 2
+        else: # annually
+            sample_size = 1
+    elif(risk_level == "MIDDLE"):
+        if(max_row > 250): # multiple
+            sample_size = 25
+        elif(max_row > 52): # daily
+            sample_size = 20
+        elif(max_row > 12): # weekly
+            sample_size = 5
+        elif(max_row > 4): # monthly
+            sample_size = 2
+        elif(max_row > 1): # quarterly
+            sample_size = 2
+        else: # annually
+            sample_size = 1
+    elif(risk_level == "HIGH"):
+        if(max_row > 250): # multiple
+            sample_size = 25
+        elif(max_row > 52): # daily
+            sample_size = 20
+        elif(max_row > 12): # weekly
+            sample_size = 5
+        elif(max_row > 4): # monthly
+            sample_size = 2
+        elif(max_row > 1): # quarterly
+            sample_size = 2
+        else: # annually
+            sample_size = 1
+
+    return sample_size
