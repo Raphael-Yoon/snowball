@@ -28,7 +28,7 @@
             <option value="APD13">OS 패스워드</option>
             <option value="APD14">OS 관리자 권한 제한</option>
         </select>
-        <input type="submit" value="Download">
+        <input type="submit" value="모집단 Download">
     </form>
     <form class = "grid" action = "/paper_generate" method="post" enctype="multipart/form-data">
         <div id="contentContainer">
@@ -84,6 +84,7 @@
                 optionElement.value = option.value;
                 optionElement.text = option.text;
                 nameSelect.appendChild(optionElement);
+                updateContent();
             });
         });
 
@@ -93,7 +94,28 @@
             const contentContainer = document.getElementById("contentContainer");
             // Clear existing content
             contentContainer.innerHTML = ``;
-            switch (selectedValue) {
+            if( selectedValue == "APD01" ||
+                selectedValue == "APD02" ||
+                selectedValue == "APD03" ||
+                selectedValue == "APD07" ||
+                selectedValue == "APD09" ||
+                selectedValue == "APD12" ||
+                selectedValue == "PC01" ||
+                selectedValue == "PC02" ||
+                selectedValue == "PC03" ||
+                selectedValue == "PC06" ||
+                selectedValue == "PC07" ||
+                selectedValue == "CO01")
+            {
+                contentContainer.innerHTML = `
+                        <p>Upload</P>
+                        <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
+                        <input type="file" id="param4" name="param4">
+                        <input type="submit" value="Generate">
+                    `;                
+            }
+
+/*            switch (selectedValue) {
                 case "APD01": // 권한부여 승인
                     contentContainer.innerHTML = `
                         <p>Upload</P>
@@ -123,7 +145,6 @@
                     contentContainer.innerHTML = `
                         <p>Upload</P>
                         <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
-                        <input type="file" id="param4" name="param4">
                     `;
                     break;
                 case "APD05": // 권한 Monitoring
@@ -138,7 +159,6 @@
                     contentContainer.innerHTML = `
                         <p>Upload</P>
                         <input type="hidden" id="param3" value="` + selectedValue + `" name="param3">
-                        <input type="file" id="param4" name="param4">
                     `;
                     break;
                 case "APD07": // Data 직접변경 승인
@@ -283,7 +303,7 @@
 
                 default:
                     contentContainer.innerHTML = "<p>Select an option to see content.</p>";
-            }
+            } */
         }
     </script>
 
