@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, send_file
 from openpyxl import load_workbook
+#import ssl
 
 import link1_pbc
 import link2_rcm
@@ -12,6 +13,10 @@ def index():
     return render_template("index.jsp")
 
 def main():
+    #app.debug = True
+    #ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+    #ssl_context.load_cert_chain(certfile='cert.pem', keyfile='key.pem', password='1234')
+    #app.run(host='0.0.0.0', port=5000, ssl_context=ssl_context)
     app.run(host='0.0.0.0', debug=False, port=5000)
     #app.run(host='127.0.0.1', debug=False, port=8001)
 

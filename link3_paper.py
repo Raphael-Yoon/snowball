@@ -41,11 +41,17 @@ def paper_generate(form_data):
     filename = secure_filename(uploaded_file.filename)
     file_path = os.path.join('uploads', uploaded_file.filename)
     uploaded_file.save(file_path)
-    print('upload complete')
+    print('upload complete: ', param3)
 
     if(param3=="APD01"):
         output_path = paper_generate_population(param3, file_path)
         output_path = paper_generate_apd01(output_path)
+    elif(param3=="APD02"):
+        output_path = paper_generate_population(param3, file_path)
+        output_path = paper_generate_apd02(output_path)
+    elif(param3=="APD03"):
+        output_path = paper_generate_population(param3, file_path)
+        output_path = paper_generate_apd03(output_path)
     else:
         workbook = openpyxl.load_workbook(file_path)
         sheet = workbook['모집단']
@@ -61,79 +67,8 @@ def paper_generate(form_data):
 
     return output_path
 
-def paper_generate_population(control_code, upload_file):
-    print("into paper generate population")
-    
-    open_path = './paper_templates/' + control_code + '_paper.xlsx'
-
-    paper_workbook = openpyxl.load_workbook(open_path)
-    paper_sheet = paper_workbook['Population']
-
-    upload_workbook = openpyxl.load_workbook(upload_file)
-    upload_sheet = upload_workbook['모집단']
-
-    for row in upload_sheet.iter_rows():
-        for cell in row:
-            paper_sheet[cell.coordinate].value = cell.value
-    
-    output_path = './uploads/' + control_code + '_paper.xlsx'
-    paper_workbook.save(output_path)
-    paper_workbook.close()
-    
-    print("end papaer generate population")
-    
-    return output_path
-
-def paper_generate_apd01(output_path):
-    print("into paper generate apd01")
-
-    paper_workbook = openpyxl.load_workbook(output_path)
-    sheet_pop = paper_workbook['Population']
-    sheet_test = paper_workbook['Testing Table']
-
-    max_row = sheet_pop.max_row-1
-    sample_size = get_sample_size(max_row, 'LOW')
-    print("sample Size = ", sample_size)
-
-    random_row_indices = random.sample(range(1, max_row), sample_size)
-    selected_row_data = []
-
-    sheet_pop.insert_cols(1)
-    sheet_pop['A1'] = "Sample"
-    i=1
-    for row_index in random_row_indices:
-        row_data = [cell.value for cell in sheet_pop[row_index]]
-        selected_row_data.append(row_data)
-        sheet_pop['A'+str(row_index)] = "#" + str(i).zfill(2)
-        i=i+1
-    print("Random index = ", random_row_indices)
-    print("Selected:")
-    i=5
-    for row_data in selected_row_data:
-        print(row_data)
-        sheet_test["C" + str(i)] = str(row_data[1]) # 사용자ID
-        sheet_test["D" + str(i)] = str(row_data[2]) # 사용자명
-        sheet_test["E" + str(i)] = str(row_data[3]) # 부서명
-        sheet_test["F" + str(i)] = str(row_data[4]) # 권한명
-        sheet_test["G" + str(i)] = str(row_data[5].date()) # 권한부여일
-        i=i+1
-    
-    '''
-    sheet_test.delete_rows(25, 5)
-    for row in sheet_test.iter_rows(min_row=5, max_row=29, min_col=1, max_col=10000):
-        if row[2] == "":
-            sheet_test.delete_rows(row[0].row)
-    '''
-    
-    paper_workbook.save('./uploads/APD01_paper.xlsx')
-    paper_workbook.close()
-
-    print("end papaer generate apd01")
-    
-    return output_path
-
 def get_sample_size(max_row, risk_level):
-    print("into paper_test")
+    print("into_sample_size")
 
     sample_size = 0
     if(risk_level == "LOW"):
@@ -177,3 +112,163 @@ def get_sample_size(max_row, risk_level):
             sample_size = 1
 
     return sample_size
+
+def paper_generate_population(control_code, upload_file):
+    print("into paper generate population")
+    
+    open_path = './paper_templates/' + control_code + '_paper.xlsx'
+    print("open_path = ", open_path)
+    
+    paper_workbook = openpyxl.load_workbook(open_path)
+    paper_sheet = paper_workbook['Population']
+
+    upload_workbook = openpyxl.load_workbook(upload_file)
+    upload_sheet = upload_workbook['모집단']
+
+    for row in upload_sheet.iter_rows():
+        for cell in row:
+            paper_sheet[cell.coordinate].value = cell.value
+    
+    output_path = './uploads/' + control_code + '_paper.xlsx'
+    print("output_path = ", output_path)
+    paper_workbook.save(output_path)
+    paper_workbook.close()
+    
+    print("end papaer generate population")
+    
+    return output_path
+
+# Application 권한 부여 승인
+def paper_generate_apd01(output_path):
+    print("into paper generate apd01")
+
+    paper_workbook = openpyxl.load_workbook(output_path)
+    sheet_pop = paper_workbook['Population']
+    sheet_test = paper_workbook['Testing Table']
+
+    max_row = sheet_pop.max_row-1
+    sample_size = get_sample_size(max_row, 'LOW')
+    print("sample Size = ", sample_size)
+
+    random_row_indices = random.sample(range(1, max_row), sample_size)
+    selected_row_data = []
+
+    sheet_pop.insert_cols(1)
+    sheet_pop['A1'] = "Sample"
+    i=1
+    for row_index in random_row_indices:
+        row_data = [cell.value for cell in sheet_pop[row_index]]
+        selected_row_data.append(row_data)
+        sheet_pop['A'+str(row_index)] = "#" + str(i).zfill(2)
+        i=i+1
+    print("Random index = ", random_row_indices)
+    print("Selected:")
+    i=5
+    for row_data in selected_row_data:
+        print(row_data)
+        sheet_test["C" + str(i)] = str(row_data[1]) # 사용자ID
+        sheet_test["D" + str(i)] = str(row_data[2]) # 사용자명
+        sheet_test["E" + str(i)] = str(row_data[3]) # 부서명
+        sheet_test["F" + str(i)] = str(row_data[4]) # 권한명
+        sheet_test["G" + str(i)] = str(row_data[5].date()) # 권한부여일
+        i=i+1
+    
+    '''
+    sheet_test.delete_rows(25, 5)
+    for row in sheet_test.iter_rows(min_row=5, max_row=29, min_col=1, max_col=10000):
+        if row[2] == "":
+            sheet_test.delete_rows(row[0].row)
+    '''
+    
+    paper_workbook.save(output_path)
+    paper_workbook.close()
+
+    print("end papaer generate apd01")
+    
+    return output_path
+
+# 부서이동자 권한 회수
+def paper_generate_apd02(output_path):
+    print("into paper generate apd02")
+
+    paper_workbook = openpyxl.load_workbook(output_path)
+    sheet_pop = paper_workbook['Population']
+    sheet_test = paper_workbook['Testing Table']
+
+    max_row = sheet_pop.max_row-1
+    print("max row = ", max_row)
+    sample_size = get_sample_size(max_row, 'LOW')
+    print("sample Size = ", sample_size)
+
+    random_row_indices = random.sample(range(1, max_row), sample_size)
+    selected_row_data = []
+
+    sheet_pop.insert_cols(1)
+    sheet_pop['A1'] = "Sample"
+    i=1
+    for row_index in random_row_indices:
+        row_data = [cell.value for cell in sheet_pop[row_index]]
+        selected_row_data.append(row_data)
+        sheet_pop['A'+str(row_index)] = "#" + str(i).zfill(2)
+        i=i+1
+    print("Random index = ", random_row_indices)
+    print("Selected:")
+    i=5
+    for row_data in selected_row_data:
+        print(row_data)
+        sheet_test["C" + str(i)] = str(row_data[1]) # 사번
+        sheet_test["D" + str(i)] = str(row_data[2]) # 이름
+        sheet_test["E" + str(i)] = str(row_data[3]) # 부서명
+        sheet_test["F" + str(i)] = str(row_data[4]) # 이전 부서명
+        sheet_test["G" + str(i)] = str(row_data[5].date()) # 부서 이동일
+        sheet_test["H" + str(i)] = str(row_data[6]) # 시스템ID
+        i=i+1
+    
+    paper_workbook.save(output_path)
+    paper_workbook.close()
+
+    print("end papaer generate apd02")
+    
+    return output_path
+
+# 퇴사자 계정 삭제
+def paper_generate_apd03(output_path):
+    print("into paper generate apd03")
+
+    paper_workbook = openpyxl.load_workbook(output_path)
+    sheet_pop = paper_workbook['Population']
+    sheet_test = paper_workbook['Testing Table']
+
+    max_row = sheet_pop.max_row-1
+    print("max row = ", max_row)
+    sample_size = get_sample_size(max_row, 'LOW')
+    print("sample Size = ", sample_size)
+
+    random_row_indices = random.sample(range(1, max_row), sample_size)
+    selected_row_data = []
+
+    sheet_pop.insert_cols(1)
+    sheet_pop['A1'] = "Sample"
+    i=1
+    for row_index in random_row_indices:
+        row_data = [cell.value for cell in sheet_pop[row_index]]
+        selected_row_data.append(row_data)
+        sheet_pop['A'+str(row_index)] = "#" + str(i).zfill(2)
+        i=i+1
+    print("Random index = ", random_row_indices)
+    print("Selected:")
+    i=5
+    for row_data in selected_row_data:
+        print(row_data)
+        sheet_test["C" + str(i)] = str(row_data[1]) # 사번
+        sheet_test["D" + str(i)] = str(row_data[2]) # 이름
+        sheet_test["E" + str(i)] = str(row_data[3].date()) # 퇴직일
+        sheet_test["F" + str(i)] = str(row_data[4]) # 시스템ID
+        i=i+1
+    
+    paper_workbook.save(output_path)
+    paper_workbook.close()
+
+    print("end papaer generate apd03")
+    
+    return output_path
