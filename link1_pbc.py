@@ -1,3 +1,4 @@
+from flask import render_template
 import openpyxl
 import datetime
 
@@ -23,7 +24,11 @@ def pbc_generate(form_data):
     else:
         output_path = param1 + '_pbc.xlsx'
 
-    workbook = openpyxl.load_workbook('PBC_template.xlsx')
+    try:
+        workbook = openpyxl.load_workbook('./paper_templates/PBC_Template.xlsx')
+    except FileNotFoundError:
+        print("./paper_templates/PBC_Template.xlsx: 파일열기 오류")
+        return ''
 
     sheet = workbook["Summary"]
     sheet["B2"] = 'FY' + str(datetime.date.today().year) + '_ITGC 설계 및 운영평가'
@@ -84,7 +89,7 @@ def pbc_generate(form_data):
             index = sheet.title.index('_')
             sheet.title = sheet.title[:index]
 
-    workbook.save(output_path)
+    workbook.save('./downloads/' + output_path)
     workbook.close()
 
-    return output_path
+    return './downloads/' + output_path
