@@ -42,8 +42,13 @@ def link3():
 
 @app.route('/link4')
 def link4():
-    print("ETC Function")
+    print("Monitoring Function")
     return render_template('link4.jsp')
+
+@app.route('/link9')
+def link9():
+    print("ETC Function")
+    return render_template('link9.jsp')
 
 @app.route('/pbc_generate', methods=['POST'])
 def pbc_generate():

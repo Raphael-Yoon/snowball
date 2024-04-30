@@ -6,7 +6,7 @@
 </head>
 <body>
     {% include 'navi.jsp' %}
-    <p><center>준비중...</center></p>
+    <p><center>Monitoring 준비중...</center></p>
     <div style="text-align: center;">
         <img src="{{ url_for('static', filename='img/boot.jpg')}}" width="500" alt="None">
     </div>
