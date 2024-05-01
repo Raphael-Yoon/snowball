@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top Links</title>
+    <title>snowball</title>
     <style>
         .top-links {
             display: flex;
@@ -19,7 +19,7 @@
     </style>
 </head>
 <body>
-    <a href="/link0"><img src="{{ url_for('static', filename='img/logo.jpg')}}" width="100" alt="None"></a>
+    <a href="/link0"><img src="{{ url_for('static', filename='img/logo.jpg')}}" width="200" alt="None"></a>
     <div class="top-links">
         <form class = "grid" action = "/link1" method = "POST"><a href="/link1" class="top-link">PBC</a></form>
         <form class = "grid" action = "/link2" method = "POST"><a href="/link2" class="top-link">RCM</a></form>

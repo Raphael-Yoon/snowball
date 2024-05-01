@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>ITAP</title>
+    <title>SnowBall</title>
 </head>
 <body>
     {% include 'navi.jsp' %}
