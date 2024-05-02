@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, render_template, request, send_file
 import openpyxl.utils
 from werkzeug.utils import secure_filename
 import os
@@ -22,10 +22,13 @@ def paper_template_download(form_data):
     print("Param5 = ", param5)
 
     output_path = './paper_templates/' + param2 + '_template.xlsx'
-
     print("output = ", output_path)
 
-    return output_path
+    if os.path.exists(output_path):
+        return ''
+    else:
+        return ''
+        #return output_path
 
 def paper_generate(form_data):
     print("Paper Generate called")
