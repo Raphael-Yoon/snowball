@@ -73,7 +73,14 @@ def paper_template_download():
     form_data = request.form.to_dict()
     output_path = link3_paper.paper_template_download(form_data)
 
-    return send_file(output_path, as_attachment=True)
+    param1 = form_data.get('param1')
+    param2 = form_data.get('param2')
+
+    print('output = ', output_path)
+    if output_path != '':
+        return send_file(output_path, as_attachment=True)
+    else:
+        return render_template('link3.jsp', return_param1=param1, return_param2=param2)
 
 @app.route('/paper_generate', methods=['POST'])
 def paper_generate():
