@@ -13,7 +13,7 @@
             </colgroup>
             <tr>
                 <td>
-                    <iframe src="https://drive.google.com/uc?id=1XujA2eba7F3hp7GzvPjWifwTkTXAtn0D" width="100%" alt="Google Drive"></iframe>
+                    <img src="{{ url_for('static', filename='img/APD01.jpg')}}" width="1000" alt="None">
                 </td>
                 <td>
                     <iframe src="https://drive.google.com/uc?id=1jPAy5gtIcVhWH-1GgvCRH4HgKMjzu57L" width="100%" controls autoplay muted></iframe>
