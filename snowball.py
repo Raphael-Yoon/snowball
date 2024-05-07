@@ -63,7 +63,7 @@ def design_generate():
 
     return send_file(output_path, as_attachment=True)
 
-@app.route('/design_template_download', methods=['POST'])
+@app.route('/design_template_download', methods=['POST']) 
 def design_template_downloade():
     print("Design Template Download called")
 

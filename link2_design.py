@@ -18,20 +18,17 @@ def design_generate(form_data):
 
     output_path = './downloads/' + param2 + '_설계평가.xlsx'
 
-    if param3 == '':
-        test_workbook = openpyxl.load_workbook('./paper_templates/Design_Template.xlsx')
-    else:
-        print('upload 1:', param3)
+    if param3:
+        print("Upload, Custom")
         uploaded_file = request.files['param3']
-        print('upload 2')
         filename = secure_filename(uploaded_file.filename)
-        print('upload 3: ', filename)
         file_path = os.path.join('uploads', uploaded_file.filename)
-        print('upload 4: ', file_path)
         uploaded_file.save(file_path)
-        print('upload 5')
         test_workbook = openpyxl.load_workbook(file_path)
-
+    else:
+        print("No Upload, Standard")
+        test_workbook = openpyxl.load_workbook('./paper_templates/Design_Template.xlsx')
+        
     test_sheet = test_workbook['RCM']
 
     paper_workbook = openpyxl.load_workbook('./paper_templates/Design_Paper.xlsx')
@@ -58,6 +55,13 @@ def design_generate(form_data):
         copied_sheet["C11"].value = row[4] #테스트절차
 
     paper_workbook.remove(template_sheet)
+
+    i=2
+    for row in rcm_sheet.iter_rows(min_row=2, max_row=rcm_sheet.max_row, min_col=1, max_col=1):
+        cell_value = row[0].value
+        if cell_value:
+            rcm_sheet["F"+str(i)].value = '=HYPERLINK("{}", "{}")'.format("#" + cell_value + "!A1", cell_value)
+            i = i+1
 
     paper_workbook.save(output_path)
     test_workbook.close()
