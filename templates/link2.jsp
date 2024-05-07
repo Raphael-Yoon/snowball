@@ -6,52 +6,22 @@
 	</head>
 	<body>
 		{% include 'navi.jsp' %}
-		<form class = "grid" action = "/rcm_generate" method = "POST">
+		<form class = "grid" action = "/design_generate" method = "POST" enctype="multipart/form-data">
 			<table>
 				<tr>
 					<td style="width: 150px;">클라이언트명</td>
-					<td style="width: 600px;"><input type="text" id="param1" name="param1"></td>
-					<td rowspan="7"><img src="{{ url_for('static', filename='img/rcm.jpg')}}" width="300" alt="None"></td>
+					<td style="width: 600px;"><input type="text" id="param1" name="param1" required></td>
 				</tr>
 				<tr>
 					<td>시스템명</td>
-					<td><input type="text" id="param2" name="param2"></td>
+					<td><input type="text" id="param2" name="param2" required></td>
 				</tr>
 				<tr>
-					<td>System</td>
-					<td>
-						<div class="select">
-							<input type="radio" id="select11" name="param3" value="SAP" checked><label for="select11">SAP</label>
-							<input type="radio" id="select12" name="param3" value="Oracle"><label for="select12">Oracle</label>
-							<input type="radio" id="select13" name="param3" value="Douzone"><label for="select13">더존</label>
-							<input type="radio" id="select14" name="param3" value="KSystem"><label for="select14">영림원</label>
-							<input type="radio" id="select15" name="param3" value="ETC"><label for="select15">기타</label>
-						</div>
-					</td>
+					<td><input type="Submit" value="Template Download" formaction="/design_template_download"></td>
 				</tr>
 				<tr>
-					<td>OS</td>
-					<td>
-						<div class="select">
-							<input type="radio" id="select21" name="param4" value="Unix" checked><label for="select21">Unix</label>
-							<input type="radio" id="select22" name="param4" value="Windows"><label for="select22">Windows</label>
-							<input type="radio" id="select23" name="param4" value="Linux"><label for="select23">Linux</label>
-							<input type="radio" id="select24" name="param4" value="ETC"><label for="select24">기타</label>
-						</div>
-					</td>
-				</tr>
-				<tr>
-					<td>DB</td>
-					<td>
-						<div class="select">
-							<input type="radio" id="select31" name="param5" value="Oracle" checked><label for="select31">Oracle</label>
-							<input type="radio" id="select32" name="param5" value="MSSQL"><label for="select32">MS-SQL</label>
-							<input type="radio" id="select33" name="param5" value="ETC"><label for="select33">기타</label>
-						</div>
-					</td>
-				</tr>
-				<tr>
-					<td><input class="file_submit" type="Submit" value="Download"></td>
+					<td><input type="file" id="param3" name="param3"></td>
+					<td><input type="Submit" value="Generate" formaction="/design_generate"></td>
 				</tr>
 			</table>
 		</form>

@@ -3,8 +3,8 @@ from openpyxl import load_workbook
 #import ssl
 
 import link1_pbc
-import link2_rcm
-import link3_paper
+import link2_design
+import link3_operation
 
 app = Flask(__name__)
 
@@ -54,20 +54,29 @@ def pbc_generate():
 
     return send_file(output_path, as_attachment=True)
 
-@app.route('/rcm_generate', methods=['POST'])
-def rcm_generate():
-    print("RCM Generate called")
+@app.route('/design_generate', methods=['POST'])
+def design_generate():
+    print("Design Generate called")
 
     form_data = request.form.to_dict()
-    output_path = link2_rcm.rcm_generate(form_data)
+    output_path = link2_design.design_generate(form_data)
 
-    #return send_file(output_path, as_attachment=True)
+    return send_file(output_path, as_attachment=True)
+
+@app.route('/design_template_download', methods=['POST'])
+def design_template_downloade():
+    print("Design Template Download called")
+
+    form_data = request.form.to_dict()
+    output_path = link2_design.design_template_download(form_data)
+
+    return send_file(output_path, as_attachment=True)
 
 @app.route('/paper_template_download', methods=['POST'])
 def paper_template_download():
 
     form_data = request.form.to_dict()
-    output_path = link3_paper.paper_template_download(form_data)
+    output_path = link3_operation.paper_template_download(form_data)
 
     param1 = form_data.get('param1')
     param2 = form_data.get('param2')
@@ -82,7 +91,7 @@ def paper_template_download():
 def paper_generate():
 
     form_data = request.form.to_dict()
-    output_path = link3_paper.paper_generate(form_data)
+    output_path = link3_operation.paper_generate(form_data)
 
     return send_file(output_path, as_attachment=True)
 
