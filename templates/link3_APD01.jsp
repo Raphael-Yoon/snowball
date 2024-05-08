@@ -16,7 +16,7 @@
                     <img src="{{ url_for('static', filename='img/APD01.jpg')}}" width="1000" alt="None">
                 </td>
                 <td>
-                    <iframe src="https://drive.google.com/uc?id=1jPAy5gtIcVhWH-1GgvCRH4HgKMjzu57L" width="100%" controls autoplay muted></iframe>
+                    <iframe width="800" height="500" src="https://www.youtube.com/embed/qc9YZrRO2CI?si=_mNw9yTO1LR30Mo1?autoplay=1&mute=1" title="YouTube video player" frameborder="0" allowfullscreen></iframe>
                 </td>
             </tr>
         </table>
