@@ -1,16 +1,19 @@
 from flask import Flask, render_template, request, send_file
 from openpyxl import load_workbook
-#import ssl
 
 import link1_pbc
 import link2_design
 import link3_operation
+import snowball_db
 
 app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template("index.jsp")
+
+    result = snowball_db.get_user_list()
+    return render_template('index.jsp', user_name = result, error_code=0)
+
 
 def main():
     app.run(host='0.0.0.0', debug=False, port=5000)
@@ -19,7 +22,7 @@ def main():
 @app.route('/link0')
 def link0():
     print("Reload")
-    return render_template('index.jsp')
+    return render_template('link0.jsp')
 
 @app.route('/link1')
 def link1():
@@ -45,6 +48,27 @@ def link4():
 def link9():
     print("ETC Function")
     return render_template('link9.jsp')
+
+@app.route('/login', methods=['POST'])
+def login():
+    print('login function')
+    form_data = request.form.to_dict()
+
+    param1 = form_data.get('param1')
+    param2 = form_data.get('param2')
+
+    print("Param1 = ", param1)
+    print("Param2 = ", param2)
+
+    result = snowball_db.get_login(param1, param2)
+
+    if result:
+        print("Login Success")
+        return render_template('link0.jsp', login_code = 0)
+    else:
+        print("Login Fail")
+        result = snowball_db.get_user_list()
+        return render_template('index.jsp', user_name = result, error_code=1)
 
 @app.route('/pbc_generate', methods=['POST'])
 def pbc_generate():
