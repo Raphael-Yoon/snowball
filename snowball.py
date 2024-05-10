@@ -10,10 +10,8 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-
     result = snowball_db.get_user_list()
-    return render_template('index.jsp', user_name = result, error_code=0)
-
+    return render_template('index.jsp', user_name = result, return_code=0)
 
 def main():
     app.run(host='0.0.0.0', debug=False, port=5000)
@@ -68,7 +66,30 @@ def login():
     else:
         print("Login Fail")
         result = snowball_db.get_user_list()
-        return render_template('index.jsp', user_name = result, error_code=1)
+        return render_template('index.jsp', user_name = result, return_code=1)
+
+@app.route('/register', methods=['POST'])
+def register():
+    print("Register")
+    return render_template('register.jsp')
+
+@app.route('/register_request', methods=['POST'])
+def register_request():
+    print("Register request")
+
+    form_data = request.form.to_dict()
+
+    param1 = form_data.get('param1')
+    param2 = form_data.get('param2')
+    param3 = form_data.get('param3')
+
+    print("Param1 = ", param1)
+    print("Param2 = ", param2)
+    print("Param3 = ", param3)
+
+    result = snowball_db.set_user_regist_request(param1, param2, param3)
+    result = snowball_db.get_user_list()
+    return render_template('index.jsp', user_name = result, return_code=2)
 
 @app.route('/pbc_generate', methods=['POST'])
 def pbc_generate():

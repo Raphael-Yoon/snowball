@@ -9,7 +9,7 @@
 		<form class = "grid" action = "/design_generate" method = "POST" enctype="multipart/form-data">
 			<table>
 				<tr>
-					<td style="width: 150px;">클라이언트명</td>
+					<td style="width: 150px;">회사명명</td>
 					<td style="width: 600px;"><input type="text" id="param1" name="param1" required></td>
 				</tr>
 				<tr>
