@@ -71,9 +71,9 @@
                 {value: "PC07", text: "인프라 설정변경_OS"}
             ],
             CO: [
-                { value: "CO01", text: "배치잡 스케줄 등록 승인" },
-                { value: "CO02", text: "배치잡 스케줄 등록 권한 제한" },
-                { value: "CO03", text: "배치잡 스케줄 Monitoring" }
+                {value: "CO01", text: "배치잡 스케줄 등록 승인"},
+                {value: "CO02", text: "배치잡 스케줄 등록 권한 제한"},
+                {value: "CO03", text: "배치잡 스케줄 Monitoring"}
             ]
         };
 

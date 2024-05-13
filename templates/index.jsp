@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <meta charset="UTF-8">
     <title>SnowBall</title>
 </head>
@@ -26,8 +27,8 @@
                     <td><input type="text" id="param2" name="param2" style="width: 100%;"></td>
                 </tr>
                 <tr>
-					<td><input type="Submit" value="들어가기" formaction="/login"></td>
-                    <td><input type="Submit" value="등록하기" formaction="/register"></td>
+                    <td><input type="Submit" class="btn btn-outline-primary" value="들어가기" formaction="/login"></td>
+                    <td><input type="Submit" class="btn btn-outline-primary" value="등록하기" formaction="/register"></td>
 				</tr>
                 {% if return_code == 1 %}
                 <tr>
@@ -42,6 +43,7 @@
             </table>
         </div>
     </form>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>
 
