@@ -24,7 +24,7 @@
                 </tr>
                 <tr>
                     <td>인증코드</td>
-                    <td><input type="text" id="param2" name="param2" style="width: 100%;"></td>
+                    <td><input type="password" id="param2" name="param2" style="width: 100%;"></td>
                 </tr>
                 <tr>
                     <td><input type="Submit" class="btn btn-outline-primary" value="들어가기" formaction="/login"></td>
