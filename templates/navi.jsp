@@ -26,6 +26,7 @@
         <form class = "grid" action = "/link3" method = "POST"><a href="/link3" class="top-link">운영평가</a></form>
         <form class = "grid" action = "/link4" method = "POST"><a href="/link4" class="top-link">Monitoring</a></form>
         <form class = "grid" action = "/link9" method = "POST"><a href="/link9" class="top-link">ETC</a></form>
+        <form class = "grid" action = "/link" method = "POST"><a href="/link_admin" class="top-link">Administrator</a></form>
     </div>
 </body>
 </html>

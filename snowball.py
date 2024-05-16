@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, send_file, session
 from openpyxl import load_workbook
 
+import link_admin
 import link1_pbc
 import link2_design
 import link3_operation
@@ -16,6 +17,12 @@ def index():
 def main():
     app.run(host='0.0.0.0', debug=False, port=5000)
     #app.run(host='127.0.0.1', debug=False, port=8001)
+
+@app.route('/link_admin')
+def link():
+    print("Admin Function")
+    result = snowball_db.get_user_request()
+    return render_template('link.jsp', user_request = result)
 
 @app.route('/link0')
 def link0():
@@ -62,6 +69,7 @@ def login():
 
     if result:
         print("Login Success")
+        snowball_db.set_login(param1, param2)
         return render_template('link0.jsp', login_code = 0)
     else:
         print("Login Fail")
@@ -90,6 +98,17 @@ def register_request():
     result = snowball_db.set_user_regist_request(param1, param2, param3)
     result = snowball_db.get_user_list()
     return render_template('index.jsp', user_name = result, return_code=2)
+
+@app.route('/set_regist', methods=['POST'])
+def set_regist():
+
+    form_data = request.form.to_dict()
+
+    result = link_admin.set_regist(form_data)
+
+    request_list = snowball_db.get_user_request()
+    return render_template('link.jsp', user_request = request_list)
+    
 
 @app.route('/pbc_generate', methods=['POST'])
 def pbc_generate():
