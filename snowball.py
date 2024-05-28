@@ -22,7 +22,7 @@ def main():
 def link():
     print("Admin Function")
     result = snowball_db.get_user_request()
-    return render_template('link.jsp', user_request = result)
+    return render_template('link0.jsp', login_code = 0)
 
 @app.route('/link0')
 def link0():
@@ -70,7 +70,10 @@ def login():
     if result:
         print("Login Success")
         snowball_db.set_login(param1, param2)
-        return render_template('link0.jsp', login_code = 0)
+        if(param1=="snowball"):
+            return render_template('link0.jsp', login_code = 0)
+        else:
+            return render_template('link0_other.jsp', login_code = 0)
     else:
         print("Login Fail")
         result = snowball_db.get_user_list()
