@@ -11,7 +11,7 @@
 				<tr>
 					<td style="width: 150px;">클라이언트명</td>
 					<td style="width: 600px;"><input type="text" id="param1" name="param1"></td>
-					<td rowspan="7"><img src="{{ url_for('static', filename='img/RCM.jpg')}}" width="300" alt="None"></td>
+					<td rowspan="7"><img src="{{ url_for('static', filename='img/rcm.jpg')}}" width="300" alt="None"></td>
 				</tr>
 				<tr>
 					<td>시스템명</td>
