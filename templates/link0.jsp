@@ -10,7 +10,7 @@
         <div class="row">
             <div class="col">
                 <div class="card" style="width: 20rem;">
-                    <a href="/link1"><img src="{{ url_for('static', filename='img/RCM.jpg')}}" class="card-img-top" alt="..."></a>
+                    <a href="/link1"><img src="{{ url_for('static', filename='img/rcm.jpg')}}" class="card-img-top" alt="..."></a>
                     <div class="card-body">
                         <h5 class="card-title">RCM</h5>
                     </div>
@@ -18,7 +18,7 @@
             </div>
             <div class="col">
                 <div class="card" style="width: 20rem;">
-                    <a href="/link2"><img src="{{ url_for('static', filename='img/RCM.jpg')}}" class="card-img-top" alt="..."></a>
+                    <a href="/link2"><img src="{{ url_for('static', filename='img/rcm.jpg')}}" class="card-img-top" alt="..."></a>
                     <div class="card-body">
                         <h5 class="card-title">설계평가</h5>
                     </div>
@@ -26,7 +26,7 @@
             </div>
             <div class="col">
                 <div class="card" style="width: 20rem;">
-                    <a href="/link3"><img src="{{ url_for('static', filename='img/RCM.jpg')}}" class="card-img-top" alt="..."></a>
+                    <a href="/link3"><img src="{{ url_for('static', filename='img/rcm.jpg')}}" class="card-img-top" alt="..."></a>
                     <div class="card-body">
                         <h5 class="card-title">운영평가</h5>
                     </div>
