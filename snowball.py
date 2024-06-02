@@ -46,7 +46,7 @@ def link3():
 
 @app.route('/link4')
 def link4():
-    print("Monitoring Function")
+    print("Education Function")
     return render_template('link4.jsp')
 
 @app.route('/link9')
@@ -70,10 +70,7 @@ def login():
     if result:
         print("Login Success")
         snowball_db.set_login(param1, param2)
-        if(param1=="snowball"):
-            return render_template('link0.jsp', login_code = 0)
-        else:
-            return render_template('link0_other.jsp', login_code = 0)
+        return render_template('link0.jsp', login_code = 0)
     else:
         print("Login Fail")
         result = snowball_db.get_user_list()
@@ -112,6 +109,23 @@ def set_regist():
     request_list = snowball_db.get_user_request()
     return render_template('link.jsp', user_request = request_list)
     
+@app.route('/rcm_generate', methods=['POST'])
+def rcm_generate():
+
+    form_data = request.form.to_dict()
+    output_path = link1_pbc.pbc_generate(form_data)
+
+    return send_file(output_path, as_attachment=True)
+
+@app.route('/rcm_request', methods=['POST'])
+def rcm_request():
+
+    form_data = request.form.to_dict()
+    output_path = link1_pbc.pbc_generate(form_data)
+
+    return send_file(output_path, as_attachment=True)
+
+
 
 @app.route('/pbc_generate', methods=['POST'])
 def pbc_generate():
