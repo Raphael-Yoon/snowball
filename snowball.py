@@ -121,7 +121,7 @@ def rcm_generate():
 def rcm_request():
 
     form_data = request.form.to_dict()
-    output_path = link1_rcm.pbc_generate(form_data)
+    output_path = link1_rcm.rcm_generate(form_data)
 
     return send_file(output_path, as_attachment=True)
 
