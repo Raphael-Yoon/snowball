@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, send_file, session
 from openpyxl import load_workbook
 
 import link_admin
-import link1_pbc
+import link1_rcm
 import link2_design
 import link3_operation
 import snowball_db
@@ -113,7 +113,7 @@ def set_regist():
 def rcm_generate():
 
     form_data = request.form.to_dict()
-    output_path = link1_pbc.pbc_generate(form_data)
+    output_path = link1_rcm.rcm_generate(form_data)
 
     return send_file(output_path, as_attachment=True)
 
@@ -121,7 +121,7 @@ def rcm_generate():
 def rcm_request():
 
     form_data = request.form.to_dict()
-    output_path = link1_pbc.pbc_generate(form_data)
+    output_path = link1_rcm.pbc_generate(form_data)
 
     return send_file(output_path, as_attachment=True)
 
