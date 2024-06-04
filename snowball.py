@@ -125,8 +125,6 @@ def rcm_request():
 
     return send_file(output_path, as_attachment=True)
 
-
-
 @app.route('/pbc_generate', methods=['POST'])
 def pbc_generate():
 
