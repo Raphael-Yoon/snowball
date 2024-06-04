@@ -31,7 +31,7 @@ def link0():
 
 @app.route('/link1')
 def link1():
-    print("PBC Function")
+    print("RCM Function")
     return render_template('link1.jsp')
 
 @app.route('/link2')

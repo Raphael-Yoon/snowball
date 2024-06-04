@@ -287,5 +287,5 @@ $RECYCLE.BIN/
 
 # etc
 *.db
-/downloads
-/uploads
+downloads/
+uploads/
