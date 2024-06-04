@@ -125,14 +125,6 @@ def rcm_request():
 
     return send_file(output_path, as_attachment=True)
 
-@app.route('/pbc_generate', methods=['POST'])
-def pbc_generate():
-
-    form_data = request.form.to_dict()
-    output_path = link1_pbc.pbc_generate(form_data)
-
-    return send_file(output_path, as_attachment=True)
-
 @app.route('/design_generate', methods=['POST'])
 def design_generate():
     print("Design Generate called")
