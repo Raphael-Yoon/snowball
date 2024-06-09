@@ -60,6 +60,15 @@ def rcm_generate(form_data):
 
     return './downloads/' + output_path
 
+def rcm_request(form_data):
+    print("RCM Request called")
+
+    param1 = form_data.get('param1')
+
+    print("Param1 = ", param1)
+
+    return
+
 '''    
     # Application 시트 조정
     if param4 == 'SAP':
