@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 		<link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet" />
 		<title>SnowBall</title>
 	</head>
@@ -57,10 +58,17 @@
 		</form>
 		<form class = "grid" action = "/rcm_request" method="post" enctype="multipart/form-data">
 			<div id="contentContainer">
-				<p>파일 Upload하고 검토 요청하기</p>
+				<br><br>
+				<p>RCM Upload하고 검토 요청하기</p>
 				<input type="file" id="param4" name="param4">
 				<input type="submit" value="Request">
+				{% if return_code == 1 %}
+                <tr>
+                    <p>검토 요청이 완료되었습니다.<br>확인 후 회신 드리겠습니다</p>
+                </tr>
+                {% endif %}
 			</div>
 		</form>
+		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 	</body>
 </html>

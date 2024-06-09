@@ -33,7 +33,7 @@ def link0():
 @app.route('/link1')
 def link1():
     print("RCM Function")
-    return render_template('link1.jsp')
+    return render_template('link1.jsp', return_code=0)
 
 @app.route('/link2')
 def link2():
@@ -122,9 +122,9 @@ def rcm_generate():
 def rcm_request():
 
     form_data = request.form.to_dict()
-    output_path = link1_rcm.rcm_generate(form_data)
+    link1_rcm.rcm_request(form_data)
 
-    return send_file(output_path, as_attachment=True)
+    return render_template('link1.jsp', return_code=1)
 
 @app.route('/design_generate', methods=['POST'])
 def design_generate():
