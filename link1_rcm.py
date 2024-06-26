@@ -1,6 +1,7 @@
 from flask import render_template
 import openpyxl
 import datetime
+import snowball_db
 
 def rcm_generate(form_data):
     print("RCM Generate called")
@@ -63,9 +64,15 @@ def rcm_generate(form_data):
 def rcm_request(form_data):
     print("RCM Request called")
 
-    param1 = form_data.get('param1')
+    client_name = form_data.get('param1')
+    email_address = form_data.get('param2')
+    file_name = form_data.get('param3')
+    
+    print("client = ", client_name)
+    print("email = ", email_address)
+    print("file = ", file_name)
 
-    print("Param1 = ", param1)
+    #snowball_db.set_rcm_request('RCM', file_name, client_name, email_address)
 
     return
 
