@@ -6,6 +6,7 @@
     <title>SnowBall</title>
 </head>
 <body>
+    
     <div class="container text-center" >
         <div class="row">
             <div class="col">

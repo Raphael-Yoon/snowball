@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, send_file, session
+from flask import Flask, render_template, request, send_file, redirect, url_for
+from flask_login import LoginManager, UserMixin, login_user, current_user
 from openpyxl import load_workbook
 
 import link_admin
@@ -71,7 +72,7 @@ def login():
     if result:
         print("Login Success")
         snowball_db.set_login(param1, param2)
-        return render_template('link0.jsp', login_code = 0)
+        return render_template('link0.jsp', login_id = param1, login_code = 0)
     else:
         print("Login Fail")
         result = snowball_db.get_user_list()

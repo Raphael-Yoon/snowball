@@ -10,7 +10,7 @@
 		<form class = "grid" action = "/rcm_generate" method = "POST">
 			<table>
 				<tr>
-					<td style="width: 150px;">클라이언트명</td>
+					<td style="width: 150px;">회사명</td>
 					<td style="width: 600px;"><input type="text" id="param1" name="param1"></td>
 					<td rowspan="7"><img src="{{ url_for('static', filename='img/rcm.jpg')}}" width="300" alt="None"></td>
 				</tr>
@@ -56,18 +56,32 @@
 				</tr>
 			</table>
 		</form>
+		<br>
+		<hr style="width: 100%; margin: 0 auto;">
+		<br>
 		<form class = "grid" action = "/rcm_request" method="post" enctype="multipart/form-data">
-			<div id="contentContainer">
-				<br><br>
-				<p>RCM Upload하고 검토 요청하기</p>
-				<input type="file" id="param4" name="param4">
-				<input type="submit" value="Request">
+			<table>
+				<tr>
+					<td colspan="2"><p>RCM Upload하고 검토 요청하기</p></td>
+				</tr>
+				<tr>
+					<td style="width: 150px;">회사명</td>
+					<td style="width: 600px;"><input type="text" id="param1" name="param1"></td>
+				</tr>
+				<tr>
+					<td style="width: 150px;">회신 이메일주소</td>
+					<td style="width: 600px;"><input type="email" id="param2" name="param2"></td>
+				</tr>
+				<tr>
+					<td><input type="file" id="param3" name="param3"></td>
+					<td><input type="submit" value="Request"></td>
+				</tr>
 				{% if return_code == 1 %}
-                <tr>
-                    <p>검토 요청이 완료되었습니다.<br>확인 후 회신 드리겠습니다</p>
-                </tr>
-                {% endif %}
-			</div>
+				<tr>
+					<td><p>검토 요청이 완료되었습니다.<br>확인 후 회신 드리겠습니다</p></td>
+				</tr>
+				{% endif %}
+			</table>
 		</form>
 		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 	</body>
