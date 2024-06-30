@@ -3,7 +3,26 @@ import openpyxl.utils
 from werkzeug.utils import secure_filename
 import os
 import openpyxl
+import snowball_db
 
+def paper_request(form_data):
+    print("Link2 Paper Request called")
+
+    param1 = form_data.get('param1')
+    param2 = form_data.get('param2')
+    param3 = form_data.get('param3')
+
+    print("Param1 = ", param1)
+    print("Param2 = ", param2)
+    print("Param3 = ", param3)
+
+    uploaded_file = request.files['param3']
+    filename = secure_filename(uploaded_file.filename)
+    file_path = os.path.join('uploads', uploaded_file.filename)
+    uploaded_file.save(file_path)
+    print('upload complete: ', param3)
+
+    snowball_db.set_paper_request(pi_client_name=param1, pi_email=param2, pi_request_file=param3)
 
 def design_generate(form_data):
     print("Link2 Design Generate called")

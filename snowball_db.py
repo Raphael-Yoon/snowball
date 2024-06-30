@@ -71,3 +71,16 @@ def set_rcm_request(pi_request_type, pi_request_file, pi_client_name, pi_email_a
     con.close()
     
     return result
+
+def set_paper_request(pi_client_name, pi_email, pi_request_file):
+    print('set_paper_request')
+    con = sqlite3.connect("snowball.db")
+    cur = con.cursor()
+    sql = "insert into sb_request(request_id, request_file, client_name, email_address, request_date) values(1, '{}', '{}', '{}', datetime('now', 'localtime'))".format(pi_request_file, pi_client_name, pi_email)
+    print('sql = ', sql)
+    result = cur.execute(sql)
+    print('result = ', result)
+    con.commit()
+    con.close()
+    
+    return result
