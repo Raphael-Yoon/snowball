@@ -19,17 +19,9 @@
             </div>
             <div class="col">
                 <div class="card" style="width: 20rem;">
-                    <a href="/link2"><img src="{{ url_for('static', filename='img/design.jpg')}}" class="rounded" alt="..."></a>
+                    <a href="/link2"><img src="{{ url_for('static', filename='img/review.jpg')}}" class="rounded" alt="..."></a>
                     <div class="card-body">
-                        <h5 class="card-title">설계평가</h5>
-                    </div>
-                </div>
-            </div>
-            <div class="col">
-                <div class="card" style="width: 20rem;">
-                    <a href="/link3"><img src="{{ url_for('static', filename='img/operation.jpg')}}" class="rounded" alt="..."></a>
-                    <div class="card-body">
-                        <h5 class="card-title">운영평가</h5>
+                        <h5 class="card-title">설계/운영평가</h5>
                     </div>
                 </div>
             </div>

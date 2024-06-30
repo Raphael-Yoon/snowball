@@ -39,7 +39,7 @@ def link1():
 @app.route('/link2')
 def link2():
     print("RCM Function")
-    return render_template('link2.jsp')
+    return render_template('link2.jsp', return_code = 0)
 
 @app.route('/link3')
 def link3():
@@ -126,6 +126,15 @@ def rcm_request():
     link1_rcm.rcm_request(form_data)
 
     return render_template('link1.jsp', return_code=1)
+
+@app.route('/paper_request', methods=['POST'])
+def paper_request():
+    print("Paper Request called")
+
+    form_data = request.form.to_dict()
+    output_path = link2_design.paper_request(form_data)
+
+    return render_template('link2.jsp', return_code = 2)
 
 @app.route('/design_generate', methods=['POST'])
 def design_generate():
