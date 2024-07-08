@@ -21,7 +21,7 @@
                 <div class="card" style="width: 20rem;">
                     <a href="/link2"><img src="{{ url_for('static', filename='img/review.jpg')}}" class="rounded" alt="..."></a>
                     <div class="card-body">
-                        <h5 class="card-title">설계/운영평가</h5>
+                        <h5 class="card-title">검토요청</h5>
                     </div>
                 </div>
             </div>
