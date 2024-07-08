@@ -11,6 +11,7 @@ def paper_request(form_data):
     param1 = form_data.get('param1')
     param2 = form_data.get('param2')
     param3 = form_data.get('param3')
+    param4 = form_data.get('param4')
 
     print("Param1 = ", param1)
     print("Param2 = ", param2)
@@ -22,7 +23,7 @@ def paper_request(form_data):
     uploaded_file.save(file_path)
     print('upload complete: ', param3)
 
-    snowball_db.set_paper_request(pi_client_name=param1, pi_email=param2, pi_request_file=param3)
+    snowball_db.set_paper_request(pi_client_name=param1, pi_email=param2, pi_request_file=param4, pi_request_content=param3)
 
 def design_generate(form_data):
     print("Link2 Design Generate called")

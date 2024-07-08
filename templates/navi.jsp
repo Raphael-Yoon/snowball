@@ -22,7 +22,8 @@
     <a href="/"><img src="{{ url_for('static', filename='img/logo.jpg')}}" width="200" alt="None"></a>
     <div class="top-links">
         <form class = "grid" action = "/link1" method = "POST"><a href="/link1" class="top-link">RCM</a></form>
-        <form class = "grid" action = "/link2" method = "POST"><a href="/link2" class="top-link">설계/운영평가</a></form>
+        <form class = "grid" action = "/link2" method = "POST"><a href="/link2" class="top-link">검토요청</a></form>
+        <form class = "grid" action = "/link3" method = "POST"><a href="/link3" class="top-link">양식받기</a></form>
         <form class = "grid" action = "/link4" method = "POST"><a href="/link4" class="top-link">교육영상</a></form>
     </div>
 </body>
