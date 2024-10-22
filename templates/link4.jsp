@@ -32,7 +32,7 @@
     <form class = "grid" action = "/paper_generate" method="post" enctype="multipart/form-data">
         <div id="contentContainer">
             <br><br>
-            {% include 'link3_APD01.jsp' %}
+            {% include 'link4_APD01.jsp' %}
         </div>
     </form>
 
@@ -96,21 +96,21 @@
             {
                 contentContainer.innerHTML = `
                         <br><br>
-                        {% include 'link3_APD01.jsp' %}
+                        {% include 'link4_APD01.jsp' %}
                         `;
             }
             else if(selectedValue == "APD02") // Application 권한 회수
             {
                 contentContainer.innerHTML = `
                         <br><br>
-                        {% include 'link3_APD02.jsp' %}
+                        {% include 'link4_APD02.jsp' %}
                         `;
             }
             else if(selectedValue == "APD03") // Application 계정 삭제
             {
                 contentContainer.innerHTML = `
                         <br><br>
-                        {% include 'link3_APD03.jsp' %}
+                        {% include 'link4_APD03.jsp' %}
                         `;
             }
             else if(selectedValue == "APD04") // Application 관리자 권한 제한
@@ -118,7 +118,7 @@
                 contentContainer.innerHTML = `
                         <input type="hidden" id="param3" name="param3" value="APD04">
                         <br><br>
-                        {% include 'link3_APD04.jsp' %}
+                        {% include 'link4_APD04.jsp' %}
                         `;
             }
             else if(selectedValue == "APD05") // Application 권한 Monitoring
@@ -126,7 +126,7 @@
                 contentContainer.innerHTML = `
                         <input type="hidden" id="param3" name="param3" value="APD05">
                         <br><br>
-                        {% include 'link3_APD05.jsp' %}
+                        {% include 'link4_APD05.jsp' %}
                         `;
             }
             else if(selectedValue == "APD06") // Application 패스워드
@@ -134,14 +134,14 @@
                 contentContainer.innerHTML = `
                         <input type="hidden" id="param3" name="param3" value="APD06">
                         <br><br>
-                        {% include 'link3_APD06.jsp' %}
+                        {% include 'link4_APD06.jsp' %}
                         `;
             }
             else if(selectedValue == "APD07") // Data 직접변경 승인
             {
                 contentContainer.innerHTML = `
                         <br><br>
-                        {% include 'link3_APD07.jsp' %}
+                        {% include 'link4_APD07.jsp' %}
                         `;
             }
             else if(selectedValue == "APD08") // Data 직접변경 권한 제한
@@ -149,14 +149,14 @@
                 contentContainer.innerHTML = `
                         <input type="hidden" id="param3" name="param3" value="APD08">
                         <br><br>
-                        {% include 'link3_APD08.jsp' %}
+                        {% include 'link4_APD08.jsp' %}
                         `;
             }
             else if(selectedValue == "APD09") // DB 접근권한 승인
             {
                 contentContainer.innerHTML = `
                         <br><br>
-                        {% include 'link3_APD09.jsp' %}
+                        {% include 'link4_APD09.jsp' %}
                         `;
             }
             else if(selectedValue == "APD11") // DB 관리자 권한 제한
@@ -164,14 +164,14 @@
                 contentContainer.innerHTML = `
                         <input type="hidden" id="param3" name="param3" value="APD11">
                         <br><br>
-                        {% include 'link3_APD11.jsp' %}
+                        {% include 'link4_APD11.jsp' %}
                         `;
             }
             else if(selectedValue == "APD12") // OS 접근권한 승인
             {
                 contentContainer.innerHTML = `
                         <br><br>
-                        {% include 'link3_APD12.jsp' %}
+                        {% include 'link4_APD12.jsp' %}
                         `;
             }
             else if(selectedValue == "APD14") // OS 관리자 권한 제한
@@ -179,28 +179,28 @@
                 contentContainer.innerHTML = `
                         <input type="hidden" id="param3" name="param3" value="APD14">
                         <br><br>
-                        {% include 'link3_APD14.jsp' %}
+                        {% include 'link4_APD14.jsp' %}
                         `;
             }
             else if(selectedValue == "PC01") // 프로그램 변경 승인
             {
                 contentContainer.innerHTML = `
                         <br><br>
-                        {% include 'link3_PC01.jsp' %}
+                        {% include 'link4_PC01.jsp' %}
                         `;
             }
             else if(selectedValue == "PC02") // 프로그램 변경 사용자 테스트
             {
                 contentContainer.innerHTML = `
                         <br><br>
-                        {% include 'link3_PC02.jsp' %}
+                        {% include 'link4_PC02.jsp' %}
                         `;
             }
             else if(selectedValue == "PC03") // 프로그램 이관 승인
             {
                 contentContainer.innerHTML = `
                         <br><br>
-                        {% include 'link3_PC03.jsp' %}
+                        {% include 'link4_PC03.jsp' %}
                         `;
             }
             else if(selectedValue == "PC04") // 개발/운영 환경 분리
@@ -208,7 +208,7 @@
                 contentContainer.innerHTML = `
                         <input type="hidden" id="param3" name="param3" value="PC04">
                         <br><br>
-                        {% include 'link3_PC04.jsp' %}
+                        {% include 'link4_PC04.jsp' %}
                         `;
             }
             else if(selectedValue == "PC05") // 이관담당자 권한 제한
@@ -216,7 +216,7 @@
                 contentContainer.innerHTML = `
                         <input type="hidden" id="param3" name="param3" value="PC05">
                         <br><br>
-                        {% include 'link3_PC05.jsp' %}
+                        {% include 'link4_PC05.jsp' %}
                         `;
             }
             else{
