@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, redirect, url_for
+from flask import Flask, render_template, request, send_file, redirect, url_for, session
 from flask_login import LoginManager, UserMixin, login_user, current_user
 from openpyxl import load_workbook
 
@@ -10,6 +10,7 @@ import link3_operation
 import snowball_db
 
 app = Flask(__name__)
+app.secret_key = '150606'
 
 @app.route('/')
 def index():
@@ -36,10 +37,51 @@ def link1():
     print("RCM Function")
     return render_template('link1.jsp', return_code=0)
 
-@app.route('/link2')
+
+questions = [
+    {'index': 1, 'text': '지구는 평평하다.'},
+    {'index': 2, 'text': '물은 100도에서 끓는다.'},
+    {'index': 3, 'text': '사람의 심장은 왼쪽에 있다.'},
+    {'index': 4, 'text': '사람의 심장은 오른쪽에 있다.'}
+]
+@app.route('/link2', methods=['GET', 'POST'])
 def link2():
-    print("RCM Function")
-    return render_template('link2.jsp', return_code = 0)
+    print("Question Function")
+    if 'question_index' not in session:
+        session['question_index'] = 0
+        session['answers'] = []
+
+    question_index = session['question_index']
+    question = questions[question_index]
+
+    # POST 요청 처리 (다음 버튼을 눌렀을 때)
+    if request.method == 'POST':
+        answer = request.form.get('answer')  # 사용자가 선택한 답변
+        
+        if answer is not None:
+            session['answers'].append({'index': question['index'], 'answer': answer})
+            session.modified = True  # 세션 업데이트 반영
+            print("현재까지의 모든 답변:", session['answers'])
+
+        # 여기서 답변 저장 등 추가 작업 가능
+        if question_index == 0:
+            session['answer1'] = answer
+
+            if answer == "O":
+                session['question_index'] = 2
+                question_index = 2
+            else:
+                session['question_index'] = 3
+                question_index = 3
+        else:
+            session[f'answer{question_index+1}'] = answer
+            session.pop('question_index', None)
+            return redirect(url_for('result'))
+
+    # 현재 질문을 렌더링
+    question = questions[question_index]
+
+    return render_template('link2.jsp', question=question['text'], question_number=question_index + 1)
 
 @app.route('/link3')
 def link3():
