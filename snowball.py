@@ -38,50 +38,58 @@ def link1():
     return render_template('link1.jsp', return_code=0)
 
 
-questions = [
-    {'index': 1, 'text': '지구는 평평하다.'},
-    {'index': 2, 'text': '물은 100도에서 끓는다.'},
-    {'index': 3, 'text': '사람의 심장은 왼쪽에 있다.'},
-    {'index': 4, 'text': '사람의 심장은 오른쪽에 있다.'}
+s_questions = [
+    {'index': 1, 'text': '사용하고 있는 시스템 종류는?'},
+    {'index': 2, 'text': '사용하고 있는 OS 종류는?'},
+    {'index': 3, 'text': '사용하고 있는 DB 종류는?'},
+    {'index': 4, 'text': 'OS 접근제어 Tool 사용 여부'},
+    {'index': 5, 'text': 'DB 접근제어 Tool 사용 여부'},
+    {'index': 6, 'text': 'Batch Schedule Tool 사용 여부'}
 ]
+
 @app.route('/link2', methods=['GET', 'POST'])
 def link2():
     print("Question Function")
-    if 'question_index' not in session:
+
+    if request.method == 'GET':
+        # 세션을 열 때마다 초기화
+        session.clear()  # 모든 세션 값 초기화
         session['question_index'] = 0
         session['answers'] = []
 
     question_index = session['question_index']
-    question = questions[question_index]
+    question = s_questions[question_index]
 
     # POST 요청 처리 (다음 버튼을 눌렀을 때)
     if request.method == 'POST':
-        answer = request.form.get('answer')  # 사용자가 선택한 답변
-        
-        if answer is not None:
-            session['answers'].append({'index': question['index'], 'answer': answer})
-            session.modified = True  # 세션 업데이트 반영
-            print("현재까지의 모든 답변:", session['answers'])
+        form_data = request.form
 
-        # 여기서 답변 저장 등 추가 작업 가능
-        if question_index == 0:
-            session['answer1'] = answer
+        s_q1 = form_data.get("s_q1")
+        s_q2 = form_data.get("s_q2")
+        s_q3 = form_data.get("s_q3")
+        s_q4 = form_data.get("s_q4")
+        s_q5 = form_data.get("s_q5")
+        s_q6 = form_data.get("s_q6")
+        print(f"s_q1: {s_q1}, s_q2: {s_q2}, s_q3: {s_q3}, s_q4: {s_q4}, s_q5: {s_q5}, s_q6: {s_q6}")
+        print('index = ', session['question_index'])
+        answer_key = f's_q{question_index + 1}'  # ex) 's_q1', 's_q2', ...
+        answer_value = form_data.get(answer_key)
 
-            if answer == "O":
-                session['question_index'] = 2
-                question_index = 2
-            else:
-                session['question_index'] = 3
-                question_index = 3
-        else:
-            session[f'answer{question_index+1}'] = answer
-            session.pop('question_index', None)
+        # 다음 질문으로 이동
+        session['question_index'] += 1
+
+        # 모든 질문이 끝나면 결과 페이지로 이동
+        if session['question_index'] >= len(s_questions):
             return redirect(url_for('result'))
 
     # 현재 질문을 렌더링
-    question = questions[question_index]
+    question = s_questions[session['question_index']]
 
-    return render_template('link2.jsp', question=question['text'], question_number=question_index + 1)
+    return render_template('link2.jsp', question=question['text'], question_number=session['question_index'] + 1)
+
+@app.route('/result')
+def result():
+    return render_template('result.jsp', answers=session.get('answers', []))
 
 @app.route('/link3')
 def link3():
