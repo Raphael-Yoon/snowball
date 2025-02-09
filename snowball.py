@@ -46,6 +46,7 @@ s_questions = [
     {'index': 5, 'text': 'DB 접근제어 Tool 사용 여부'},
     {'index': 6, 'text': 'Batch Schedule Tool 사용 여부'}
 ]
+s_q = ['', '', '', '', '', '']
 
 @app.route('/link2', methods=['GET', 'POST'])
 def link2():
@@ -61,35 +62,36 @@ def link2():
     question = s_questions[question_index]
 
     # POST 요청 처리 (다음 버튼을 눌렀을 때)
+    
     if request.method == 'POST':
+        
         form_data = request.form
-
-        s_q1 = form_data.get("s_q1")
-        s_q2 = form_data.get("s_q2")
-        s_q3 = form_data.get("s_q3")
-        s_q4 = form_data.get("s_q4")
-        s_q5 = form_data.get("s_q5")
-        s_q6 = form_data.get("s_q6")
-        print(f"s_q1: {s_q1}, s_q2: {s_q2}, s_q3: {s_q3}, s_q4: {s_q4}, s_q5: {s_q5}, s_q6: {s_q6}")
+        if session['question_index'] == 0:
+            s_q[0] = form_data.get("s_q1")
+        elif session['question_index'] == 1:
+            s_q[1] = form_data.get("s_q2")
+        elif session['question_index'] == 2:
+            s_q[2] = form_data.get("s_q3")
+        elif session['question_index'] == 3:
+            s_q[3] = form_data.get("s_q4")
+        elif session['question_index'] == 4:
+            s_q[4] = form_data.get("s_q5")
+        elif session['question_index'] == 5:
+            s_q[5] = form_data.get("s_q6")
+        print(f"s_q1: {s_q[0]}, s_q2: {s_q[1]}, s_q3: {s_q[2]}, s_q4: {s_q[3]}, s_q5: {s_q[4]}, s_q6: {s_q[5]}")
         print('index = ', session['question_index'])
-        answer_key = f's_q{question_index + 1}'  # ex) 's_q1', 's_q2', ...
-        answer_value = form_data.get(answer_key)
 
         # 다음 질문으로 이동
         session['question_index'] += 1
 
         # 모든 질문이 끝나면 결과 페이지로 이동
         if session['question_index'] >= len(s_questions):
-            return redirect(url_for('result'))
+            print(f"Final = s_q1: {s_q[0]}, s_q2: {s_q[1]}, s_q3: {s_q[2]}, s_q4: {s_q[3]}, s_q5: {s_q[4]}, s_q6: {s_q[5]}")
 
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
 
-    return render_template('link2.jsp', question=question['text'], question_number=session['question_index'] + 1)
-
-@app.route('/result')
-def result():
-    return render_template('result.jsp', answers=session.get('answers', []))
+    return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index'] + 1)
 
 @app.route('/link3')
 def link3():
