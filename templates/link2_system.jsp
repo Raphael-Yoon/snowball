@@ -21,34 +21,29 @@
 
                 <!-- ✅ question_number가 1이면 특정 라디오 버튼 표시 -->
                 {% if question_number == 1 %}
-                    <input type="radio" name="s_q1" value="q1_1" required> SAP ERP<br>
-                    <input type="radio" name="s_q1" value="q1_2"> Oracle ERP<br>
-                    <input type="radio" name="s_q1" value="q1_3"> 더존 ERP<br>
-                    <input type="radio" name="s_q1" value="q1_4"> 영림원 ERP<br>
-                    <input type="radio" name="s_q1" value="q1_5"> 기타<br>
-					<input type="radio" name="s_q1" value="q1_5"> 자체개발<br>
+                    <input type="radio" name="s_q1" value="q1_1" required> 상용 소프트웨어<br>
+                    <input type="radio" name="s_q1" value="q1_2"> 자체개발 소스트웨어<br>
 				{% elif question_number == 2 %}
-                    <input type="radio" name="s_q2" value="q2_1" required> Unix<br>
-                    <input type="radio" name="s_q2" value="q2_2"> Windows<br>
-                    <input type="radio" name="s_q2" value="q2_3"> Linux<br>
-                    <input type="radio" name="s_q2" value="q2_4"> 기타<br>
+                    <input type="radio" name="s_q2" value="q2_1" required> 예<br>
+                    <input type="radio" name="s_q2" value="q2_2"> 아니요<br>
 				{% elif question_number == 3 %}
-                    <input type="radio" name="s_q3" value="q3_1" required> Oracle<br>
-                    <input type="radio" name="s_q3" value="q3_2"> HANA<br>
-                    <input type="radio" name="s_q3" value="q3_3"> MS-SQL<br>
-                    <input type="radio" name="s_q3" value="q3_4"> 기타<br>
+                    <input type="radio" name="s_q3" value="q3_1" required> 예<br>
+                    <input type="radio" name="s_q3" value="q3_2"> 아니요<br>
 				{% elif question_number == 4 %}
-                    <input type="radio" name="s_q4" value="q4_1" required> O<br>
-                    <input type="radio" name="s_q4" value="q4_2"> X<br>
+                    <input type="radio" name="s_q4" value="q4_1" required> 예<br>
+                    <input type="radio" name="s_q4" value="q4_2"> 아니요<br>
 				{% elif question_number == 5 %}
-                    <input type="radio" name="s_q5" value="q5_1" required> O<br>
-                    <input type="radio" name="s_q5" value="q5_2"> X<br>
+                    <input type="radio" name="s_q5" value="q5_1" required> 예<br>
+                    <input type="radio" name="s_q5" value="q5_2"> 아니요<br>
 				{% elif question_number == 6 %}
-                    <input type="radio" name="s_q6" value="q6_1" required> O<br>
-                    <input type="radio" name="s_q6" value="q6_2"> X<br>
+                    <input type="radio" name="s_q6" value="q6_1" required> 예<br>
+                    <input type="radio" name="s_q6" value="q6_2"> 아니요<br>
+                {% elif question_number == 7 %}
+                    <input type="radio" name="s_q6" value="q7_1" required> 예<br>
+                    <input type="radio" name="s_q6" value="q7_2"> 아니요<br>
                 {% else %}
-                    <input type="radio" name="answer" value="O" required> O<br>
-                    <input type="radio" name="answer" value="X"> X
+                    <input type="radio" name="answer" value="O" required> 예<br>
+                    <input type="radio" name="answer" value="X"> 아니요
                 {% endif %}
             </div>
 
