@@ -39,14 +39,27 @@ def link1():
 
 
 s_questions = [
-    {'index': 1, 'text': '사용하고 있는 시스템 종류는?'},
-    {'index': 2, 'text': '사용하고 있는 OS 종류는?'},
-    {'index': 3, 'text': '사용하고 있는 DB 종류는?'},
-    {'index': 4, 'text': 'OS 접근제어 Tool 사용 여부'},
-    {'index': 5, 'text': 'DB 접근제어 Tool 사용 여부'},
-    {'index': 6, 'text': 'Batch Schedule Tool 사용 여부'}
+    {'index': 1, 'text': '사용하고 있는 시스템은 상용소프트웨어입니까? 아니면 자체개발된 소프트웨어입니까?'},
+    {'index': 2, 'text': '기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)'},
+    {'index': 3, 'text': 'Cloud 기능을 사용하고 있습니까?'},
+    {'index': 4, 'text': 'Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?'},
+    {'index': 5, 'text': 'OS 접근제어 Tool 사용 여부'},
+    {'index': 6, 'text': 'DB 접근제어 Tool 사용 여부'},
+    {'index': 7, 'text': 'Batch Schedule Tool 사용 여부'}
 ]
-s_q = ['', '', '', '', '', '']
+s_answer = ['', '', '', '', '', '', '']
+
+'''
+apd_questions = [
+    {'index': 11, 'text': '개인ID 사용?'},
+    {'index': 12, 'text': '권한부여 모집단 확보 가능?'},
+    {'index': 13, 'text': '권한부여시 승인 여부'},
+    {'index': 14, 'text': '부서이동자 권한 회수 여부'},
+    {'index': 15, 'text': '퇴사자 권한 회수 여부'},
+    {'index': 16, 'text': 'SSO사용 여'}
+]
+apd_q = ['', '', '', '', '', '']
+'''
 
 @app.route('/link2', methods=['GET', 'POST'])
 def link2():
@@ -67,18 +80,24 @@ def link2():
         
         form_data = request.form
         if session['question_index'] == 0:
-            s_q[0] = form_data.get("s_q1")
+            s_answer[0] = form_data.get("s_q1")
+            if s_answer[0] == 'q1_2':
+                session['question_index'] += 1
         elif session['question_index'] == 1:
-            s_q[1] = form_data.get("s_q2")
+            s_answer[1] = form_data.get("s_q2")
         elif session['question_index'] == 2:
-            s_q[2] = form_data.get("s_q3")
+            s_answer[2] = form_data.get("s_q3")
+            if s_answer[2] == 'q3_2':
+                session['question_index'] += 1
         elif session['question_index'] == 3:
-            s_q[3] = form_data.get("s_q4")
+            s_answer[3] = form_data.get("s_q4")
         elif session['question_index'] == 4:
-            s_q[4] = form_data.get("s_q5")
+            s_answer[4] = form_data.get("s_q5")
         elif session['question_index'] == 5:
-            s_q[5] = form_data.get("s_q6")
-        print(f"s_q1: {s_q[0]}, s_q2: {s_q[1]}, s_q3: {s_q[2]}, s_q4: {s_q[3]}, s_q5: {s_q[4]}, s_q6: {s_q[5]}")
+            s_answer[5] = form_data.get("s_q6")
+        elif session['question_index'] == 6:
+            s_answer[6] = form_data.get("s_q7")
+        print(f"s_q1: {s_answer[0]}, s_q2: {s_answer[1]}, s_q3: {s_answer[2]}, s_q4: {s_answer[3]}, s_q5: {s_answer[4]}, s_q6: {s_answer[5]}")
         print('index = ', session['question_index'])
 
         # 다음 질문으로 이동
