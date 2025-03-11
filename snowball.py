@@ -18,7 +18,7 @@ def index():
     return render_template('index.jsp', user_name = result, return_code=0)
 
 def main():
-    app.run(host='0.0.0.0', debug=False, port=5000)
+    app.run(host='0.0.0.0', debug=False, port=5001)
     #app.run(host='127.0.0.1', debug=False, port=8001)
 
 @app.route('/link_admin')
