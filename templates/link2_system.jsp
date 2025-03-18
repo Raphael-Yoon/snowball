@@ -21,29 +21,32 @@
 
                 <!-- ✅ question_number가 1이면 특정 라디오 버튼 표시 -->
                 {% if question_number == 1 %}
-                    <input type="radio" name="s_q1" value="q1_1" required> 상용 소프트웨어<br>
-                    <input type="radio" name="s_q1" value="q1_2"> 자체개발 소스트웨어<br>
+                    <input type="radio" name="a0" value="Y" required> 예 (상용 소프트웨어)<br>
+                    <input type="radio" name="a0" value="N"> 아니요 (자체개발 소스트웨어)<br>
 				{% elif question_number == 2 %}
-                    <input type="radio" name="s_q2" value="q2_1" required> 예<br>
-                    <input type="radio" name="s_q2" value="q2_2"> 아니요<br>
+                    <input type="radio" name="a1" value="Y" required> 예 (수정 가능)<br>
+                    <input type="radio" name="a1" value="N"> 아니요 (수정 불가능)<br>
 				{% elif question_number == 3 %}
-                    <input type="radio" name="s_q3" value="q3_1" required> 예<br>
-                    <input type="radio" name="s_q3" value="q3_2"> 아니요<br>
+                    <input type="radio" name="a2" value="Y" required> 예(Cloud 사용)<br>
+                    <input type="radio" name="a2" value="N"> 아니요 (Cloud 미사용)<br>
 				{% elif question_number == 4 %}
-                    <input type="radio" name="s_q4" value="q4_1" required> 예<br>
-                    <input type="radio" name="s_q4" value="q4_2"> 아니요<br>
+                    <input type="radio" name="a3" value="Y" required> SaaS(SAP, Oracle 등)<br>
+                    <input type="radio" name="a3" value="N"> IaaS(AWS, Azure 등)<br>
 				{% elif question_number == 5 %}
-                    <input type="radio" name="s_q5" value="q5_1" required> 예<br>
-                    <input type="radio" name="s_q5" value="q5_2"> 아니요<br>
+                    <input type="radio" name="a4" value="Y" required> 예 (발행)<br>
+                    <input type="radio" name="a4" value="N"> 아니요 (미발행)<br>
 				{% elif question_number == 6 %}
-                    <input type="radio" name="s_q6" value="q6_1" required> 예<br>
-                    <input type="radio" name="s_q6" value="q6_2"> 아니요<br>
+                    <input type="radio" name="a5" value="Y" required> 예 (사용)<br>
+                    <input type="radio" name="a5" value="N"> 아니요 (미사용)<br>
                 {% elif question_number == 7 %}
-                    <input type="radio" name="s_q6" value="q7_1" required> 예<br>
-                    <input type="radio" name="s_q6" value="q7_2"> 아니요<br>
+                    <input type="radio" name="a6" value="Y" required> 예 (사용)<br>
+                    <input type="radio" name="a6" value="N"> 아니요 (미사용)<br>
+                {% elif question_number == 8 %}
+                    <input type="radio" name="a7" value="Y" required> 예 (사용)<br>
+                    <input type="radio" name="a7" value="N"> 아니요 (미사용)<br>
                 {% else %}
-                    <input type="radio" name="answer" value="O" required> 예<br>
-                    <input type="radio" name="answer" value="X"> 아니요
+                    <input type="radio" name="answer" value="Y" required> 예<br>
+                    <input type="radio" name="answer" value="N"> 아니요
                 {% endif %}
             </div>
 

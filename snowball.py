@@ -39,15 +39,15 @@ def link1():
 
 
 s_questions = [
-    {'index': 1, 'text': '사용하고 있는 시스템은 상용소프트웨어입니까? 아니면 자체개발된 소프트웨어입니까?'},
-    {'index': 2, 'text': '기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)'},
-    {'index': 3, 'text': 'Cloud 기능을 사용하고 있습니까?'},
+    {'index': 0, 'text': '사용하고 있는 시스템은 상용소프트웨어(Package S/W)입니까?'},
+    {'index': 1, 'text': '기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)'},
+    {'index': 2, 'text': 'Cloud 서비스를 사용하고 있습니까?'},
+    {'index': 3, 'text': '어떤 종류의 Cloud입니까?'},
     {'index': 4, 'text': 'Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?'},
-    {'index': 5, 'text': 'OS 접근제어 Tool 사용 여부'},
-    {'index': 6, 'text': 'DB 접근제어 Tool 사용 여부'},
-    {'index': 7, 'text': 'Batch Schedule Tool 사용 여부'}
+    {'index': 5, 'text': 'OS 접근제어 Tool을 사용하고 있습니까?'},
+    {'index': 6, 'text': 'DB 접근제어 Tool을 사용하고 있습니까?'},
+    {'index': 7, 'text': '별도의 Batch Schedule Tool을 사용하고 있습니까?'}
 ]
-s_answer = ['', '', '', '', '', '', '']
 
 '''
 apd_questions = [
@@ -66,10 +66,49 @@ def link2():
     print("Question Function")
 
     if request.method == 'GET':
+        # 세션 초기화
+        session.clear()
+        session['question_index'] = 0
+        session['answer'] = [''] * 9  # 필요한 만큼 동적으로 조절 가능
+
+    question_index = session['question_index']
+
+    if request.method == 'POST':
+        form_data = request.form
+        session['answer'][question_index] = form_data.get(f"a{question_index}", '')
+
+        # 다음 질문 인덱스를 결정하는 매핑
+        next_question = {
+            0: 1 if session['answer'][question_index] == 'Y' else 2,
+            1: 2,  # 동일한 흐름을 가지므로 조건 필요 없음
+            2: 3 if session['answer'][question_index] == 'Y' else 5,
+            3: 4,
+            4: 5,
+            5: 6,
+            6: 7,
+            7: 8
+        }
+
+        session['question_index'] = next_question.get(question_index, question_index)
+        print(f"goto {session['question_index']}")
+
+        # 현재 응답 상태 출력 (join 사용)
+        print("Answers:", ", ".join(f"{i}: {ans}" for i, ans in enumerate(session['answer'])))
+
+    # 현재 질문을 렌더링
+    question = s_questions[session['question_index']]
+    return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index'] + 1)
+
+'''
+@app.route('/link2', methods=['GET', 'POST'])
+def link2():
+    print("Question Function")
+
+    if request.method == 'GET':
         # 세션을 열 때마다 초기화
         session.clear()  # 모든 세션 값 초기화
         session['question_index'] = 0
-        session['answers'] = []
+        session['answer'] = ['']*9
 
     question_index = session['question_index']
     question = s_questions[question_index]
@@ -77,40 +116,69 @@ def link2():
     # POST 요청 처리 (다음 버튼을 눌렀을 때)
     
     if request.method == 'POST':
-        
         form_data = request.form
-        if session['question_index'] == 0:
-            s_answer[0] = form_data.get("s_q1")
-            if s_answer[0] == 'q1_2':
-                session['question_index'] += 1
-        elif session['question_index'] == 1:
-            s_answer[1] = form_data.get("s_q2")
-        elif session['question_index'] == 2:
-            s_answer[2] = form_data.get("s_q3")
-            if s_answer[2] == 'q3_2':
-                session['question_index'] += 1
-        elif session['question_index'] == 3:
-            s_answer[3] = form_data.get("s_q4")
-        elif session['question_index'] == 4:
-            s_answer[4] = form_data.get("s_q5")
-        elif session['question_index'] == 5:
-            s_answer[5] = form_data.get("s_q6")
-        elif session['question_index'] == 6:
-            s_answer[6] = form_data.get("s_q7")
-        print(f"s_q1: {s_answer[0]}, s_q2: {s_answer[1]}, s_q3: {s_answer[2]}, s_q4: {s_answer[3]}, s_q5: {s_answer[4]}, s_q6: {s_answer[5]}")
+        if session['question_index'] == 0: #0: 사용하고 있는 시스템은 상용소프트웨어(Package S/W)입니까?
+            session['answer'][question_index] = form_data.get("a0")
+            print(f"1 = {session['answer'][question_index]}")
+            if session['answer'][question_index] == 'Y':
+                session['question_index'] = 1
+                print('goto 1')
+            elif session['answer'][question_index] == 'N':
+                session['question_index'] = 2
+                print('goto 2')
+
+        elif session['question_index'] == 1: #1: 기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)
+            session['answer'][question_index] = form_data.get("a1")
+            print(f"1 = {session['answer'][question_index]}")
+            if session['answer'][question_index] == 'Y':
+                session['question_index'] = 2
+                print('goto 2')
+            elif session['answer'][question_index] == 'N':
+                session['question_index'] = 2
+                print('goto 3')
+
+        elif session['question_index'] == 2: #2	Cloud 서비스를 사용하고 있습니까?
+            session['answer'][question_index] = form_data.get("a2")
+            if session['answer'][question_index] == 'Y':
+                session['question_index'] = 3
+                print('goto 3')
+            elif session['answer'][question_index] == 'N':
+                session['question_index'] = 5
+                print('goto 5')
+
+        elif session['question_index'] == 3: #3	어떤 종류의 Cloud입니까?
+            session['answer'][question_index] = form_data.get("a3")
+            session['question_index'] = 4
+            print('goto 4')
+
+        elif session['question_index'] == 4: #4	Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?
+            session['answer'][question_index] = form_data.get("a4")
+            session['question_index'] = 5
+            print('goto 5')
+
+        elif session['question_index'] == 5: #5	OS 접근제어 Tool 사용 여부
+            session['answer'][question_index] = form_data.get("a5")
+            session['question_index'] = 6
+            print('goto 6')
+
+        elif session['question_index'] == 6: #6	DB 접근제어 Tool 사용 여부
+            session['answer'][question_index] = form_data.get("a6")
+            session['question_index'] = 7
+            print('goto 7')
+
+        elif session['question_index'] == 7: #7	Batch Schedule Tool 사용 여부
+            session['answer'][question_index] = form_data.get("a7")
+            session['question_index'] = 8
+            print('goto 8')
+
+        print(f"0: {session['answer'][0]}, 1: {session['answer'][1]}, 2: {session['answer'][2]}, 3: {session['answer'][3]}, 4: {session['answer'][4]}, 5: {session['answer'][5]}, 6: {session['answer'][6]}, 7: {session['answer'][7]}")
         print('index = ', session['question_index'])
-
-        # 다음 질문으로 이동
-        session['question_index'] += 1
-
-        # 모든 질문이 끝나면 결과 페이지로 이동
-        if session['question_index'] >= len(s_questions):
-            print(f"Final = s_q1: {s_q[0]}, s_q2: {s_q[1]}, s_q3: {s_q[2]}, s_q4: {s_q[3]}, s_q5: {s_q[4]}, s_q6: {s_q[5]}")
 
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
 
-    return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index'] + 1)
+    return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index']+1)
+'''
 
 @app.route('/link3')
 def link3():
