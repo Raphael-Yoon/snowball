@@ -37,16 +37,16 @@ def link1():
     print("RCM Function")
     return render_template('link1.jsp', return_code=0)
 
-
 s_questions = [
-    {'index': 0, 'text': '사용하고 있는 시스템은 상용소프트웨어(Package S/W)입니까?'},
-    {'index': 1, 'text': '기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)'},
-    {'index': 2, 'text': 'Cloud 서비스를 사용하고 있습니까?'},
-    {'index': 3, 'text': '어떤 종류의 Cloud입니까?'},
-    {'index': 4, 'text': 'Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?'},
-    {'index': 5, 'text': 'OS 접근제어 Tool을 사용하고 있습니까?'},
-    {'index': 6, 'text': 'DB 접근제어 Tool을 사용하고 있습니까?'},
-    {'index': 7, 'text': '별도의 Batch Schedule Tool을 사용하고 있습니까?'}
+    {'index': 0, 'text': '시스템 이름을 적어주세요'},
+    {'index': 1, 'text': '사용하고 있는 시스템은 상용소프트웨어(Package S/W)입니까?'},
+    {'index': 2, 'text': '기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)'},
+    {'index': 3, 'text': 'Cloud 서비스를 사용하고 있습니까?'},
+    {'index': 4, 'text': '어떤 종류의 Cloud입니까?'},
+    {'index': 5, 'text': 'Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?'},
+    {'index': 6, 'text': 'OS 접근제어 Tool을 사용하고 있습니까?'},
+    {'index': 7, 'text': 'DB 접근제어 Tool을 사용하고 있습니까?'},
+    {'index': 8, 'text': '별도의 Batch Schedule Tool을 사용하고 있습니까?'}
 ]
 
 '''
@@ -58,7 +58,6 @@ apd_questions = [
     {'index': 15, 'text': '퇴사자 권한 회수 여부'},
     {'index': 16, 'text': 'SSO사용 여'}
 ]
-apd_q = ['', '', '', '', '', '']
 '''
 
 @app.route('/link2', methods=['GET', 'POST'])
@@ -79,14 +78,15 @@ def link2():
 
         # 다음 질문 인덱스를 결정하는 매핑
         next_question = {
-            0: 1 if session['answer'][question_index] == 'Y' else 2,
-            1: 2,  # 동일한 흐름을 가지므로 조건 필요 없음
-            2: 3 if session['answer'][question_index] == 'Y' else 5,
-            3: 4,
+            0: 1,
+            1: 2 if session['answer'][question_index] == 'Y' else 3,
+            2: 3,  # 동일한 흐름을 가지므로 조건 필요 없음
+            3: 4 if session['answer'][question_index] == 'Y' else 6,
             4: 5,
             5: 6,
             6: 7,
-            7: 8
+            7: 8,
+            8: 9
         }
 
         session['question_index'] = next_question.get(question_index, question_index)
@@ -97,7 +97,7 @@ def link2():
 
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
-    return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index'] + 1)
+    return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index'])
 
 '''
 @app.route('/link2', methods=['GET', 'POST'])
