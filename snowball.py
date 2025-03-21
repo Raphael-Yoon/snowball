@@ -1,6 +1,9 @@
 from flask import Flask, render_template, request, send_file, redirect, url_for, session
 from flask_login import LoginManager, UserMixin, login_user, current_user
 from openpyxl import load_workbook
+import pandas as pd
+import os
+from datetime import datetime
 
 import link_admin
 import link1_rcm
@@ -69,12 +72,27 @@ def link2():
         session.clear()
         session['question_index'] = 0
         session['answer'] = [''] * 9  # 필요한 만큼 동적으로 조절 가능
+        session['System'] = ''
+        session['Cloud'] = ''
+        session['OS_Tool'] = ''
+        session['DB_Tool'] = ''
+        session['Batch_Tool'] = ''
 
     question_index = session['question_index']
 
     if request.method == 'POST':
         form_data = request.form
         session['answer'][question_index] = form_data.get(f"a{question_index}", '')
+        if form_data.get('a1_1'):
+            session['System'] = form_data.get('a1_1')
+        if form_data.get('a4_1'):
+            session['Cloud'] = form_data.get('a4_1')
+        if form_data.get('a6_1'):
+            session['OS_Tool'] = form_data.get('a6_1')
+        if form_data.get('a7_1'):
+            session['DB_Tool'] = form_data.get('a7_1')
+        if form_data.get('a8_1'):
+            session['Batch_Tool'] = form_data.get('a8_1')
 
         # 다음 질문 인덱스를 결정하는 매핑
         next_question = {
@@ -94,10 +112,29 @@ def link2():
 
         # 현재 응답 상태 출력 (join 사용)
         print("Answers:", ", ".join(f"{i}: {ans}" for i, ans in enumerate(session['answer'])))
+        
+        if session['question_index'] == 9:
+            return save_to_excel()
 
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
     return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index'])
+
+@app.route('/export_excel', methods=['GET'])
+def save_to_excel():
+    answers = session.get('answer', [])
+    today = datetime.today().strftime('%Y%m%d')  # YYYYMMDD 형식
+    file_name = f"{answers[0]}_{today}.xlsx" if answers[0] else f"responses_{today}.xlsx"
+
+    # 데이터 프레임 생성
+    df = pd.DataFrame({'Question Number': list(range(9)), 'Answer': answers})
+
+    # 엑셀 저장
+    file_path = os.path.join("static", file_name)
+    df.to_excel(file_path, index=False)
+
+    return send_file(file_path, as_attachment=True)
+
 
 '''
 @app.route('/link2', methods=['GET', 'POST'])
