@@ -42,7 +42,7 @@ def link1():
 
 s_questions = [
     {"index": 0, "text": "시스템 이름을 적어주세요."},
-    {"index": 1, "text": "사용하고 있는 시스템은 상용소프트웨어(Package S/W)입니까?"},
+    {"index": 1, "text": "사용하고 있는 시스템은 상용소프트웨어입니까?"},
     {"index": 2, "text": "기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)"},
     {"index": 3, "text": "Cloud 서비스를 사용하고 있습니까?"},
     {"index": 4, "text": "어떤 종류의 Cloud입니까?"},
@@ -83,6 +83,7 @@ s_questions = [
     {"index": 39, "text": "서버실 출입시의 절차에 대해 기술해 주세요."}
 ]
 
+
 @app.route('/link2', methods=['GET', 'POST'])
 def link2():
     print("Question Function")
@@ -115,6 +116,7 @@ def link2():
             session['Batch_Tool'] = form_data.get('a8_1')
 
         # 다음 질문 인덱스를 결정하는 매핑
+
         next_question = {
             0: 1,
             1: 2 if session['answer'][question_index] == 'Y' else 3,
@@ -170,6 +172,7 @@ def link2():
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
     return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index'])
+    
 
 @app.route('/export_excel', methods=['GET'])
 def save_to_excel():
