@@ -12,62 +12,62 @@
     {% include 'navi.jsp' %}
 
     <div class="container mt-5">
-        <h1>IT 시스템</h1>
+        <h1>
+            {% if 0 <= question_number <= 8 %}
+                IT 시스템
+            {% elif 9 <= question_number <= 26 %}
+                APD(Access to Program & Data)
+            {% elif 27 <= question_number <= 32 %}
+                PC(Program Change)
+            {% elif 33 <= question_number <= 39 %}
+                CO(Computer Operation)
+            {% else %}
+                기타
+            {% endif %}
+        </h1>
 
         <!-- 퀴즈 폼 시작 -->
         <form action="/link2" method="post">
             <div class="mb-3">
-                {% if question_number == 0 %}
-                    <label>{{ question }}</label><br>
-                {% else %}
-                    <label>{{ question_number }}. {{ question }}</label><br>
-                {% endif %}
+                <label>
+                    {% if question_number == 0 %}
+                        {{ question }}
+                    {% else %}
+                        {{ question_number }}. {{ question }}
+                    {% endif %}
+                </label><br>
+            
                 {% if question_number == 0 %}
                     <input type="text" name="a0" required><br>
-                <!-- ✅ question_number가 1이면 특정 라디오 버튼 표시 -->
-                {% elif question_number == 1 %}
-                    <input type="radio" name="a1" value="Y" required> 예 (상용 소프트웨어)
-                    <input type="text" name="a1_1" placeholder="시스템 종류(SAP ERP, Oracle ERP, 더존ERP 등)" size="40"><br>
-                    <input type="radio" name="a1" value="N"> 아니요 (자체개발 소스트웨어)<br>
-				{% elif question_number == 2 %}
-                    <input type="radio" name="a2" value="Y" required> 예 (수정 가능)<br>
-                    <input type="radio" name="a2" value="N"> 아니요 (수정 불가능)<br>
-				{% elif question_number == 3 %}
-                    <input type="radio" name="a3" value="Y" required> 예(Cloud 사용)<br>
-                    <input type="radio" name="a3" value="N"> 아니요 (Cloud 미사용)<br>
-                    {% elif question_number == 4 %}
-                    <input type="radio" name="a4" value="Y" required> SaaS
-                    <input type="text" name="a4_1" placeholder="Cloud 종류(SAP, Oracle 등)" size="40"><br>
-                    <small>※ SaaS(Software as a Service): 클라우드 기반의 소프트웨어 서비스로, 사용자는 설치 없이 웹에서 소프트웨어를 이용할 수 있습니다.</small><br>
-                    <input type="radio" name="a4" value="N"> IaaS(AWS, Azure 등)
-                    <input type="text" name="a4_2" placeholder="Cloud 종류(AWS, MS Azure 등)" size="40"><br>
-                    <small>※ IaaS(Infrastructure as a Service): 가상 서버, 스토리지, 네트워크 등 IT 인프라를 제공하는 클라우드 서비스입니다.</small><br>                
-				{% elif question_number == 5 %}
-                    <input type="radio" name="a5" value="Y" required> 예 (발행)<br>
-                    <input type="radio" name="a5" value="N"> 아니요 (미발행)<br>
-				{% elif question_number == 6 %}
-                    <input type="radio" name="a6" value="Y" required> 예 (사용)
-                    <input type="text" name="a6_1" placeholder="Hiware, CyberArk 등 " size="40"><br>
-                    <input type="radio" name="a6" value="N"> 아니요 (미사용)<br>
-                {% elif question_number == 7 %}
-                    <input type="radio" name="a7" value="Y" required> 예 (사용)
-                    <input type="text" name="a7_1" placeholder="DB Safer, DBi 등" size="40"><br>
-                    <input type="radio" name="a7" value="N"> 아니요 (미사용)<br>
-                {% elif question_number == 8 %}
-                    <input type="radio" name="a8" value="Y" required> 예 (사용)
-                    <input type="text" name="a8_1" placeholder="Waggle, JobScheduler 등" size="40"><br>
-                    <input type="radio" name="a8" value="N"> 아니요 (미사용)<br>
-                {% elif question_number == 9 %}
-                    <input type="radio" name="a9" required> 예 (기록됨)
-                    <input type="radio" name="a9" value="N"> 아니요 (기록되지 않음(수기관리 포함))<br>
-                {% elif question_number == 10 %}
-                    <input type="radio" name="a10" required> 예 (기록됨)
-                    <input type="radio" name="a10" value="N"> 아니요 (기록되지 않음(수기관리 포함))<br>
+            
+                {% elif question_number in [1, 4, 6, 7, 8] %}
+                    <input type="radio" name="a{{ question_number }}" value="Y" required> 예
+                    <input type="text" name="a{{ question_number }}_1" 
+                           placeholder="{% if question_number == 1 %}시스템 종류(SAP ERP, Oracle ERP, 더존ERP 등)
+                                        {% elif question_number == 4 %}Cloud 종류(SAP, Oracle 등)
+                                        {% elif question_number == 6 %}Hiware, CyberArk 등
+                                        {% elif question_number == 7 %}DB Safer, DBi 등
+                                        {% elif question_number == 8 %}Waggle, JobScheduler 등{% endif %}" 
+                           size="40"><br>
+                    <input type="radio" name="a{{ question_number }}" value="N"> 아니요
+            
+                {% elif question_number in [2, 3, 5, 9, 10, 11, 15, 17, 18, 19, 20, 23, 24, 27, 28, 29, 30, 32, 33, 34] %}
+                    <input type="radio" name="a{{ question_number }}" value="Y" required> 예<br>
+                    <input type="radio" name="a{{ question_number }}" value="N"> 아니요
+            
+                {% elif question_number in [12, 13, 14, 16, 21, 22, 25, 26, 31, 35, 36, 37, 38, 39] %}
+                    <textarea name="a{{ question_number }}" 
+                              placeholder="{% if question_number == 16 %}최소자리, 복잡성, 변경주기 등
+                                           {% elif question_number in [21, 25, 31, 35] %}권한 보유 인원의 부서, 직급, 직책 등
+                                           {% else %}관련 절차를 입력하세요.{% endif %}" 
+                              rows="5" cols="60"></textarea>
+            
                 {% else %}
                     <input type="radio" name="answer" value="Y" required> 예<br>
                     <input type="radio" name="answer" value="N"> 아니요
                 {% endif %}
             </div>
+            
 
             <div class="mt-3 p-3 bg-light border rounded">
                 {% if question_number == 0 %}
