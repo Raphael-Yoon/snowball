@@ -83,6 +83,7 @@ s_questions = [
     {"index": 39, "text": "서버실 출입시의 절차에 대해 기술해 주세요."}
 ]
 
+question_count = len(s_questions)
 
 @app.route('/link2', methods=['GET', 'POST'])
 def link2():
@@ -92,7 +93,7 @@ def link2():
         # 세션 초기화
         session.clear()
         session['question_index'] = 0
-        session['answer'] = [''] * 40  # 필요한 만큼 동적으로 조절 가능
+        session['answer'] = [''] * question_count  # 필요한 만큼 동적으로 조절 가능
         session['System'] = ''
         session['Cloud'] = ''
         session['OS_Tool'] = ''
@@ -166,27 +167,30 @@ def link2():
         # 현재 응답 상태 출력 (join 사용)
         print("Answers:", ", ".join(f"{i}: {ans}" for i, ans in enumerate(session['answer'])))
         
-        if session['question_index'] == 9:
+        if session['question_index'] > 4: #question_count:
+            print('excel download')
             return save_to_excel()
 
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
     return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index'])
     
-
 @app.route('/export_excel', methods=['GET'])
 def save_to_excel():
     answers = session.get('answer', [])
-    today = datetime.today().strftime('%Y%m%d')  # YYYYMMDD 형식
-    file_name = f"{answers[0]}_{today}.xlsx" if answers[0] else f"responses_{today}.xlsx"
-
-    # 데이터 프레임 생성
-    df = pd.DataFrame({'Question Number': list(range(9)), 'Answer': answers})
-
-    # 엑셀 저장
+    system_info = [session.get(key, '') for key in ['System', 'Cloud', 'OS_Tool', 'DB_Tool', 'Batch_Tool']]
+    today = datetime.today().strftime('%Y%m%d')
+    file_name = f"{answers[0]}_{today}.xlsx" if answers else f"responses_{today}.xlsx"
+    
+    df = pd.DataFrame({'Question': [q['text'] for q in s_questions], 'Answer': answers}).fillna('')
+    df.loc[[1, 3, 6, 7, 8], 'Extra Info'] = system_info
     file_path = os.path.join("static", file_name)
-    df.to_excel(file_path, index=False)
-
+    
+    with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
+        df.to_excel(writer, sheet_name='Responses', index=False)
+        worksheet = writer.sheets['Responses']
+        worksheet.set_column('A:A', max(df['Question'].apply(len)) + 2)
+    
     return send_file(file_path, as_attachment=True)
 
 
