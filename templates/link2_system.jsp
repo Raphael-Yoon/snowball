@@ -38,34 +38,37 @@
                 </label><br>
             
                 {% if question_number == 0 %}
-                    <input type="text" name="a0" required><br>
+                <input type="text" name="a0" required><br>
             
-                {% elif question_number in [1, 4, 6, 7, 8] %}
-                    <input type="radio" name="a{{ question_number }}" value="Y" required> 예
-                    <input type="text" name="a{{ question_number }}_1" 
-                           placeholder="{% if question_number == 1 %}시스템 종류(SAP ERP, Oracle ERP, 더존ERP 등)
-                                        {% elif question_number == 4 %}Cloud 종류(SAP, Oracle 등)
-                                        {% elif question_number == 6 %}Hiware, CyberArk 등
-                                        {% elif question_number == 7 %}DB Safer, DBi 등
-                                        {% elif question_number == 8 %}Waggle, JobScheduler 등{% endif %}" 
-                           size="40"><br>
-                    <input type="radio" name="a{{ question_number }}" value="N"> 아니요
+            {% elif question_number == 4 %}
+                <input type="radio" name="a{{ question_number }}" value="Y" required> SaaS<br>
+                <input type="radio" name="a{{ question_number }}" value="N"> IaaS
             
-                {% elif question_number in [2, 3, 5, 9, 10, 11, 15, 17, 18, 19, 20, 23, 24, 27, 28, 29, 30, 32, 33, 34] %}
-                    <input type="radio" name="a{{ question_number }}" value="Y" required> 예<br>
-                    <input type="radio" name="a{{ question_number }}" value="N"> 아니요
+            {% elif question_number in [1, 6, 7, 8] %}
+                <input type="radio" name="a{{ question_number }}" value="Y" required> 예
+                <input type="text" name="a{{ question_number }}_1" 
+                       placeholder="{% if question_number == 1 %}시스템 종류(SAP ERP, Oracle ERP, 더존ERP 등)
+                                    {% elif question_number == 6 %}Hiware, CyberArk 등
+                                    {% elif question_number == 7 %}DB Safer, DBi 등
+                                    {% elif question_number == 8 %}Waggle, JobScheduler 등{% endif %}" 
+                       size="40"><br>
+                <input type="radio" name="a{{ question_number }}" value="N"> 아니요
             
-                {% elif question_number in [12, 13, 14, 16, 21, 22, 25, 26, 31, 35, 36, 37, 38, 39] %}
-                    <textarea name="a{{ question_number }}" 
-                              placeholder="{% if question_number == 16 %}최소자리, 복잡성, 변경주기 등
-                                           {% elif question_number in [21, 25, 31, 35] %}권한 보유 인원의 부서, 직급, 직책 등
-                                           {% else %}관련 절차를 입력하세요.{% endif %}" 
-                              rows="5" cols="60"></textarea>
+            {% elif question_number in [2, 3, 5, 9, 10, 11, 15, 17, 18, 19, 20, 23, 24, 27, 28, 29, 30, 32, 33, 34] %}
+                <input type="radio" name="a{{ question_number }}" value="Y" required> 예<br>
+                <input type="radio" name="a{{ question_number }}" value="N"> 아니요
             
-                {% else %}
-                    <input type="radio" name="answer" value="Y" required> 예<br>
-                    <input type="radio" name="answer" value="N"> 아니요
-                {% endif %}
+            {% elif question_number in [12, 13, 14, 16, 21, 22, 25, 26, 31, 35, 36, 37, 38, 39] %}
+                <textarea name="a{{ question_number }}" 
+                          placeholder="{% if question_number == 16 %}최소자리, 복잡성, 변경주기 등
+                                       {% elif question_number in [21, 25, 31, 35] %}권한 보유 인원의 부서, 직급, 직책 등
+                                       {% else %}관련 절차를 입력하세요.{% endif %}" 
+                          rows="5" cols="60"></textarea>
+            
+            {% else %}
+                <input type="radio" name="answer" value="Y" required> 예<br>
+                <input type="radio" name="answer" value="N"> 아니요
+            {% endif %}
             </div>
 
             {% if question_number in [1, 4, 5, 9, 12, 13, 14, 16, 22, 26] %}
