@@ -78,8 +78,8 @@ s_questions = [
     {"index": 34, "text": "배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?"},
     {"index": 35, "text": "배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요."},
     {"index": 36, "text": "배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요."},
-    {"index": 37, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요."},
-    {"index": 38, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요."},
+    {"index": 37, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요."},
+    {"index": 38, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요."},
     {"index": 39, "text": "서버실 출입시의 절차에 대해 기술해 주세요."}
 ]
 
@@ -156,8 +156,8 @@ def link2():
             34: 35,
             35: 36,
             36: 37,
-            37: 38,
-            38: 39,
+            37: 38  if session['answer'][3] == 'Y' else 40,
+            38: 39  if session['answer'][3] == 'Y' else 40,
             39: 40,
         }
 
@@ -167,7 +167,7 @@ def link2():
         # 현재 응답 상태 출력 (join 사용)
         print("Answers:", ", ".join(f"{i}: {ans}" for i, ans in enumerate(session['answer'])))
         
-        if session['question_index'] > 4: #question_count:
+        if session['question_index'] > 5: #>= question_count:
             print('excel download')
             return save_to_excel()
 
@@ -179,17 +179,32 @@ def link2():
 def save_to_excel():
     answers = session.get('answer', [])
     system_info = [session.get(key, '') for key in ['System', 'Cloud', 'OS_Tool', 'DB_Tool', 'Batch_Tool']]
+    system_info = [info if info else '' for info in system_info]  # NaN 방지
     today = datetime.today().strftime('%Y%m%d')
     file_name = f"{answers[0]}_{today}.xlsx" if answers else f"responses_{today}.xlsx"
     
     df = pd.DataFrame({'Question': [q['text'] for q in s_questions], 'Answer': answers}).fillna('')
     df.loc[[1, 3, 6, 7, 8], 'Extra Info'] = system_info
+    df = df.fillna('')  # NaN 방지
     file_path = os.path.join("static", file_name)
     
     with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Responses', index=False)
         worksheet = writer.sheets['Responses']
         worksheet.set_column('A:A', max(df['Question'].apply(len)) + 2)
+        
+        # Understanding 시트 데이터 생성
+        understanding_data = [
+            f"{answers[0]} 시스템은 상용소프트웨어로 {system_info[0]}를 기반으로 하고 있음" if answers[1] == 'Y' else f"{answers[0]} 시스템은 자체개발 소프트웨어임",  
+            f"클라우드 환경({ 'SaaS' if answers[4] == 'Y' else 'IaaS' })을 사용 중임, { 'SOC1 Report를 수령하고 있음' if answers[5] == 'Y' else 'SOC1 Report를 수령하지 않음' }",
+            f"운영체제 보안 도구({system_info[2]})을 사용 중임" if answers[6] == 'Y' else "운영체제 보안 도구를 사용하지 않음",
+            f"데이터베이스 보안 도구({system_info[3]})을 사용 중임" if answers[7] == 'Y' else "데이터베이스 보안 도구를 사용하지 않음",
+            f"배치 처리 도구({system_info[4]})을 사용 중임" if answers[8] == 'Y' else "배치 처리 도구를 사용하지 않음"
+        ]
+
+        # Understanding 시트에 데이터 삽입
+        df_understanding = pd.DataFrame({'Description': understanding_data})
+        df_understanding.to_excel(writer, sheet_name='Understanding', index=False)
     
     return send_file(file_path, as_attachment=True)
 
