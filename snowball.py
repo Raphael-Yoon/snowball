@@ -62,7 +62,7 @@ s_questions = [
     {"index": 18, "text": "퇴사자 발생시 접근권한을 차단하는(계정 삭제 등) 절차를 기술해 주세요.", "category": "APD"},
     {"index": 19, "text": "전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?", "category": "APD"},
     {"index": 20, "text": "패스워드 설정사항을 기술해 주세요.", "category": "APD"},
-    {"index": 21, "text": "데이터 변경 이력이 시스템에 기록되고 있습니까?(쿼리로 변경).", "category": "APD"},
+    {"index": 21, "text": "데이터 변경 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
     {"index": 22, "text": "데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
     {"index": 23, "text": "DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
     {"index": 24, "text": "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
@@ -122,52 +122,21 @@ def link2():
 
         # 다음 질문 인덱스를 결정하는 매핑
 
-        next_question = {
-            0: 1,
+        # 기본 흐름: 각 질문이 다음 질문으로 자연스럽게 진행
+        next_question = {i: i + 1 for i in range(43)}
+
+        # 예외적인 분기 처리
+        conditional_routes = {
             1: 2 if session['answer'][question_index] == 'Y' else 3,
-            2: 3,  # 동일한 흐름을 가지므로 조건 필요 없음
             3: 4 if session['answer'][question_index] == 'Y' else 6,
-            4: 5,
-            5: 6,
-            6: 7,
-            7: 8,
-            8: 9,
-            9: 10,
-            10: 11,
-            11: 12,
-            12: 13,
-            13: 14 if session['answer'][question_index] == 'N' else 15,
-            14: 15,
-            15: 16 if session['answer'][question_index] == 'N' else 17,
-            16: 17,
-            17: 18 if session['answer'][question_index] == 'N' else 19,
-            18: 19,
-            19: 20,
-            20: 21,
-            21: 22,
-            22: 23,
-            23: 24,
-            24: 25,
-            25: 26,
-            26: 27,
-            27: 28,
-            28: 29,
-            29: 30,
-            30: 31,
-            31: 32,
-            32: 33,
-            33: 34,
-            34: 35,
-            35: 36,
-            36: 37,
-            37: 38,
-            38: 39,
-            39: 40,
-            40: 41,
-            41: 42 if session['answer'][3] == 'Y' else 44,
-            42: 43,
-            43: 44,
+            13: 14 if session['answer'][question_index] == 'Y' else 15,
+            15: 16 if session['answer'][question_index] == 'Y' else 17,
+            17: 18 if session['answer'][question_index] == 'Y' else 19,
+            41: 42 if session['answer'][3] == 'Y' else 44
         }
+
+        # 조건이 있는 질문 반영
+        next_question.update(conditional_routes)
 
         session['question_index'] = next_question.get(question_index, question_index)
         print(f"goto {session['question_index']}")
@@ -199,127 +168,123 @@ def save_to_excel():
     # ExcelWriter 블록 내부에서 Understanding 시트도 작성하도록 변경**
     with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
         # Responses 시트 작성
+        df = pd.DataFrame({'Question': [q['text'] for q in s_questions], 'Answer': answers}).fillna('')
         df.to_excel(writer, sheet_name='Responses', index=False)
         worksheet = writer.sheets['Responses']
         worksheet.set_column('A:A', max(df['Question'].apply(len)) + 2)
-        
-        # 통제별 시트 데이터 생성
 
-        understanding_data = [
-            f"{answers[0]} 시스템은 {'상용소프트웨어로 ' + system_info[0] + '를 기반으로 하고 있으며' if answers[1] == 'Y' else '자체개발 소프트웨어임'}, 회사 내부에서 수정이 {'가능함' if answers[2] == 'Y' else '불가함'}.",
-            f"{'클라우드 환경(' + ('SaaS' if answers[4] == 'Y' else 'IaaS') + ')을 사용 중이며 ' + ('SOC1 Report를 수령하고 있음' if answers[5] == 'Y' else 'SOC1 Report는 수령하지 않음') if answers[3] == 'Y' else '클라우드 환경을 사용하지 않음'}.",
-            f"운영체제 보안 도구({system_info[2]})을 사용 중임" if len(system_info) > 2 and answers[6] == 'Y' else "운영체제 보안 도구를 사용하지 않음",
-            f"데이터베이스 보안 도구({system_info[3]})을 사용 중임" if len(system_info) > 3 and answers[7] == 'Y' else "데이터베이스 보안 도구를 사용하지 않음",
-            f"배치 처리 도구({system_info[4]})을 사용 중임" if len(system_info) > 4 and answers[8] == 'Y' else "배치 처리 도구를 사용하지 않음",
-            f"사용자 권한 부여시 승인권자의 승인을 득하고 있하고 있으며 상세 절차는 아래와 같음" if answers[11]=='Y' else "사용자 권한 부여시 승인 절차가 존재하지 않음",
-            f"{answers[12]}" if answers[11]=='Y' else "",
-            f"부서이동자의 권한 회수 절차는 아래와 같음",
-            f"{answers[13]}",
-            f"퇴사자의 접근권한 회수 절차는 아래와 같음",
-            f"{answers[14]}",
-            f"사용자 권한 모니터링은 권한 부여시 승인권자의 승인을 득하고 있하고 있으며 상세 절차는 아래와 같음" if answers[11]=='Y' else "사용자 권한 부여시 승인 절차가 존재하지 않음",
-            f"Application 패스워드 설정은 아래와 같음",
-            f"{answers[16]}",
-            f"데이터 변경시 요청서를 작성하고 승인을 득하는 절차가 존재함." if answers[18]=='Y' else " 데이터 변경시 승인을 득하는 절차가 존재하지 않음.",
-            f"DB 접근 권한 필요시 요청서를 작성하고 승인을 득하는 절차가 존재함." if answers[18]=='Y' else " DB 접근 권한 필요시 요청서를 작성하고 승인을 득하는 절차가 존재하지 않음.",
-            f"DB 관리자 권한을 보유한 인원은 아래와 같음",
-            f"{answers[21]}",
-            f"DB 패스워드 설정은 아래와 같음",
-            f"{answers[22]}",
-            f"OS 접근 권한 필요시 요청서를 작성하고 승인을 득하는 절차가 존재함." if answers[24]=='Y' else " OS 접근 권한 필요시 요청서를 작성하고 승인을 득하는 절차가 존재하지 않음.",
-            f"OS 관리자 권한을 보유한 인원은 아래와 같음",
-            f"{answers[25]}",
-            f"OS 패스워드 설정은 아래와 같음",
-            f"{answers[26]}",
-        ]
-
-        # Understanding 시트에 데이터 삽입
-        df_understanding = pd.DataFrame({'Description': understanding_data})
-        df_understanding.to_excel(writer, sheet_name='Understanding', index=False)
+        # 시트 생성 함수 호출
+        create_apd_sheet(writer, 'APD01', get_text_for_apd01(answers)) #사용자 권한 승인
+        create_apd_sheet(writer, 'APD02', get_text_for_apd02(answers)) #부서이동자 권한 회수
+        create_apd_sheet(writer, 'APD03', get_text_for_apd03(answers)) #퇴사자 접근권한 회수
+        create_apd_sheet(writer, 'APD04', get_text_for_apd04(answers)) #사용자 권한 Monotoring
+        create_apd_sheet(writer, 'APD05', get_text_for_apd05(answers)) #Application 패스워드
+        create_apd_sheet(writer, 'APD06', get_text_for_apd06(answers)) #데이터 직접 변경
+        create_apd_sheet(writer, 'APD07', get_text_for_apd07(answers)) #DB 접근권한 승인
+        create_apd_sheet(writer, 'APD08', get_text_for_apd08(answers)) #DB 관리자 권한 제한
+        create_apd_sheet(writer, 'APD09', get_text_for_apd09(answers)) #DB 패스워드
+        create_apd_sheet(writer, 'APD10', get_text_for_apd10(answers)) #OS 접근권한 승인
+        create_apd_sheet(writer, 'APD11', get_text_for_apd11(answers)) #OS 관리자 권한 제한
+        create_apd_sheet(writer, 'APD12', get_text_for_apd12(answers)) #OS 패스워드
 
     return send_file(file_path, as_attachment=True)
-
-
-'''
-@app.route('/link2', methods=['GET', 'POST'])
-def link2():
-    print("Question Function")
-
-    if request.method == 'GET':
-        # 세션을 열 때마다 초기화
-        session.clear()  # 모든 세션 값 초기화
-        session['question_index'] = 0
-        session['answer'] = ['']*9
-
-    question_index = session['question_index']
-    question = s_questions[question_index]
-
-    # POST 요청 처리 (다음 버튼을 눌렀을 때)
     
-    if request.method == 'POST':
-        form_data = request.form
-        if session['question_index'] == 0: #0: 사용하고 있는 시스템은 상용소프트웨어(Package S/W)입니까?
-            session['answer'][question_index] = form_data.get("a0")
-            print(f"1 = {session['answer'][question_index]}")
-            if session['answer'][question_index] == 'Y':
-                session['question_index'] = 1
-                print('goto 1')
-            elif session['answer'][question_index] == 'N':
-                session['question_index'] = 2
-                print('goto 2')
+def create_apd_sheet(writer, sheet_name, text_data):
+    df = pd.DataFrame({'Description': text_data})
+    df.to_excel(writer, sheet_name=sheet_name, index=False)
 
-        elif session['question_index'] == 1: #1: 기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)
-            session['answer'][question_index] = form_data.get("a1")
-            print(f"1 = {session['answer'][question_index]}")
-            if session['answer'][question_index] == 'Y':
-                session['question_index'] = 2
-                print('goto 2')
-            elif session['answer'][question_index] == 'N':
-                session['question_index'] = 2
-                print('goto 3')
+def get_text_for_apd01(answers):
+    apd01_text = []
+    apd01_text.append("APD01 - 사용자 신규 권한 승인")
+    apd01_text.append("사용자 권한 부여 이력이 시스템에 기록되고 있습니다." if answers[11] == 'Y' else "사용자 권한 부여 이력이 시스템에 기록되지 않습니다.")
+    if answers[13] == 'Y':
+        apd01_text.append("새로운 권한 요청 시, 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니다.")
+        apd01_text.append(f"권한이 부여되는 절차: {answers[14]}" if answers[14] else "권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다.")
+    else:
+        apd01_text.append("새로운 권한 요청 시 승인 절차가 없습니다.")
+    return apd01_text
 
-        elif session['question_index'] == 2: #2	Cloud 서비스를 사용하고 있습니까?
-            session['answer'][question_index] = form_data.get("a2")
-            if session['answer'][question_index] == 'Y':
-                session['question_index'] = 3
-                print('goto 3')
-            elif session['answer'][question_index] == 'N':
-                session['question_index'] = 5
-                print('goto 5')
+def get_text_for_apd02(answers):
+    apd02_text = []
+    apd02_text.append("APD02 - 부서이동자 권한 회수")
+    apd02_text.append("사용자 권한 회수 이력이 시스템에 기록되고 있습니다." if answers[12] == 'Y' else "사용자 권한 회수 이력이 시스템에 기록되지 않습니다.")
+    if answers[15] == 'Y':
+        apd02_text.append("부서 이동 시 기존 권한을 회수하는 절차가 있습니다.")
+        apd02_text.append(f"부서 이동 시 권한 회수 절차: {answers[16]}" if answers[16] else "부서 이동 시 권한 회수 절차에 대한 상세 기술이 제공되지 않았습니다.")
+    else:
+        apd02_text.append("부서 이동 시 기존 권한 회수 절차가 없습니다.")
+    return apd02_text
 
-        elif session['question_index'] == 3: #3	어떤 종류의 Cloud입니까?
-            session['answer'][question_index] = form_data.get("a3")
-            session['question_index'] = 4
-            print('goto 4')
+def get_text_for_apd03(answers):
+    apd03_text = []
+    apd03_text.append("APD03 - 퇴사자 접근권한 회수")
+    apd03_text.append("퇴사자 발생 시 접근권한을 차단하는 절차가 있습니다." if answers[17] == 'Y' else "퇴사자 발생 시 접근권한 차단 절차가 없습니다.")
+    if answers[18]:
+        apd03_text.append(f"퇴사자 접근권한 차단 절차: {answers[18]}")
+    else:
+        apd03_text.append("퇴사자 접근권한 차단 절차에 대한 상세 기술이 제공되지 않았습니다.")
+    return apd03_text
 
-        elif session['question_index'] == 4: #4	Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?
-            session['answer'][question_index] = form_data.get("a4")
-            session['question_index'] = 5
-            print('goto 5')
+def get_text_for_apd04(answers):
+    apd04_text.append("APD04 - 사용자 권한 Monotoring")
+    apd04_text = ["전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니다." if answers[19] == 'Y' else "전체 사용자가 보유한 권한에 대한 모니터링 절차가 존재하지 않습니다."]
+    return apd04_text
+    
+def get_text_for_apd05(answers):
+    apd05_text.append("APD05 - Application 패스워드")
+    apd05_text = [f"패스워드 설정 사항: {answers[20]}"]
+    return apd05_text
 
-        elif session['question_index'] == 5: #5	OS 접근제어 Tool 사용 여부
-            session['answer'][question_index] = form_data.get("a5")
-            session['question_index'] = 6
-            print('goto 6')
+def get_text_for_apd06(answers):
+    apd06_text = []
+    apd06_text.append("APD06 - 데이터 직접 변경")
+    apd06_text.append("데이터 변경 이력이 시스템에 기록되고 있습니다." if answers[21] == 'Y' else "데이터 변경 이력이 시스템에 기록되지 않습니다.")
+    apd06_text.append("데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[22] == 'Y' else "데이터 변경이 필요한 경우 승인 절차가 존재하지 않습니다.")
+    
+    return apd06_text
 
-        elif session['question_index'] == 6: #6	DB 접근제어 Tool 사용 여부
-            session['answer'][question_index] = form_data.get("a6")
-            session['question_index'] = 7
-            print('goto 7')
+def get_text_for_apd07(answers):
+    apd07_text = []
+    apd07_text.append("APD07 - DB 접근권한 승인")
+    apd07_text.append(f"DB 종류와 버전: {answers[8]}")
+    apd07_text.append(f"DB 접근제어 Tool 사용 여부: {'사용 중' if answers[9] == 'Y' else '사용하지 않음'}")
+    apd07_text.append("DB 접근권한 부여 이력이 시스템에 기록되고 있습니다." if answers[23] == 'Y' else "DB 접근권한 부여 이력이 시스템에 기록되지 않습니다.")
+    apd07_text.append("DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[24] == 'Y' else "DB 접근권한이 필요한 경우 승인 절차가 존재하지 않습니다.")
+    return apd07_text
 
-        elif session['question_index'] == 7: #7	Batch Schedule Tool 사용 여부
-            session['answer'][question_index] = form_data.get("a7")
-            session['question_index'] = 8
-            print('goto 8')
+def get_text_for_apd08(answers):
+    apd08_text = []
+    apd08_text.append("APD08 - DB 관리자 권한 제한")
+    apd08_text.append(f"DB 관리자 권한을 보유한 인원: {answers[25]}")
+    return apd08_text
+    
+def get_text_for_apd09(answers):
+    apd09_text = []
+    apd09_text.append("APD09 - DB 패스워드")
+    apd09_text.append(f"DB 패스워드 설정사항: {answers[26]}")
+    return apd09_text
 
-        print(f"0: {session['answer'][0]}, 1: {session['answer'][1]}, 2: {session['answer'][2]}, 3: {session['answer'][3]}, 4: {session['answer'][4]}, 5: {session['answer'][5]}, 6: {session['answer'][6]}, 7: {session['answer'][7]}")
-        print('index = ', session['question_index'])
+def get_text_for_apd10(answers):
+    apd10_text = []
+    apd10_text.append("APD10 - OS 접근권한 승인")
+    apd10_text.append(f"OS 종류와 버전: {answers[6]}")
+    apd10_text.append(f"OS 접근제어 Tool 사용 여부: {'사용 중' if answers[7] == 'Y' else '사용하지 않음'}")
+    apd10_text.append("OS 접근권한 부여 이력이 시스템에 기록되고 있습니다." if answers[27] == 'Y' else "OS 접근권한 부여 이력이 시스템에 기록되지 않습니다.")
+    apd10_text.append("OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[28] == 'Y' else "OS 접근권한이 필요한 경우 승인 절차가 존재하지 않습니다.")
+    return apd10_text
 
-    # 현재 질문을 렌더링
-    question = s_questions[session['question_index']]
+def get_text_for_apd11(answers):
+    apd11_text = []
+    apd11_text.append("APD11 - OS 관리자 권한 제한")
+    apd11_text.append(f"OS 관리자 권한을 보유한 인원: {answers[29]}")
+    return apd11_text
 
-    return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index']+1)
-'''
+def get_text_for_apd12(answers):
+    apd12_text = []
+    apd12_text.append("APD12 - OS 패스워드")
+    apd12_text.append(f"OS 패스워드 설정사항: {answers[30]}")
+    return apd12_text
+
 
 @app.route('/link3')
 def link3():

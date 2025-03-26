@@ -59,11 +59,11 @@
                         }
                     </script>
                 
-                {% elif question_number in [2, 3, 5, 9, 10, 11, 15, 17, 18, 19, 20, 23, 24, 27, 28, 29, 30, 32, 33, 34] %}
+                {% elif question_number in [2, 3, 5, 11, 12, 13, 15, 17, 19, 21, 22, 23, 24, 27, 28, 31, 32, 33, 34, 36, 37, 38] %}
                     <input type="radio" name="a{{ question_number }}" value="Y" required> 예<br>
                     <input type="radio" name="a{{ question_number }}" value="N"> 아니요
                 
-                {% elif question_number in [20, 26, 30, 25, 29, 35, 39, 14, 16, 18, 20, 25, 26, 29, 30, 35, 39, 40, 41, 42, 43] %}
+                {% elif question_number in [14, 16, 18, 20, 25, 26, 29, 30, 35, 39, 40, 41, 42, 43] %}
                     <textarea name="a{{ question_number }}" 
                             placeholder="{% if question_number in [20, 26, 30] %}최소자리, 복잡성, 변경주기 등
                                         {% elif question_number in [25, 29, 35, 39] %}권한 보유 인원의 부서, 직급, 직책 등
