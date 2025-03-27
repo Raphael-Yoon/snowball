@@ -144,7 +144,7 @@ def link2():
         # 현재 응답 상태 출력 (join 사용)
         print("Answers:", ", ".join(f"{i}: {ans}" for i, ans in enumerate(session['answer'])))
         
-        if session['question_index'] > 30: #>= question_count:
+        if session['question_index'] >= question_count:
             print('excel download')
             return save_to_excel()
 
@@ -174,117 +174,176 @@ def save_to_excel():
         worksheet.set_column('A:A', max(df['Question'].apply(len)) + 2)
 
         # 시트 생성 함수 호출
-        create_apd_sheet(writer, 'APD01', get_text_for_apd01(answers)) #사용자 권한 승인
-        create_apd_sheet(writer, 'APD02', get_text_for_apd02(answers)) #부서이동자 권한 회수
-        create_apd_sheet(writer, 'APD03', get_text_for_apd03(answers)) #퇴사자 접근권한 회수
-        create_apd_sheet(writer, 'APD04', get_text_for_apd04(answers)) #사용자 권한 Monotoring
-        create_apd_sheet(writer, 'APD05', get_text_for_apd05(answers)) #Application 패스워드
-        create_apd_sheet(writer, 'APD06', get_text_for_apd06(answers)) #데이터 직접 변경
-        create_apd_sheet(writer, 'APD07', get_text_for_apd07(answers)) #DB 접근권한 승인
-        create_apd_sheet(writer, 'APD08', get_text_for_apd08(answers)) #DB 관리자 권한 제한
-        create_apd_sheet(writer, 'APD09', get_text_for_apd09(answers)) #DB 패스워드
-        create_apd_sheet(writer, 'APD10', get_text_for_apd10(answers)) #OS 접근권한 승인
-        create_apd_sheet(writer, 'APD11', get_text_for_apd11(answers)) #OS 관리자 권한 제한
-        create_apd_sheet(writer, 'APD12', get_text_for_apd12(answers)) #OS 패스워드
+        create_itgc_sheet(writer, 'APD01', get_text_itgc(answers, 'APD01')) # 사용자 권한 승인
+        create_itgc_sheet(writer, 'APD02', get_text_itgc(answers, 'APD02')) # 부서이동자 권한 회수
+        create_itgc_sheet(writer, 'APD03', get_text_itgc(answers, 'APD03')) # 퇴사자 접근권한 회수
+        create_itgc_sheet(writer, 'APD04', get_text_itgc(answers, 'APD04')) # 사용자 권한 Monitoring
+        create_itgc_sheet(writer, 'APD05', get_text_itgc(answers, 'APD05')) # Application 패스워드
+        create_itgc_sheet(writer, 'APD06', get_text_itgc(answers, 'APD06')) # 데이터 직접 변경
+        create_itgc_sheet(writer, 'APD07', get_text_itgc(answers, 'APD07')) # DB 접근권한 승인
+        create_itgc_sheet(writer, 'APD08', get_text_itgc(answers, 'APD08')) # DB 관리자 권한 제한
+        create_itgc_sheet(writer, 'APD09', get_text_itgc(answers, 'APD09')) # DB 패스워드
+        create_itgc_sheet(writer, 'APD10', get_text_itgc(answers, 'APD10')) # OS 접근권한 승인
+        create_itgc_sheet(writer, 'APD11', get_text_itgc(answers, 'APD11')) # OS 관리자 권한 제한
+        create_itgc_sheet(writer, 'APD12', get_text_itgc(answers, 'APD12')) # OS 패스워드
+        create_itgc_sheet(writer, 'PC01', get_text_itgc(answers, 'PC01'))  # 프로그램 변경 승인
+        create_itgc_sheet(writer, 'PC02', get_text_itgc(answers, 'PC02'))  # 프로그램 변경 사용자 테스트
+        create_itgc_sheet(writer, 'PC03', get_text_itgc(answers, 'PC03'))  # 프로그램 변경 이관 승인
+        create_itgc_sheet(writer, 'PC04', get_text_itgc(answers, 'PC04'))  # 이관(배포) 권한 제한
+        create_itgc_sheet(writer, 'PC05', get_text_itgc(answers, 'PC05'))  # 개발/운영 환경 분리
+        create_itgc_sheet(writer, 'CO01', get_text_itgc(answers, 'CO01'))  # 배치 스케줄 등록/변경 승인
+        create_itgc_sheet(writer, 'CO02', get_text_itgc(answers, 'CO02'))  # 배치 스케줄 등록/변경 권한 제한
+        create_itgc_sheet(writer, 'CO03', get_text_itgc(answers, 'CO03'))  # 배치 실행 모니터링
+        create_itgc_sheet(writer, 'CO04', get_text_itgc(answers, 'CO04'))  # 장애 대응 절차
+        create_itgc_sheet(writer, 'CO05', get_text_itgc(answers, 'CO05'))  # 백업 및 모니터링
+        create_itgc_sheet(writer, 'CO06', get_text_itgc(answers, 'CO06'))  # 서버실 출입 절차
 
     return send_file(file_path, as_attachment=True)
     
-def create_apd_sheet(writer, sheet_name, text_data):
-    df = pd.DataFrame({'Description': text_data})
+def create_itgc_sheet(writer, sheet_name, text_data):
+    df = pd.DataFrame({'Interview 내용': text_data})
     df.to_excel(writer, sheet_name=sheet_name, index=False)
 
-def get_text_for_apd01(answers):
-    apd01_text = []
-    apd01_text.append("APD01 - 사용자 신규 권한 승인")
-    apd01_text.append("사용자 권한 부여 이력이 시스템에 기록되고 있습니다." if answers[11] == 'Y' else "사용자 권한 부여 이력이 시스템에 기록되지 않습니다.")
-    if answers[13] == 'Y':
-        apd01_text.append("새로운 권한 요청 시, 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니다.")
-        apd01_text.append(f"권한이 부여되는 절차: {answers[14]}" if answers[14] else "권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다.")
-    else:
-        apd01_text.append("새로운 권한 요청 시 승인 절차가 없습니다.")
-    return apd01_text
-
-def get_text_for_apd02(answers):
-    apd02_text = []
-    apd02_text.append("APD02 - 부서이동자 권한 회수")
-    apd02_text.append("사용자 권한 회수 이력이 시스템에 기록되고 있습니다." if answers[12] == 'Y' else "사용자 권한 회수 이력이 시스템에 기록되지 않습니다.")
-    if answers[15] == 'Y':
-        apd02_text.append("부서 이동 시 기존 권한을 회수하는 절차가 있습니다.")
-        apd02_text.append(f"부서 이동 시 권한 회수 절차: {answers[16]}" if answers[16] else "부서 이동 시 권한 회수 절차에 대한 상세 기술이 제공되지 않았습니다.")
-    else:
-        apd02_text.append("부서 이동 시 기존 권한 회수 절차가 없습니다.")
-    return apd02_text
-
-def get_text_for_apd03(answers):
-    apd03_text = []
-    apd03_text.append("APD03 - 퇴사자 접근권한 회수")
-    apd03_text.append("퇴사자 발생 시 접근권한을 차단하는 절차가 있습니다." if answers[17] == 'Y' else "퇴사자 발생 시 접근권한 차단 절차가 없습니다.")
-    if answers[18]:
-        apd03_text.append(f"퇴사자 접근권한 차단 절차: {answers[18]}")
-    else:
-        apd03_text.append("퇴사자 접근권한 차단 절차에 대한 상세 기술이 제공되지 않았습니다.")
-    return apd03_text
-
-def get_text_for_apd04(answers):
-    apd04_text.append("APD04 - 사용자 권한 Monotoring")
-    apd04_text = ["전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니다." if answers[19] == 'Y' else "전체 사용자가 보유한 권한에 대한 모니터링 절차가 존재하지 않습니다."]
-    return apd04_text
+def get_text_itgc(answers, control_number):
+    text = []
     
-def get_text_for_apd05(answers):
-    apd05_text.append("APD05 - Application 패스워드")
-    apd05_text = [f"패스워드 설정 사항: {answers[20]}"]
-    return apd05_text
-
-def get_text_for_apd06(answers):
-    apd06_text = []
-    apd06_text.append("APD06 - 데이터 직접 변경")
-    apd06_text.append("데이터 변경 이력이 시스템에 기록되고 있습니다." if answers[21] == 'Y' else "데이터 변경 이력이 시스템에 기록되지 않습니다.")
-    apd06_text.append("데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[22] == 'Y' else "데이터 변경이 필요한 경우 승인 절차가 존재하지 않습니다.")
+    if control_number == 'APD01':
+        text.append("APD01 - 사용자 신규 권한 승인")
+        text.append("사용자 권한 부여 이력이 시스템에 기록되고 있습니다." if answers[11] == 'Y' else "사용자 권한 부여 이력이 시스템에 기록되지 않습니다.")
+        if answers[13] == 'Y':
+            text.append("새로운 권한 요청 시, 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니다.")
+            text.append(f"권한이 부여되는 절차: {answers[14]}" if answers[14] else "권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다.")
+        else:
+            text.append("새로운 권한 요청 시 승인 절차가 없습니다.")
+            
+    elif control_number == 'APD02':
+        text.append("APD02 - 부서이동자 권한 회수")
+        text.append("사용자 권한 회수 이력이 시스템에 기록되고 있습니다." if answers[12] == 'Y' else "사용자 권한 회수 이력이 시스템에 기록되지 않습니다.")
+        if answers[15] == 'Y':
+            text.append("부서 이동 시 기존 권한을 회수하는 절차가 있습니다.")
+            text.append(f"부서 이동 시 권한 회수 절차: {answers[16]}" if answers[16] else "부서 이동 시 권한 회수 절차에 대한 상세 기술이 제공되지 않았습니다.")
+        else:
+            text.append("부서 이동 시 기존 권한 회수 절차가 없습니다.")
+            
+    elif control_number == 'APD03':
+        text.append("APD03 - 퇴사자 접근권한 회수")
+        text.append("퇴사자 발생 시 접근권한을 차단하는 절차가 있습니다." if answers[17] == 'Y' else "퇴사자 발생 시 접근권한 차단 절차가 없습니다.")
+        if answers[18]:
+            text.append(f"퇴사자 접근권한 차단 절차: {answers[18]}")
+        else:
+            text.append("퇴사자 접근권한 차단 절차에 대한 상세 기술이 제공되지 않았습니다.")
+            
+    elif control_number == 'APD04':
+        text.append("APD04 - 사용자 권한 Monitoring")
+        text.append("전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니다." if answers[19] == 'Y' else "전체 사용자가 보유한 권한에 대한 모니터링 절차가 존재하지 않습니다.")
+        
+    elif control_number == 'APD05':
+        text.append("APD05 - Application 패스워드")
+        text.append(f"패스워드 설정 사항: {answers[20]}")
+        
+    elif control_number == 'APD06':
+        text.append("APD06 - 데이터 직접 변경")
+        text.append("데이터 변경 이력이 시스템에 기록되고 있습니다." if answers[21] == 'Y' else "데이터 변경 이력이 시스템에 기록되지 않습니다.")
+        text.append("데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[22] == 'Y' else "데이터 변경이 필요한 경우 승인 절차가 존재하지 않습니다.")
+        
+    elif control_number == 'APD07':
+        text.append("APD07 - DB 접근권한 승인")
+        text.append(f"DB 종류와 버전: {answers[8]}")
+        text.append(f"DB 접근제어 Tool 사용 여부: {'사용 중' if answers[9] == 'Y' else '사용하지 않음'}")
+        text.append("DB 접근권한 부여 이력이 시스템에 기록되고 있습니다." if answers[23] == 'Y' else "DB 접근권한 부여 이력이 시스템에 기록되지 않습니다.")
+        text.append("DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[24] == 'Y' else "DB 접근권한이 필요한 경우 승인 절차가 존재하지 않습니다.")
+        
+    elif control_number == 'APD08':
+        text.append("APD08 - DB 관리자 권한 제한")
+        text.append(f"DB 관리자 권한을 보유한 인원: {answers[25]}")
+        
+    elif control_number == 'APD09':
+        text.append("APD09 - DB 패스워드")
+        text.append(f"DB 패스워드 설정사항: {answers[26]}")
+        
+    elif control_number == 'APD10':
+        text.append("APD10 - OS 접근권한 승인")
+        text.append(f"OS 종류와 버전: {answers[6]}")
+        text.append(f"OS 접근제어 Tool 사용 여부: {'사용 중' if answers[7] == 'Y' else '사용하지 않음'}")
+        text.append("OS 접근권한 부여 이력이 시스템에 기록되고 있습니다." if answers[27] == 'Y' else "OS 접근권한 부여 이력이 시스템에 기록되지 않습니다.")
+        text.append("OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[28] == 'Y' else "OS 접근권한이 필요한 경우 승인 절차가 존재하지 않습니다.")
+        
+    elif control_number == 'APD11':
+        text.append("APD11 - OS 관리자 권한 제한")
+        text.append(f"OS 관리자 권한을 보유한 인원: {answers[29]}")
+        
+    elif control_number == 'APD12':
+        text.append("APD12 - OS 패스워드")
+        text.append(f"OS 패스워드 설정사항: {answers[30]}")
+        
+    elif control_number == 'PC01':
+        text.append("PC01 - 프로그램 변경 승인")
+        text.append("프로그램 변경 이력이 시스템에 기록되고 있습니다." if answers[31] == 'Y' else "프로그램 변경 이력이 시스템에 기록되지 않습니다.")
+        if answers[32] == 'Y':
+            text.append("프로그램 변경 시 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니다.")
+        else:
+            text.append("프로그램 변경 시 승인 절차가 없습니다.")
+            
+    elif control_number == 'PC02':
+        text.append("PC02 - 프로그램 변경 사용자 테스트")
+        if answers[33] == 'Y':
+            text.append("프로그램 변경 시 사용자 테스트를 수행하고 결과를 문서화하는 절차가 있습니다.")
+        else:
+            text.append("프로그램 변경 시 사용자 테스트 수행 및 문서화 절차가 없습니다.")
+            
+    elif control_number == 'PC03':
+        text.append("PC03 - 프로그램 변경 이관 승인")
+        if answers[34] == 'Y':
+            text.append("프로그램 변경 완료 후 이관(배포)을 위해 부서장의 승인을 득하는 절차가 있습니다.")
+        else:
+            text.append("프로그램 변경 완료 후 별도의 승인 절차가 없습니다.")
+            
+    elif control_number == 'PC04':
+        text.append("PC04 - 이관(배포) 권한 제한")
+        if answers[35]:
+            text.append(f"이관(배포) 권한을 보유한 인원: {answers[35]}")
+        else:
+            text.append("이관(배포) 권한 보유 인원에 대한 정보가 제공되지 않았습니다.")
+            
+    elif control_number == 'PC05':
+        text.append("PC05 - 개발/운영 환경 분리")
+        if answers[36] == 'Y':
+            text.append("운영 서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니다.")
+        else:
+            text.append("운영 서버 외 추가적인 개발 또는 테스트 서버가 없습니다.")
+            
+    elif control_number == 'CO01':
+        text.append("CO01 - 배치 스케줄 등록/변경 승인")
+        text.append("배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니다." if answers[37] == 'Y' else "배치 스케줄 등록/변경 이력이 시스템에 기록되지 않습니다.")
+        if answers[38] == 'Y':
+            text.append("배치 스케줄 등록/변경 시 요청서 작성 및 승인 절차가 있습니다.")
+        else:
+            text.append("배치 스케줄 등록/변경 시 승인 절차가 없습니다.")
+            
+    elif control_number == 'CO02':
+        text.append("CO02 - 배치 스케줄 등록/변경 권한 제한")
+        text.append(f"배치 스케줄 등록/변경 담당자: {answers[39]}" if answers[39] else "배치 스케줄 등록/변경 담당자 정보가 제공되지 않았습니다.")
+        
+    elif control_number == 'CO03':
+        text.append("CO03 - 배치 실행 모니터링")
+        text.append(f"배치 실행 오류 모니터링: {answers[40]}" if answers[40] else "배치 실행 오류 모니터링 정보가 제공되지 않았습니다.")
+        
+    elif control_number == 'CO04':
+        text.append("CO04 - 장애 대응 절차")
+        text.append(f"장애 발생시 대응 절차: {answers[41]}" if answers[41] else "장애 대응 절차 정보가 제공되지 않았습니다.")
+        
+    elif control_number == 'CO05':
+        text.append("CO05 - 백업 및 모니터링")
+        text.append(f"백업 수행 및 모니터링: {answers[42]}" if answers[42] else "백업 및 모니터링 정보가 제공되지 않았습니다.")
+        
+    elif control_number == 'CO06':
+        text.append("CO06 - 서버실 출입 절차")
+        text.append(f"서버실 출입 절차: {answers[43]}" if answers[43] else "서버실 출입 절차 정보가 제공되지 않았습니다.")
+        
+    else:
+        text.append(f"Unknown control number: {control_number}")
     
-    return apd06_text
-
-def get_text_for_apd07(answers):
-    apd07_text = []
-    apd07_text.append("APD07 - DB 접근권한 승인")
-    apd07_text.append(f"DB 종류와 버전: {answers[8]}")
-    apd07_text.append(f"DB 접근제어 Tool 사용 여부: {'사용 중' if answers[9] == 'Y' else '사용하지 않음'}")
-    apd07_text.append("DB 접근권한 부여 이력이 시스템에 기록되고 있습니다." if answers[23] == 'Y' else "DB 접근권한 부여 이력이 시스템에 기록되지 않습니다.")
-    apd07_text.append("DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[24] == 'Y' else "DB 접근권한이 필요한 경우 승인 절차가 존재하지 않습니다.")
-    return apd07_text
-
-def get_text_for_apd08(answers):
-    apd08_text = []
-    apd08_text.append("APD08 - DB 관리자 권한 제한")
-    apd08_text.append(f"DB 관리자 권한을 보유한 인원: {answers[25]}")
-    return apd08_text
-    
-def get_text_for_apd09(answers):
-    apd09_text = []
-    apd09_text.append("APD09 - DB 패스워드")
-    apd09_text.append(f"DB 패스워드 설정사항: {answers[26]}")
-    return apd09_text
-
-def get_text_for_apd10(answers):
-    apd10_text = []
-    apd10_text.append("APD10 - OS 접근권한 승인")
-    apd10_text.append(f"OS 종류와 버전: {answers[6]}")
-    apd10_text.append(f"OS 접근제어 Tool 사용 여부: {'사용 중' if answers[7] == 'Y' else '사용하지 않음'}")
-    apd10_text.append("OS 접근권한 부여 이력이 시스템에 기록되고 있습니다." if answers[27] == 'Y' else "OS 접근권한 부여 이력이 시스템에 기록되지 않습니다.")
-    apd10_text.append("OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[28] == 'Y' else "OS 접근권한이 필요한 경우 승인 절차가 존재하지 않습니다.")
-    return apd10_text
-
-def get_text_for_apd11(answers):
-    apd11_text = []
-    apd11_text.append("APD11 - OS 관리자 권한 제한")
-    apd11_text.append(f"OS 관리자 권한을 보유한 인원: {answers[29]}")
-    return apd11_text
-
-def get_text_for_apd12(answers):
-    apd12_text = []
-    apd12_text.append("APD12 - OS 패스워드")
-    apd12_text.append(f"OS 패스워드 설정사항: {answers[30]}")
-    return apd12_text
-
+    return text
 
 @app.route('/link3')
 def link3():
