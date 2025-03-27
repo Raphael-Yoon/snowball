@@ -13,13 +13,13 @@
 
     <div class="container mt-5">
         <h1>
-            {% if 0 <= question_number <= 8 %}
+            {% if 0 <= question_number <= 10 %}
                 IT 시스템
-            {% elif 9 <= question_number <= 26 %}
+            {% elif 11 <= question_number <= 30 %}
                 APD(Access to Program & Data)
-            {% elif 27 <= question_number <= 32 %}
+            {% elif 31 <= question_number <= 36 %}
                 PC(Program Change)
-            {% elif 33 <= question_number <= 39 %}
+            {% elif 37 <= question_number <= 43 %}
                 CO(Computer Operation)
             {% else %}
                 기타
