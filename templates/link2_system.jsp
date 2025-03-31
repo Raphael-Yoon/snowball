@@ -130,8 +130,26 @@
 
             <!-- 다음 버튼 -->
             <div class="mb-3"></div>
-            <button type="submit" class="btn btn-primary">다음</button>
+            <button type="submit" class="btn btn-primary shadow-sm hover-shadow" 
+                style="background: linear-gradient(90deg, #0d6efd, #1e90ff); 
+                       border: none; 
+                       border-radius: 30px; 
+                       color: white; 
+                       font-weight: bold; 
+                       transition: all 0.3s ease; 
+                       padding: 0.5rem 1.5rem;">
+                <i class="fas fa-arrow-right me-2"></i>다음
+            </button>
+            <style>
+                .hover-shadow:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3) !important;
+                    background: linear-gradient(90deg, #1e90ff, #0d6efd);
+                }
+            </style>
         </form>
     </div>
+    <!-- Font Awesome 아이콘 추가 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </body>
 </html>
