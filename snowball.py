@@ -98,11 +98,7 @@ def link2():
         session.clear()
         session['question_index'] = 0
         session['answer'] = [''] * question_count  # 필요한 만큼 동적으로 조절 가능
-        session['System'] = ''
-        session['Cloud'] = ''
-        session['OS_Tool'] = ''
-        session['DB_Tool'] = ''
-        session['Batch_Tool'] = ''
+        return render_template('link2.jsp', question=s_questions[0], question_count=question_count, current_index=0)
 
     question_index = session['question_index']
 
@@ -121,11 +117,7 @@ def link2():
             session['Batch_Tool'] = form_data.get('a8_1')
 
         # 다음 질문 인덱스를 결정하는 매핑
-
-        # 기본 흐름: 각 질문이 다음 질문으로 자연스럽게 진행
         next_question = {i: i + 1 for i in range(43)}
-
-        # 예외적인 분기 처리
         conditional_routes = {
             1: 2 if session['answer'][question_index] == 'Y' else 3,
             3: 4 if session['answer'][question_index] == 'Y' else 6,
@@ -134,14 +126,10 @@ def link2():
             17: 18 if session['answer'][question_index] == 'Y' else 19,
             41: 42 if session['answer'][3] == 'Y' else 44
         }
-
-        # 조건이 있는 질문 반영
         next_question.update(conditional_routes)
 
         session['question_index'] = next_question.get(question_index, question_index)
         print(f"goto {session['question_index']}")
-
-        # 현재 응답 상태 출력 (join 사용)
         print("Answers:", ", ".join(f"{i}: {ans}" for i, ans in enumerate(session['answer'])))
         
         if session['question_index'] >= question_count:
@@ -150,7 +138,7 @@ def link2():
 
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
-    return render_template('link2_system.jsp', question=question['text'], question_number=session['question_index'])
+    return render_template('link2.jsp', question=question, question_count=question_count, current_index=session['question_index'])
     
 @app.route('/export_excel', methods=['GET'])
 def save_to_excel():
