@@ -6,178 +6,250 @@
     <title>SnowBall</title>
     <!-- CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --text-color: #333;
-            --light-bg: #f8f9fa;
-        }
-
-        body {
-            background: var(--light-bg);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        .header {
-            background: var(--primary-color);
+        .hero-section {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
             color: white;
-            padding: 2rem 0;
-            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
         }
-
-        .header-title {
+        
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("{{ url_for('static', filename='img/pattern.png')}}") repeat;
+            opacity: 0.1;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero-title {
             font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-
-        .header-subtitle {
-            font-size: 1.1rem;
+        
+        .hero-subtitle {
+            font-size: 1rem;
             opacity: 0.9;
+            margin-bottom: 0;
         }
-
-        .section-title {
-            color: var(--primary-color);
-            margin: 2rem 0;
-            font-weight: 600;
-            text-align: center;
-            font-size: 1.5rem;
-        }
-
-        .card {
+        
+        .feature-card {
             border: none;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 1.5rem;
-            transition: transform 0.2s ease;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden;
+            height: 100%;
         }
-
-        .card:hover {
-            transform: translateY(-5px);
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
         }
-
-        .card-img-top {
-            height: 200px;
+        
+        .feature-img {
+            height: 150px;
             object-fit: cover;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
-
-        .card-body {
-            padding: 1.5rem;
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            color: #3498db;
+            margin-bottom: 20px;
         }
-
-        .card-icon {
+        
+        .feature-title {
             font-size: 1.5rem;
-            color: var(--secondary-color);
-            margin-bottom: 1rem;
-        }
-
-        .card-title {
-            color: var(--primary-color);
             font-weight: 600;
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
         }
-
-        .card-description {
+        
+        .feature-description {
             color: #666;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            margin-bottom: 1rem;
+            margin-bottom: 25px;
+            line-height: 1.6;
         }
-
-        .card-link {
+        
+        .feature-link {
             display: inline-block;
-            padding: 0.5rem 1rem;
-            background: var(--secondary-color);
+            padding: 10px 25px;
+            background-color: #3498db;
             color: white;
+            border-radius: 30px;
             text-decoration: none;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            transition: background-color 0.2s ease;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
         }
-
-        .card-link:hover {
-            background: var(--primary-color);
+        
+        .feature-link:hover {
+            background-color: #2980b9;
             color: white;
         }
-
-        .container {
-            padding: 1rem;
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+            position: relative;
+            padding-bottom: 15px;
         }
-
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, #3498db, #2c3e50);
+            border-radius: 2px;
+        }
+        
+        .login-section {
+            background-color: #f8f9fa;
+            padding: 60px 0;
+            margin-top: 60px;
+        }
+        
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+        
+        .login-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        
+        .form-control {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        .btn-login {
+            background: linear-gradient(90deg, #3498db, #2c3e50);
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+            width: 100%;
+        }
+        
+        .btn-login:hover {
+            background: linear-gradient(90deg, #2980b9, #1a252f);
+        }
+        
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
         @media (max-width: 768px) {
-            .header {
-                padding: 1.5rem 0;
+            .hero-title {
+                font-size: 1.8rem;
             }
-            .header-title {
-                font-size: 1.5rem;
+            
+            .hero-subtitle {
+                font-size: 0.9rem;
             }
-            .header-subtitle {
-                font-size: 1rem;
-            }
-            .card-img-top {
-                height: 160px;
-            }
-            .card-body {
-                padding: 1rem;
+            
+            .hero-section {
+                padding: 15px 0;
             }
         }
     </style>
 </head>
 <body>
-    <div class="header">
+    <!-- 히어로 섹션 -->
+    <section class="hero-section">
         <div class="container">
-            <h1 class="header-title">SnowBall System</h1>
-            <p class="header-subtitle">내부통제 평가와 IT감사 대응을 위한 솔루션</p>
+            <div class="row align-items-center">
+                <div class="col-lg-2">
+                    <img src="{{ url_for('static', filename='img/snowball.jpg')}}" alt="SnowBall" class="img-fluid" style="max-height: 80px; width: auto;">
+                </div>
+                <div class="col-lg-10 hero-content">
+                    <h1 class="hero-title" style="font-size: 1.8rem;">SnowBall System</h1>
+                    <p class="hero-subtitle" style="font-size: 0.9rem;">내부통제 평가와 IT감사 대응을 위한 종합 솔루션</p>
+                </div>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <div class="container">
-        <h2 class="section-title">주요 기능</h2>
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card">
-                    <img src="{{ url_for('static', filename='img/rcm.jpg')}}" class="card-img-top" alt="RCM">
-                    <div class="card-body">
-                        <div class="card-icon">
-                            <i class="fas fa-clipboard-list"></i>
+    <!-- 기능 섹션 -->
+    <section id="features" class="py-4">
+        <div class="container">
+            <h2 class="section-title">주요 기능</h2>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <img src="{{ url_for('static', filename='img/rcm.jpg')}}" class="feature-img" alt="RCM">
+                        <div class="card-body p-4">
+                            <div class="feature-icon text-center">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <h5 class="feature-title text-center">RCM</h5>
+                            <p class="feature-description">신뢰성 중심 유지보수 시스템으로 장비의 안정성과 효율성을 최적화합니다.</p>
+                            <div class="text-center">
+                                <a href="/link1" class="feature-link">자세히 보기</a>
+                            </div>
                         </div>
-                        <h5 class="card-title">RCM</h5>
-                        <p class="card-description">신뢰성 중심 유지보수 시스템으로 장비의 안정성과 효율성을 최적화합니다.</p>
-                        <a href="/link1" class="card-link">자세히 보기</a>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <img src="{{ url_for('static', filename='img/interview.jpg')}}" class="card-img-top" alt="Interview">
-                    <div class="card-body">
-                        <div class="card-icon">
-                            <i class="fas fa-user-tie"></i>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <img src="{{ url_for('static', filename='img/interview.jpg')}}" class="feature-img" alt="Interview">
+                        <div class="card-body p-4">
+                            <div class="feature-icon text-center">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <h5 class="feature-title text-center">Interview</h5>
+                            <p class="feature-description">전문가와의 인터뷰를 통해 시스템의 현재 상태와 개선점을 파악합니다.</p>
+                            <div class="text-center">
+                                <a href="/link2" class="feature-link">자세히 보기</a>
+                            </div>
                         </div>
-                        <h5 class="card-title">Interview</h5>
-                        <p class="card-description">전문가와의 인터뷰를 통해 시스템의 현재 상태와 개선점을 파악합니다.</p>
-                        <a href="/link2" class="card-link">자세히 보기</a>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <img src="{{ url_for('static', filename='img/education.jpg')}}" class="card-img-top" alt="교육자료">
-                    <div class="card-body">
-                        <div class="card-icon">
-                            <i class="fas fa-book"></i>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <img src="{{ url_for('static', filename='img/education.jpg')}}" class="feature-img" alt="교육자료">
+                        <div class="card-body p-4">
+                            <div class="feature-icon text-center">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <h5 class="feature-title text-center">교육자료</h5>
+                            <p class="feature-description">시스템 운영과 관리에 필요한 교육 자료를 제공합니다.</p>
+                            <div class="text-center">
+                                <a href="/link4" class="feature-link">자세히 보기</a>
+                            </div>
                         </div>
-                        <h5 class="card-title">교육자료</h5>
-                        <p class="card-description">시스템 운영과 관리에 필요한 교육 자료를 제공합니다.</p>
-                        <a href="/link4" class="card-link">자세히 보기</a>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
