@@ -469,5 +469,30 @@ def paper_generate():
 
     return send_file(output_path, as_attachment=True)
 
+@app.route('/get_content')
+def get_content():
+    content_type = request.args.get('type')
+    
+    # param3가 필요한 타입들 정의
+    param3_types = {
+        'APD': ['APD04', 'APD05', 'APD06', 'APD08', 'APD10', 'APD11', 'APD13', 'APD14'],
+        'PC': ['PC04', 'PC05'],
+        'CO': ['CO02', 'CO03']
+    }
+    
+    # 컨텐츠 타입의 접두사 확인
+    prefix = content_type[:3] if content_type else ''
+    
+    # 해당 타입이 param3를 필요로 하는지 확인
+    needs_param3 = prefix in param3_types and content_type in param3_types[prefix]
+    
+    try:
+        if needs_param3:
+            return render_template(f'link4_{content_type}.jsp', param3=content_type)
+        return render_template(f'link4_{content_type}.jsp')
+    except Exception as e:
+        print(f"Error rendering template for {content_type}: {str(e)}")
+        return '<div style="text-align: center; padding: 20px;"><h3>준비 중입니다</h3><p>해당 기능은 현재 개발 중입니다.</p></div>'
+
 if __name__ == '__main__':
     main()

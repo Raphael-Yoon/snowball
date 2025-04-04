@@ -25,6 +25,7 @@
                     </div>
                 </div>
             </div>
+            <!-- 운영평가 카드 임시 숨김
             <div class="col">
                 <div class="card" style="width: 20rem;">
                     <a href="/link3"><img src="{{ url_for('static', filename='img/operation.jpg')}}" class="rounded" alt="..."></a>
@@ -33,6 +34,7 @@
                     </div>
                 </div>
             </div>
+            -->
         </div>
     </div>
     

@@ -3,67 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <title>SnowBall</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/common.css" rel="stylesheet">
 </head>
 <body>
     {% include 'navi.jsp' %}
-    <form class = "grid" action = "/paper_template_download" method="post">
-        <select name="param1" id="param1">
-            <option value="APD" selected>Access Program & Data</option>
-            <option value="PC">Program Change</option>
-            <option value="CO">Computer Operation</option>
-        </select>
-        <select name="param2" id="param2" onchange="updateContent()">
-            <option value="APD01">Application 권한부여 승인</option>
-            <option value="APD02">Application 권한 회수</option> 
-            <option value="APD03">Application 계정 삭제</option>
-            <option value="APD04">Application 관리자 권한 제한</option>
-            <option value="APD05">Application 권한 Monitoring</option>
-            <option value="APD06">Application 패스워드</option>
-            <option value="APD07">Data 직접변경 승인</option>
-            <option value="APD08">Data 직접변경 권한 제한</option>
-            <option value="APD09">DB 접근권한 승인</option>
-            <option value="APD10">DB 패스워드</option>
-            <option value="APD11">DB 관리자 권한 제한</option>
-            <option value="APD12">OS 접근권한 승인</option>
-            <option value="APD13">OS 패스워드</option>
-            <option value="APD14">OS 관리자 권한 제한</option>
-        </select>
-    </form>
-    <form class = "grid" action = "/paper_generate" method="post" enctype="multipart/form-data">
-        <div id="contentContainer">
-            <br><br>
-            {% include 'link4_APD01.jsp' %}
+    
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 왼쪽 사이드바 -->
+            <div class="col-md-4 col-lg-3 sidebar">
+                <div id="categoryList"></div>
+            </div>
+            
+            <!-- 오른쪽 컨텐츠 영역 -->
+            <div class="col-md-8 col-lg-9 content-area">
+                <div id="contentContainer">
+                    <div class="text-center text-muted">
+                        <h3>항목을 선택해주세요</h3>
+                        <p>왼쪽 메뉴에서 원하는 항목을 선택하시면 상세 내용이 표시됩니다.</p>
+                    </div>
+                </div>
+            </div>
         </div>
-    </form>
+    </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const categorySelect = document.getElementById("param1");
-        const nameSelect = document.getElementById("param2");
         const options = {
             APD: [
                 {value: "APD01", text: "Application 권한부여 승인"},
-                {value: "APD02", text: "Application 권한 회수"},
-                {value: "APD03", text: "Application 계정 삭제"},
+                {value: "APD02", text: "Application 부서이동자 권한 회수"},
+                {value: "APD03", text: "Application 퇴사자 접근권한 회수"},
                 {value: "APD04", text: "Application 관리자 권한 제한"},
                 {value: "APD05", text: "Application 권한 Monitoring"},
                 {value: "APD06", text: "Application 패스워드"},
                 {value: "APD07", text: "Data 직접변경 승인"},
-                {value: "APD08", text: "Data 직접변경 권한 제한"},
-                {value: "APD09", text: "DB 접근권한 승인"},
-                {value: "APD10", text: "DB 패스워드"},
-                {value: "APD11", text: "DB 관리자 권한 제한"},
-                {value: "APD12", text: "OS 접근권한 승인"},
-                {value: "APD13", text: "OS 패스워드"},
-                {value: "APD14", text: "OS 관리자 권한 제한"}
+                {value: "APD08", text: "서버(OS/DB) 접근권한 승인"},
+                {value: "APD09", text: "서버(OS/DB) 패스워드"},
+                {value: "APD10", text: "서버(OS/DB) 관리자 권한 제한"},
             ],
             PC: [
                 {value: "PC01", text: "프로그램 변경 승인"},
                 {value: "PC02", text: "프로그램 변경 사용자 테스트"},
                 {value: "PC03", text: "프로그램 이관 승인"},
-                {value: "PC04", text: "개발/운영 환경 분리"},
-                {value: "PC05", text: "이관담당자 권한 제한"},
-                {value: "PC06", text: "인프라 설정변경_DB"},
-                {value: "PC07", text: "인프라 설정변경_OS"}
+                {value: "PC04", text: "이관담당자 권한 제한"},
+                {value: "PC05", text: "개발/운영 환경 분리"},
+                {value: "PC06", text: "인프라 설정변경"}
             ],
             CO: [
                 {value: "CO01", text: "배치잡 스케줄 등록 승인"},
@@ -72,158 +58,67 @@
             ]
         };
 
-        categorySelect.addEventListener("change", function () {
-            const selectedCategory = categorySelect.value;
-            nameSelect.innerHTML = "";
+        const categoryNames = {
+            'APD': 'Access Program & Data',
+            'PC': 'Program Change',
+            'CO': 'Computer Operation'
+        };
 
-            options[selectedCategory].forEach(function (option) {
-                const optionElement = document.createElement("option");
-                optionElement.value = option.value;
-                optionElement.text = option.text;
-                nameSelect.appendChild(optionElement);
-                updateContent();
+        function initializeSidebar() {
+            const categoryList = document.getElementById('categoryList');
+            categoryList.innerHTML = '';
+
+            Object.keys(options).forEach(category => {
+                const categoryTitle = document.createElement('div');
+                categoryTitle.className = 'category-title';
+                categoryTitle.textContent = categoryNames[category];
+                categoryList.appendChild(categoryTitle);
+
+                const optionList = document.createElement('div');
+                optionList.className = 'nav flex-column';
+                
+                options[category].forEach(option => {
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.className = 'nav-link';
+                    link.dataset.value = option.value;
+                    link.textContent = option.text;
+                    
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+                        this.classList.add('active');
+                        updateContent(this.dataset.value);
+                    });
+                    
+                    optionList.appendChild(link);
+                });
+                
+                categoryList.appendChild(optionList);
             });
-        });
-
-        function updateContent() {
-            const listBox = document.getElementById("param2");
-            const selectedValue = listBox.value;
-            const contentContainer = document.getElementById("contentContainer");
-            // Clear existing content
-            contentContainer.innerHTML = ``;
-
-            if(selectedValue == "APD01") // Application 권한부여 승인
-            {
-                contentContainer.innerHTML = `
-                        <br><br>
-                        {% include 'link4_APD01.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD02") // Application 권한 회수
-            {
-                contentContainer.innerHTML = `
-                        <br><br>
-                        {% include 'link4_APD02.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD03") // Application 계정 삭제
-            {
-                contentContainer.innerHTML = `
-                        <br><br>
-                        {% include 'link4_APD03.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD04") // Application 관리자 권한 제한
-            {
-                contentContainer.innerHTML = `
-                        <input type="hidden" id="param3" name="param3" value="APD04">
-                        <br><br>
-                        {% include 'link4_APD04.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD05") // Application 권한 Monitoring
-            {
-                contentContainer.innerHTML = `
-                        <input type="hidden" id="param3" name="param3" value="APD05">
-                        <br><br>
-                        {% include 'link4_APD05.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD06") // Application 패스워드
-            {
-                contentContainer.innerHTML = `
-                        <input type="hidden" id="param3" name="param3" value="APD06">
-                        <br><br>
-                        {% include 'link4_APD06.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD07") // Data 직접변경 승인
-            {
-                contentContainer.innerHTML = `
-                        <br><br>
-                        {% include 'link4_APD07.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD08") // Data 직접변경 권한 제한
-            {
-                contentContainer.innerHTML = `
-                        <input type="hidden" id="param3" name="param3" value="APD08">
-                        <br><br>
-                        {% include 'link4_APD08.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD09") // DB 접근권한 승인
-            {
-                contentContainer.innerHTML = `
-                        <br><br>
-                        {% include 'link4_APD09.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD11") // DB 관리자 권한 제한
-            {
-                contentContainer.innerHTML = `
-                        <input type="hidden" id="param3" name="param3" value="APD11">
-                        <br><br>
-                        {% include 'link4_APD11.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD12") // OS 접근권한 승인
-            {
-                contentContainer.innerHTML = `
-                        <br><br>
-                        {% include 'link4_APD12.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "APD14") // OS 관리자 권한 제한
-            {
-                contentContainer.innerHTML = `
-                        <input type="hidden" id="param3" name="param3" value="APD14">
-                        <br><br>
-                        {% include 'link4_APD14.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "PC01") // 프로그램 변경 승인
-            {
-                contentContainer.innerHTML = `
-                        <br><br>
-                        {% include 'link4_PC01.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "PC02") // 프로그램 변경 사용자 테스트
-            {
-                contentContainer.innerHTML = `
-                        <br><br>
-                        {% include 'link4_PC02.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "PC03") // 프로그램 이관 승인
-            {
-                contentContainer.innerHTML = `
-                        <br><br>
-                        {% include 'link4_PC03.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "PC04") // 개발/운영 환경 분리
-            {
-                contentContainer.innerHTML = `
-                        <input type="hidden" id="param3" name="param3" value="PC04">
-                        <br><br>
-                        {% include 'link4_PC04.jsp' %}
-                        `;
-            }
-            else if(selectedValue == "PC05") // 이관담당자 권한 제한
-            {
-                contentContainer.innerHTML = `
-                        <input type="hidden" id="param3" name="param3" value="PC05">
-                        <br><br>
-                        {% include 'link4_PC05.jsp' %}
-                        `;
-            }
-            else{
-                contentContainer.innerHTML = ``;
-            }
         }
-    </script>
 
+        function updateContent(selectedValue) {
+            const contentContainer = document.getElementById('contentContainer');
+            contentContainer.innerHTML = '';
+
+            fetch(`/get_content?type=${selectedValue}`)
+                .then(response => response.text())
+                .then(html => {
+                    contentContainer.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    contentContainer.innerHTML = `
+                        <div class="alert alert-danger" role="alert">
+                            <h4 class="alert-heading">오류가 발생했습니다</h4>
+                            <p>페이지를 불러오는 중 문제가 발생했습니다.</p>
+                        </div>
+                    `;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeSidebar);
+    </script>
 </body>
 </html>
