@@ -42,3 +42,54 @@ button:hover{
     height:auto;
     max-width:400px;
 }
+
+.category-title {
+    padding: 10px 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    border-radius: 4px;
+}
+
+.category-title:hover {
+    background-color: #e9ecef;
+}
+
+.category-title i {
+    transition: transform 0.3s ease;
+}
+
+.category-title.collapsed i {
+    transform: rotate(-90deg);
+}
+
+.option-list {
+    padding-left: 15px;
+    margin-bottom: 10px;
+    display: none;
+}
+
+.option-list.show {
+    display: block;
+}
+
+.nav-link {
+    padding: 8px 15px;
+    color: #495057;
+    text-decoration: none;
+    display: block;
+    border-radius: 4px;
+}
+
+.nav-link:hover {
+    background-color: #e9ecef;
+}
+
+.nav-link.active {
+    background-color: #0d6efd;
+    color: white;
+}

@@ -5,6 +5,7 @@
     <title>SnowBall</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/common.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
 </head>
 <body>
     {% include 'navi.jsp' %}
@@ -71,11 +72,13 @@
             Object.keys(options).forEach(category => {
                 const categoryTitle = document.createElement('div');
                 categoryTitle.className = 'category-title';
-                categoryTitle.textContent = categoryNames[category];
-                categoryList.appendChild(categoryTitle);
-
+                categoryTitle.innerHTML = `
+                    ${categoryNames[category]}
+                    <i class="fas fa-chevron-down"></i>
+                `;
+                
                 const optionList = document.createElement('div');
-                optionList.className = 'nav flex-column';
+                optionList.className = 'option-list';
                 
                 options[category].forEach(option => {
                     const link = document.createElement('a');
@@ -94,6 +97,12 @@
                     optionList.appendChild(link);
                 });
                 
+                categoryTitle.addEventListener('click', function() {
+                    this.classList.toggle('collapsed');
+                    optionList.classList.toggle('show');
+                });
+                
+                categoryList.appendChild(categoryTitle);
                 categoryList.appendChild(optionList);
             });
         }

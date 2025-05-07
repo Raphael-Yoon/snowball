@@ -28,11 +28,11 @@
             <h1 class="section-title">
                 {% if 0 <= current_index <= 10 %}
                     <i class="fas fa-server"></i> 공통사항
-                {% elif 11 <= current_index <= 30 %}
+                {% elif 11 <= current_index <= 27 %}
                     <i class="fas fa-lock"></i> APD(Access to Program & Data)
-                {% elif 31 <= current_index <= 36 %}
+                {% elif 28 <= current_index <= 33 %}
                     <i class="fas fa-code"></i> PC(Program Change)
-                {% elif 37 <= current_index <= 43 %}
+                {% elif 33 <= current_index <= 40 %}
                     <i class="fas fa-cogs"></i> CO(Computer Operation)
                 {% else %}
                     <i class="fas fa-question-circle"></i> 기타
@@ -70,17 +70,15 @@
                                 <span class="form-check-label">예</span>
                             </label>
                             <input type="text" class="form-control mt-2" name="a{{ current_index }}_1" 
-                                   placeholder="{% if current_index == 1 %}시스템 종류(SAP ERP, Oracle ERP, 더존ERP 등)
-                                             {% elif current_index == 7 %}Hiware, CyberArk 등
-                                             {% elif current_index == 9 %}DB Safer, DBi 등
-                                             {% elif current_index == 10 %}Waggle, JobScheduler 등{% endif %}" 
-                                   onclick="selectYes({{ current_index }})">
+                                    placeholder="{% if current_index == 1 %}시스템 종류(SAP ERP, Oracle ERP, 더존ERP 등)
+                                                 {% elif current_index in [7, 9, 10] %}제품명을 입력하세요{% endif %}"
+                                    onclick="selectYes({{ current_index }})">
                             <label class="form-check mt-2">
                                 <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N">
                                 <span class="form-check-label">아니요</span>
                             </label>
                         
-                        {% elif current_index in [2, 3, 5, 11, 12, 13, 15, 17, 19, 21, 22, 23, 24, 27, 28, 31, 32, 33, 34, 36, 37, 38] %}
+                        {% elif current_index in [2, 3, 5, 11, 12, 16, 18, 20, 24, 28, 29, 30, 31, 33, 34] %}
                             <label class="form-check">
                                 <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required>
                                 <span class="form-check-label">예</span>
@@ -90,10 +88,26 @@
                                 <span class="form-check-label">아니요</span>
                             </label>
                         
-                        {% elif current_index in [14, 16, 18, 20, 25, 26, 29, 30, 35, 39, 40, 41, 42, 43] %}
+                        {% elif current_index in [13, 14, 15, 19, 21, 25, 35] %}
+                            <label class="form-check">
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required 
+                                       onchange="toggleTextarea({{ current_index }})">
+                                <span class="form-check-label">예</span>
+                            </label>
+                            <textarea class="form-control mt-2" name="a{{ current_index }}_1" id="textarea_{{ current_index }}" 
+                                    placeholder="관련 절차를 입력하세요." rows="5" disabled
+                                    onclick="selectYesAndEnableTextarea({{ current_index }})"
+                                    style="cursor: pointer;"></textarea>
+                            <label class="form-check">
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N"
+                                       onchange="toggleTextarea({{ current_index }})">
+                                <span class="form-check-label">아니요</span>
+                            </label>
+                        
+                        {% elif current_index in [17, 22, 23, 26, 27, 32, 36, 37, 38, 39, 40] %}
                             <textarea class="form-control" name="a{{ current_index }}" 
-                                    placeholder="{% if current_index in [20, 26, 30] %}최소자리, 복잡성, 변경주기 등
-                                              {% elif current_index in [25, 29, 35, 39] %}권한 보유 인원의 부서, 직급, 직책 등
+                                    placeholder="{% if current_index in [17, 23, 27] %}최소자리, 복잡성, 변경주기 등
+                                              {% elif current_index in [22, 25, 29, 32, 39] %}권한 보유 인원의 부서, 직급, 직무 등
                                               {% else %}관련 절차를 입력하세요.{% endif %}" 
                                     rows="5"></textarea>
                         
@@ -112,7 +126,7 @@
             </div>
 
             <!-- 도움말 -->
-            {% if current_index in [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 21, 25, 26, 29, 30, 31, 35, 36, 39, 40, 42, 43] %}
+            {% if current_index in [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 21, 25, 26, 29, 30, 31, 35, 36, 39, 40, 42, 43] %}
                 <div class="help-text">
                     <i class="fas fa-info-circle me-2"></i>
                     {% if current_index == 4 %}
@@ -145,32 +159,42 @@
                     {% elif current_index == 15 %}
                         예1) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 접근권한을 차단함<br>
                         예2) 인사팀에서 인사명령을 IT팀으로 전달하면 IT팀에서 해당 인원의 접근권한을 차단함
-                    {% elif current_index == 16 %}
+                    {% elif current_index == 17 %}
                         예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등
-                    {% elif current_index == 21 %}
+                    {% elif current_index == 18 %}
                         시스템의 기능을 이용하여 데이터를 변경한 것이 아닌 관리자 등이 DB에 접속하여 쿼리를 통해 데이터를 변경한 건이 대상이며 해당 변경건만 추출이 가능해야 합니다.
+                    {% elif current_index == 19 %}
+                        예) 데이터 변경 필요시 담당자는 ITSM을 통해 요청서를 작성하고 데이터 책임자(Data Owner)에게 승인을 득한 후 쿼리를 통해 데이터를 변경함
+                    {% elif current_index == 21 %}
+                        예) DB 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함
+                    {% elif current_index == 22 %}
+                        예) 인프라관리팀 김xx 과장, DBA
+                    {% elif current_index == 23 %}
+                        예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등
                     {% elif current_index == 25 %}
-                        부서, 성명, 직급, 직책, 직무 등
+                        예) OS 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함
                     {% elif current_index == 26 %}
+                        예) 인프라관리팀 이xx 책임, 보안관리자
+                    {% elif current_index == 27 %}
                         예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등
-                    {% elif current_index == 29 %}
-                        부서, 성명, 직급, 직책, 직무 등
-                    {% elif current_index == 30 %}
-                        예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등
-                    {% elif current_index == 31 %}
+                    {% elif current_index == 28 %}
                         변경에 대한 History가 시스템에 의해 기록되어야 합니다. A화면을 1, 3, 5월에 요청서를 받아 변경했다면 각각의 이관(배포)이력이 기록되어야 하며 자체기능, 배포툴, 형상관리툴 등을 사용할 수 있습니다.
+                    {% elif current_index == 32 %}
+                        예) 인프라관리팀 박xx 수석, 서버관리자
+                    {% elif current_index == 33 %}
+                        JSP, ASP 등으로 개발된 웹시스템의 경우 localhost 또는 127.0.0.1을 개발서버로도 볼 수 있습니다.
+                    {% elif current_index == 34 %}
+                        개발되어 등록된 배치 프로그램(Background Job)을 스케줄로 등록 또는 변경한 경우로 한정합니다. 배치 프로그램을 개발하여 운영서버에 반영하는 것은 이 경우에 포함되지 않습니다.
                     {% elif current_index == 35 %}
-                        부서, 성명, 직급, 직책, 직무 등
+                        예) 배치 스케줄이 필요한 경우 ITSM을 통해 요청서를 작성하고 승인권자의 승인을 득한 후 적절한 담당자에 의해 스케줄이 등록된다
                     {% elif current_index == 36 %}
-                        웹시스템의 경우 localhost 또는 127.0.0.1을 개발서버로도 볼 수 있습니다.
-                    {% elif current_index == 39 %}
-                        부서, 성명, 직급, 직책, 직무 등
-                    {% elif current_index == 40 %}
+                        예) 시스템 운영팀 최xx 과장, 시스템운영자
+                    {% elif current_index == 37 %}
                         예1) 매일 아침 배치수행결과를 확인하며 문서화하며 오류 발생시 원인파악 및 조치현황 등을 함께 기록함<br>
                         예2) 오류 발생시에만 점검결과를 작성하며 오류 발생 기록은 삭제하지 않고 유지됨
-                    {% elif current_index == 42 %}
+                    {% elif current_index == 39 %}
                         예) 백업은 시스템에 의해 매일/매주/매월 자동으로 수행되며 월단위로 모니터링하여 정상완료 여부를 문서로 작성함
-                    {% elif current_index == 43 %}
+                    {% elif current_index == 40 %}
                         예) 서버실 출입 필요시 사전에 승인권자에게 승인을 득하며 방명록을 작성하고 담당자 동행하에 함께 출입함
                     {% endif %}
                 </div>
@@ -178,6 +202,12 @@
 
             <!-- 제출 버튼 -->
             <div class="text-center mt-4">
+                {% if current_index > 0 %}
+                <a href="/link2/prev" class="btn btn-secondary me-2">
+                    <i class="fas fa-arrow-left"></i>
+                    이전
+                </a>
+                {% endif %}
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-arrow-right"></i>
                     다음
@@ -190,6 +220,61 @@
     <script>
         function selectYes(questionNumber) {
             document.getElementById("yes_" + questionNumber).checked = true;
+        }
+        
+        function selectYesAndEnableTextarea(questionNumber) {
+            console.log('selectYesAndEnableTextarea called for question:', questionNumber);
+            
+            // '예' 라디오 버튼 찾기
+            const yesRadio = document.querySelector(`input[name="a${questionNumber}"][value="Y"]`);
+            if (!yesRadio) {
+                console.error('Yes radio button not found for question:', questionNumber);
+                return;
+            }
+            
+            // textarea 찾기
+            const textarea = document.getElementById(`textarea_${questionNumber}`);
+            if (!textarea) {
+                console.error('Textarea not found for question:', questionNumber);
+                return;
+            }
+            
+            // '예' 선택
+            yesRadio.checked = true;
+            console.log('Yes radio button checked');
+            
+            // textarea 활성화
+            textarea.disabled = false;
+            textarea.required = true;
+            console.log('Textarea enabled and required');
+            
+            // change 이벤트 발생
+            const event = new Event('change', { bubbles: true });
+            yesRadio.dispatchEvent(event);
+        }
+        
+        function toggleTextarea(questionNumber) {
+            console.log('toggleTextarea called for question:', questionNumber);
+            
+            const textarea = document.getElementById(`textarea_${questionNumber}`);
+            const yesRadio = document.querySelector(`input[name="a${questionNumber}"][value="Y"]`);
+            const noRadio = document.querySelector(`input[name="a${questionNumber}"][value="N"]`);
+            
+            if (!textarea || !yesRadio || !noRadio) {
+                console.error('Required elements not found for question:', questionNumber);
+                return;
+            }
+            
+            if (yesRadio.checked) {
+                textarea.disabled = false;
+                textarea.required = true;
+                console.log('Textarea enabled and required');
+            } else if (noRadio.checked) {
+                textarea.disabled = true;
+                textarea.value = '';
+                textarea.required = false;
+                console.log('Textarea disabled and cleared');
+            }
         }
         
         // 라디오 버튼 라벨 클릭 이벤트 처리
