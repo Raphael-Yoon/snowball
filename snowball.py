@@ -15,6 +15,9 @@ import snowball_db
 app = Flask(__name__)
 app.secret_key = '150606'
 
+# 시작할 질문 번호 설정 (1부터 시작)
+START_QUESTION = 13  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
+
 @app.route('/')
 def index():
     result = snowball_db.get_user_list()
@@ -55,39 +58,46 @@ s_questions = [
     {"index": 11, "text": "사용자 권한부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
     {"index": 12, "text": "사용자 권한회수 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
     {"index": 13, "text": "사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
-    {"index": 14, "text": "권한이 부여되는 절차를 기술해 주세요.", "category": "APD"},
-    {"index": 15, "text": "부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?", "category": "APD"},
-    {"index": 16, "text": "부서이동 등 기존권한의 회수가 필요한 경우 수행되는 절차를 기술해 주세요.", "category": "APD"},
-    {"index": 17, "text": "퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?", "category": "APD"},
-    {"index": 18, "text": "퇴사자 발생시 접근권한을 차단하는(계정 삭제 등) 절차를 기술해 주세요.", "category": "APD"},
-    {"index": 19, "text": "전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?", "category": "APD"},
-    {"index": 20, "text": "패스워드 설정사항을 기술해 주세요.", "category": "APD"},
-    {"index": 21, "text": "데이터 변경 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
-    {"index": 22, "text": "데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
-    {"index": 23, "text": "DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
-    {"index": 24, "text": "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
-    {"index": 25, "text": "DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD"},
-    {"index": 26, "text": "DB 패스워드 설정사항을 기술해 주세요.", "category": "APD"},
-    {"index": 27, "text": "OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
-    {"index": 28, "text": "OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
-    {"index": 29, "text": "OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD"},
-    {"index": 30, "text": "OS 패스워드 설정사항을 기술해 주세요.", "category": "APD"},
-    {"index": 31, "text": "프로그램 변경 이력이 시스템에 기록되고 있습니까?", "category": "PC"},
-    {"index": 32, "text": "프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?", "category": "PC"},
-    {"index": 33, "text": "프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?", "category": "PC"},
-    {"index": 34, "text": "프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "PC"},
-    {"index": 35, "text": "이관(배포)권한을 보유한 인원에 대해 기술해 주세요.", "category": "PC"},
-    {"index": 36, "text": "운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?", "category": "PC"},
-    {"index": 37, "text": "배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?", "category": "CO"},
-    {"index": 38, "text": "배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "CO"},
-    {"index": 39, "text": "배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.", "category": "CO"},
-    {"index": 40, "text": "배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.", "category": "CO"},
-    {"index": 41, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO"},
-    {"index": 42, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.", "category": "CO"},
-    {"index": 43, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO"}
+    {"index": 14, "text": "부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?", "category": "APD"},
+    {"index": 15, "text": "퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?", "category": "APD"},
+    {"index": 16, "text": "전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?", "category": "APD"},
+    {"index": 17, "text": "패스워드 설정사항을 기술해 주세요.", "category": "APD"},
+    {"index": 18, "text": "데이터 변경 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
+    {"index": 19, "text": "데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
+    {"index": 20, "text": "DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
+    {"index": 21, "text": "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
+    {"index": 22, "text": "DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD"},
+    {"index": 23, "text": "DB 패스워드 설정사항을 기술해 주세요.", "category": "APD"},
+    {"index": 24, "text": "OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
+    {"index": 25, "text": "OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
+    {"index": 26, "text": "OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD"},
+    {"index": 27, "text": "OS 패스워드 설정사항을 기술해 주세요.", "category": "APD"},
+    {"index": 28, "text": "프로그램 변경 이력이 시스템에 기록되고 있습니까?", "category": "PC"},
+    {"index": 29, "text": "프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?", "category": "PC"},
+    {"index": 30, "text": "프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?", "category": "PC"},
+    {"index": 31, "text": "프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "PC"},
+    {"index": 32, "text": "이관(배포)권한을 보유한 인원에 대해 기술해 주세요.", "category": "PC"},
+    {"index": 33, "text": "운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?", "category": "PC"},
+    {"index": 34, "text": "배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?", "category": "CO"},
+    {"index": 35, "text": "배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "CO"},
+    {"index": 36, "text": "배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.", "category": "CO"},
+    {"index": 37, "text": "배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.", "category": "CO"},
+    {"index": 38, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO"},
+    {"index": 39, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.", "category": "CO"},
+    {"index": 40, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO"}
 ]
 
 question_count = len(s_questions)
+
+@app.route('/link2/prev')
+def link2_prev():
+    print("Previous Question")
+    if 'question_index' in session:
+        # 이전 질문으로 이동 (최소 0)
+        session['question_index'] = max(0, session['question_index'] - 1)
+    return render_template('link2.jsp', question=s_questions[session['question_index']], 
+                         question_count=question_count, 
+                         current_index=session['question_index'])
 
 @app.route('/link2', methods=['GET', 'POST'])
 def link2():
@@ -96,9 +106,16 @@ def link2():
     if request.method == 'GET':
         # 세션 초기화
         session.clear()
-        session['question_index'] = 0
+        # START_QUESTION이 유효한 범위인지 확인
+        if 1 <= START_QUESTION <= question_count:
+            session['question_index'] = START_QUESTION - 1  # 1-based를 0-based로 변환
+        else:
+            session['question_index'] = 0
+            
         session['answer'] = [''] * question_count  # 필요한 만큼 동적으로 조절 가능
-        return render_template('link2.jsp', question=s_questions[0], question_count=question_count, current_index=0)
+        return render_template('link2.jsp', question=s_questions[session['question_index']], 
+                             question_count=question_count, 
+                             current_index=session['question_index'])
 
     question_index = session['question_index']
 
@@ -121,9 +138,6 @@ def link2():
         conditional_routes = {
             1: 2 if session['answer'][question_index] == 'Y' else 3,
             3: 4 if session['answer'][question_index] == 'Y' else 6,
-            13: 14 if session['answer'][question_index] == 'Y' else 15,
-            15: 16 if session['answer'][question_index] == 'Y' else 17,
-            17: 18 if session['answer'][question_index] == 'Y' else 19,
             41: 42 if session['answer'][3] == 'Y' else 44
         }
         next_question.update(conditional_routes)
@@ -266,67 +280,67 @@ def get_text_itgc(answers, control_number):
         
     elif control_number == 'PC01':
         text.append("PC01 - 프로그램 변경 승인")
-        text.append("프로그램 변경 이력이 시스템에 기록되고 있습니다." if answers[31] == 'Y' else "프로그램 변경 이력이 시스템에 기록되지 않습니다.")
-        if answers[32] == 'Y':
+        text.append("프로그램 변경 이력이 시스템에 기록되고 있습니다." if answers[28] == 'Y' else "프로그램 변경 이력이 시스템에 기록되지 않습니다.")
+        if answers[29] == 'Y':
             text.append("프로그램 변경 시 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니다.")
         else:
             text.append("프로그램 변경 시 승인 절차가 없습니다.")
             
     elif control_number == 'PC02':
         text.append("PC02 - 프로그램 변경 사용자 테스트")
-        if answers[33] == 'Y':
+        if answers[30] == 'Y':
             text.append("프로그램 변경 시 사용자 테스트를 수행하고 결과를 문서화하는 절차가 있습니다.")
         else:
             text.append("프로그램 변경 시 사용자 테스트 수행 및 문서화 절차가 없습니다.")
             
     elif control_number == 'PC03':
         text.append("PC03 - 프로그램 변경 이관 승인")
-        if answers[34] == 'Y':
+        if answers[31] == 'Y':
             text.append("프로그램 변경 완료 후 이관(배포)을 위해 부서장의 승인을 득하는 절차가 있습니다.")
         else:
             text.append("프로그램 변경 완료 후 별도의 승인 절차가 없습니다.")
             
     elif control_number == 'PC04':
         text.append("PC04 - 이관(배포) 권한 제한")
-        if answers[35]:
-            text.append(f"이관(배포) 권한을 보유한 인원: {answers[35]}")
+        if answers[32]:
+            text.append(f"이관(배포) 권한을 보유한 인원: {answers[32]}")
         else:
             text.append("이관(배포) 권한 보유 인원에 대한 정보가 제공되지 않았습니다.")
             
     elif control_number == 'PC05':
         text.append("PC05 - 개발/운영 환경 분리")
-        if answers[36] == 'Y':
+        if answers[33] == 'Y':
             text.append("운영 서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니다.")
         else:
             text.append("운영 서버 외 추가적인 개발 또는 테스트 서버가 없습니다.")
             
     elif control_number == 'CO01':
         text.append("CO01 - 배치 스케줄 등록/변경 승인")
-        text.append("배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니다." if answers[37] == 'Y' else "배치 스케줄 등록/변경 이력이 시스템에 기록되지 않습니다.")
-        if answers[38] == 'Y':
+        text.append("배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니다." if answers[34] == 'Y' else "배치 스케줄 등록/변경 이력이 시스템에 기록되지 않습니다.")
+        if answers[35] == 'Y':
             text.append("배치 스케줄 등록/변경 시 요청서 작성 및 승인 절차가 있습니다.")
         else:
             text.append("배치 스케줄 등록/변경 시 승인 절차가 없습니다.")
             
     elif control_number == 'CO02':
         text.append("CO02 - 배치 스케줄 등록/변경 권한 제한")
-        text.append(f"배치 스케줄 등록/변경 담당자: {answers[39]}" if answers[39] else "배치 스케줄 등록/변경 담당자 정보가 제공되지 않았습니다.")
+        text.append(f"배치 스케줄 등록/변경 담당자: {answers[36]}" if answers[36] else "배치 스케줄 등록/변경 담당자 정보가 제공되지 않았습니다.")
         
     elif control_number == 'CO03':
         text.append("CO03 - 배치 실행 모니터링")
-        text.append(f"배치 실행 오류 모니터링: {answers[40]}" if answers[40] else "배치 실행 오류 모니터링 정보가 제공되지 않았습니다.")
+        text.append(f"배치 실행 오류 모니터링: {answers[37]}" if answers[37] else "배치 실행 오류 모니터링 정보가 제공되지 않았습니다.")
         
     elif control_number == 'CO04':
         text.append("CO04 - 장애 대응 절차")
-        text.append(f"장애 발생시 대응 절차: {answers[41]}" if answers[41] else "장애 대응 절차 정보가 제공되지 않았습니다.")
+        text.append(f"장애 발생시 대응 절차: {answers[38]}" if answers[38] else "장애 대응 절차 정보가 제공되지 않았습니다.")
         
     elif control_number == 'CO05':
         text.append("CO05 - 백업 및 모니터링")
-        text.append(f"백업 수행 및 모니터링: {answers[42]}" if answers[42] else "백업 및 모니터링 정보가 제공되지 않았습니다.")
+        text.append(f"백업 수행 및 모니터링: {answers[39]}" if answers[39] else "백업 및 모니터링 정보가 제공되지 않았습니다.")
         
     elif control_number == 'CO06':
         text.append("CO06 - 서버실 출입 절차")
-        text.append(f"서버실 출입 절차: {answers[43]}" if answers[43] else "서버실 출입 절차 정보가 제공되지 않았습니다.")
+        text.append(f"서버실 출입 절차: {answers[40]}" if answers[40] else "서버실 출입 절차 정보가 제공되지 않았습니다.")
         
     else:
         text.append(f"Unknown control number: {control_number}")
