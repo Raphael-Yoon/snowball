@@ -16,7 +16,7 @@ app = Flask(__name__)
 app.secret_key = '150606'
 
 # 시작할 질문 번호 설정 (1부터 시작)
-START_QUESTION = 13  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
+START_QUESTION = 0  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
 
 @app.route('/')
 def index():
@@ -111,8 +111,8 @@ def link2():
             session['question_index'] = START_QUESTION - 1  # 1-based를 0-based로 변환
         else:
             session['question_index'] = 0
-            
         session['answer'] = [''] * question_count  # 필요한 만큼 동적으로 조절 가능
+        session['textarea_answer'] = [''] * question_count  # textarea 값 저장용
         return render_template('link2.jsp', question=s_questions[session['question_index']], 
                              question_count=question_count, 
                              current_index=session['question_index'])
@@ -122,6 +122,7 @@ def link2():
     if request.method == 'POST':
         form_data = request.form
         session['answer'][question_index] = form_data.get(f"a{question_index}", '')
+        session['textarea_answer'][question_index] = form_data.get(f"a{question_index}_1", '')
         if form_data.get('a1_1'):
             session['System'] = form_data.get('a1_1')
         if form_data.get('a4_1'):
@@ -145,7 +146,9 @@ def link2():
         session['question_index'] = next_question.get(question_index, question_index)
         print(f"goto {session['question_index']}")
         print("Answers:", ", ".join(f"{i}: {ans}" for i, ans in enumerate(session['answer'])))
-        
+        print(f"입력받은 값(a{question_index}): {session['answer'][question_index]}")
+        print(f"textarea 값(a{question_index}_1): {session['textarea_answer'][question_index]}")
+
         if session['question_index'] >= question_count:
             print('excel download')
             return save_to_excel()
@@ -157,48 +160,50 @@ def link2():
 @app.route('/export_excel', methods=['GET'])
 def save_to_excel():
     answers = session.get('answer', [])
+    textarea_answers = session.get('textarea_answer', [])
     system_info = [session.get(key, '') for key in ['System', 'Cloud', 'OS_Tool', 'DB_Tool', 'Batch_Tool']]
     system_info = [info if info else '' for info in system_info]  # NaN 방지
     today = datetime.today().strftime('%Y%m%d')
     file_name = f"{answers[0]}_{today}.xlsx" if answers else f"responses_{today}.xlsx"
     
-    df = pd.DataFrame({'Question': [q['text'] for q in s_questions], 'Answer': answers}).fillna('')
-    df.loc[[1, 3, 6, 7, 8], 'Extra Info'] = system_info
-    df = df.fillna('')  # NaN 방지
+    df = pd.DataFrame({
+        'Question': [q['text'] for q in s_questions],
+        'Answer': answers,
+        'Textarea': textarea_answers
+    }).fillna('')
     file_path = os.path.join("static", file_name)
 
     # ExcelWriter 블록 내부에서 Understanding 시트도 작성하도록 변경**
     with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
         # Responses 시트 작성
-        df = pd.DataFrame({'Question': [q['text'] for q in s_questions], 'Answer': answers}).fillna('')
         df.to_excel(writer, sheet_name='Responses', index=False)
         worksheet = writer.sheets['Responses']
         worksheet.set_column('A:A', max(df['Question'].apply(len)) + 2)
 
-        # 시트 생성 함수 호출
-        create_itgc_sheet(writer, 'APD01', get_text_itgc(answers, 'APD01')) # 사용자 권한 승인
-        create_itgc_sheet(writer, 'APD02', get_text_itgc(answers, 'APD02')) # 부서이동자 권한 회수
-        create_itgc_sheet(writer, 'APD03', get_text_itgc(answers, 'APD03')) # 퇴사자 접근권한 회수
-        create_itgc_sheet(writer, 'APD04', get_text_itgc(answers, 'APD04')) # 사용자 권한 Monitoring
-        create_itgc_sheet(writer, 'APD05', get_text_itgc(answers, 'APD05')) # Application 패스워드
-        create_itgc_sheet(writer, 'APD06', get_text_itgc(answers, 'APD06')) # 데이터 직접 변경
-        create_itgc_sheet(writer, 'APD07', get_text_itgc(answers, 'APD07')) # DB 접근권한 승인
-        create_itgc_sheet(writer, 'APD08', get_text_itgc(answers, 'APD08')) # DB 관리자 권한 제한
-        create_itgc_sheet(writer, 'APD09', get_text_itgc(answers, 'APD09')) # DB 패스워드
-        create_itgc_sheet(writer, 'APD10', get_text_itgc(answers, 'APD10')) # OS 접근권한 승인
-        create_itgc_sheet(writer, 'APD11', get_text_itgc(answers, 'APD11')) # OS 관리자 권한 제한
-        create_itgc_sheet(writer, 'APD12', get_text_itgc(answers, 'APD12')) # OS 패스워드
-        create_itgc_sheet(writer, 'PC01', get_text_itgc(answers, 'PC01'))  # 프로그램 변경 승인
-        create_itgc_sheet(writer, 'PC02', get_text_itgc(answers, 'PC02'))  # 프로그램 변경 사용자 테스트
-        create_itgc_sheet(writer, 'PC03', get_text_itgc(answers, 'PC03'))  # 프로그램 변경 이관 승인
-        create_itgc_sheet(writer, 'PC04', get_text_itgc(answers, 'PC04'))  # 이관(배포) 권한 제한
-        create_itgc_sheet(writer, 'PC05', get_text_itgc(answers, 'PC05'))  # 개발/운영 환경 분리
-        create_itgc_sheet(writer, 'CO01', get_text_itgc(answers, 'CO01'))  # 배치 스케줄 등록/변경 승인
-        create_itgc_sheet(writer, 'CO02', get_text_itgc(answers, 'CO02'))  # 배치 스케줄 등록/변경 권한 제한
-        create_itgc_sheet(writer, 'CO03', get_text_itgc(answers, 'CO03'))  # 배치 실행 모니터링
-        create_itgc_sheet(writer, 'CO04', get_text_itgc(answers, 'CO04'))  # 장애 대응 절차
-        create_itgc_sheet(writer, 'CO05', get_text_itgc(answers, 'CO05'))  # 백업 및 모니터링
-        create_itgc_sheet(writer, 'CO06', get_text_itgc(answers, 'CO06'))  # 서버실 출입 절차
+        # 각 통제별 시트 생성
+        create_itgc_sheet(writer, 'APD01', get_text_itgc(answers, 'APD01', textarea_answers)) # 사용자 권한 승인
+        create_itgc_sheet(writer, 'APD02', get_text_itgc(answers, 'APD02', textarea_answers)) # 부서이동자 권한 회수
+        create_itgc_sheet(writer, 'APD03', get_text_itgc(answers, 'APD03', textarea_answers)) # 퇴사자 접근권한 회수
+        create_itgc_sheet(writer, 'APD04', get_text_itgc(answers, 'APD04', textarea_answers)) # 사용자 권한 Monitoring
+        create_itgc_sheet(writer, 'APD05', get_text_itgc(answers, 'APD05', textarea_answers)) # Application 패스워드
+        create_itgc_sheet(writer, 'APD06', get_text_itgc(answers, 'APD06', textarea_answers)) # 데이터 직접 변경
+        create_itgc_sheet(writer, 'APD07', get_text_itgc(answers, 'APD07', textarea_answers)) # DB 접근권한 승인
+        create_itgc_sheet(writer, 'APD08', get_text_itgc(answers, 'APD08', textarea_answers)) # DB 관리자 권한 제한
+        create_itgc_sheet(writer, 'APD09', get_text_itgc(answers, 'APD09', textarea_answers)) # DB 패스워드
+        create_itgc_sheet(writer, 'APD10', get_text_itgc(answers, 'APD10', textarea_answers)) # OS 접근권한 승인
+        create_itgc_sheet(writer, 'APD11', get_text_itgc(answers, 'APD11', textarea_answers)) # OS 관리자 권한 제한
+        create_itgc_sheet(writer, 'APD12', get_text_itgc(answers, 'APD12', textarea_answers)) # OS 패스워드
+        create_itgc_sheet(writer, 'PC01', get_text_itgc(answers, 'PC01', textarea_answers))  # 프로그램 변경 승인
+        create_itgc_sheet(writer, 'PC02', get_text_itgc(answers, 'PC02', textarea_answers))  # 프로그램 변경 사용자 테스트
+        create_itgc_sheet(writer, 'PC03', get_text_itgc(answers, 'PC03', textarea_answers))  # 프로그램 변경 이관 승인
+        create_itgc_sheet(writer, 'PC04', get_text_itgc(answers, 'PC04', textarea_answers))  # 이관(배포) 권한 제한
+        create_itgc_sheet(writer, 'PC05', get_text_itgc(answers, 'PC05', textarea_answers))  # 개발/운영 환경 분리
+        create_itgc_sheet(writer, 'CO01', get_text_itgc(answers, 'CO01', textarea_answers))  # 배치 스케줄 등록/변경 승인
+        create_itgc_sheet(writer, 'CO02', get_text_itgc(answers, 'CO02', textarea_answers))  # 배치 스케줄 등록/변경 권한 제한
+        create_itgc_sheet(writer, 'CO03', get_text_itgc(answers, 'CO03', textarea_answers))  # 배치 실행 모니터링
+        create_itgc_sheet(writer, 'CO04', get_text_itgc(answers, 'CO04', textarea_answers))  # 장애 대응 절차
+        create_itgc_sheet(writer, 'CO05', get_text_itgc(answers, 'CO05', textarea_answers))  # 백업 및 모니터링
+        create_itgc_sheet(writer, 'CO06', get_text_itgc(answers, 'CO06', textarea_answers))  # 서버실 출입 절차
 
     return send_file(file_path, as_attachment=True)
     
@@ -206,15 +211,17 @@ def create_itgc_sheet(writer, sheet_name, text_data):
     df = pd.DataFrame({'Interview 내용': text_data})
     df.to_excel(writer, sheet_name=sheet_name, index=False)
 
-def get_text_itgc(answers, control_number):
+def get_text_itgc(answers, control_number, textarea_answers=None):
     text = []
+    if textarea_answers is None:
+        textarea_answers = [''] * len(answers)
     
     if control_number == 'APD01':
         text.append("APD01 - 사용자 신규 권한 승인")
         text.append("사용자 권한 부여 이력이 시스템에 기록되고 있습니다." if answers[11] == 'Y' else "사용자 권한 부여 이력이 시스템에 기록되지 않습니다.")
         if answers[13] == 'Y':
             text.append("새로운 권한 요청 시, 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니다.")
-            text.append(f"권한이 부여되는 절차: {answers[14]}" if answers[14] else "권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다.")
+            text.append(f"권한이 부여되는 절차: {textarea_answers[13]}" if textarea_answers[13] else "권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다.")
         else:
             text.append("새로운 권한 요청 시 승인 절차가 없습니다.")
             
@@ -283,6 +290,7 @@ def get_text_itgc(answers, control_number):
         text.append("프로그램 변경 이력이 시스템에 기록되고 있습니다." if answers[28] == 'Y' else "프로그램 변경 이력이 시스템에 기록되지 않습니다.")
         if answers[29] == 'Y':
             text.append("프로그램 변경 시 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니다.")
+            text.append(f"프로그램 변경 승인 절차: {textarea_answers[29]}" if textarea_answers[29] else "프로그램 변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다.")
         else:
             text.append("프로그램 변경 시 승인 절차가 없습니다.")
             
@@ -290,6 +298,7 @@ def get_text_itgc(answers, control_number):
         text.append("PC02 - 프로그램 변경 사용자 테스트")
         if answers[30] == 'Y':
             text.append("프로그램 변경 시 사용자 테스트를 수행하고 결과를 문서화하는 절차가 있습니다.")
+            text.append(f"프로그램 변경 사용자 테스트 절차: {textarea_answers[30]}" if textarea_answers[30] else "프로그램 변경 사용자 테스트 절차에 대한 상세 기술이 제공되지 않았습니다.")
         else:
             text.append("프로그램 변경 시 사용자 테스트 수행 및 문서화 절차가 없습니다.")
             
@@ -297,6 +306,7 @@ def get_text_itgc(answers, control_number):
         text.append("PC03 - 프로그램 변경 이관 승인")
         if answers[31] == 'Y':
             text.append("프로그램 변경 완료 후 이관(배포)을 위해 부서장의 승인을 득하는 절차가 있습니다.")
+            text.append(f"프로그램 변경 이관 승인 절차: {textarea_answers[31]}" if textarea_answers[31] else "프로그램 변경 이관 승인 절차에 대한 상세 기술이 제공되지 않았습니다.")
         else:
             text.append("프로그램 변경 완료 후 별도의 승인 절차가 없습니다.")
             
