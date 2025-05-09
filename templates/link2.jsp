@@ -31,13 +31,19 @@
                 {% elif 11 <= current_index <= 27 %}
                     <i class="fas fa-lock"></i> APD(Access to Program & Data)
                 {% elif 28 <= current_index <= 33 %}
-                    <i class="fas fa-code"></i> PC(Program Change)
+                    <i class="fas fa-laptop-code"></i> PC(Program Change)
                 {% elif 33 <= current_index <= 40 %}
                     <i class="fas fa-cogs"></i> CO(Computer Operation)
                 {% else %}
                     <i class="fas fa-question-circle"></i> 기타
                 {% endif %}
             </h1>
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="button" class="btn btn-outline-secondary me-2" onclick="fillSample({{ current_index }})">
+                <i class="fas fa-magic"></i> 샘플입력
+            </button>
         </div>
 
         <!-- 질문 폼 -->
@@ -169,24 +175,40 @@
             {% endif %}
             <!-- 제출 버튼 -->
             <div class="text-center mt-4">
-                <button type="button" class="btn btn-outline-secondary me-2" onclick="fillSample({{ current_index }})">
-                    <i class="fas fa-magic"></i> 샘플입력
-                </button>
                 {% if current_index > 0 %}
                 <a href="/link2/prev" class="btn btn-secondary me-2">
                     <i class="fas fa-arrow-left"></i>
                     이전
                 </a>
                 {% endif %}
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="submitBtn">
                     <i class="fas fa-arrow-right"></i>
-                    다음
+                    {% if current_index + 1 == question_count %}제출{% else %}다음{% endif %}
                 </button>
             </div>
         </form>
     </div>
 
+    <!-- 완료 모달 -->
+    <div class="modal fade" id="completeModal" tabindex="-1" aria-labelledby="completeModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="completeModalLabel">알림</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            완료
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="modalConfirmBtn">확인</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function selectYes(questionNumber) {
             document.getElementById("yes_" + questionNumber).checked = true;
@@ -299,7 +321,7 @@
                 30: { type: 'radio_textarea', radio: 'Y', textarea: '사용자 테스트 및 결과 문서화' }, // 30: 프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?
                 31: { type: 'radio_textarea', radio: 'Y', textarea: '이관 요청서 및 승인' }, // 31: 프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?
                 32: { type: 'textarea', value: '인프라관리팀 박xx 수석' }, // 32: 이관(배포)권한을 보유한 인원에 대해 기술해 주세요.
-                33: { type: 'radio', value: 'N' }, // 33: 운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?
+                33: { type: 'radio', value: 'Y' }, // 33: 운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?
                 34: { type: 'radio', value: 'Y' }, // 34: 배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?
                 35: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 35: 배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
                 36: { type: 'textarea', value: '시스템 운영팀 최xx 과장' }, // 36: 배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.
@@ -355,6 +377,24 @@
             if (e.ctrlKey && e.shiftKey && (e.key === 's' || e.key === 'S')) {
                 e.preventDefault();
                 fillSample(current_index);
+            }
+        });
+
+        // 마지막 질문 제출 시 엑셀 다운로드 + 완료 메시지 + 메인 이동
+        document.addEventListener('DOMContentLoaded', function() {
+            var form = document.querySelector('form[action="/link2"]');
+            var isLast = {{ 'true' if current_index + 1 == question_count else 'false' }};
+            if (form && isLast) {
+                var completeModal = new bootstrap.Modal(document.getElementById('completeModal'));
+                var modalConfirmBtn = document.getElementById('modalConfirmBtn');
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    completeModal.show();
+                });
+                modalConfirmBtn.addEventListener('click', function() {
+                    completeModal.hide();
+                    form.submit();
+                });
             }
         });
     </script>

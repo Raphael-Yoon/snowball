@@ -161,201 +161,209 @@ def link2():
 def save_to_excel():
     answers = session.get('answer', [])
     textarea_answers = session.get('textarea_answer', [])
-    system_info = [session.get(key, '') for key in ['System', 'Cloud', 'OS_Tool', 'DB_Tool', 'Batch_Tool']]
-    system_info = [info if info else '' for info in system_info]  # NaN 방지
     today = datetime.today().strftime('%Y%m%d')
     file_name = f"{answers[0]}_{today}.xlsx" if answers else f"responses_{today}.xlsx"
-    
+    file_path = os.path.join("static", file_name)
+
+    # 1. 템플릿 파일 불러오기
+    template_path = os.path.join("static", "Design_Template.xlsx")
+    wb = load_workbook(template_path)
+
+    # 2. 각 통제별 시트에 값 입력
+    control_list = [
+        'APD01', 'APD02', 'APD03', 'APD04', 'APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12',
+        'PC01', 'PC02', 'PC03', 'PC04', 'PC05',
+        'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06'
+    ]
+    for control in control_list:
+        text_data = get_text_itgc(answers, control, textarea_answers)
+        ws = wb[control]
+        if 'A1' in text_data:
+            ws['C7'] = text_data['A1']
+        if 'B1' in text_data:
+            ws['C8'] = text_data['B1']
+        if 'B2' in text_data:
+            ws['C12'] = text_data['B2']
+            # C12 셀의 데이터 길이에 따라 행 높이 자동 조정
+            value = str(text_data['B2'])
+            # 줄바꿈 기준으로 줄 수 계산
+            num_lines = value.count('\n') + 1
+            # 한 줄이 너무 길면 추가로 줄 수를 늘림 (예: 50자당 1줄)
+            approx_lines = num_lines + (len(value) // 50)
+            ws.row_dimensions[12].height = 15 * approx_lines  # 기본 행 높이 15 기준
+
+    # 3. Responses 시트 openpyxl로 직접 추가
+    from openpyxl.utils.dataframe import dataframe_to_rows
     df = pd.DataFrame({
         'Question': [q['text'] for q in s_questions],
         'Answer': answers,
         'Textarea': textarea_answers
     }).fillna('')
-    file_path = os.path.join("static", file_name)
+    if 'Responses' in wb.sheetnames:
+        del wb['Responses']
+    ws_resp = wb.create_sheet('Responses')
+    for r in dataframe_to_rows(df, index=False, header=True):
+        ws_resp.append(r)
 
-    # ExcelWriter 블록 내부에서 Understanding 시트도 작성하도록 변경**
-    with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
-        # Responses 시트 작성
-        df.to_excel(writer, sheet_name='Responses', index=False)
-        worksheet = writer.sheets['Responses']
-        worksheet.set_column('A:A', max(df['Question'].apply(len)) + 2)
-
-        # 각 통제별 시트 생성
-        create_itgc_sheet(writer, 'APD01', get_text_itgc(answers, 'APD01', textarea_answers)) # 사용자 권한 승인
-        create_itgc_sheet(writer, 'APD02', get_text_itgc(answers, 'APD02', textarea_answers)) # 부서이동자 권한 회수
-        create_itgc_sheet(writer, 'APD03', get_text_itgc(answers, 'APD03', textarea_answers)) # 퇴사자 접근권한 회수
-        create_itgc_sheet(writer, 'APD04', get_text_itgc(answers, 'APD04', textarea_answers)) # 사용자 권한 Monitoring
-        create_itgc_sheet(writer, 'APD05', get_text_itgc(answers, 'APD05', textarea_answers)) # Application 패스워드
-        create_itgc_sheet(writer, 'APD06', get_text_itgc(answers, 'APD06', textarea_answers)) # 데이터 직접 변경
-        create_itgc_sheet(writer, 'APD07', get_text_itgc(answers, 'APD07', textarea_answers)) # DB 접근권한 승인
-        create_itgc_sheet(writer, 'APD08', get_text_itgc(answers, 'APD08', textarea_answers)) # DB 관리자 권한 제한
-        create_itgc_sheet(writer, 'APD09', get_text_itgc(answers, 'APD09', textarea_answers)) # DB 패스워드
-        create_itgc_sheet(writer, 'APD10', get_text_itgc(answers, 'APD10', textarea_answers)) # OS 접근권한 승인
-        create_itgc_sheet(writer, 'APD11', get_text_itgc(answers, 'APD11', textarea_answers)) # OS 관리자 권한 제한
-        create_itgc_sheet(writer, 'APD12', get_text_itgc(answers, 'APD12', textarea_answers)) # OS 패스워드
-        create_itgc_sheet(writer, 'PC01', get_text_itgc(answers, 'PC01', textarea_answers))  # 프로그램 변경 승인
-        create_itgc_sheet(writer, 'PC02', get_text_itgc(answers, 'PC02', textarea_answers))  # 프로그램 변경 사용자 테스트
-        create_itgc_sheet(writer, 'PC03', get_text_itgc(answers, 'PC03', textarea_answers))  # 프로그램 변경 이관 승인
-        create_itgc_sheet(writer, 'PC04', get_text_itgc(answers, 'PC04', textarea_answers))  # 이관(배포) 권한 제한
-        create_itgc_sheet(writer, 'PC05', get_text_itgc(answers, 'PC05', textarea_answers))  # 개발/운영 환경 분리
-        create_itgc_sheet(writer, 'CO01', get_text_itgc(answers, 'CO01', textarea_answers))  # 배치 스케줄 등록/변경 승인
-        create_itgc_sheet(writer, 'CO02', get_text_itgc(answers, 'CO02', textarea_answers))  # 배치 스케줄 등록/변경 권한 제한
-        create_itgc_sheet(writer, 'CO03', get_text_itgc(answers, 'CO03', textarea_answers))  # 배치 실행 모니터링
-        create_itgc_sheet(writer, 'CO04', get_text_itgc(answers, 'CO04', textarea_answers))  # 장애 대응 절차
-        create_itgc_sheet(writer, 'CO05', get_text_itgc(answers, 'CO05', textarea_answers))  # 백업 및 모니터링
-        create_itgc_sheet(writer, 'CO06', get_text_itgc(answers, 'CO06', textarea_answers))  # 서버실 출입 절차
-
+    wb.save(file_path)
     return send_file(file_path, as_attachment=True)
-    
-def create_itgc_sheet(writer, sheet_name, text_data):
-    df = pd.DataFrame({'Interview 내용': text_data})
-    df.to_excel(writer, sheet_name=sheet_name, index=False)
 
 def get_text_itgc(answers, control_number, textarea_answers=None):
-    text = []
+    result = {}
     if textarea_answers is None:
         textarea_answers = [''] * len(answers)
     
     if control_number == 'APD01':
-        text.append("APD01 - 사용자 신규 권한 승인")
-        text.append("사용자 권한 부여 이력이 시스템에 기록되고 있습니다." if answers[11] == 'Y' else "사용자 권한 부여 이력이 시스템에 기록되지 않습니다.")
-        if answers[13] == 'Y':
-            text.append("새로운 권한 요청 시, 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니다.")
-            text.append(f"권한이 부여되는 절차: {textarea_answers[13]}" if textarea_answers[13] else "권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다.")
-        else:
-            text.append("새로운 권한 요청 시 승인 절차가 없습니다.")
-            
+        result['A1'] = "APD01"
+        result['B1'] = "사용자 신규 권한 승인"
+        result['B2'] = "사용자 권한 부여 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[11] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+            "새로운 권한 요청 시, 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                f"\n{textarea_answers[13]}" if textarea_answers[13] else "\n\n권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다."
+            ) if answers[13] == 'Y' else "새로운 권한 요청 시 승인 절차가 없습니다.")
+    
     elif control_number == 'APD02':
-        text.append("APD02 - 부서이동자 권한 회수")
-        text.append("사용자 권한 회수 이력이 시스템에 기록되고 있습니다." if answers[12] == 'Y' else "사용자 권한 회수 이력이 시스템에 기록되지 않습니다.")
-        if answers[15] == 'Y':
-            text.append("부서 이동 시 기존 권한을 회수하는 절차가 있습니다.")
-            text.append(f"부서 이동 시 권한 회수 절차: {answers[16]}" if answers[16] else "부서 이동 시 권한 회수 절차에 대한 상세 기술이 제공되지 않았습니다.")
-        else:
-            text.append("부서 이동 시 기존 권한 회수 절차가 없습니다.")
-            
+        result['A1'] = "APD02"
+        result['B1'] = "부서이동자 권한 회수"
+        result['B2'] = "사용자 권한 회수 이력이 시스템에 " + ("기록되고 있습니다." if answers[12] == 'Y' else "기록되지 않습니다.") + "\n\n" + (
+            "부서 이동 시 기존 권한을 회수하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                f"\n{textarea_answers[14]}" if textarea_answers[14] else "\n\n부서 이동 시 권한 회수 절차에 대한 상세 기술이 제공되지 않았습니다."
+            ) if answers[14] == 'Y' else "부서 이동 시 기존 권한 회수 절차가 없습니다.")
+
     elif control_number == 'APD03':
-        text.append("APD03 - 퇴사자 접근권한 회수")
-        text.append("퇴사자 발생 시 접근권한을 차단하는 절차가 있습니다." if answers[17] == 'Y' else "퇴사자 발생 시 접근권한 차단 절차가 없습니다.")
-        if answers[18]:
-            text.append(f"퇴사자 접근권한 차단 절차: {answers[18]}")
-        else:
-            text.append("퇴사자 접근권한 차단 절차에 대한 상세 기술이 제공되지 않았습니다.")
-            
+        result['A1'] = "APD03"
+        result['B1'] = "퇴사자 접근권한 회수"
+        result['B2'] = "퇴사자 발생 시 접근권한을 " + ("차단하는 절차가 있으며 그 절차는 아래와 같습니다." if answers[15] == 'Y' else "차단 절차가 없습니다.") + (
+            f"\n{textarea_answers[15]}" if textarea_answers[15] else "\n퇴사자 접근권한 차단 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'APD04':
-        text.append("APD04 - 사용자 권한 Monitoring")
-        text.append("전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니다." if answers[19] == 'Y' else "전체 사용자가 보유한 권한에 대한 모니터링 절차가 존재하지 않습니다.")
-        
+        result['A1'] = "APD04"
+        result['B1'] = "사용자 권한 Monitoring"
+        result['B2'] = "전체 사용자가 보유한 권한에 대한 적절성을 " + ("모니터링하는 절차가 있습니다." if answers[19] == 'Y' else "모니터링 절차가 존재하지 않습니다.")
+
     elif control_number == 'APD05':
-        text.append("APD05 - Application 패스워드")
-        text.append(f"패스워드 설정 사항: {answers[20]}")
-        
+        result['A1'] = "APD05"
+        result['B1'] = "Application 패스워드"
+        result['B2'] = "패스워드 설정 사항은 아래와 같습니다 \n\n" + (answers[17] if answers[17] else "패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.")
+    
     elif control_number == 'APD06':
-        text.append("APD06 - 데이터 직접 변경")
-        text.append("데이터 변경 이력이 시스템에 기록되고 있습니다." if answers[21] == 'Y' else "데이터 변경 이력이 시스템에 기록되지 않습니다.")
-        text.append("데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[22] == 'Y' else "데이터 변경이 필요한 경우 승인 절차가 존재하지 않습니다.")
-        
+        result['A1'] = "APD06"
+        result['B1'] = "데이터 직접 변경"
+        result['B2'] = "데이터 변경 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[18] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+            "데이터 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                f"\n{textarea_answers[19]}" if textarea_answers[19] else "데이터 변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
+            ) if answers[19] == 'Y' else "데이터 변경 시 승인 절차가 없습니다.")
+
     elif control_number == 'APD07':
-        text.append("APD07 - DB 접근권한 승인")
-        text.append(f"DB 종류와 버전: {answers[8]}")
-        text.append(f"DB 접근제어 Tool 사용 여부: {'사용 중' if answers[9] == 'Y' else '사용하지 않음'}")
-        text.append("DB 접근권한 부여 이력이 시스템에 기록되고 있습니다." if answers[23] == 'Y' else "DB 접근권한 부여 이력이 시스템에 기록되지 않습니다.")
-        text.append("DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[24] == 'Y' else "DB 접근권한이 필요한 경우 승인 절차가 존재하지 않습니다.")
-        
+        result['A1'] = "APD07"
+        result['B1'] = "DB 접근권한 승인"
+        result['B2'] = f"DB 종류와 버전: {answers[8]}" + f"\n\nDB 접근제어 Tool 사용 여부: {'사용' if answers[9] == 'Y' else '미사용'}" + "\n\n" + (
+            "DB 접근권한 부여 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[20] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+                "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                    f"\n{textarea_answers[21]}" if textarea_answers[21] else "DB 접근권한 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
+                ) if answers[21] == 'Y' else "DB 접근권한 요청 시 승인 절차가 없습니다."
+            )
+        )
+
     elif control_number == 'APD08':
-        text.append("APD08 - DB 관리자 권한 제한")
-        text.append(f"DB 관리자 권한을 보유한 인원: {answers[25]}")
-        
+        result['A1'] = "APD08"
+        result['B1'] = "DB 관리자 권한 제한"
+        result['B2'] = "DB 관리자 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[22] if answers[22] else "DB 관리자 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'APD09':
-        text.append("APD09 - DB 패스워드")
-        text.append(f"DB 패스워드 설정사항: {answers[26]}")
-        
+        result['A1'] = "APD09"
+        result['B1'] = "DB 패스워드"
+        result['B2'] = "DB 패스워드 설정사항은 아래와 같습니다.\n" + (answers[23] if answers[23] else "DB 패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'APD10':
-        text.append("APD10 - OS 접근권한 승인")
-        text.append(f"OS 종류와 버전: {answers[6]}")
-        text.append(f"OS 접근제어 Tool 사용 여부: {'사용 중' if answers[7] == 'Y' else '사용하지 않음'}")
-        text.append("OS 접근권한 부여 이력이 시스템에 기록되고 있습니다." if answers[27] == 'Y' else "OS 접근권한 부여 이력이 시스템에 기록되지 않습니다.")
-        text.append("OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니다." if answers[28] == 'Y' else "OS 접근권한이 필요한 경우 승인 절차가 존재하지 않습니다.")
-        
+        result['A1'] = "APD10"
+        result['B1'] = "OS 접근권한 승인"
+        result['B2'] = f"OS 종류와 버전: {answers[6]}" + f"\n\nOS 접근제어 Tool 사용 여부: {'사용' if answers[7] == 'Y' else '미사용'}" + "\n\n" + (
+            "OS 접근권한 부여 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[24] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+                "OS 접근권한이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                    f"\n{textarea_answers[25]}" if textarea_answers[25] else "OS 접근권한 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
+                ) if answers[25] == 'Y' else "OS 접근권한 요청 시 승인 절차가 없습니다."
+            )
+        )
+
     elif control_number == 'APD11':
-        text.append("APD11 - OS 관리자 권한 제한")
-        text.append(f"OS 관리자 권한을 보유한 인원: {answers[29]}")
-        
+        result['A1'] = "APD11"
+        result['B1'] = "OS 관리자 권한 제한"
+        result['B2'] = "OS 관리자 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[26] if answers[26] else "OS 관리자 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'APD12':
-        text.append("APD12 - OS 패스워드")
-        text.append(f"OS 패스워드 설정사항: {answers[30]}")
-        
+        result['A1'] = "APD12"
+        result['B1'] = "OS 패스워드"
+        result['B2'] = "OS 패스워드 설정사항은 아래와 같습니다.\n" + (answers[27] if answers[27] else "OS 패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'PC01':
-        text.append("PC01 - 프로그램 변경 승인")
-        text.append("프로그램 변경 이력이 시스템에 기록되고 있습니다." if answers[28] == 'Y' else "프로그램 변경 이력이 시스템에 기록되지 않습니다.")
-        if answers[29] == 'Y':
-            text.append("프로그램 변경 시 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니다.")
-            text.append(f"프로그램 변경 승인 절차: {textarea_answers[29]}" if textarea_answers[29] else "프로그램 변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다.")
-        else:
-            text.append("프로그램 변경 시 승인 절차가 없습니다.")
-            
+        result['A1'] = "PC01"
+        result['B1'] = "프로그램 변경 승인"
+        result['B2'] = "프로그램 변경 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[28] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+            "프로그램 변경 시 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                f"\n{textarea_answers[29]}" if textarea_answers[29] else "\n프로그램 변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
+            ) if answers[29] == 'Y' else "프로그램 변경 시 승인 절차가 없습니다.")
+
     elif control_number == 'PC02':
-        text.append("PC02 - 프로그램 변경 사용자 테스트")
-        if answers[30] == 'Y':
-            text.append("프로그램 변경 시 사용자 테스트를 수행하고 결과를 문서화하는 절차가 있습니다.")
-            text.append(f"프로그램 변경 사용자 테스트 절차: {textarea_answers[30]}" if textarea_answers[30] else "프로그램 변경 사용자 테스트 절차에 대한 상세 기술이 제공되지 않았습니다.")
-        else:
-            text.append("프로그램 변경 시 사용자 테스트 수행 및 문서화 절차가 없습니다.")
-            
+        result['A1'] = "PC02"
+        result['B1'] = "프로그램 변경 사용자 테스트"
+        result['B2'] = "프로그램 변경 시 사용자 테스트를 " + ("수행하고 그 결과를 문서화하는 절차가 있으며 그 절차는 아래와 같습니다." if answers[30] == 'Y' else "수행하지 않습니다.") + (
+            f"\n{textarea_answers[30]}" if textarea_answers[30] else "\n프로그램 변경 사용자 테스트 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'PC03':
-        text.append("PC03 - 프로그램 변경 이관 승인")
-        if answers[31] == 'Y':
-            text.append("프로그램 변경 완료 후 이관(배포)을 위해 부서장의 승인을 득하는 절차가 있습니다.")
-            text.append(f"프로그램 변경 이관 승인 절차: {textarea_answers[31]}" if textarea_answers[31] else "프로그램 변경 이관 승인 절차에 대한 상세 기술이 제공되지 않았습니다.")
-        else:
-            text.append("프로그램 변경 완료 후 별도의 승인 절차가 없습니다.")
-            
+        result['A1'] = "PC03"
+        result['B1'] = "프로그램 변경 이관 승인"
+        result['B2'] = "프로그램 변경 완료 후 이관(배포)을 위해 " + ("부서장 등의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." if answers[31] == 'Y' else "이관(배포) 절차가 없습니다.") + (
+            f"\n{textarea_answers[31]}" if textarea_answers[31] else "\n프로그램 변경 이관 승인 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'PC04':
-        text.append("PC04 - 이관(배포) 권한 제한")
-        if answers[32]:
-            text.append(f"이관(배포) 권한을 보유한 인원: {answers[32]}")
-        else:
-            text.append("이관(배포) 권한 보유 인원에 대한 정보가 제공되지 않았습니다.")
-            
+        result['A1'] = "PC04"
+        result['B1'] = "이관(배포) 권한 제한"
+        result['B2'] = "이관(배포) 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[32] if answers[32] else "이관(배포) 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'PC05':
-        text.append("PC05 - 개발/운영 환경 분리")
-        if answers[33] == 'Y':
-            text.append("운영 서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니다.")
-        else:
-            text.append("운영 서버 외 추가적인 개발 또는 테스트 서버가 없습니다.")
-            
+        result['A1'] = "PC05"
+        result['B1'] = "개발/운영 환경 분리"
+        result['B2'] = "운영서버 외 별도의 개발 또는 테스트 서버를 " + ("운용하고 있습니다." if answers[33] == 'Y' else "운용하지 않습니다.")
+
     elif control_number == 'CO01':
-        text.append("CO01 - 배치 스케줄 등록/변경 승인")
-        text.append("배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니다." if answers[34] == 'Y' else "배치 스케줄 등록/변경 이력이 시스템에 기록되지 않습니다.")
-        if answers[35] == 'Y':
-            text.append("배치 스케줄 등록/변경 시 요청서 작성 및 승인 절차가 있습니다.")
-        else:
-            text.append("배치 스케줄 등록/변경 시 승인 절차가 없습니다.")
-            
+        result['A1'] = "CO01"
+        result['B1'] = "배치 스케줄 등록/변경 승인"
+        result['B2'] = "배치 스케줄 등록/변경 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[34] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+            "배치 스케줄 등록/변경 시 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                f"\n{textarea_answers[35]}" if textarea_answers[35] else "\n배치 스케줄 등록/변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
+            ) if answers[35] == 'Y' else "배치 스케줄 등록/변경 시 승인 절차가 없습니다.")
+
     elif control_number == 'CO02':
-        text.append("CO02 - 배치 스케줄 등록/변경 권한 제한")
-        text.append(f"배치 스케줄 등록/변경 담당자: {answers[36]}" if answers[36] else "배치 스케줄 등록/변경 담당자 정보가 제공되지 않았습니다.")
-        
+        result['A1'] = "CO02"
+        result['B1'] = "배치 스케줄 등록/변경 권한 제한"
+        result['B2'] = "배치 스케줄 등록/변경 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[36] if answers[36] else "배치 스케줄 등록/변경 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'CO03':
-        text.append("CO03 - 배치 실행 모니터링")
-        text.append(f"배치 실행 오류 모니터링: {answers[37]}" if answers[37] else "배치 실행 오류 모니터링 정보가 제공되지 않았습니다.")
-        
+        result['A1'] = "CO03"
+        result['B1'] = "배치 실행 모니터링"
+        result['B2'] = "배치 실행 오류 등에 대한 모니터링은 아래와 같이 수행되고 있습니다\n" + (answers[37] if answers[37] else "배치 실행 오류 등에 대한 모니터링 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'CO04':
-        text.append("CO04 - 장애 대응 절차")
-        text.append(f"장애 발생시 대응 절차: {answers[38]}" if answers[38] else "장애 대응 절차 정보가 제공되지 않았습니다.")
-        
+        result['A1'] = "CO04"
+        result['B1'] = "장애 대응 절차"
+        result['B2'] = "장애 발생시 이에 대응하고 조치하는 절차는 아래와 같습니다\n" + (answers[38] if answers[38] else "장애 발생시 이에 대응하고 조치하는 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'CO05':
-        text.append("CO05 - 백업 및 모니터링")
-        text.append(f"백업 수행 및 모니터링: {answers[39]}" if answers[39] else "백업 및 모니터링 정보가 제공되지 않았습니다.")
-        
+        result['A1'] = "CO05"
+        result['B1'] = "백업 및 모니터링"
+        result['B2'] = "백업 수행 및 모니터링 절차는 아래와 같습니다.\n" + (answers[39] if answers[39] else "백업 수행 및 모니터링 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
     elif control_number == 'CO06':
-        text.append("CO06 - 서버실 출입 절차")
-        text.append(f"서버실 출입 절차: {answers[40]}" if answers[40] else "서버실 출입 절차 정보가 제공되지 않았습니다.")
+        result['A1'] = "CO06"
+        result['B1'] = "서버실 출입 절차"
+        result['B2'] = "서버실 출입 절차는 아래와 같습니다.\n" + (answers[40] if answers[40] else "서버실 출입 절차에 대한 상세 기술이 제공되지 않았습니다.")
         
     else:
-        text.append(f"Unknown control number: {control_number}")
+        result['A1'] = f"Unknown control number: {control_number}"
+        result['B1'] = ""
+        result['B2'] = "알 수 없는 통제 번호입니다."
     
-    return text
+    return result
 
 @app.route('/link3')
 def link3():
