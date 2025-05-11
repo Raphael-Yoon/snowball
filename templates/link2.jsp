@@ -35,15 +35,17 @@
                 {% elif 33 <= current_index <= 40 %}
                     <i class="fas fa-cogs"></i> CO(Computer Operation)
                 {% else %}
-                    <i class="fas fa-question-circle"></i> 기타
+                    <i class="fas fa-check-circle"></i> 모든 질문이 완료되었습니다.
                 {% endif %}
             </h1>
         </div>
 
         <div class="text-center mt-4">
+            {% if remote_addr == '127.0.0.1' %}
             <button type="button" class="btn btn-outline-secondary me-2" onclick="fillSample({{ current_index }})">
                 <i class="fas fa-magic"></i> 샘플입력
             </button>
+            {% endif %}
         </div>
 
         <!-- 질문 폼 -->
@@ -57,7 +59,9 @@
                     <p class="card-text">{{ question.text }}</p>
                     <div class="mb-3">
                         <!-- 입력 필드 -->
-                        {% if current_index in [0, 6, 8] %}
+                        {% if current_index == 41 %}
+                            <input type="email" class="form-control" name="a41" placeholder="이메일 주소를 입력하세요" required>
+                        {% elif current_index in [0, 6, 8] %}
                             <input type="text" class="form-control" name="a{{ current_index }}" required>
                         
                         {% elif current_index == 4 %}
@@ -202,6 +206,24 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-primary" id="modalConfirmBtn">확인</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 메일 전송 안내 모달 (41번 질문 전용) -->
+    <div class="modal fade" id="mailModal" tabindex="-1" aria-labelledby="mailModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="mailModalLabel">알림</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            곧 메일이 전송됩니다.
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="mailModalConfirmBtn">확인</button>
           </div>
         </div>
       </div>
@@ -384,7 +406,19 @@
         document.addEventListener('DOMContentLoaded', function() {
             var form = document.querySelector('form[action="/link2"]');
             var isLast = {{ 'true' if current_index + 1 == question_count else 'false' }};
-            if (form && isLast) {
+            var isMail = {{ 'true' if current_index == 41 else 'false' }};
+            if (form && isMail) {
+                var mailModal = new bootstrap.Modal(document.getElementById('mailModal'));
+                var mailModalConfirmBtn = document.getElementById('mailModalConfirmBtn');
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    mailModal.show();
+                });
+                mailModalConfirmBtn.addEventListener('click', function() {
+                    mailModal.hide();
+                    window.location.href = '/';
+                });
+            } else if (form && isLast) {
                 var completeModal = new bootstrap.Modal(document.getElementById('completeModal'));
                 var modalConfirmBtn = document.getElementById('modalConfirmBtn');
                 form.addEventListener('submit', function(e) {

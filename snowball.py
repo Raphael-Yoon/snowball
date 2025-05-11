@@ -84,7 +84,8 @@ s_questions = [
     {"index": 37, "text": "배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.", "category": "CO"},
     {"index": 38, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO"},
     {"index": 39, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.", "category": "CO"},
-    {"index": 40, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO"}
+    {"index": 40, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO"},
+    {"index": 41, "text": "산출물을 전달받을 메일 주소를 적어주세요.", "category": "Complete"}
 ]
 
 question_count = len(s_questions)
@@ -115,7 +116,8 @@ def link2():
         session['textarea_answer'] = [''] * question_count  # textarea 값 저장용
         return render_template('link2.jsp', question=s_questions[session['question_index']], 
                              question_count=question_count, 
-                             current_index=session['question_index'])
+                             current_index=session['question_index'],
+                             remote_addr=request.remote_addr)
 
     question_index = session['question_index']
 
@@ -155,7 +157,7 @@ def link2():
 
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
-    return render_template('link2.jsp', question=question, question_count=question_count, current_index=session['question_index'])
+    return render_template('link2.jsp', question=question, question_count=question_count, current_index=session['question_index'], remote_addr=request.remote_addr)
     
 @app.route('/export_excel', methods=['GET'])
 def save_to_excel():
@@ -186,27 +188,51 @@ def save_to_excel():
             ws['C12'] = text_data['B2']
             # C12 셀의 데이터 길이에 따라 행 높이 자동 조정
             value = str(text_data['B2'])
-            # 줄바꿈 기준으로 줄 수 계산
             num_lines = value.count('\n') + 1
-            # 한 줄이 너무 길면 추가로 줄 수를 늘림 (예: 50자당 1줄)
             approx_lines = num_lines + (len(value) // 50)
-            ws.row_dimensions[12].height = 15 * approx_lines  # 기본 행 높이 15 기준
-
-    # 3. Responses 시트 openpyxl로 직접 추가
-    from openpyxl.utils.dataframe import dataframe_to_rows
-    df = pd.DataFrame({
-        'Question': [q['text'] for q in s_questions],
-        'Answer': answers,
-        'Textarea': textarea_answers
-    }).fillna('')
-    if 'Responses' in wb.sheetnames:
-        del wb['Responses']
-    ws_resp = wb.create_sheet('Responses')
-    for r in dataframe_to_rows(df, index=False, header=True):
-        ws_resp.append(r)
+            ws.row_dimensions[12].height = 15 * approx_lines
 
     wb.save(file_path)
-    return send_file(file_path, as_attachment=True)
+
+    # 메일 전송 (a41이 메일 주소)
+    user_email = answers[41] if len(answers) > 41 else ''
+    if user_email:
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.base import MIMEBase
+        from email import encoders
+        
+        smtp_server = 'smtp.naver.com'
+        smtp_port = 587
+        sender_email = 'newsist@naver.com'      # 네이버 메일 주소
+        sender_password = 'nqpspelrxm27'       # 네이버 메일 비밀번호(또는 앱 비밀번호)
+        subject = '설문 산출물 엑셀 파일'
+        body = '설문 응답에 따라 생성된 엑셀 파일을 첨부합니다.'
+        
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = user_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+        # 파일 첨부
+        with open(file_path, 'rb') as f:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename="{file_name}"')
+            msg.attach(part)
+        try:
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, user_email, msg.as_string())
+            server.quit()
+            print('메일이 성공적으로 전송되었습니다.')
+        except Exception as e:
+            print('메일 전송 실패:', e)
+
+    return render_template('mail_sent.jsp', user_email=user_email)
 
 def get_text_itgc(answers, control_number, textarea_answers=None):
     result = {}
