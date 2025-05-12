@@ -403,32 +403,16 @@
             }
         });
 
-        // 마지막 질문 제출 시 엑셀 다운로드 + 완료 메시지 + 메인 이동
+        // 마지막 질문 제출 시 alert + 메인 이동
         document.addEventListener('DOMContentLoaded', function() {
             var form = document.querySelector('form[action="/link2"]');
-            var isLast = {{ 'true' if current_index + 1 == question_count else 'false' }};
-            var isMail = {{ 'true' if current_index == 41 else 'false' }};
-            if (form && isMail) {
-                var mailModal = new bootstrap.Modal(document.getElementById('mailModal'));
-                var mailModalConfirmBtn = document.getElementById('mailModalConfirmBtn');
+            var currentIndex = {{ current_index|int }};
+            var questionCount = {{ question_count|int }};
+            if (form && (currentIndex + 1 === questionCount)) {
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    mailModal.show();
-                });
-                mailModalConfirmBtn.addEventListener('click', function() {
-                    mailModal.hide();
+                    alert('곧 메일이 전송됩니다.');
                     window.location.href = '/';
-                });
-            } else if (form && isLast) {
-                var completeModal = new bootstrap.Modal(document.getElementById('completeModal'));
-                var modalConfirmBtn = document.getElementById('modalConfirmBtn');
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    completeModal.show();
-                });
-                modalConfirmBtn.addEventListener('click', function() {
-                    completeModal.hide();
-                    form.submit();
                 });
             }
         });
