@@ -60,7 +60,7 @@
                     <div class="mb-3">
                         <!-- 입력 필드 -->
                         {% if current_index == 41 %}
-                            <input type="email" class="form-control" name="a41" placeholder="이메일 주소를 입력하세요" required>
+                            <input type="text" class="form-control" name="a41" placeholder="이메일 주소를 입력하세요" required>
                         {% elif current_index in [0, 6, 8] %}
                             <input type="text" class="form-control" name="a{{ current_index }}" required>
                         
@@ -351,6 +351,7 @@
                 38: { type: 'textarea', value: '장애 발생시 원인파악 및 조치' }, // 38: 장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.
                 39: { type: 'textarea', value: '백업 자동 수행 및 월단위 모니터링' }, // 39: 백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.
                 40: { type: 'textarea', value: '사전 승인 및 방명록 작성' }, // 40: 서버실 출입시의 절차에 대해 기술해 주세요.
+                41: { type: 'text', value: 'newsist@naver.com' }, // 41: 메일 주소 입력
             };
             const sample = samples[questionNumber];
             if (!sample) return;

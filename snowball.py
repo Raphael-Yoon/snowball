@@ -16,7 +16,7 @@ app = Flask(__name__)
 app.secret_key = '150606'
 
 # 시작할 질문 번호 설정 (1부터 시작)
-START_QUESTION = 0  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
+START_QUESTION = 40  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
 
 @app.route('/')
 def index():
@@ -205,7 +205,7 @@ def save_to_excel():
         
         smtp_server = 'smtp.naver.com'
         smtp_port = 587
-        sender_email = 'newsist@naver.com'      # 네이버 메일 주소
+        sender_email = 'snowball2727@naver.com'      # 네이버 메일 주소
         sender_password = 'nqpspelrxm27'       # 네이버 메일 비밀번호(또는 앱 비밀번호)
         subject = '설문 산출물 엑셀 파일'
         body = '설문 응답에 따라 생성된 엑셀 파일을 첨부합니다.'
