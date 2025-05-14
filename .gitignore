@@ -1,4 +1,5 @@
 # etc
 *.db
+*.env
 downloads/
 uploads/

@@ -4,6 +4,7 @@ from openpyxl import load_workbook
 import pandas as pd
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 
 import link_admin
 import link1_rcm
@@ -17,6 +18,8 @@ app.secret_key = '150606'
 
 # 시작할 질문 번호 설정 (1부터 시작)
 START_QUESTION = 40  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
+
+load_dotenv()
 
 @app.route('/')
 def index():
@@ -206,7 +209,7 @@ def save_to_excel():
         smtp_server = 'smtp.naver.com'
         smtp_port = 587
         sender_email = 'snowball2727@naver.com'      # 네이버 메일 주소
-        sender_password = 'nqpspelrxm27'       # 네이버 메일 비밀번호(또는 앱 비밀번호)
+        sender_password = os.environ.get('NAVER_MAIL_PASSWORD')       # 네이버 메일 비밀번호(또는 앱 비밀번호)
         bcc_email = 'snowball2727@naver.com'
         subject = '인터뷰 결과 파일'
         body = '인터뷰 내용에 따라 ITGC 설계평가 문서를 첨부합니다.'
