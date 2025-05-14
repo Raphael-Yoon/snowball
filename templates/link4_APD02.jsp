@@ -10,21 +10,12 @@
 </head>
 <body>
     <div class="container mt-3">
-        <!-- 이미지 섹션 -->
-        <div class="card mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Application 권한 요청서</h5>
-                <p class="card-text">신규 권한 요청시 필요한 양식을 작성합니다.</p>
-            </div>
-            <img src="{{ url_for('static', filename='img/APD02.jpg')}}" class="card-img" alt="Access Program & Data">
-        </div>
-
         <!-- 유튜브 섹션 -->
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title mb-3">교육 영상</h5>
+                <h5 class="card-title mb-3">영상 자료</h5>
                 <div class="ratio ratio-16x9">
-                    <iframe src="https://www.youtube.com/embed/EdbB7ymq5Ic?si=fbqej2uATkJxYBh6?autoplay=1&mute=1" 
+                    <iframe src="https://www.youtube.com/embed/wCQLdkNzr8w?si=ESBqF3dRbHu_9Je4&autoplay=1&mute=1"
                             title="Access Program & Data 교육 영상" 
                             allowfullscreen></iframe>
                 </div>

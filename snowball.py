@@ -535,7 +535,8 @@ def get_content():
     param3_types = {
         'APD': ['APD04', 'APD05', 'APD06', 'APD08', 'APD10', 'APD11', 'APD13', 'APD14'],
         'PC': ['PC04', 'PC05'],
-        'CO': ['CO02', 'CO03']
+        'CO': ['CO02', 'CO03'],
+        'ETC': ['PW', 'PW_DETAIL', 'MONITOR']
     }
     
     # 컨텐츠 타입의 접두사 확인
@@ -550,7 +551,7 @@ def get_content():
         return render_template(f'link4_{content_type}.jsp')
     except Exception as e:
         print(f"Error rendering template for {content_type}: {str(e)}")
-        return '<div style="text-align: center; padding: 20px;"><h3>준비 중입니다</h3><p>해당 기능은 현재 개발 중입니다.</p></div>'
+        return '<div style="text-align: center; padding: 20px;"><h3>준비 중입니다</h3><p>해당 항목은 현재 영상제작 중 입니다.</p></div>'
 
 if __name__ == '__main__':
     main()

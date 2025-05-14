@@ -36,33 +36,32 @@
                 {value: "APD01", text: "Application 권한부여 승인"},
                 {value: "APD02", text: "Application 부서이동자 권한 회수"},
                 {value: "APD03", text: "Application 퇴사자 접근권한 회수"},
-                {value: "APD04", text: "Application 관리자 권한 제한"},
-                {value: "APD05", text: "Application 권한 Monitoring"},
-                {value: "APD06", text: "Application 패스워드"},
                 {value: "APD07", text: "Data 직접변경 승인"},
                 {value: "APD08", text: "서버(OS/DB) 접근권한 승인"},
-                {value: "APD09", text: "서버(OS/DB) 패스워드"},
-                {value: "APD10", text: "서버(OS/DB) 관리자 권한 제한"},
             ],
             PC: [
                 {value: "PC01", text: "프로그램 변경 승인"},
                 {value: "PC02", text: "프로그램 변경 사용자 테스트"},
                 {value: "PC03", text: "프로그램 이관 승인"},
-                {value: "PC04", text: "이관담당자 권한 제한"},
                 {value: "PC05", text: "개발/운영 환경 분리"},
                 {value: "PC06", text: "인프라 설정변경"}
             ],
             CO: [
                 {value: "CO01", text: "배치잡 스케줄 등록 승인"},
-                {value: "CO02", text: "배치잡 스케줄 등록 권한 제한"},
                 {value: "CO03", text: "배치잡 스케줄 Monitoring"}
+            ],
+            ETC: [
+                {value: "PW", text: "패스워드 기준"},
+                {value: "PW_DETAIL", text: "패스워드 기준 상세"},
+                {value: "MONITOR", text: "모니터링 통제"}
             ]
         };
 
         const categoryNames = {
             'APD': 'Access Program & Data',
             'PC': 'Program Change',
-            'CO': 'Computer Operation'
+            'CO': 'Computer Operation',
+            'ETC': '기타'
         };
 
         function initializeSidebar() {
