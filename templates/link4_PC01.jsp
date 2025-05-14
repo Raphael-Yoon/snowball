@@ -24,7 +24,7 @@
             <div class="card-body">
                 <h5 class="card-title mb-3">교육 영상</h5>
                 <div class="ratio ratio-16x9">
-                    <iframe src="https://www.youtube.com/embed/dzSoIaQTxmQ?si=B-m43fe5W-oEIWal?autoplay=1&mute=1" 
+                    <iframe src="https://www.youtube.com/embed/dzSoIaQTxmQ?si=B-m43fe5W-oEIWal&autoplay=1&mute=1" 
                             title="프로그램 변경 승인 교육 영상" 
                             allowfullscreen></iframe>
                 </div>

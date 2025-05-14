@@ -10,21 +10,12 @@
 </head>
 <body>
     <div class="container mt-3">
-        <!-- 이미지 섹션 -->
-        <div class="card mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Data 직접변경 승인</h5>
-                <p class="card-text">DB에 접속하여 Data를 직접 변경할 경우 적절한 승인권자의 승인을 득합니다.</p>
-            </div>
-            <img src="{{ url_for('static', filename='img/APD07.jpg')}}" class="card-img" alt="Access Program & Data">
-        </div>
-
         <!-- 유튜브 섹션 -->
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title mb-3">교육 영상</h5>
+                <h5 class="card-title mb-3">영상 자료</h5>
                 <div class="ratio ratio-16x9">
-                    <iframe src="https://www.youtube.com/embed/EdbB7ymq5Ic?si=fbqej2uATkJxYBh6?autoplay=1&mute=1" 
+                    <iframe src="https://www.youtube.com/embed/EdbB7ymq5Ic?si=fbqej2uATkJxYBh6&autoplay=1&mute=1" 
                             title="Access Program & Data 교육 영상" 
                             allowfullscreen></iframe>
                 </div>
