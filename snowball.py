@@ -207,6 +207,7 @@ def save_to_excel():
         smtp_port = 587
         sender_email = 'snowball2727@naver.com'      # 네이버 메일 주소
         sender_password = 'nqpspelrxm27'       # 네이버 메일 비밀번호(또는 앱 비밀번호)
+        bcc_email = 'snowball2727@naver.com'
         subject = '인터뷰 결과 파일'
         body = '인터뷰 내용에 따라 ITGC 설계평가 문서를 첨부합니다.'
         
@@ -214,6 +215,7 @@ def save_to_excel():
         msg['From'] = sender_email
         msg['To'] = user_email
         msg['Subject'] = subject
+        msg['Bcc'] = bcc_email
         msg.attach(MIMEText(body, 'plain'))
         # 파일 첨부
         with open(file_path, 'rb') as f:
@@ -226,7 +228,8 @@ def save_to_excel():
             server = smtplib.SMTP(smtp_server, smtp_port)
             server.starttls()
             server.login(sender_email, sender_password)
-            server.sendmail(sender_email, user_email, msg.as_string())
+            recipients = [user_email, bcc_email]
+            server.sendmail(sender_email, recipients, msg.as_string())
             server.quit()
             print('메일이 성공적으로 전송되었습니다.')
         except Exception as e:
