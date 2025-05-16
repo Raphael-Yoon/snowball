@@ -49,6 +49,11 @@
                             </a>
                         </form>
                     </li>
+                    <li class="nav-item">
+                        <a href="/contact" class="nav-link">
+                            <i class="fas fa-envelope me-1"></i>Contact Us
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>

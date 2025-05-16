@@ -559,5 +559,39 @@ def get_content():
         print(f"Error rendering template for {content_type}: {str(e)}")
         return '<div style="text-align: center; padding: 20px;"><h3>준비 중입니다</h3><p>해당 항목은 현재 영상제작 중 입니다.</p></div>'
 
+@app.route('/contact', methods=['GET', 'POST'])
+def contact():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        message = request.form.get('message')
+        # 메일 전송
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        smtp_server = 'smtp.naver.com'
+        smtp_port = 587
+        sender_email = 'snowball2727@naver.com'
+        sender_password = os.environ.get('NAVER_MAIL_PASSWORD')
+        receiver_email = 'snowball2727@naver.com'
+        subject = f'Contact Us 문의: {name}'
+        body = f'이름: {name}\n이메일: {email}\n문의내용:\n{message}'
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = receiver_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+        try:
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, receiver_email, msg.as_string())
+            server.quit()
+            return render_template('contact.jsp', success=True)
+        except Exception as e:
+            print('문의 메일 전송 실패:', e)
+            return render_template('contact.jsp', success=False, error=str(e))
+    return render_template('contact.jsp')
+
 if __name__ == '__main__':
     main()
