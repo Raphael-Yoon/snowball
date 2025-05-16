@@ -80,6 +80,15 @@
         </div>
     </section>
 
+    <!-- Contact Us 바로가기 -->
+    <section class="py-2">
+        <div class="container text-center">
+            <a href="/contact" class="btn btn-outline-primary btn-lg">
+                <i class="fas fa-envelope me-1"></i>Contact Us
+            </a>
+        </div>
+    </section>
+
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
