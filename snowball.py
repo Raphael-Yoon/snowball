@@ -17,7 +17,7 @@ app = Flask(__name__)
 app.secret_key = '150606'
 
 # 시작할 질문 번호 설정 (1부터 시작)
-START_QUESTION = 40  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
+START_QUESTION = 0  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
 
 load_dotenv()
 
@@ -88,7 +88,9 @@ s_questions = [
     {"index": 38, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO"},
     {"index": 39, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.", "category": "CO"},
     {"index": 40, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO"},
-    {"index": 41, "text": "산출물을 전달받을 메일 주소를 적어주세요.", "category": "Complete"}
+    {"index": 41, "text": "회사명을 적어주세요.", "category": "Complete"},
+    {"index": 42, "text": "담당자 이름을 적어주세요.", "category": "Complete"},
+    {"index": 43, "text": "산출물을 전달받을 메일 주소를 적어주세요.", "category": "Complete"}
 ]
 
 question_count = len(s_questions)
@@ -143,10 +145,14 @@ def link2():
         next_question = {i: i + 1 for i in range(43)}
         conditional_routes = {
             1: 2 if session['answer'][question_index] == 'Y' else 3,
-            3: 4 if session['answer'][question_index] == 'Y' else 6,
-            41: 42 if session['answer'][3] == 'Y' else 44
+            3: 4 if session['answer'][question_index] == 'Y' else 6
         }
         next_question.update(conditional_routes)
+
+        # 43번 질문 제출 시에만 save_to_excel 호출(메일 전송)
+        if question_index == 43:
+            print('excel download')
+            return save_to_excel()
 
         session['question_index'] = next_question.get(question_index, question_index)
         print(f"goto {session['question_index']}")
@@ -155,8 +161,8 @@ def link2():
         print(f"textarea 값(a{question_index}_1): {session['textarea_answer'][question_index]}")
 
         if session['question_index'] >= question_count:
-            print('excel download')
-            return save_to_excel()
+            # 마지막 질문 이후에는 save_to_excel 호출하지 않음
+            return redirect(url_for('index'))
 
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
@@ -194,11 +200,35 @@ def save_to_excel():
             num_lines = value.count('\n') + 1
             approx_lines = num_lines + (len(value) // 50)
             ws.row_dimensions[12].height = 15 * approx_lines
+        # 모든 시트에 41, 42번 답변 반영
+        if len(answers) > 41:
+            ws['B3'] = answers[41]
+        if len(answers) > 42:
+            ws['B5'] = answers[42]
+        # C14 Ineffective 처리 조건-시트 매핑 (중복 제거)
+        ineffective_conditions = [
+            ('APD01', len(answers) > 13 and (answers[11] == 'N' or answers[13] == 'N')),
+            ('APD02', len(answers) > 14 and answers[14] == 'N'),
+            ('APD03', len(answers) > 15 and answers[15] == 'N'),
+            ('APD04', len(answers) > 16 and answers[16] == 'N'),
+            ('APD06', len(answers) > 19 and (answers[18] == 'N' or answers[19] == 'N')),
+            ('APD07', len(answers) > 21 and (answers[20] == 'N' or answers[21] == 'N')),
+            ('APD10', len(answers) > 25 and (answers[24] == 'N' or answers[25] == 'N')),
+            ('PC01', (len(answers) > 28 and answers[28] == 'N') or (len(answers) > 29 and answers[29] == 'N')),
+            ('PC02', (len(answers) > 28 and answers[28] == 'N') or (len(answers) > 30 and answers[30] == 'N')),
+            ('PC03', (len(answers) > 28 and answers[28] == 'N') or (len(answers) > 31 and answers[31] == 'N')),
+            ('PC05', len(answers) > 33 and answers[33] == 'N'),
+            ('CO01', len(answers) > 35 and (answers[34] == 'N' or answers[35] == 'N')),
+        ]
+        for sheet_name, condition in ineffective_conditions:
+            if control == sheet_name and condition:
+                ws['C14'] = 'Ineffective'
+                ws.sheet_properties.tabColor = "FF0000"  # 시트 탭 색상을 빨간색으로
 
     wb.save(file_path)
 
-    # 메일 전송 (a41이 메일 주소)
-    user_email = answers[41] if len(answers) > 41 else ''
+    # 메일 전송 (a43이 메일 주소)
+    user_email = answers[43] if len(answers) > 43 else ''
     if user_email:
         import smtplib
         from email.mime.multipart import MIMEMultipart

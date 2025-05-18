@@ -32,8 +32,10 @@
                     <i class="fas fa-lock"></i> APD(Access to Program & Data)
                 {% elif 28 <= current_index <= 33 %}
                     <i class="fas fa-laptop-code"></i> PC(Program Change)
-                {% elif 33 <= current_index <= 40 %}
+                {% elif 34 <= current_index <= 40 %}
                     <i class="fas fa-cogs"></i> CO(Computer Operation)
+                {% elif 41 <= current_index <= 43 %}
+                    <i class="fas fa-check-circle"></i> 완료
                 {% else %}
                     <i class="fas fa-check-circle"></i> 모든 질문이 완료되었습니다.
                 {% endif %}
@@ -60,7 +62,11 @@
                     <div class="mb-3">
                         <!-- 입력 필드 -->
                         {% if current_index == 41 %}
-                            <input type="text" class="form-control" name="a41" placeholder="이메일 주소를 입력하세요" required>
+                            <input type="text" class="form-control" name="a41" placeholder="회사명" required>
+                        {% elif current_index == 42 %}
+                            <input type="text" class="form-control" name="a42" placeholder="담당자 이름" required>
+                        {% elif current_index == 43 %}
+                            <input type="email" class="form-control" name="a43" placeholder="이메일 주소를 입력하세요" required>
                         {% elif current_index in [0, 6, 8] %}
                             <input type="text" class="form-control" name="a{{ current_index }}" required>
                         
@@ -169,6 +175,9 @@
                 37: "예1) 매일 아침 배치수행결과를 확인하며 문서화하며 오류 발생시 원인파악 및 조치현황 등을 함께 기록함<br>예2) 오류 발생시에만 점검결과를 작성하며 오류 발생 기록은 삭제하지 않고 유지됨",
                 39: "예) 백업은 시스템에 의해 매일/매주/매월 자동으로 수행되며 월단위로 모니터링하여 정상완료 여부를 문서로 작성함",
                 40: "예) 서버실 출입 필요시 사전에 승인권자에게 승인을 득하며 방명록을 작성하고 담당자 동행하에 함께 출입함",
+                41: "회사명은 산출물을 작성하는 용도로만 사용됩니다.",
+                42: "담당자 정보는 산출물을 작성하는 용도로만 사용됩니다.",
+                43: "산출물을 전달받을 메일 주소를 입력하세요."
             } %}
             
             {% if current_index in help_texts %}
@@ -211,7 +220,7 @@
       </div>
     </div>
 
-    <!-- 메일 전송 안내 모달 (41번 질문 전용) -->
+    <!-- 메일 전송 안내 모달 (43번 질문 전용) -->
     <div class="modal fade" id="mailModal" tabindex="-1" aria-labelledby="mailModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -321,37 +330,39 @@
                 8: { type: 'text', value: 'Oracle 19c' }, // 8: DB 종류와 버전을 작성해 주세요.
                 9: { type: 'radio_text', radio: 'Y', text: 'DB Safer' }, // 9: DB 접근제어 Tool을 사용하고 있습니까?
                 10: { type: 'radio_text', radio: 'N', text: '' }, // 10: 별도의 Batch Schedule Tool을 사용하고 있습니까?
-                11: { type: 'radio', value: 'Y' }, // 11: 사용자 권한부여 이력이 시스템에 기록되고 있습니까?
+                11: { type: 'radio', value: 'N' }, // 11: 사용자 권한부여 이력이 시스템에 기록되고 있습니까?
                 12: { type: 'radio', value: 'Y' }, // 12: 사용자 권한회수 이력이 시스템에 기록되고 있습니까?
                 13: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 및 승인' }, // 13: 사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
                 14: { type: 'radio_textarea', radio: 'Y', textarea: '인사명령 후 권한 회수' }, // 14: 부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?
-                15: { type: 'radio_textarea', radio: 'Y', textarea: '퇴사자 접근권한 차단' }, // 15: 퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?
+                15: { type: 'radio_textarea', radio: 'N', textarea: '퇴사자 접근권한 차단' }, // 15: 퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?
                 16: { type: 'radio', value: 'Y' }, // 16: 전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?
                 17: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // 17: 패스워드 설정사항을 기술해 주세요.
                 18: { type: 'radio', value: 'Y' }, // 18: 데이터 변경 이력이 시스템에 기록되고 있습니까?
                 19: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 19: 데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
                 20: { type: 'radio', value: 'Y' }, // 20: DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?
                 21: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 21: DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                22: { type: 'textarea', value: '인프라관리팀 김xx 과장' }, // 22: DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.
+                22: { type: 'textarea', value: '인프라관리팀 심범석 차장' }, // 22: DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.
                 23: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // 23: DB 패스워드 설정사항을 기술해 주세요.
                 24: { type: 'radio', value: 'Y' }, // 24: OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?
                 25: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 25: OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                26: { type: 'textarea', value: '인프라관리팀 이xx 책임' }, // 26: OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.
+                26: { type: 'textarea', value: '인프라관리팀 손현호 차장' }, // 26: OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.
                 27: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // 27: OS 패스워드 설정사항을 기술해 주세요.
-                28: { type: 'radio', value: 'Y' }, // 28: 프로그램 변경 이력이 시스템에 기록되고 있습니까?
+                28: { type: 'radio', value: 'N' }, // 28: 프로그램 변경 이력이 시스템에 기록되고 있습니까?
                 29: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 29: 프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?
                 30: { type: 'radio_textarea', radio: 'Y', textarea: '사용자 테스트 및 결과 문서화' }, // 30: 프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?
                 31: { type: 'radio_textarea', radio: 'Y', textarea: '이관 요청서 및 승인' }, // 31: 프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?
-                32: { type: 'textarea', value: '인프라관리팀 박xx 수석' }, // 32: 이관(배포)권한을 보유한 인원에 대해 기술해 주세요.
+                32: { type: 'textarea', value: '인프라관리팀 윤대호 차장' }, // 32: 이관(배포)권한을 보유한 인원에 대해 기술해 주세요.
                 33: { type: 'radio', value: 'Y' }, // 33: 운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?
                 34: { type: 'radio', value: 'Y' }, // 34: 배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?
                 35: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 35: 배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                36: { type: 'textarea', value: '시스템 운영팀 최xx 과장' }, // 36: 배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.
+                36: { type: 'textarea', value: '시스템 운영팀 신혁수 과장' }, // 36: 배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.
                 37: { type: 'textarea', value: '매일 아침 배치수행결과 확인 및 문서화' }, // 37: 배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.
                 38: { type: 'textarea', value: '장애 발생시 원인파악 및 조치' }, // 38: 장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.
                 39: { type: 'textarea', value: '백업 자동 수행 및 월단위 모니터링' }, // 39: 백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.
                 40: { type: 'textarea', value: '사전 승인 및 방명록 작성' }, // 40: 서버실 출입시의 절차에 대해 기술해 주세요.
-                41: { type: 'text', value: 'newsist@naver.com' }, // 41: 메일 주소 입력
+                41: { type: 'text', value: '스노우볼컴파니' }, // 42: 회사명 입력
+                42: { type: 'text', value: '조세영 차장' }, // 43: 담당자 이름 입력
+                43: { type: 'text', value: 'newsist@naver.com' }, // 41: 메일 주소 입력
             };
             const sample = samples[questionNumber];
             if (!sample) return;
