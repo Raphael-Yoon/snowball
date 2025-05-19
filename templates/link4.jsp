@@ -32,23 +32,17 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const options = {
-            APD: [
+            ITPWC: [
+                {value: "ITPWC01", text: "ITGC Scoping"}
+            ],
+            ITGC: [
                 {value: "APD01", text: "Application 권한부여 승인"},
                 {value: "APD02", text: "Application 부서이동자 권한 회수"},
                 {value: "APD03", text: "Application 퇴사자 접근권한 회수"},
                 {value: "APD07", text: "Data 직접변경 승인"},
                 {value: "APD08", text: "서버(OS/DB) 접근권한 승인"},
-            ],
-            PC: [
-                {value: "PC01", text: "프로그램 변경 승인"},
-                {value: "PC02", text: "프로그램 변경 사용자 테스트"},
-                {value: "PC03", text: "프로그램 이관 승인"},
-                {value: "PC05", text: "개발/운영 환경 분리"},
-                {value: "PC06", text: "인프라 설정변경"}
-            ],
-            CO: [
-                {value: "CO01", text: "배치잡 스케줄 등록 승인"},
-                {value: "CO03", text: "배치잡 스케줄 Monitoring"}
+                {value: "PC01", text: "프로그램 변경"},
+                {value: "CO01", text: "배치잡 스케줄 등록 승인"}
             ],
             ETC: [
                 {value: "PW", text: "패스워드 기준"},
@@ -58,9 +52,8 @@
         };
 
         const categoryNames = {
-            'APD': 'Access Program & Data',
-            'PC': 'Program Change',
-            'CO': 'Computer Operation',
+            'ITPWC': 'IT Process Wide Controls',
+            'ITGC': 'IT General Controls',
             'ETC': '기타'
         };
 
@@ -109,6 +102,19 @@
         function updateContent(selectedValue) {
             const contentContainer = document.getElementById('contentContainer');
             contentContainer.innerHTML = '';
+
+            // 준비중 메시지를 보여줄 value 목록
+            const preparingList = ['APD07', 'APD08', 'PC01', 'CO01'];
+
+            if (preparingList.includes(selectedValue)) {
+                contentContainer.innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h3>준비 중입니다</h3>
+                        <p>해당 항목은 현재 영상제작 중 입니다.</p>
+                    </div>
+                `;
+                return;
+            }
 
             fetch(`/get_content?type=${selectedValue}`)
                 .then(response => response.text())
