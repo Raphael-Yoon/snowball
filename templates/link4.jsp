@@ -86,10 +86,6 @@
                     }
                     
                     link.addEventListener('click', function(e) {
-                        if (disabledList.includes(option.value)) {
-                            e.preventDefault();
-                            return;
-                        }
                         document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
                         this.classList.add('active');
                         updateContent(this.dataset.value);
@@ -113,7 +109,7 @@
             contentContainer.innerHTML = '';
 
             // 준비중 메시지를 보여줄 value 목록
-            const preparingList = ['APD07', 'APD08', 'PC01', 'CO01', 'MONITORING'];
+            const preparingList = ['APD07', 'APD08', 'PC01', 'CO01', 'MONITOR'];
 
             if (preparingList.includes(selectedValue)) {
                 contentContainer.innerHTML = `
