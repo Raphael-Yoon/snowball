@@ -12,7 +12,7 @@
 		{% include 'navi.jsp' %}
 		<div class="form-container">
 			<h1 class="section-title">
-				<i class="fas fa-file-alt"></i> 시스템 정보 입력
+				<i class="fas fa-file-alt"></i> ITGC RCM 자동 생성
 			</h1>
 			<div class="card">
 				<div class="card-body">
