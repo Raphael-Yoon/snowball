@@ -265,7 +265,5 @@ button:hover{
 
 .disabled-link {
     color: #bbb !important;
-    pointer-events: none;
-    cursor: default;
     opacity: 0.7;
 }
