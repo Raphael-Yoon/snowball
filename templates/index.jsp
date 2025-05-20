@@ -29,7 +29,7 @@
     <!-- 기능 섹션 -->
     <section id="features" class="py-4">
         <div class="container">
-            <h2 class="section-title">주요 기능2</h2>
+            <h2 class="section-title">주요 기능</h2>
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="feature-card">
