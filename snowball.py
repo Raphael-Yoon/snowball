@@ -5,6 +5,12 @@ import pandas as pd
 import os
 from datetime import datetime
 from dotenv import load_dotenv
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+import base64
+import pickle
+from email.mime.text import MIMEText
 
 import link_admin
 import link1_rcm
@@ -590,6 +596,29 @@ def get_content():
         print(f"Error rendering template for {content_type}: {str(e)}")
         return '<div style="text-align: center; padding: 20px;"><h3>준비 중입니다</h3><p>해당 항목은 현재 영상제작 중 입니다.</p></div>'
 
+def send_gmail(to, subject, body):
+    SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+    creds = None
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+    service = build('gmail', 'v1', credentials=creds)
+    message = MIMEText(body)
+    message['to'] = to
+    message['subject'] = subject
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    message = {'raw': raw}
+    send_message = service.users().messages().send(userId="me", body=message).execute()
+    return send_message
+
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
     if request.method == 'POST':
@@ -598,33 +627,6 @@ def contact():
         email = request.form.get('email')
         message = request.form.get('message')
         print(f"[2] 폼 데이터 파싱 완료: name={name}, email={email}")
-
-        # 메일 전송
-        import smtplib
-        from email.mime.multipart import MIMEMultipart
-        from email.mime.text import MIMEText
-        smtp_server = 'smtp.naver.com'
-        smtp_port = 587
-        sender_email = 'snowball2727@naver.com'
-        sender_password = os.getenv('NAVER_MAIL_PASSWORD')
-        receiver_email = 'snowball2727@naver.com'
-        subject = f'Contact Us 문의: {name}'
-        body = f'이름: {name}\n이메일: {email}\n문의내용:\n{message}'
-        msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = receiver_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
-
-        try:
-            print("[3] SMTP 서버 연결 시도")
-            server = smtplib.SMTP(smtp_server, smtp_port)
-            server.starttls()
-            print("[4] SMTP 로그인 시도")
-            server.login(sender_email, sender_password)
-            print("[5] 메일 전송 시도")
-            server.sendmail(sender_email, receiver_email, msg.as_string())
-            server.quit()
             print("[6] 메일 전송 성공")
             return render_template('contact.jsp', success=True)
         except Exception as e:
