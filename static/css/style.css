@@ -262,3 +262,8 @@ button:hover{
         padding: 15px 0;
     }
 }
+
+.disabled-link {
+    color: #bbb !important;
+    opacity: 0.7;
+}

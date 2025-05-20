@@ -5,6 +5,12 @@ import pandas as pd
 import os
 from datetime import datetime
 from dotenv import load_dotenv
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+import base64
+import pickle
+from email.mime.text import MIMEText
 
 import link_admin
 import link1_rcm
@@ -228,47 +234,48 @@ def save_to_excel():
     wb.save(file_path)
 
     # 메일 전송 (a43이 메일 주소)
-    user_email = answers[43] if len(answers) > 43 else ''
-    if user_email:
-        import smtplib
-        from email.mime.multipart import MIMEMultipart
-        from email.mime.text import MIMEText
-        from email.mime.base import MIMEBase
-        from email import encoders
-        
-        smtp_server = 'smtp.naver.com'
-        smtp_port = 587
-        sender_email = 'snowball2727@naver.com'      # 네이버 메일 주소
-        sender_password = os.environ.get('NAVER_MAIL_PASSWORD')       # 네이버 메일 비밀번호(또는 앱 비밀번호)
-        bcc_email = 'snowball2727@naver.com'
-        subject = '인터뷰 결과 파일'
-        body = '인터뷰 내용에 따라 ITGC 설계평가 문서를 첨부합니다.'
-        
-        msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = user_email
-        msg['Subject'] = subject
-        msg['Bcc'] = bcc_email
-        msg.attach(MIMEText(body, 'plain'))
-        # 파일 첨부
-        with open(file_path, 'rb') as f:
-            part = MIMEBase('application', 'octet-stream')
-            part.set_payload(f.read())
-            encoders.encode_base64(part)
-            part.add_header('Content-Disposition', f'attachment; filename="{file_name}"')
-            msg.attach(part)
-        try:
-            server = smtplib.SMTP(smtp_server, smtp_port)
-            server.starttls()
-            server.login(sender_email, sender_password)
-            recipients = [user_email, bcc_email]
-            server.sendmail(sender_email, recipients, msg.as_string())
-            server.quit()
-            print('메일이 성공적으로 전송되었습니다.')
-        except Exception as e:
-            print('메일 전송 실패:', e)
+    # user_email = answers[43] if len(answers) > 43 else ''
+    # if user_email:
+    #     import smtplib
+    #     from email.mime.multipart import MIMEMultipart
+    #     from email.mime.text import MIMEText
+    #     from email.mime.base import MIMEBase
+    #     from email import encoders
+    #     
+    #     smtp_server = 'smtp.naver.com'
+    #     smtp_port = 587
+    #     sender_email = 'snowball2727@naver.com'      # 네이버 메일 주소
+    #     sender_password = os.getenv('NAVER_MAIL_PASSWORD')       # 네이버 메일 비밀번호(또는 앱 비밀번호)
+    #     bcc_email = 'snowball2727@naver.com'
+    #     subject = '인터뷰 결과 파일'
+    #     body = '인터뷰 내용에 따라 ITGC 설계평가 문서를 첨부합니다.'
+    #     
+    #     msg = MIMEMultipart()
+    #     msg['From'] = sender_email
+    #     msg['To'] = user_email
+    #     msg['Subject'] = subject
+    #     msg['Bcc'] = bcc_email
+    #     msg.attach(MIMEText(body, 'plain'))
+    #     # 파일 첨부
+    #     with open(file_path, 'rb') as f:
+    #         part = MIMEBase('application', 'octet-stream')
+    #         part.set_payload(f.read())
+    #         encoders.encode_base64(part)
+    #         part.add_header('Content-Disposition', f'attachment; filename="{file_name}"')
+    #         msg.attach(part)
+    #     try:
+    #         server = smtplib.SMTP(smtp_server, smtp_port)
+    #         server.starttls()
+    #         server.login(sender_email, sender_password)
+    #         recipients = [user_email, bcc_email]
+    #         server.sendmail(sender_email, recipients, msg.as_string())
+    #         server.quit()
+    #         print('메일이 성공적으로 전송되었습니다.')
+    #     except Exception as e:
+    #         print('메일 전송 실패:', e)
 
-    return render_template('mail_sent.jsp', user_email=user_email)
+    # 다운로드만 제공
+    return send_file(file_path, as_attachment=True)
 
 def get_text_itgc(answers, control_number, textarea_answers=None):
     result = {}
@@ -589,38 +596,52 @@ def get_content():
         print(f"Error rendering template for {content_type}: {str(e)}")
         return '<div style="text-align: center; padding: 20px;"><h3>준비 중입니다</h3><p>해당 항목은 현재 영상제작 중 입니다.</p></div>'
 
+def send_gmail(to, subject, body):
+    SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+    creds = None
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+    service = build('gmail', 'v1', credentials=creds)
+    message = MIMEText(body)
+    message['to'] = to
+    message['subject'] = subject
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    message = {'raw': raw}
+    send_message = service.users().messages().send(userId="me", body=message).execute()
+    return send_message
+
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
     if request.method == 'POST':
+        print("[1] Contact 폼 제출됨")
         name = request.form.get('name')
         email = request.form.get('email')
         message = request.form.get('message')
-        # 메일 전송
-        import smtplib
-        from email.mime.multipart import MIMEMultipart
-        from email.mime.text import MIMEText
-        smtp_server = 'smtp.naver.com'
-        smtp_port = 587
-        sender_email = 'snowball2727@naver.com'
-        sender_password = os.environ.get('NAVER_MAIL_PASSWORD')
-        receiver_email = 'snowball2727@naver.com'
+        print(f"[2] 폼 데이터 파싱 완료: name={name}, email={email}")
+
         subject = f'Contact Us 문의: {name}'
         body = f'이름: {name}\n이메일: {email}\n문의내용:\n{message}'
-        msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = receiver_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
         try:
-            server = smtplib.SMTP(smtp_server, smtp_port)
-            server.starttls()
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, receiver_email, msg.as_string())
-            server.quit()
+            send_gmail(
+                to='snowball2727@naver.com',
+                subject=subject,
+                body=body
+            )
+            print("[6] 메일 전송 성공")
             return render_template('contact.jsp', success=True)
         except Exception as e:
-            print('문의 메일 전송 실패:', e)
+            print(f"[!] 문의 메일 전송 실패: {e}")
             return render_template('contact.jsp', success=False, error=str(e))
+    print("[0] Contact 폼 GET 요청")
     return render_template('contact.jsp')
 
 if __name__ == '__main__':

@@ -61,6 +61,8 @@
             const categoryList = document.getElementById('categoryList');
             categoryList.innerHTML = '';
 
+            const disabledList = ['ITPWC01', 'APD07', 'APD08', 'PC01', 'CO01', 'MONITOR'];
+
             Object.keys(options).forEach(category => {
                 const categoryTitle = document.createElement('div');
                 categoryTitle.className = 'category-title';
@@ -79,8 +81,11 @@
                     link.dataset.value = option.value;
                     link.textContent = option.text;
                     
+                    if (disabledList.includes(option.value)) {
+                        link.classList.add('disabled-link');
+                    }
+                    
                     link.addEventListener('click', function(e) {
-                        e.preventDefault();
                         document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
                         this.classList.add('active');
                         updateContent(this.dataset.value);
@@ -104,7 +109,7 @@
             contentContainer.innerHTML = '';
 
             // 준비중 메시지를 보여줄 value 목록
-            const preparingList = ['APD07', 'APD08', 'PC01', 'CO01'];
+            const preparingList = ['APD07', 'APD08', 'PC01', 'CO01', 'MONITOR'];
 
             if (preparingList.includes(selectedValue)) {
                 contentContainer.innerHTML = `
