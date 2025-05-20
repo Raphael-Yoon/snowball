@@ -239,7 +239,7 @@ def save_to_excel():
         smtp_server = 'smtp.naver.com'
         smtp_port = 587
         sender_email = 'snowball2727@naver.com'      # 네이버 메일 주소
-        sender_password = os.environ.get('NAVER_MAIL_PASSWORD')       # 네이버 메일 비밀번호(또는 앱 비밀번호)
+        sender_password = os.getenv('NAVER_MAIL_PASSWORD')       # 네이버 메일 비밀번호(또는 앱 비밀번호)
         bcc_email = 'snowball2727@naver.com'
         subject = '인터뷰 결과 파일'
         body = '인터뷰 내용에 따라 ITGC 설계평가 문서를 첨부합니다.'
@@ -602,7 +602,7 @@ def contact():
         smtp_server = 'smtp.naver.com'
         smtp_port = 587
         sender_email = 'snowball2727@naver.com'
-        sender_password = os.environ.get('NAVER_MAIL_PASSWORD')
+        sender_password = os.getenv('NAVER_MAIL_PASSWORD')
         receiver_email = 'snowball2727@naver.com'
         subject = f'Contact Us 문의: {name}'
         body = f'이름: {name}\n이메일: {email}\n문의내용:\n{message}'
