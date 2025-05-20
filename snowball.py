@@ -627,6 +627,15 @@ def contact():
         email = request.form.get('email')
         message = request.form.get('message')
         print(f"[2] 폼 데이터 파싱 완료: name={name}, email={email}")
+
+        subject = f'Contact Us 문의: {name}'
+        body = f'이름: {name}\n이메일: {email}\n문의내용:\n{message}'
+        try:
+            send_gmail(
+                to='snowball2727@naver.com',
+                subject=subject,
+                body=body
+            )
             print("[6] 메일 전송 성공")
             return render_template('contact.jsp', success=True)
         except Exception as e:
