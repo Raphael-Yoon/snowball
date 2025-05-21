@@ -26,7 +26,10 @@ app = Flask(__name__)
 app.secret_key = '150606'
 
 # 시작할 질문 번호 설정 (1부터 시작)
-START_QUESTION = 40  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
+if __name__ == '__main__':
+    START_QUESTION = 40
+else:
+    START_QUESTION = 0
 
 load_dotenv()
 
