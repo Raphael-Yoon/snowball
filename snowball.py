@@ -11,6 +11,9 @@ from google.auth.transport.requests import Request
 import base64
 import pickle
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 
 import link_admin
 import link1_rcm
@@ -23,7 +26,7 @@ app = Flask(__name__)
 app.secret_key = '150606'
 
 # 시작할 질문 번호 설정 (1부터 시작)
-START_QUESTION = 0  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
+START_QUESTION = 40  # 여기서 시작 질문 번호를 변경하면 됩니다 (예: 5번 질문부터 시작)
 
 load_dotenv()
 
@@ -233,49 +236,23 @@ def save_to_excel():
 
     wb.save(file_path)
 
-    # 메일 전송 (a43이 메일 주소)
-    # user_email = answers[43] if len(answers) > 43 else ''
-    # if user_email:
-    #     import smtplib
-    #     from email.mime.multipart import MIMEMultipart
-    #     from email.mime.text import MIMEText
-    #     from email.mime.base import MIMEBase
-    #     from email import encoders
-    #     
-    #     smtp_server = 'smtp.naver.com'
-    #     smtp_port = 587
-    #     sender_email = 'snowball2727@naver.com'      # 네이버 메일 주소
-    #     sender_password = os.getenv('NAVER_MAIL_PASSWORD')       # 네이버 메일 비밀번호(또는 앱 비밀번호)
-    #     bcc_email = 'snowball2727@naver.com'
-    #     subject = '인터뷰 결과 파일'
-    #     body = '인터뷰 내용에 따라 ITGC 설계평가 문서를 첨부합니다.'
-    #     
-    #     msg = MIMEMultipart()
-    #     msg['From'] = sender_email
-    #     msg['To'] = user_email
-    #     msg['Subject'] = subject
-    #     msg['Bcc'] = bcc_email
-    #     msg.attach(MIMEText(body, 'plain'))
-    #     # 파일 첨부
-    #     with open(file_path, 'rb') as f:
-    #         part = MIMEBase('application', 'octet-stream')
-    #         part.set_payload(f.read())
-    #         encoders.encode_base64(part)
-    #         part.add_header('Content-Disposition', f'attachment; filename="{file_name}"')
-    #         msg.attach(part)
-    #     try:
-    #         server = smtplib.SMTP(smtp_server, smtp_port)
-    #         server.starttls()
-    #         server.login(sender_email, sender_password)
-    #         recipients = [user_email, bcc_email]
-    #         server.sendmail(sender_email, recipients, msg.as_string())
-    #         server.quit()
-    #         print('메일이 성공적으로 전송되었습니다.')
-    #     except Exception as e:
-    #         print('메일 전송 실패:', e)
-
-    # 다운로드만 제공
-    return send_file(file_path, as_attachment=True)
+    user_email = answers[43] if len(answers) > 43 else ''
+    if user_email:
+        subject = '인터뷰 결과 파일'
+        body = '인터뷰 내용에 따라 ITGC 설계평가 문서를 첨부합니다.'
+        try:
+            send_gmail_with_attachment(
+                to=user_email,
+                subject=subject,
+                body=body,
+                file_path=file_path,
+                file_name=file_name
+            )
+            return '<h3>인터뷰 내용에 따른 ITGC 설계평가 문서가 입력하신 메일로 전송되었습니다.<br>메일함을 확인해 주세요.</h3>\n<a href="/" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#1976d2;color:#fff;text-decoration:none;border-radius:5px;">처음으로</a>'
+        except Exception as e:
+            return f'<h3>메일 전송에 실패했습니다: {e}</h3>'
+    else:
+        return '<h3>메일 주소가 입력되지 않았습니다. 43번 질문에 메일 주소를 입력해 주세요.</h3>'
 
 def get_text_itgc(answers, control_number, textarea_answers=None):
     result = {}
@@ -617,6 +594,41 @@ def send_gmail(to, subject, body):
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     message = {'raw': raw}
     send_message = service.users().messages().send(userId="me", body=message).execute()
+    return send_message
+
+def send_gmail_with_attachment(to, subject, body, file_path, file_name):
+    SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+    creds = None
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+    service = build('gmail', 'v1', credentials=creds)
+
+    # 메일 생성
+    message = MIMEMultipart()
+    message['to'] = to
+    message['subject'] = subject
+    message['Bcc'] = 'snowball2727@naver.com'
+    message.attach(MIMEText(body, 'plain'))
+
+    # 첨부파일 추가
+    with open(file_path, 'rb') as f:
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(f.read())
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f'attachment; filename="{file_name}"')
+        message.attach(part)
+
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    send_message = service.users().messages().send(userId="me", body={'raw': raw}).execute()
     return send_message
 
 @app.route('/contact', methods=['GET', 'POST'])
