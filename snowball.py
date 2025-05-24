@@ -27,7 +27,7 @@ app.secret_key = '150606'
 
 # 시작할 질문 번호 설정 (1부터 시작)
 if __name__ == '__main__':
-    START_QUESTION = 40
+    START_QUESTION = 0
 else:
     START_QUESTION = 0
 
@@ -180,6 +180,41 @@ def link2():
     question = s_questions[session['question_index']]
     return render_template('link2.jsp', question=question, question_count=question_count, current_index=session['question_index'], remote_addr=request.remote_addr)
     
+# --- 리팩토링: Ineffective 조건 체크 함수 ---
+def is_ineffective(control, answers):
+    conditions = {
+        'APD01': len(answers) > 13 and (answers[11] == 'N' or answers[13] == 'N'),
+        'APD02': len(answers) > 14 and answers[14] == 'N',
+        'APD03': len(answers) > 15 and answers[15] == 'N',
+        'APD04': len(answers) > 16 and answers[16] == 'N',
+        'APD06': len(answers) > 19 and (answers[18] == 'N' or answers[19] == 'N'),
+        'APD07': len(answers) > 21 and (answers[20] == 'N' or answers[21] == 'N'),
+        'APD10': len(answers) > 25 and (answers[24] == 'N' or answers[25] == 'N'),
+        'PC01': (len(answers) > 28 and answers[28] == 'N') or (len(answers) > 29 and answers[29] == 'N'),
+        'PC02': (len(answers) > 28 and answers[28] == 'N') or (len(answers) > 30 and answers[30] == 'N'),
+        'PC03': (len(answers) > 28 and answers[28] == 'N') or (len(answers) > 31 and answers[31] == 'N'),
+        'PC05': len(answers) > 33 and answers[33] == 'N',
+        'CO01': len(answers) > 35 and (answers[34] == 'N' or answers[35] == 'N'),
+    }
+    return conditions.get(control, False)
+
+# --- 리팩토링: 시트 값 입력 함수 ---
+def fill_sheet(ws, text_data, answers):
+    if 'A1' in text_data:
+        ws['C7'] = text_data['A1']
+    if 'B1' in text_data:
+        ws['C8'] = text_data['B1']
+    if 'B2' in text_data:
+        ws['C12'] = text_data['B2']
+        value = str(text_data['B2'])
+        num_lines = value.count('\n') + 1
+        approx_lines = num_lines + (len(value) // 50)
+        ws.row_dimensions[12].height = 15 * approx_lines
+    if len(answers) > 41:
+        ws['B3'] = answers[41]
+    if len(answers) > 42:
+        ws['B5'] = answers[42]
+
 @app.route('/export_excel', methods=['GET'])
 def save_to_excel():
     answers = session.get('answer', [])
@@ -201,41 +236,12 @@ def save_to_excel():
     for control in control_list:
         text_data = get_text_itgc(answers, control, textarea_answers)
         ws = wb[control]
-        if 'A1' in text_data:
-            ws['C7'] = text_data['A1']
-        if 'B1' in text_data:
-            ws['C8'] = text_data['B1']
-        if 'B2' in text_data:
-            ws['C12'] = text_data['B2']
-            # C12 셀의 데이터 길이에 따라 행 높이 자동 조정
-            value = str(text_data['B2'])
-            num_lines = value.count('\n') + 1
-            approx_lines = num_lines + (len(value) // 50)
-            ws.row_dimensions[12].height = 15 * approx_lines
-        # 모든 시트에 41, 42번 답변 반영
-        if len(answers) > 41:
-            ws['B3'] = answers[41]
-        if len(answers) > 42:
-            ws['B5'] = answers[42]
-        # C14 Ineffective 처리 조건-시트 매핑 (중복 제거)
-        ineffective_conditions = [
-            ('APD01', len(answers) > 13 and (answers[11] == 'N' or answers[13] == 'N')),
-            ('APD02', len(answers) > 14 and answers[14] == 'N'),
-            ('APD03', len(answers) > 15 and answers[15] == 'N'),
-            ('APD04', len(answers) > 16 and answers[16] == 'N'),
-            ('APD06', len(answers) > 19 and (answers[18] == 'N' or answers[19] == 'N')),
-            ('APD07', len(answers) > 21 and (answers[20] == 'N' or answers[21] == 'N')),
-            ('APD10', len(answers) > 25 and (answers[24] == 'N' or answers[25] == 'N')),
-            ('PC01', (len(answers) > 28 and answers[28] == 'N') or (len(answers) > 29 and answers[29] == 'N')),
-            ('PC02', (len(answers) > 28 and answers[28] == 'N') or (len(answers) > 30 and answers[30] == 'N')),
-            ('PC03', (len(answers) > 28 and answers[28] == 'N') or (len(answers) > 31 and answers[31] == 'N')),
-            ('PC05', len(answers) > 33 and answers[33] == 'N'),
-            ('CO01', len(answers) > 35 and (answers[34] == 'N' or answers[35] == 'N')),
-        ]
-        for sheet_name, condition in ineffective_conditions:
-            if control == sheet_name and condition:
-                ws['C14'] = 'Ineffective'
-                ws.sheet_properties.tabColor = "FF0000"  # 시트 탭 색상을 빨간색으로
+        fill_sheet(ws, text_data, answers)
+        if is_ineffective(control, answers):
+            ws['C14'] = 'Ineffective'
+            ws.sheet_properties.tabColor = "FF0000"
+        else:
+            ws['C13'] = '화면 증빙을 첨부해주세요'
 
     wb.save(file_path)
 
