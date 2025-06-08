@@ -62,7 +62,7 @@ s_questions = [
     {"index": 0, "text": "산출물을 전달받을 담당자를 선택해주세요.", "category": "Complete"},
     {"index": 1, "text": "시스템 이름을 적어주세요.", "category": "IT PwC"},
     {"index": 2, "text": "사용하고 있는 시스템은 상용소프트웨어입니까?", "category": "IT PwC"},
-    {"index": 3, "text": "기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)", "category": "IT PwC"},
+    {"index": 3, "text": "주요 로직을 회사내부에서 수정하여 사용할 수 있습니까?", "category": "IT PwC"},
     {"index": 4, "text": "Cloud 서비스를 사용하고 있습니까?", "category": "IT PwC"},
     {"index": 5, "text": "어떤 종류의 Cloud입니까?", "category": "IT PwC"},
     {"index": 6, "text": "Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?", "category": "IT PwC"},
@@ -146,7 +146,7 @@ def link2():
         # 다음 질문 인덱스를 결정하는 매핑
         next_question = {i: i + 1 for i in range(43)}
         conditional_routes = {
-            1: 2 if session['answer'][question_index] == 'Y' else 3,
+            4: 5 if session['answer'][question_index] == 'Y' else 7,
             3: 4 if session['answer'][question_index] == 'Y' else 6
         }
         next_question.update(conditional_routes)
