@@ -26,16 +26,14 @@
         <!-- 섹션 제목 -->
         <div class="text-center">
             <h1 class="section-title">
-                {% if 0 <= current_index <= 10 %}
+                {% if 0 <= current_index <= 11 %}
                     <i class="fas fa-server"></i> 공통사항
-                {% elif 11 <= current_index <= 27 %}
+                {% elif 12 <= current_index <= 28 %}
                     <i class="fas fa-lock"></i> APD(Access to Program & Data)
-                {% elif 28 <= current_index <= 33 %}
+                {% elif 29 <= current_index <= 34 %}
                     <i class="fas fa-laptop-code"></i> PC(Program Change)
-                {% elif 34 <= current_index <= 40 %}
+                {% elif 35 <= current_index <= 41 %}
                     <i class="fas fa-cogs"></i> CO(Computer Operation)
-                {% elif 41 <= current_index <= 43 %}
-                    <i class="fas fa-check-circle"></i> 완료
                 {% else %}
                     <i class="fas fa-check-circle"></i> 모든 질문이 완료되었습니다.
                 {% endif %}
@@ -62,14 +60,13 @@
                     <div class="mb-3">
                         <!-- 입력 필드 -->
                         {% if current_index == 0 %}
-                            <div style="color:blue; font-size:0.9em; margin-bottom:8px;">users: {{ users }}</div>
                             <select class="form-select" name="a0" required>
                                 <option value="">담당자를 선택하세요</option>
                                 {% for i in range(0, users|length, 3) %}
                                     <option value="{{ users[i+2] }}">{{ users[i] }} - {{ users[i+1] }}</option>
                                 {% endfor %}
                             </select>
-                        {% elif current_index in [3, 9, 11] %}
+                        {% elif current_index in [1, 3, 9, 11] %}
                             <input type="text" class="form-control" name="a{{ current_index }}" required>
                         {% elif current_index == 7 %}
                             <label class="form-check">
@@ -86,8 +83,7 @@
                                 <span class="form-check-label">예</span>
                             </label>
                             <input type="text" class="form-control mt-2" name="a{{ current_index }}_1" 
-                                    placeholder="{% if current_index == 4 %}시스템 종류(SAP ERP, Oracle ERP, 더존ERP 등)
-                                                 {% elif current_index in [10, 12, 13] %}제품명을 입력하세요{% endif %}"
+                                    placeholder="{% if current_index == 4 %}시스템 종류(SAP ERP, Oracle ERP, 더존ERP 등){% elif current_index in [10, 12, 13] %}제품명을 입력하세요{% endif %}"
                                     onclick="selectYes({{ current_index }})">
                             <label class="form-check mt-2">
                                 <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N">
@@ -139,11 +135,11 @@
 
             <!-- 도움말 -->
             {% set help_texts = {
-                3: "SaaS (Software as a Service): 사용자가 직접 설치 및 관리할 필요 없이, 클라우드에서 제공되는 ERP 소프트웨어를 사용하는 방식.<br>예: SAP S/4HANA Cloud, Oracle NetSuite, Microsoft Dynamics 365 → 기업이 재무, 인사, 회계, 공급망 관리 등을 클라우드에서 운영 가능.<br>IaaS (Infrastructure as a Service): 기업이 자체적으로 ERP 시스템을 구축하고 운영할 수 있도록 서버, 스토리지, 네트워크 등의 인프라를 제공하는 방식.<br>예: AWS EC2, Microsoft Azure Virtual Machines, Google Cloud Compute Engine → 기업이 SAP, Oracle ERP 등의 온프레미스 버전을 클라우드 환경에서 직접 운영.",
-                4: "SOC 1 Report (Service Organization Control 1 보고서)는 재무 보고와 관련된 내부 통제 사항을 검증하는 보고서입니다.",
-                6: "예: 윈도우즈 서버 2012, Unix AIX, Linux Redhat 등",
-                7: "예: Hiware, CyberArk 등",
-                8: "예: Oracle R12, MS SQL Server 2008 등",
+                5: "SaaS (Software as a Service): 사용자가 직접 설치 및 관리할 필요 없이, 클라우드에서 제공되는 ERP 소프트웨어를 사용하는 방식.<br>예: SAP S/4HANA Cloud, Oracle NetSuite, Microsoft Dynamics 365 → 기업이 재무, 인사, 회계, 공급망 관리 등을 클라우드에서 운영 가능.<br>IaaS (Infrastructure as a Service): 기업이 자체적으로 ERP 시스템을 구축하고 운영할 수 있도록 서버, 스토리지, 네트워크 등의 인프라를 제공하는 방식.<br>예: AWS EC2, Microsoft Azure Virtual Machines, Google Cloud Compute Engine → 기업이 SAP, Oracle ERP 등의 온프레미스 버전을 클라우드 환경에서 직접 운영.",
+                6: "SOC 1 Report (Service Organization Control 1 보고서)는 재무 보고와 관련된 내부 통제 사항을 검증하는 보고서입니다.",
+                7: "예: 윈도우즈 서버 2012, Unix AIX, Linux Redhat 등",
+                9: "예: Hiware, CyberArk 등",
+                10: "예: Oracle R12, MS SQL Server 2008 등",
                 9: "예: DBi, DB Safer 등",
                 10: "예: Waggle, JobScheduler 등",
                 11: "사용자A가 재무권한을 가지고 있었는데 당기에 구매권한을 추가로 받았을 경우 언제(날짜 등) 구매권한을 받았는지 시스템에서 관리되는 경우를 의미합니다.",
@@ -313,47 +309,44 @@
         function fillSample(questionNumber) {
             // 질문별 샘플값 정의
             const samples = {
-                0: { type: 'text', value: '스노우볼컴파니' }, // 회사명 입력
-                1: { type: 'text', value: '조세영 차장' }, // 담당자 이름 입력
-                2: { type: 'text', value: 'newsist@naver.com' }, // 메일 주소 입력
-                3: { type: 'text', value: 'Amidas' }, // 시스템 이름을 적어주세요.
-                4: { type: 'radio_text', radio: 'Y', text: 'SAP ERP' }, // 사용하고 있는 시스템은 상용소프트웨어입니까?
-                5: { type: 'radio', value: 'Y' }, // 기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)
-                6: { type: 'radio', value: 'N' }, // Cloud 서비스를 사용하고 있습니까?
-                7: { type: 'radio', value: 'Y' }, // 어떤 종류의 Cloud입니까?
-                8: { type: 'radio', value: 'Y' }, // Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?
-                9: { type: 'text', value: 'Linux Redhat 8' }, // OS 종류와 버전을 작성해 주세요.
-                10: { type: 'radio_text', radio: 'Y', text: 'Hiware' }, // OS 접근제어 Tool을 사용하고 있습니까?
-                11: { type: 'text', value: 'Oracle 19c' }, // DB 종류와 버전을 작성해 주세요.
-                12: { type: 'radio_text', radio: 'Y', text: 'DB Safer' }, // DB 접근제어 Tool을 사용하고 있습니까?
-                13: { type: 'radio_text', radio: 'N', text: '' }, // 별도의 Batch Schedule Tool을 사용하고 있습니까?
-                14: { type: 'radio', value: 'N' }, // 사용자 권한부여 이력이 시스템에 기록되고 있습니까?
-                15: { type: 'radio', value: 'Y' }, // 사용자 권한회수 이력이 시스템에 기록되고 있습니까?
-                16: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 및 승인' }, // 사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                17: { type: 'radio_textarea', radio: 'Y', textarea: '인사명령 후 권한 회수' }, // 부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?
-                18: { type: 'radio_textarea', radio: 'N', textarea: '퇴사자 접근권한 차단' }, // 퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?
-                19: { type: 'radio', value: 'Y' }, // 전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?
-                20: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // 패스워드 설정사항을 기술해 주세요.
-                21: { type: 'radio', value: 'Y' }, // 데이터 변경 이력이 시스템에 기록되고 있습니까?
-                22: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                23: { type: 'radio', value: 'Y' }, // DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?
-                24: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                25: { type: 'textarea', value: '인프라관리팀 심범석 차장' }, // DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.
-                26: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // DB 패스워드 설정사항을 기술해 주세요.
-                27: { type: 'radio', value: 'Y' }, // OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?
-                28: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                29: { type: 'textarea', value: '인프라관리팀 손현호 차장' }, // OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.
-                30: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // OS 패스워드 설정사항을 기술해 주세요.
-                31: { type: 'radio', value: 'N' }, // 프로그램 변경 이력이 시스템에 기록되고 있습니까?
-                32: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?
-                33: { type: 'radio_textarea', radio: 'Y', textarea: '사용자 테스트 및 결과 문서화' }, // 프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?
-                34: { type: 'radio_textarea', radio: 'Y', textarea: '이관 요청서 및 승인' }, // 프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?
-                35: { type: 'textarea', value: '인프라관리팀 윤대호 차장' }, // 이관(배포)권한을 보유한 인원에 대해 기술해 주세요.
-                36: { type: 'radio', value: 'Y' }, // 운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?
-                37: { type: 'radio', value: 'Y' }, // 배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?
-                38: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                39: { type: 'textarea', value: '시스템 운영팀 신혁수 과장' }, // 배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.
-                40: { type: 'textarea', value: '매일 아침 배치수행결과 확인 및 문서화' } // 배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.
+                1: { type: 'text', value: 'Amidas' }, // 시스템 이름을 적어주세요.
+                2: { type: 'radio_text', radio: 'Y', text: 'SAP ERP' }, // 사용하고 있는 시스템은 상용소프트웨어입니까?
+                3: { type: 'radio', value: 'Y' }, // 주요 로직을 회사내부에서 수정하여 사용할 수 있습니까?
+                4: { type: 'radio', value: 'N' }, // Cloud 서비스를 사용하고 있습니까?
+                5: { type: 'radio', value: 'Y' }, // 어떤 종류의 Cloud입니까?
+                6: { type: 'radio', value: 'Y' }, // Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?
+                7: { type: 'text', value: 'Linux Redhat 8' }, // OS 종류와 버전을 작성해 주세요.
+                8: { type: 'radio_text', radio: 'Y', text: 'Hiware' }, // OS 접근제어 Tool을 사용하고 있습니까?
+                9: { type: 'text', value: 'Oracle 19c' }, // DB 종류와 버전을 작성해 주세요.
+                10: { type: 'radio_text', radio: 'Y', text: 'DB Safer' }, // DB 접근제어 Tool을 사용하고 있습니까?
+                11: { type: 'radio_text', radio: 'N', text: '' }, // 별도의 Batch Schedule Tool을 사용하고 있습니까?
+                12: { type: 'radio', value: 'N' }, // 사용자 권한부여 이력이 시스템에 기록되고 있습니까?
+                13: { type: 'radio', value: 'Y' }, // 사용자 권한회수 이력이 시스템에 기록되고 있습니까?
+                14: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 및 승인' }, // 사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                15: { type: 'radio_textarea', radio: 'Y', textarea: '인사명령 후 권한 회수' }, // 부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?
+                16: { type: 'radio_textarea', radio: 'N', textarea: '퇴사자 접근권한 차단' }, // 퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?
+                17: { type: 'radio', value: 'Y' }, // 전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?
+                18: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // 패스워드 설정사항을 기술해 주세요.
+                19: { type: 'radio', value: 'Y' }, // 데이터 변경 이력이 시스템에 기록되고 있습니까?
+                20: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                21: { type: 'radio', value: 'Y' }, // DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?
+                22: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                23: { type: 'textarea', value: '인프라관리팀 심범석 차장' }, // DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.
+                24: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // DB 패스워드 설정사항을 기술해 주세요.
+                25: { type: 'radio', value: 'Y' }, // OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?
+                26: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                27: { type: 'textarea', value: '인프라관리팀 손현호 차장' }, // OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.
+                28: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // OS 패스워드 설정사항을 기술해 주세요.
+                29: { type: 'radio', value: 'N' }, // 프로그램 변경 이력이 시스템에 기록되고 있습니까?
+                30: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?
+                31: { type: 'radio_textarea', radio: 'Y', textarea: '사용자 테스트 및 결과 문서화' }, // 프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?
+                32: { type: 'radio_textarea', radio: 'Y', textarea: '이관 요청서 및 승인' }, // 프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?
+                33: { type: 'textarea', value: '인프라관리팀 윤대호 차장' }, // 이관(배포)권한을 보유한 인원에 대해 기술해 주세요.
+                34: { type: 'radio', value: 'Y' }, // 운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?
+                35: { type: 'radio', value: 'Y' }, // 배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?
+                36: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                37: { type: 'textarea', value: '시스템 운영팀 신혁수 과장' }, // 배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.
+                38: { type: 'textarea', value: '매일 아침 배치수행결과 확인 및 문서화' } // 배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.
             };
             const sample = samples[questionNumber];
             if (!sample) return;
