@@ -59,63 +59,51 @@ def link1():
     return render_template('link1.jsp', return_code=0)
 
 s_questions = [
-    {"index": 0, "text": "시스템 이름을 적어주세요.", "category": "IT PwC"},
-    {"index": 1, "text": "사용하고 있는 시스템은 상용소프트웨어입니까?", "category": "IT PwC"},
-    {"index": 2, "text": "기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)", "category": "IT PwC"},
-    {"index": 3, "text": "Cloud 서비스를 사용하고 있습니까?", "category": "IT PwC"},
-    {"index": 4, "text": "어떤 종류의 Cloud입니까?", "category": "IT PwC"},
-    {"index": 5, "text": "Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?", "category": "IT PwC"},
-    {"index": 6, "text": "OS 종류와 버전을 작성해 주세요.", "category": "IT PwC"},
-    {"index": 7, "text": "OS 접근제어 Tool을 사용하고 있습니까?", "category": "IT PwC"},
-    {"index": 8, "text": "DB 종류와 버전을 작성해 주세요.", "category": "IT PwC"},
-    {"index": 9, "text": "DB 접근제어 Tool을 사용하고 있습니까?", "category": "IT PwC"},
-    {"index": 10, "text": "별도의 Batch Schedule Tool을 사용하고 있습니까?", "category": "IT PwC"},
-    {"index": 11, "text": "사용자 권한부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
-    {"index": 12, "text": "사용자 권한회수 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
-    {"index": 13, "text": "사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
-    {"index": 14, "text": "부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?", "category": "APD"},
-    {"index": 15, "text": "퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?", "category": "APD"},
-    {"index": 16, "text": "전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?", "category": "APD"},
-    {"index": 17, "text": "패스워드 설정사항을 기술해 주세요.", "category": "APD"},
-    {"index": 18, "text": "데이터 변경 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
-    {"index": 19, "text": "데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
-    {"index": 20, "text": "DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
-    {"index": 21, "text": "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
-    {"index": 22, "text": "DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD"},
-    {"index": 23, "text": "DB 패스워드 설정사항을 기술해 주세요.", "category": "APD"},
-    {"index": 24, "text": "OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
-    {"index": 25, "text": "OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
-    {"index": 26, "text": "OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD"},
-    {"index": 27, "text": "OS 패스워드 설정사항을 기술해 주세요.", "category": "APD"},
-    {"index": 28, "text": "프로그램 변경 이력이 시스템에 기록되고 있습니까?", "category": "PC"},
-    {"index": 29, "text": "프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?", "category": "PC"},
-    {"index": 30, "text": "프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?", "category": "PC"},
-    {"index": 31, "text": "프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "PC"},
-    {"index": 32, "text": "이관(배포)권한을 보유한 인원에 대해 기술해 주세요.", "category": "PC"},
-    {"index": 33, "text": "운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?", "category": "PC"},
-    {"index": 34, "text": "배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?", "category": "CO"},
-    {"index": 35, "text": "배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "CO"},
-    {"index": 36, "text": "배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.", "category": "CO"},
-    {"index": 37, "text": "배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.", "category": "CO"},
-    {"index": 38, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO"},
-    {"index": 39, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.", "category": "CO"},
-    {"index": 40, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO"},
-    {"index": 41, "text": "회사명을 적어주세요.", "category": "Complete"},
-    {"index": 42, "text": "담당자 이름을 적어주세요.", "category": "Complete"},
-    {"index": 43, "text": "산출물을 전달받을 메일 주소를 적어주세요.", "category": "Complete"}
+    {"index": 0, "text": "산출물을 전달받을 담당자를 선택해주세요.", "category": "Complete"},
+    {"index": 1, "text": "시스템 이름을 적어주세요.", "category": "IT PwC"},
+    {"index": 2, "text": "사용하고 있는 시스템은 상용소프트웨어입니까?", "category": "IT PwC"},
+    {"index": 3, "text": "기능을 회사내부에서 수정하여 사용할 수 있습니까?(SAP, Oracle ERP 등등)", "category": "IT PwC"},
+    {"index": 4, "text": "Cloud 서비스를 사용하고 있습니까?", "category": "IT PwC"},
+    {"index": 5, "text": "어떤 종류의 Cloud입니까?", "category": "IT PwC"},
+    {"index": 6, "text": "Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?", "category": "IT PwC"},
+    {"index": 7, "text": "OS 종류와 버전을 작성해 주세요.", "category": "IT PwC"},
+    {"index": 8, "text": "OS 접근제어 Tool을 사용하고 있습니까?", "category": "IT PwC"},
+    {"index": 9, "text": "DB 종류와 버전을 작성해 주세요.", "category": "IT PwC"},
+    {"index": 10, "text": "DB 접근제어 Tool을 사용하고 있습니까?", "category": "IT PwC"},
+    {"index": 11, "text": "별도의 Batch Schedule Tool을 사용하고 있습니까?", "category": "IT PwC"},
+    {"index": 12, "text": "사용자 권한부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
+    {"index": 13, "text": "사용자 권한회수 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
+    {"index": 14, "text": "사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
+    {"index": 15, "text": "부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?", "category": "APD"},
+    {"index": 16, "text": "퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?", "category": "APD"},
+    {"index": 17, "text": "전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?", "category": "APD"},
+    {"index": 18, "text": "패스워드 설정사항을 기술해 주세요.", "category": "APD"},
+    {"index": 19, "text": "데이터 변경 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
+    {"index": 20, "text": "데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
+    {"index": 21, "text": "DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
+    {"index": 22, "text": "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
+    {"index": 23, "text": "DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD"},
+    {"index": 24, "text": "DB 패스워드 설정사항을 기술해 주세요.", "category": "APD"},
+    {"index": 25, "text": "OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD"},
+    {"index": 26, "text": "OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD"},
+    {"index": 27, "text": "OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD"},
+    {"index": 28, "text": "OS 패스워드 설정사항을 기술해 주세요.", "category": "APD"},
+    {"index": 29, "text": "프로그램 변경 이력이 시스템에 기록되고 있습니까?", "category": "PC"},
+    {"index": 30, "text": "프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?", "category": "PC"},
+    {"index": 31, "text": "프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?", "category": "PC"},
+    {"index": 32, "text": "프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "PC"},
+    {"index": 33, "text": "이관(배포)권한을 보유한 인원에 대해 기술해 주세요.", "category": "PC"},
+    {"index": 34, "text": "운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?", "category": "PC"},
+    {"index": 35, "text": "배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?", "category": "CO"},
+    {"index": 36, "text": "배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "CO"},
+    {"index": 37, "text": "배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.", "category": "CO"},
+    {"index": 38, "text": "배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.", "category": "CO"},
+    {"index": 39, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO"},
+    {"index": 40, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.", "category": "CO"},
+    {"index": 41, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO"}
 ]
 
 question_count = len(s_questions)
-
-@app.route('/link2/prev')
-def link2_prev():
-    print("Previous Question")
-    if 'question_index' in session:
-        # 이전 질문으로 이동 (최소 0)
-        session['question_index'] = max(0, session['question_index'] - 1)
-    return render_template('link2.jsp', question=s_questions[session['question_index']], 
-                         question_count=question_count, 
-                         current_index=session['question_index'])
 
 @app.route('/link2', methods=['GET', 'POST'])
 def link2():
@@ -131,10 +119,12 @@ def link2():
             session['question_index'] = 0
         session['answer'] = [''] * question_count  # 필요한 만큼 동적으로 조절 가능
         session['textarea_answer'] = [''] * question_count  # textarea 값 저장용
+        users = snowball_db.get_user_list()
         return render_template('link2.jsp', question=s_questions[session['question_index']], 
                              question_count=question_count, 
                              current_index=session['question_index'],
-                             remote_addr=request.remote_addr)
+                             remote_addr=request.remote_addr,
+                             users=users)
 
     question_index = session['question_index']
 

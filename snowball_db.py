@@ -4,7 +4,7 @@ def get_user_list():
     print('get_user_list function')
     con = sqlite3.connect("snowball.db")
     cur = con.cursor()
-    sql = "select company_name from sb_user order by user_name"
+    sql = "select company_name, user_name, user_id from sb_user where enabled_flag = 'Y' order by company_name, user_name"
     cur.execute(sql)
     result = cur.fetchall()
     con.close()
