@@ -59,58 +59,38 @@
                     <p class="card-text">{{ question.text }}</p>
                     <div class="mb-3">
                         <!-- 입력 필드 -->
-                        {% if current_index == 0 %}
+                        {% if question.answer_type == '0' %}
                             <select class="form-select" name="a0" required>
                                 <option value="">담당자를 선택하세요</option>
                                 {% for i in range(0, users|length, 3) %}
                                     <option value="{{ users[i+2] }}">{{ users[i] }} - {{ users[i+1] }}</option>
                                 {% endfor %}
                             </select>
-                        {% elif current_index in [1, 3, 9, 11] %}
-                            <input type="text" class="form-control" name="a{{ current_index }}" required>
-                        {% elif current_index == 7 %}
-                            <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required>
-                                <span class="form-check-label">SaaS</span>
-                            </label>
-                            <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N">
-                                <span class="form-check-label">IaaS</span>
-                            </label>
-                        {% elif current_index in [4, 10, 12, 13] %}
+                        {% elif question.answer_type == '2' %}
+                            <input type="text" class="form-control" name="a{{ current_index }}" required placeholder="{{ question.text_help if question.text_help else '' }}">
+                        {% elif question.answer_type == '3' %}
                             <label class="form-check">
                                 <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" id="yes_{{ current_index }}" required>
                                 <span class="form-check-label">예</span>
                             </label>
-                            <input type="text" class="form-control mt-2" name="a{{ current_index }}_1" 
-                                    placeholder="{% if current_index == 4 %}시스템 종류(SAP ERP, Oracle ERP, 더존ERP 등){% elif current_index in [10, 12, 13] %}제품명을 입력하세요{% endif %}"
-                                    onclick="selectYes({{ current_index }})">
+                            <input type="text" class="form-control mt-2" name="a{{ current_index }}_1" placeholder="{{ question.text_help if question.text_help else '제품명을 입력하세요' }}" onclick="selectYes({{ current_index }})">
                             <label class="form-check mt-2">
                                 <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N">
                                 <span class="form-check-label">아니요</span>
                             </label>
-                        {% elif current_index in [16, 17, 18, 22, 24, 28, 30, 31, 32, 36] %}
+                        {% elif question.answer_type == '4' %}
                             <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required 
-                                       onchange="toggleTextarea({{ current_index }})">
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required onchange="toggleTextarea({{ current_index }})">
                                 <span class="form-check-label">예</span>
                             </label>
-                            <textarea class="form-control mt-2" name="a{{ current_index }}_1" id="textarea_{{ current_index }}" 
-                                    placeholder="관련 절차를 입력하세요." rows="5" readonly
-                                    onclick="selectYesAndEnableTextarea({{ current_index }})"
-                                    style="cursor: pointer;"></textarea>
+                            <textarea class="form-control mt-2" name="a{{ current_index }}_1" id="textarea_{{ current_index }}" placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5" readonly onclick="selectYesAndEnableTextarea({{ current_index }})" style="cursor: pointer;"></textarea>
                             <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N"
-                                       onchange="toggleTextarea({{ current_index }})">
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" onchange="toggleTextarea({{ current_index }})">
                                 <span class="form-check-label">아니요</span>
                             </label>
-                        {% elif current_index in [20, 25, 26, 29, 30, 33, 37, 38, 39, 40, 41] %}
-                            <textarea class="form-control" name="a{{ current_index }}" 
-                                    placeholder="{% if current_index in [20, 26, 30] %}최소자리, 복잡성, 변경주기 등
-                                              {% elif current_index in [25, 28, 29, 32, 33] %}권한 보유 인원의 부서, 직급, 직무 등
-                                              {% else %}관련 절차를 입력하세요.{% endif %}" 
-                                    rows="5"></textarea>
-                        {% elif current_index in [5, 6, 8, 14, 15, 19, 21, 23, 27, 34] %}
+                        {% elif question.answer_type == '5' %}
+                            <textarea class="form-control" name="a{{ current_index }}" placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5"></textarea>
+                        {% elif question.answer_type == '1' %}
                             <label class="form-check">
                                 <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required>
                                 <span class="form-check-label">예</span>
@@ -120,60 +100,18 @@
                                 <span class="form-check-label">아니요</span>
                             </label>
                         {% else %}
-                            <label class="form-check">
-                                <input type="radio" class="form-check-input" name="answer" value="Y" required>
-                                <span class="form-check-label">예</span>
-                            </label>
-                            <label class="form-check">
-                                <input type="radio" class="form-check-input" name="answer" value="N">
-                                <span class="form-check-label">아니요</span>
-                            </label>
+                            <input type="text" class="form-control" name="a{{ current_index }}">
                         {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- 도움말 -->
-            {% set help_texts = {
-                5: "SaaS (Software as a Service): 사용자가 직접 설치 및 관리할 필요 없이, 클라우드에서 제공되는 ERP 소프트웨어를 사용하는 방식.<br>예: SAP S/4HANA Cloud, Oracle NetSuite, Microsoft Dynamics 365 → 기업이 재무, 인사, 회계, 공급망 관리 등을 클라우드에서 운영 가능.<br>IaaS (Infrastructure as a Service): 기업이 자체적으로 ERP 시스템을 구축하고 운영할 수 있도록 서버, 스토리지, 네트워크 등의 인프라를 제공하는 방식.<br>예: AWS EC2, Microsoft Azure Virtual Machines, Google Cloud Compute Engine → 기업이 SAP, Oracle ERP 등의 온프레미스 버전을 클라우드 환경에서 직접 운영.",
-                6: "SOC 1 Report (Service Organization Control 1 보고서)는 재무 보고와 관련된 내부 통제 사항을 검증하는 보고서입니다.",
-                7: "예: 윈도우즈 서버 2012, Unix AIX, Linux Redhat 등",
-                9: "예: Hiware, CyberArk 등",
-                10: "예: Oracle R12, MS SQL Server 2008 등",
-                9: "예: DBi, DB Safer 등",
-                10: "예: Waggle, JobScheduler 등",
-                11: "사용자A가 재무권한을 가지고 있었는데 당기에 구매권한을 추가로 받았을 경우 언제(날짜 등) 구매권한을 받았는지 시스템에서 관리되는 경우를 의미합니다.",
-                12: "기존 권한 회수시 History를 관리하고 있는지를 확인합니다.<br>Standard 기능을 기준으로 SAP ERP의 경우 권한회수이력을 별도로 저장하며 Oracle ERP의 경우 권한 데이터를 삭제하지 않고 Effective Date로 관리합니다",
-                13: "예) 새로운 권한이 필요한 경우 ITSM을 통해 요청서를 작성하고 팀장의 승인을 받은 후 IT팀에서 해당 권한을 부여함",
-                14: "예1) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 기존 권한을 회수함<br>예2) 인사팀에서 인사명령을 IT팀으로 전달하면 IT팀에서 해당 인원의 기존 권한을 회수함",
-                15: "예1) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 접근권한을 차단함<br>예2) 인사팀에서 인사명령을 IT팀으로 전달하면 IT팀에서 해당 인원의 접근권한을 차단함",
-                17: "예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등",
-                18: "시스템의 기능을 이용하여 데이터를 변경한 것이 아닌 관리자 등이 DB에 접속하여 쿼리를 통해 데이터를 변경한 건이 대상이며 해당 변경건만 추출이 가능해야 합니다",
-                19: "예) 데이터 변경 필요시 담당자는 ITSM을 통해 요성서를 작성하고 책임자의 승인을 받은 후 IT담당자가 데이터를 변경함",
-                21: "예) DB 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함",
-                22: "예) 인프라관리팀 김xx 과장, DBA",
-                23: "예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등",
-                25: "예) OS 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함",
-                26: "예) 인프라관리팀 이xx 책임, 보안관리자",
-                27: "예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등",
-                28: "변경에 대한 History가 시스템에 의해 기록되어야 합니다. A화면을 1, 3, 5월에 요청서를 받아 변경했다면 각각의 이관(배포)이력이 기록되어야 하며 자체기능, 배포툴, 형상관리툴 등을 사용할 수 있습니다.",
-                29: "예) 프로그램 기능 변경 필요시 ITSM을 통해 요청서를 작성하고 부서장의 승인을 득함",
-                30: "예) 프로그램 기능 변경 완료 후 요청자에 의해 사용자 테스트가 수행되고 그 결과가 문서화됨",
-                31: "예) 프로그램 기능 변경 및 사용자 테스트 완료 후 변경담당자로부터 이관 요청서가 작성되고 부서장의 승인을 득함",
-                32: "예) 인프라관리팀 박xx 수석, 서버관리자",
-                33: "JSP, ASP 등으로 개발된 웹시스템의 경우 localhost 또는 127.0.0.1을 개발서버로도 볼 수 있습니다",
-                34: "개발되어 등록된 배치 프로그램(Background Job)을 스케줄로 등록 또는 변경한 경우로 한정합니다. 배치 프로그램을 개발하여 운영서버에 반영하는 것은 이 경우에 포함되지 않습니다",
-                35: "예) 배치 스케줄이 필요한 경우 ITSM을 통해 요청서를 작성하고 승인권자의 승인을 득한 후 적절한 담당자에 의해 스케줄이 등록됨",
-                36: "예) 시스템 운영팀 최xx 과장, 시스템운영자",
-                37: "예1) 매일 아침 배치수행결과를 확인하며 문서화하며 오류 발생시 원인파악 및 조치현황 등을 함께 기록함<br>예2) 오류 발생시에만 점검결과를 작성하며 오류 발생 기록은 삭제하지 않고 유지됨",
-                39: "예) 백업은 시스템에 의해 매일/매주/매월 자동으로 수행되며 월단위로 모니터링하여 정상완료 여부를 문서로 작성함",
-                40: "예) 서버실 출입 필요시 사전에 승인권자에게 승인을 득하며 방명록을 작성하고 담당자 동행하에 함께 출입함",
-            } %}
-            
-            {% if current_index in help_texts %}
+            <!-- 도움말: s_questions의 help 필드를 활용하여 출력 -->
+            {# 아래는 snowball.py의 s_questions 각 질문 딕셔너리의 help 필드를 그대로 출력합니다. #}
+            {% if question.help %}
                 <div class="help-text">
                     <i class="fas fa-info-circle me-2"></i>
-                    {{ help_texts[current_index]|safe }}
+                    {{ question.help|safe }}
                 </div>
             {% endif %}
             <!-- 제출 버튼 -->
@@ -320,7 +258,7 @@
                 9: { type: 'text', value: 'Oracle 19c' }, // DB 종류와 버전을 작성해 주세요.
                 10: { type: 'radio_text', radio: 'Y', text: 'DB Safer' }, // DB 접근제어 Tool을 사용하고 있습니까?
                 11: { type: 'radio_text', radio: 'N', text: '' }, // 별도의 Batch Schedule Tool을 사용하고 있습니까?
-                12: { type: 'radio', value: 'N' }, // 사용자 권한부여 이력이 시스템에 기록되고 있습니까?
+                12: { type: 'radio', value: 'Y' }, // 사용자 권한부여 이력이 시스템에 기록되고 있습니까?
                 13: { type: 'radio', value: 'Y' }, // 사용자 권한회수 이력이 시스템에 기록되고 있습니까?
                 14: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 및 승인' }, // 사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
                 15: { type: 'radio_textarea', radio: 'Y', textarea: '인사명령 후 권한 회수' }, // 부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?
