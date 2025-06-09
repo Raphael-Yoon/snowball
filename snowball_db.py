@@ -11,6 +11,22 @@ def get_user_list():
     modified_result = [item for sublist in result for item in sublist]
     return modified_result
 
+def get_user_info(user_id, col_num):
+    con = sqlite3.connect("snowball.db")
+    cur = con.cursor()
+    # 1: company_name, 2: user_name, 3: user_email
+    columns = {1: 'company_name', 2: 'user_name', 3: 'user_email'}
+    col = columns.get(col_num, 'user_email')
+    sql = f"select {col} from sb_user where user_id=?"
+    print('sql = ', sql)
+    cur.execute(sql, (user_id,))
+    result = cur.fetchone()
+    con.close()
+    if result:
+        return result[0]
+    else:
+        return ''
+
 def get_login(company_name, login_key):
     print('get_login function')
     con = sqlite3.connect("snowball.db")
