@@ -18,8 +18,13 @@
 				<div class="card-body">
 					<form action="/rcm_generate" method="POST">
 						<div class="mb-4">
-							<label class="form-label">회사명</label>
-							<input type="text" class="form-control" id="param1" name="param1" required placeholder="회사명을 입력하세요">
+							<label class="form-label">담당자</label>
+							<select class="form-control" id="param1" name="param1" required>
+								<option value="">담당자를 선택하세요</option>
+								{% for i in range(0, users|length, 3) %}
+									<option value="{{ users[i+2] }}">{{ users[i] }} - {{ users[i+1] }}</option>
+								{% endfor %}
+							</select>
 						</div>
 						<div class="mb-4">
 							<label class="form-label">시스템명</label>
