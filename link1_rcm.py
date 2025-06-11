@@ -2,6 +2,7 @@ from flask import render_template
 import openpyxl
 import datetime
 import snowball_db
+from io import BytesIO
 
 def rcm_generate(form_data, file_name=None):
     print("RCM Generate called")
@@ -33,7 +34,7 @@ def rcm_generate(form_data, file_name=None):
         workbook = openpyxl.load_workbook('./paper_templates/RCM_generate.xlsx')
     except FileNotFoundError:
         print("./paper_templates/RCM_generate.xlsx: 파일열기 오류")
-        return ''
+        return None
 
     sheet = workbook["RCM"]
 
@@ -55,10 +56,13 @@ def rcm_generate(form_data, file_name=None):
             if row[1].value != param5:
                 sheet.delete_rows(row[0].row)
 
-    workbook.save('./downloads/' + output_path)
+    # 메모리 버퍼에 저장
+    excel_stream = BytesIO()
+    workbook.save(excel_stream)
     workbook.close()
+    excel_stream.seek(0)
 
-    return './downloads/' + output_path
+    return excel_stream
 
 def rcm_request(form_data):
     print("RCM Request called")

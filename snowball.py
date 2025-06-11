@@ -14,6 +14,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+from io import BytesIO
 
 import link_admin
 import link1_rcm
@@ -221,7 +222,6 @@ def save_to_excel():
     textarea_answers = session.get('textarea_answer', [])
     today = datetime.today().strftime('%Y%m%d')
     file_name = f"{answers[1]}_{today}.xlsx" if len(answers) > 1 and answers[1] else f"responses_{today}.xlsx"
-    file_path = os.path.join("static", file_name)
 
     # 1. 템플릿 파일 불러오기
     template_path = os.path.join("static", "Design_Template.xlsx")
@@ -243,7 +243,11 @@ def save_to_excel():
         else:
             ws['C13'] = '화면 증빙을 첨부해주세요'
 
-    wb.save(file_path)
+    # 메모리 버퍼에 저장
+    excel_stream = BytesIO()
+    wb.save(excel_stream)
+    wb.close()
+    excel_stream.seek(0)
 
     user_email = snowball_db.get_user_info(answers[0], 3) if answers and answers[0] else ''
 
@@ -255,7 +259,7 @@ def save_to_excel():
                 to=user_email,
                 subject=subject,
                 body=body,
-                file_path=file_path,
+                file_stream=excel_stream,
                 file_name=file_name
             )
             return '<h3>인터뷰 내용에 따른 ITGC 설계평가 문서가 입력하신 메일로 전송되었습니다.<br>메일함을 확인해 주세요.</h3>\n<a href="/" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#1976d2;color:#fff;text-decoration:none;border-radius:5px;">처음으로</a>'
@@ -498,7 +502,7 @@ def rcm_generate():
     base_name = form_data.get('param2', 'output')
     today = datetime.today().strftime('%y%m%d')
     file_name = f"{base_name}_RCM_{today}.xlsx"
-    output_path = link1_rcm.rcm_generate(form_data, file_name=file_name)
+    excel_stream = link1_rcm.rcm_generate(form_data, file_name=file_name)
 
     # 담당자 user_id는 param1
     user_id = form_data.get('param1')
@@ -512,7 +516,7 @@ def rcm_generate():
                 to=user_email,
                 subject=subject,
                 body=body,
-                file_path=output_path,
+                file_stream=excel_stream,
                 file_name=file_name
             )
             return render_template('mail_sent.jsp', user_email=user_email)
@@ -628,14 +632,9 @@ def send_gmail(to, subject, body):
     send_message = service.users().messages().send(userId="me", body=message).execute()
     return send_message
 
-def send_gmail_with_attachment(to, subject, body, file_path, file_name):
+def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=None, file_name=None):
     SCOPES = ['https://www.googleapis.com/auth/gmail.send']
     creds = None
-    print('to:', type(to), to)
-    print('subject:', type(subject), subject)
-    print('body:', type(body), body)
-    print('file_path:', type(file_path), file_path)
-    print('file_name:', type(file_name), file_name)
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             creds = pickle.load(token)
@@ -654,17 +653,21 @@ def send_gmail_with_attachment(to, subject, body, file_path, file_name):
     message['to'] = to
     message['subject'] = subject
     message['Bcc'] = 'snowball2727@naver.com'
-    print('message["to"]:', type(message['to']), message['to'])
-    print('message["subject"]:', type(message['subject']), message['subject'])
     message.attach(MIMEText(body, 'plain'))
 
-    # 첨부파일 추가
-    with open(file_path, 'rb') as f:
-        part = MIMEBase('application', 'octet-stream')
-        part.set_payload(f.read())
-        encoders.encode_base64(part)
-        part.add_header('Content-Disposition', f'attachment; filename="{file_name}"')
-        message.attach(part)
+    # 첨부파일 추가 (메모리 버퍼 우선, 없으면 파일 경로)
+    part = MIMEBase('application', 'octet-stream')
+    if file_stream is not None:
+        file_stream.seek(0)
+        part.set_payload(file_stream.read())
+    elif file_path is not None:
+        with open(file_path, 'rb') as f:
+            part.set_payload(f.read())
+    else:
+        raise ValueError('첨부할 파일이 없습니다.')
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f'attachment; filename="{file_name}"')
+    message.attach(part)
 
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     send_message = service.users().messages().send(userId="me", body={'raw': raw}).execute()
