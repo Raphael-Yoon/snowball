@@ -32,7 +32,7 @@ def rcm_generate(form_data, file_name=None):
     try:
         workbook = openpyxl.load_workbook('./paper_templates/RCM_generate.xlsx')
     except FileNotFoundError:
-        print("./paper_templates/PBC_Template.xlsx: 파일열기 오류")
+        print("./paper_templates/RCM_generate.xlsx: 파일열기 오류")
         return ''
 
     sheet = workbook["RCM"]
