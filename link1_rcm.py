@@ -3,7 +3,7 @@ import openpyxl
 import datetime
 import snowball_db
 
-def rcm_generate(form_data):
+def rcm_generate(form_data, file_name=None):
     print("RCM Generate called")
 
     param1 = form_data.get('param1')
@@ -18,13 +18,16 @@ def rcm_generate(form_data):
     print("Param4 = ", param4)
     print("Param5 = ", param5)
 
-    if param1=="":
-        output_path = 'rcm.xlsx'
+    if file_name:
+        output_path = file_name
     else:
-        if param2=="":
-            output_path = param1 + '_rcm.xlsx'
+        if param1=="":
+            output_path = 'rcm.xlsx'
         else:
-            output_path = param1 + '_' + param2 + '_rcm.xlsx'
+            if param2=="":
+                output_path = param1 + '_rcm.xlsx'
+            else:
+                output_path = param1 + '_' + param2 + '_rcm.xlsx'
 
     try:
         workbook = openpyxl.load_workbook('./paper_templates/RCM_generate.xlsx')
@@ -51,10 +54,6 @@ def rcm_generate(form_data):
         if row[0].value == 'OS':
             if row[1].value != param5:
                 sheet.delete_rows(row[0].row)
-
-
-    #sheet.delete_cols(idx=1)
-    #sheet.delete_cols(idx=1)
 
     workbook.save('./downloads/' + output_path)
     workbook.close()

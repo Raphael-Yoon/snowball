@@ -56,7 +56,8 @@ def link0():
 @app.route('/link1')
 def link1():
     print("RCM Function")
-    return render_template('link1.jsp', return_code=0)
+    users = snowball_db.get_user_list()
+    return render_template('link1.jsp', return_code=0, users=users)
 
 # Answer Type: 0: 리스트박스, 1: Y/N, 2: Textbox, 3: Y/N-Textbox, 4: Y/N-Textarea, 5: Textarea
 s_questions = [
@@ -492,11 +493,33 @@ def set_regist():
     
 @app.route('/rcm_generate', methods=['POST'])
 def rcm_generate():
-
     form_data = request.form.to_dict()
-    output_path = link1_rcm.rcm_generate(form_data)
+    # 파일명 생성: 입력받은 파일명(param2)_RCM_YYMMDD.xlsx
+    base_name = form_data.get('param2', 'output')
+    today = datetime.today().strftime('%y%m%d')
+    file_name = f"{base_name}_RCM_{today}.xlsx"
+    output_path = link1_rcm.rcm_generate(form_data, file_name=file_name)
 
-    return send_file(output_path, as_attachment=True)
+    # 담당자 user_id는 param1
+    user_id = form_data.get('param1')
+    user_email = snowball_db.get_user_info(user_id, 3) if user_id else None
+
+    if user_email:
+        subject = 'RCM 자동생성 결과 파일'
+        body = '요청하신 RCM 자동생성 엑셀 파일을 첨부합니다.'
+        try:
+            send_gmail_with_attachment(
+                to=user_email,
+                subject=subject,
+                body=body,
+                file_path=output_path,
+                file_name=file_name
+            )
+            return render_template('mail_sent.jsp', user_email=user_email)
+        except Exception as e:
+            return f'<h3>메일 전송에 실패했습니다: {e}</h3>'
+    else:
+        return '<h3>메일 주소가 없습니다. 담당자 정보를 확인해 주세요.</h3>'
 
 @app.route('/rcm_request', methods=['POST'])
 def rcm_request():
