@@ -62,9 +62,10 @@
                         {% if question.answer_type == '0' %}
                             <select class="form-select" name="a0" required>
                                 <option value="">담당자를 선택하세요</option>
-                                {% for i in range(0, users|length, 3) %}
+                                {# {% for i in range(0, users|length, 3) %}
                                     <option value="{{ users[i+2] }}">{{ users[i] }} - {{ users[i+1] }}</option>
-                                {% endfor %}
+                                {% endfor %} #}
+                                <input type="text" class="form-control" name="a0_text" placeholder="e-Mail 주소를 입력하세요" />
                             </select>
                         {% elif question.answer_type == '2' %}
                             <input type="text" class="form-control" name="a{{ current_index }}" required placeholder="{{ question.text_help if question.text_help else '' }}">
@@ -247,6 +248,7 @@
         function fillSample(questionNumber) {
             // 질문별 샘플값 정의
             const samples = {
+                0: { type: 'text', value: 'snowball2727@naver.com' }, // 산출물을 전달받을 e-Mail 주소를 입력해주세요.
                 1: { type: 'text', value: 'Amidas' }, // 시스템 이름을 적어주세요.
                 2: { type: 'radio_text', radio: 'Y', text: 'SAP ERP' }, // 사용하고 있는 시스템은 상용소프트웨어입니까?
                 3: { type: 'radio', value: 'Y' }, // 주요 로직을 회사내부에서 수정하여 사용할 수 있습니까?

@@ -62,7 +62,7 @@ def link1():
 
 # Answer Type: 0: 리스트박스, 1: Y/N, 2: Textbox, 3: Y/N-Textbox, 4: Y/N-Textarea, 5: Textarea
 s_questions = [
-    {"index": 0, "text": "산출물을 전달받을 담당자를 선택해주세요.", "category": "Complete", "help": "", "answer_type": "0", "text_help": ""},
+    {"index": 0, "text": "산출물을 전달받을 e-Mail 주소를 입력해주세요.", "category": "Complete", "help": "", "answer_type": "2", "text_help": ""},
     {"index": 1, "text": "시스템 이름을 적어주세요.", "category": "IT PwC", "help": "", "answer_type": "2", "text_help": ""},
     {"index": 2, "text": "사용하고 있는 시스템은 상용소프트웨어입니까?", "category": "IT PwC", "help": "", "answer_type": "3", "text_help": "SAP ERP, Oracle ERP, 더존ERP 등"},
     {"index": 3, "text": "주요 로직을 회사내부에서 수정하여 사용할 수 있습니까?", "category": "IT PwC", "help": "", "answer_type": "1", "text_help": ""},
@@ -249,7 +249,13 @@ def save_to_excel():
     wb.close()
     excel_stream.seek(0)
 
-    user_email = snowball_db.get_user_info(answers[0], 3) if answers and answers[0] else ''
+    user_email = ''
+    if answers and answers[0]:
+        user_email = answers[0]
+    elif 'a0_text' in answers:
+        user_email = answers['a0_text']
+    elif len(answers) > 0 and hasattr(answers, 'get') and answers.get('a0_text'):
+        user_email = answers.get('a0_text')
 
     if user_email:
         subject = '인터뷰 결과 파일'
