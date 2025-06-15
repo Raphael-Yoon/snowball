@@ -598,7 +598,7 @@ def get_content():
         'APD': ['APD04', 'APD05', 'APD06', 'APD08', 'APD10', 'APD11', 'APD13', 'APD14'],
         'PC': ['PC04', 'PC05'],
         'CO': ['CO02', 'CO03'],
-        'ETC': ['PW', 'PW_DETAIL', 'MONITOR']
+        'ETC': ['OVERVIEW', 'PW', 'PW_DETAIL', 'MONITOR']
     }
     
     # 컨텐츠 타입의 접두사 확인
