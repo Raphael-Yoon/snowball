@@ -41,11 +41,11 @@
         </div>
 
         <div class="text-center mt-4">
-            {% if remote_addr == '127.0.0.1' %}
+            <!-- {% if remote_addr == '127.0.0.1' %} -->
             <button type="button" class="btn btn-outline-secondary me-2" onclick="fillSample({{ current_index }})">
                 <i class="fas fa-magic"></i> 샘플입력
             </button>
-            {% endif %}
+            <!-- {% endif %} -->
         </div>
 
         <!-- 질문 폼 -->

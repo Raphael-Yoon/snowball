@@ -606,7 +606,7 @@ def get_content():
     
     # 해당 타입이 param3를 필요로 하는지 확인
     needs_param3 = prefix in param3_types and content_type in param3_types[prefix]
-    
+     
     try:
         if needs_param3:
             return render_template(f'link4_{content_type}.jsp', param3=content_type)

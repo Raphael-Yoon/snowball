@@ -15,7 +15,7 @@
             <div class="card-body">
                 <h5 class="card-title mb-3">영상 자료</h5>
                 <div class="ratio ratio-16x9">
-                    <iframe src="https://www.youtube.com/embed/XXEE7C0t_70?si=fjx-2AbZwz9c0vwp&autoplay=1&mute=1"
+                    <iframe src="https://www.youtube.com/embed/a2RYpFWr1Yo?si=sOt0UErCn3lnVJMk&autoplay=1&mute=1"
                             title="ITGC 패스워드 기준" 
                             allowfullscreen></iframe>
                 </div>
