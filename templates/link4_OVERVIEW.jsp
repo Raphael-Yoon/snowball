@@ -15,11 +15,10 @@
             <div class="card-body">
                 <h5 class="card-title mb-3">영상 자료</h5>
                 <div class="ratio ratio-16x9">
-                    <iframe src="https://www.youtube.com/embed/btY4X4lWXuY?si=RnnYW31ODxEwtQsR&autoplay=1&mute=1" 
-                            title="YouTube video player" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                            referrerpolicy="strict-origin-when-cross-origin"
-                            allowfullscreen></iframe>
+                    <iframe src="https://www.youtube.com/embed/d8HVSEEohCE?si=Y9j297acK0891izE&autoplay=1&mute=1"
+                    title="내부회계관리제도 Overview"
+                    allow="autoplay"
+                    allowfullscreen></iframe>
                 </div>
             </div>
         </div>
