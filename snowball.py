@@ -37,7 +37,8 @@ load_dotenv()
 @app.route('/')
 def index():
     result = snowball_db.get_user_list()
-    return render_template('index.jsp', user_name = result, return_code=0)
+    client_ip = request.remote_addr
+    return render_template('index.jsp', user_name = result, return_code=0, client_ip=client_ip)
 
 def main():
     app.run(host='0.0.0.0', debug=False, port=5001)

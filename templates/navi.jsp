@@ -33,19 +33,23 @@
                             </a>
                         </form>
                     </li>
-                    <!-- Review 버튼 임시 숨김
                     <li class="nav-item">
                         <form action="/link3" method="POST" class="d-inline">
-                            <a href="/link3" class="nav-link">
-                                <i class="fas fa-comments me-1"></i>Review
-                            </a>
+                            {% if client_ip == '127.0.0.1' %}
+                                <a href="/link3" class="nav-link">
+                                    <i class="fas fa-cogs me-1"></i>Operation Test
+                                </a>
+                            {% else %}
+                                <a href="/link3" class="nav-link" onclick="event.preventDefault(); alert('더 좋은 서비스를 위해 공사중입니다');">
+                                    <i class="fas fa-cogs me-1"></i>Operation Test
+                                </a>
+                            {% endif %}
                         </form>
                     </li>
-                    -->
                     <li class="nav-item">
                         <form action="/link4" method="POST" class="d-inline">
                             <a href="/link4" class="nav-link">
-                                <i class="fas fa-film me-1"></i>Movie
+                                <i class="fas fa-film me-1"></i>Video
                             </a>
                         </form>
                     </li>
