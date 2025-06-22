@@ -18,6 +18,11 @@
 				<div class="card-body">
 					<form action="/rcm_generate" method="POST">
 						<div class="mb-4">
+							<label class="form-label">e-Mail 주소</label>
+							<input type="email" class="form-control" id="param1" name="param1" required placeholder="e-Mail 주소를 입력하세요">
+						</div>
+						{#
+						<div class="mb-4">
 							<label class="form-label">담당자</label>
 							<select class="form-control" id="param1" name="param1" required>
 								<option value="">담당자를 선택하세요</option>
@@ -26,6 +31,7 @@
 								{% endfor %}
 							</select>
 						</div>
+						#}
 						<div class="mb-4">
 							<label class="form-label">시스템명</label>
 							<input type="text" class="form-control" id="param2" name="param2" required placeholder="시스템명을 입력하세요">
@@ -93,7 +99,7 @@
 								</div>
 							</div>
 						</div>
-						<button type="submit" class="submit-btn">
+						<button type="submit" class="submit-btn" onclick="event.preventDefault(); alert('더 좋은 서비스를 위해 공사중입니다');">
 							<i class="fas fa-download"></i> Download
 						</button>
 					</form>
