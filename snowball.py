@@ -439,7 +439,7 @@ def link3():
 
 @app.route('/link4')
 def link4():
-    print("Education Function")
+    print("Video Function")
     return render_template('link4.jsp')
 
 @app.route('/link9')
