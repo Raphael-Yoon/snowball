@@ -41,7 +41,7 @@
                                 </a>
                             {% else %}
                                 <a href="/link3" class="nav-link" onclick="event.preventDefault(); alert('더 좋은 서비스를 위해 공사중입니다');">
-                                    <i class="fas fa-cogs me-1"></i>Operation Test
+                                    <i class="fas fa-cogs me-1"></i>Operation
                                 </a>
                             {% endif %}
                         </form>

@@ -1,49 +1,160 @@
 <!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-		<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-		<link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
-		<title>SnowBall</title>
-	</head>
-	<body>
-		{% include 'navi.jsp' %}
-		<form class = "grid" action = "/design_generate" method = "POST" enctype="multipart/form-data">
-			<table>
-				<tr>
-					<td style="width: 150px;">회사 이름</td>
-					<td style="width: 1000px;"><input type="text" id="param1" name="param1" required></td>
-				</tr>
-				<tr>
-					<td>이메일 주소</td>
-					<td><input type="text" id="param2" name="param2" required></td>
-				</tr>
-				<tr>
-					<td>요청 내용</td>
-					<td><textarea name="param3" id="param3" rows="10"></textarea></td>
-				</tr>
-				<tr>
-					<td><input type="file" id="param4" name="param4"></td>
-					<td><input type="Submit" value="검토요청하기" formaction="/paper_request"></td>
-				</tr>
-				<!--
-				<tr>
-					<td colspan="2">파일 업로드에 어려움이 있는 경우 newsist@naver.com으로 보내주세요</td>
-				</tr>
-				-->
-				{% if return_code == 1 %}
-                <tr>
-                    <td colspan="2" style="color: red;">업로드 실패</td>
-                </tr>
-                {% endif %}
-                {% if return_code == 2 %}
-                <tr>
-                    <td colspan="2">검토 요청이 완료되었습니다.<br>내용 확인 후 등록하신 이메일 주소로 회신합니다.</td>
-                </tr>
-                {% endif %}
-			</table>
-		</form>
-	</body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SnowBall</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/common.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    {% include 'navi.jsp' %}
+    
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 왼쪽 사이드바 -->
+            <div class="col-md-4 col-lg-3 sidebar">
+                <div id="categoryList"></div>
+            </div>
+            
+            <!-- 오른쪽 컨텐츠 영역 -->
+            <div class="col-md-8 col-lg-9 content-area">
+                <div id="contentContainer">
+                    <div class="text-center text-muted">
+                        <h3>항목을 선택해주세요</h3>
+                        <p>왼쪽 메뉴에서 원하는 항목을 선택하시면 상세 내용이 표시됩니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const options = {
+            APD: [
+                {value: "APD01", text: "Application 권한부여 승인"},
+                {value: "APD02", text: "Application 부서이동자 권한 회수"},
+                {value: "APD03", text: "Application 퇴사자 접근권한 회수"},
+                {value: "APD04", text: "Application 권한 Monitoring"},
+                {value: "APD05", text: "Application 패스워드"},
+                {value: "APD06", text: "Data 직접변경 승인"},
+                {value: "APD07", text: "DB 접근권한 승인"},
+                {value: "APD08", text: "DB 패스워드"},
+                {value: "APD09", text: "DB 관리자 권한 제한"},
+                {value: "APD10", text: "OS 접근권한 승인"},
+                {value: "APD11", text: "OS 패스워드"},
+                {value: "APD12", text: "OS 관리자 권한 제한"}
+            ],
+            PC: [
+                {value: "PC01", text: "프로그램 변경"},
+                {value: "PC04", text: "이관담당자 권한 제한"},
+                {value: "PC05", text: "개발/운영 환경 분리"},
+                {value: "PC06", text: "DB 설정 변경"},
+                {value: "PC07", text: "OS 설정 변경"}
+            ],
+            CO: [
+                {value: "CO01", text: "배치잡 스케줄 등록 승인"},
+                {value: "CO02", text: "배치잡 스케줄 등록 권한 제한"},
+                {value: "CO03", text: "배치잡 스케줄 등록 Monitoring"},
+                {value: "CO04", text: "백업 Monitoring"},
+                {value: "CO05", text: "장애관리"},
+                {value: "CO06", text: "서버실 접근 제한"}
+                
+            ]
+        };
+
+        const categoryNames = {
+            'APD': 'Access Program & Data',
+            'PC': 'Program Changes',
+            'CO': 'Computer Operations'
+        };
+
+        function initializeSidebar() {
+            const categoryList = document.getElementById('categoryList');
+            categoryList.innerHTML = '';
+
+            const disabledList = [
+                'APD02', 'APD03', 'APD04', 'APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12',
+                'PC01', 'PC04', 'PC05', 'PC06', 'PC07',
+                'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06'
+            ];
+
+            Object.keys(options).forEach(category => {
+                const categoryTitle = document.createElement('div');
+                categoryTitle.className = 'category-title';
+                categoryTitle.innerHTML = `
+                    ${categoryNames[category]}
+                    <i class="fas fa-chevron-down"></i>
+                `;
+                
+                const optionList = document.createElement('div');
+                optionList.className = 'option-list';
+                
+                options[category].forEach(option => {
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.className = 'nav-link';
+                    link.dataset.value = option.value;
+                    link.textContent = option.text;
+                    
+                    if (disabledList.includes(option.value)) {
+                        link.classList.add('disabled-link');
+                    }
+                    
+                    link.addEventListener('click', function(e) {
+                        document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+                        this.classList.add('active');
+                        updateContent(this.dataset.value);
+                    });
+                    
+                    optionList.appendChild(link);
+                });
+                
+                categoryTitle.addEventListener('click', function() {
+                    this.classList.toggle('collapsed');
+                    optionList.classList.toggle('show');
+                });
+                
+                categoryList.appendChild(categoryTitle);
+                categoryList.appendChild(optionList);
+            });
+        }
+
+        function updateContent(selectedValue) {
+            const contentContainer = document.getElementById('contentContainer');
+            contentContainer.innerHTML = '';
+
+            // 준비중 메시지를 보여줄 value 목록
+            const preparingList = ['APD07', 'APD08', 'PC01', 'CO01', 'MONITOR'];
+
+            if (preparingList.includes(selectedValue)) {
+                contentContainer.innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h3>준비 중입니다</h3>
+                        <p>해당 항목은 현재 영상제작 중 입니다.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            fetch(`/get_content?type=${selectedValue}`)
+                .then(response => response.text())
+                .then(html => {
+                    contentContainer.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    contentContainer.innerHTML = `
+                        <div class="alert alert-danger" role="alert">
+                            <h4 class="alert-heading">오류가 발생했습니다</h4>
+                            <p>페이지를 불러오는 중 문제가 발생했습니다.</p>
+                        </div>
+                    `;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', initializeSidebar);
+    </script>
+</body>
 </html>
