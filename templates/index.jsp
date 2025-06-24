@@ -20,7 +20,7 @@
                 </div>
                 <div class="col-lg-10 hero-content">
                     <h1 class="hero-title" style="font-size: 1.8rem;">SnowBall System</h1>
-                    <p class="hero-subtitle" style="font-size: 0.9rem;">내부통제 평가와 IT감사 대응을 위한 종합 솔루션</p>
+                    <p class="hero-subtitle" style="font-size: 0.9rem;">내부통제 평가와 ITGC감사 대응을 위한 종합 솔루션</p>
                 </div>
             </div>
         </div>
