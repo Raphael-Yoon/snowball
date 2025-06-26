@@ -44,15 +44,15 @@
 									<label for="select11">SAP</label>
 								</div>
 								<div class="radio-option">
-									<input type="radio" id="select12" name="param3" value="Oracle">
+									<input type="radio" id="select12" name="param3" value="ORACLE">
 									<label for="select12">Oracle</label>
 								</div>
 								<div class="radio-option">
-									<input type="radio" id="select13" name="param3" value="Douzone">
+									<input type="radio" id="select13" name="param3" value="DOUZONE">
 									<label for="select13">더존</label>
 								</div>
 								<div class="radio-option">
-									<input type="radio" id="select14" name="param3" value="KSystem">
+									<input type="radio" id="select14" name="param3" value="YOUNG">
 									<label for="select14">영림원</label>
 								</div>
 								<div class="radio-option">
@@ -65,15 +65,15 @@
 							<label class="form-label">OS</label>
 							<div class="radio-group">
 								<div class="radio-option">
-									<input type="radio" id="select21" name="param4" value="Unix" checked>
+									<input type="radio" id="select21" name="param4" value="UNIX" checked>
 									<label for="select21">Unix</label>
 								</div>
 								<div class="radio-option">
-									<input type="radio" id="select22" name="param4" value="Windows">
+									<input type="radio" id="select22" name="param4" value="WINDOWS">
 									<label for="select22">Windows</label>
 								</div>
 								<div class="radio-option">
-									<input type="radio" id="select23" name="param4" value="Linux">
+									<input type="radio" id="select23" name="param4" value="LINUX">
 									<label for="select23">Linux</label>
 								</div>
 								<div class="radio-option">
@@ -86,7 +86,7 @@
 							<label class="form-label">DB</label>
 							<div class="radio-group">
 								<div class="radio-option">
-									<input type="radio" id="select31" name="param5" value="Oracle" checked>
+									<input type="radio" id="select31" name="param5" value="ORACLE" checked>
 									<label for="select31">Oracle</label>
 								</div>
 								<div class="radio-option">
@@ -94,12 +94,17 @@
 									<label for="select32">MS-SQL</label>
 								</div>
 								<div class="radio-option">
-									<input type="radio" id="select33" name="param5" value="ETC">
-									<label for="select33">기타</label>
+									<input type="radio" id="select33" name="param5" value="MYSQL">
+									<label for="select33">MY-SQL</label>
+								</div>
+								<div class="radio-option">
+									<input type="radio" id="select34" name="param5" value="ETC">
+									<label for="select34">기타</label>
 								</div>
 							</div>
 						</div>
-						<button type="submit" class="submit-btn" onclick="event.preventDefault(); alert('더 좋은 서비스를 위해 공사중입니다');">
+						<!-- <button type="submit" class="submit-btn" onclick="event.preventDefault(); alert('더 좋은 서비스를 위해 공사중입니다');"> -->
+						<button type="submit" class="submit-btn";">
 							<i class="fas fa-download"></i> Download
 						</button>
 					</form>

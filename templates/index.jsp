@@ -38,7 +38,7 @@
                             <div class="feature-icon text-center">
                                 <i class="fas fa-clipboard-list"></i>
                             </div>
-                            <h5 class="feature-title text-center">RCMM</h5>
+                            <h5 class="feature-title text-center">RCM</h5>
                             <p class="feature-description">신뢰성 중심 유지보수 시스템으로 장비의 안정성과 효율성을 최적화합니다.</p>
                             <div class="text-center">
                                 <a href="/link1" class="feature-link">자세히 보기</a>
