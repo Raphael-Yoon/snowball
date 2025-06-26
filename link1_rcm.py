@@ -19,6 +19,8 @@ def rcm_generate(form_data, file_name=None):
     print("Param4 = ", param4)
     print("Param5 = ", param5)
 
+    print("file name = ", file_name)
+
     if file_name:
         output_path = file_name
     else:
@@ -26,9 +28,9 @@ def rcm_generate(form_data, file_name=None):
             output_path = 'rcm.xlsx'
         else:
             if param2=="":
-                output_path = param1 + '_rcm.xlsx'
+                output_path = param2 + '_rcm.xlsx'
             else:
-                output_path = param1 + '_' + param2 + '_rcm.xlsx'
+                output_path = param2 + '_' + param2 + '_rcm.xlsx'
 
     try:
         workbook = openpyxl.load_workbook('./paper_templates/RCM_generate.xlsx')
@@ -38,23 +40,17 @@ def rcm_generate(form_data, file_name=None):
 
     sheet = workbook["RCM"]
 
-    # Application 조정
-    for row in sheet.iter_rows():
-        if row[0].value == 'Application':
-            if row[1].value != param3:
-                sheet.delete_rows(row[0].row)
-
-    # DB 조정
-    for row in sheet.iter_rows():
-        if row[0].value == 'DB':
-            if row[1].value != param4:
-                sheet.delete_rows(row[0].row)
-
-    # OS 조정
-    for row in sheet.iter_rows():
-        if row[0].value == 'OS':
-            if row[1].value != param5:
-                sheet.delete_rows(row[0].row)
+    # APP, OS, DB 행 필터링 (8~119행)
+    filter_map = {
+        'APP': param3,
+        'OS': param4,
+        'DB': param5
+    }
+    for row_idx in range(119, 7, -1):  # 119~8행 역순
+        b_value = sheet.cell(row=row_idx, column=2).value  # B열 값
+        c_value = sheet.cell(row=row_idx, column=3).value  # C열 값
+        if b_value in filter_map and c_value != filter_map[b_value]:
+            sheet.delete_rows(row_idx)
 
     # 메모리 버퍼에 저장
     excel_stream = BytesIO()
