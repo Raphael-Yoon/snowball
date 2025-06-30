@@ -708,7 +708,7 @@ def contact():
         body = f'이름: {name}\n이메일: {email}\n문의내용:\n{message}'
         try:
             send_gmail(
-                to='snowball2727@naver.com',
+                to='snowball1566@gmail.com',
                 subject=subject,
                 body=body
             )
