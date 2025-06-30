@@ -15,7 +15,7 @@
             <div class="card-body">
                 <h5 class="card-title mb-3">영상 자료</h5>
                 <div class="ratio ratio-16x9">
-                    <iframe src="https://www.youtube.com/embed/iM3g3bKKly8?si=muEDRLIf0KTAyThR&autoplay=1&mute=1"
+                    <iframe src="https://www.youtube.com/embed/8QqNfcO9NPI?si=x4nMkbfyFRyRi7jI&autoplay=1&mute=1"
                     title="Access Program & Data 교육 영상"
                     allow="autoplay"
                     allowfullscreen></iframe>
