@@ -520,32 +520,32 @@ def rcm_generate():
     excel_stream = link1_rcm.rcm_generate(form_data, file_name=file_name)
 
     # 담당자 user_id는 param1
-    # user_email = form_data.get('param1')
+    user_email = form_data.get('param1')
 
-    # if user_email:
-    #     subject = 'RCM 자동생성 결과 파일'
-    #     body = '요청하신 RCM 자동생성 엑셀 파일을 첨부합니다.'
-    #     try:
-    #         send_gmail_with_attachment(
-    #             to=user_email,
-    #             subject=subject,
-    #             body=body,
-    #             file_stream=excel_stream,
-    #             file_name=file_name
-    #         )
-    #         return render_template('mail_sent.jsp', user_email=user_email)
-    #     except Exception as e:
-    #         return f'<h3>메일 전송에 실패했습니다: {e}</h3>'
-    # else:
-    #     return '<h3>메일 주소가 없습니다. 담당자 정보를 확인해 주세요.</h3>'
-
+    if user_email:
+        subject = 'RCM 자동생성 결과 파일'
+        body = '요청하신 RCM 자동생성 엑셀 파일을 첨부합니다.'
+        try:
+            send_gmail_with_attachment(
+                to=user_email,
+                subject=subject,
+                body=body,
+                file_stream=excel_stream,
+                file_name=file_name
+            )
+            return render_template('mail_sent.jsp', user_email=user_email)
+        except Exception as e:
+            return f'<h3>메일 전송에 실패했습니다: {e}</h3>'
+    else:
+        return '<h3>메일 주소가 없습니다. 담당자 정보를 확인해 주세요.</h3>'
+    
     # 바로 다운로드로 반환
-    return send_file(
-        excel_stream,
-        as_attachment=True,
-        download_name=file_name,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+    # return send_file(
+    #     excel_stream,
+    #     as_attachment=True,
+    #     download_name=file_name,
+    #     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    #  )
 
 @app.route('/rcm_request', methods=['POST'])
 def rcm_request():
