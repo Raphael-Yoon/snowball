@@ -605,31 +605,80 @@ def paper_generate():
 
     return send_file(output_path, as_attachment=True)
 
-@app.route('/get_content')
-def get_content():
+@app.route('/get_content_link4')
+def get_content_link4():
     content_type = request.args.get('type')
-    
-    # param3가 필요한 타입들 정의
-    param3_types = {
-        'APD': ['APD04', 'APD05', 'APD06', 'APD08', 'APD10', 'APD11', 'APD13', 'APD14'],
-        'PC': ['PC04', 'PC05'],
-        'CO': ['CO02', 'CO03'],
-        'ETC': ['OVERVIEW', 'PW', 'PW_DETAIL', 'MONITOR']
+    # type별 데이터 맵
+    video_map = {
+        'APD01': {
+            'youtube_url': 'https://www.youtube.com/embed/8QqNfcO9NPI?si=x4nMkbfyFRyRi7jI&autoplay=1&mute=1',
+            'img_url': None,
+            'title': 'Access Program & Data',
+            'desc': 'APD01 설명'
+        },
+        'APD02': {
+            'youtube_url': 'https://www.youtube.com/embed/vfWdDOb11RY?si=Nv-PDzWCD4hmi2Ja&autoplay=1&mute=1',
+            'img_url': None,
+            'title': 'Access Program & Data',
+            'desc': 'APD02 설명'
+        },
+        'APD03': {
+            'youtube_url': 'https://www.youtube.com/embed/2cAd2HOzICU?si=ZNXR_u8uAjWIsUd6&autoplay=1&mute=1',
+            'img_url': None,
+            'title': 'Access Program & Data',
+            'desc': 'APD03 설명'
+        },
+        'PC01': {
+            'youtube_url': 'https://www.youtube.com/embed/dzSoIaQTxmQ?si=B-m43fe5W-oEIWal&autoplay=1&mute=1',
+            'img_url': '/static/img/PC01.jpg',
+            'title': '프로그램 변경 승인',
+            'desc': '프로그램 변경 필요시 적절한 승인권자의 승인을 득합니다.'
+        },
+        'CO01': {
+            'youtube_url': 'https://www.youtube.com/embed/dzSoIaQTxmQ?si=B-m43fe5W-oEIWal&autoplay=1&mute=1',
+            'img_url': '/static/img/CO01.png',
+            'title': '배치잡 스케줄 등록 승인',
+            'desc': '배치잡 스케줄 등록 시 적절한 승인권자의 승인을 득합니다.'
+        },
+        'OVERVIEW': {
+            'youtube_url': 'https://www.youtube.com/embed/8ZnUo41usRk?si=8vkxW6vENB-689GV&autoplay=1&mute=1',
+            'img_url': None,
+            'title': '내부회계관리제도 Overview',
+            'desc': '내부회계관리제도 개요 영상'
+        },
+        'PW': {
+            'youtube_url': 'https://www.youtube.com/embed/0zpXQNFBHOI?si=v-BPoHFtzi4mhnUs&autoplay=1&mute=1',
+            'img_url': None,
+            'title': '패스워드 기준',
+            'desc': 'ITGC 패스워드 기준 영상'
+        },
+        'PW_DETAIL': {
+            'youtube_url': 'https://www.youtube.com/embed/-TjiH1fR5aI?si=nTj52Jzfz_XRKfZB&autoplay=1&mute=1',
+            'img_url': None,
+            'title': '패스워드 기준 상세',
+            'desc': 'ITGC 패스워드 기준 심화 영상'
+        },
+        'MONITOR': {
+            'youtube_url': 'https://www.youtube.com/embed/XXEE7C0t_70?si=fjx-2AbZwz9c0vwp&autoplay=1&mute=1',
+            'img_url': None,
+            'title': '모니터링 통제',
+            'desc': 'ITGC 모니터링 통제 영상'
+        },
     }
-    
-    # 컨텐츠 타입의 접두사 확인
-    prefix = content_type[:3] if content_type else ''
-    
-    # 해당 타입이 param3를 필요로 하는지 확인
-    needs_param3 = prefix in param3_types and content_type in param3_types[prefix]
-     
-    try:
-        if needs_param3:
-            return render_template(f'link4_{content_type}.jsp', param3=content_type)
-        return render_template(f'link4_{content_type}.jsp')
-    except Exception as e:
-        print(f"Error rendering template for {content_type}: {str(e)}")
+    data = video_map.get(content_type, None)
+    if not data:
         return '<div style="text-align: center; padding: 20px;"><h3>준비 중입니다</h3><p>해당 항목은 현재 영상제작 중 입니다.</p></div>'
+    return render_template('link4_detail.jsp',
+        youtube_url=data['youtube_url'],
+        img_url=data['img_url'],
+        title=data['title'],
+        desc=data['desc']
+    )
+
+@app.route('/get_content_link3')
+def get_content_link3():
+    # 모든 type에 대해 공통 step-card 템플릿 반환
+    return render_template('link3_detail.jsp')
 
 def send_gmail(to, subject, body):
     SCOPES = ['https://www.googleapis.com/auth/gmail.send']

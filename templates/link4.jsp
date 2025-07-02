@@ -122,7 +122,7 @@
                 return;
             }
 
-            fetch(`/get_content?type=${selectedValue}`)
+            fetch(`/get_content_link4?type=${selectedValue}`)
                 .then(response => response.text())
                 .then(html => {
                     contentContainer.innerHTML = html;
