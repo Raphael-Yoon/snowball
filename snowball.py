@@ -38,7 +38,10 @@ load_dotenv()
 def index():
     result = snowball_db.get_user_list()
     client_ip = request.remote_addr
-    return render_template('index.jsp', user_name = result, return_code=0, client_ip=client_ip)
+    host = request.host
+    # 127.0.0.1 또는 pythonanywhere 도메인에서 접근 시 허용
+    is_allowed = (client_ip == '127.0.0.1') or ('pythonanywhere' in host)
+    return render_template('index.jsp', user_name = result, return_code=0, client_ip=client_ip, is_allowed=is_allowed)
 
 def main():
     app.run(host='0.0.0.0', debug=False, port=5001)
