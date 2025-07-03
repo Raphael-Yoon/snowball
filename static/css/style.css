@@ -302,9 +302,9 @@ button:hover{
 }
 .step-btns {
     display: flex;
-    justify-content: space-between;
-    max-width: 400px;
-    margin: 0 auto;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 32px;
 }
 .step-card #step-img {
     font-size: 3rem;
@@ -316,4 +316,42 @@ button:hover{
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+#contentContainer, .step-card, #link3-detail {
+  height: 100vh !important;
+  min-height: 100vh !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+}
+#link3-detail {
+  flex: 1 1 auto;
+}
+
+.sidebar {
+  width: 20% !important;
+  max-width: 20% !important;
+  min-width: 180px;
+}
+.content-area {
+  width: 80% !important;
+  max-width: 80% !important;
+}
+
+.step-btns button:disabled {
+  background: #e0e0e0 !important;
+  color: #aaa !important;
+  border-color: #ccc !important;
+  opacity: 1 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+.step-desc {
+  white-space: pre-line;
 }
