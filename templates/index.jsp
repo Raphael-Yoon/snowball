@@ -71,7 +71,7 @@
                             <h5 class="feature-title text-center">Operation Test</h5>
                             <p class="feature-description">운영 테스트를 통해 시스템의 실제 운용 상태를 점검합니다.</p>
                             <div class="text-center">
-                                {% if client_ip == '127.0.0.1' %}
+                                {% if is_allowed %}
                                     <a href="/link3" class="feature-link">자세히 보기</a>
                                 {% else %}
                                     <a href="/link3" class="feature-link" onclick="event.preventDefault(); alert('더 좋은 서비스를 위해 공사중입니다');">자세히 보기</a>
