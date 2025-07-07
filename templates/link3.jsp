@@ -155,9 +155,9 @@
             // 각 항목별 step 데이터 정의
                 const stepMap = {
                 APD01: [
-                    {img: "/static/img/APD01_step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(예: 권한부여 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/APD01_step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/APD01_step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 권한부여 일자와 승인 일자를 비교하여 사전 승인 여부를 확인합니다."}
+                    {img: "/static/img/APD01_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(예: 권한부여 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다."},
+                    {img: "/static/img/APD01_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
+                    {img: "/static/img/APD01_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 권한부여 일자와 승인 일자를 비교하여 사전 승인 여부를 확인합니다."}
                 ],
                 APD02: [
                     {img: "/static/img/step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(예: 부서이동자 명단)을 시스템 또는 인사자료에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 전체 데이터와 캡쳐된 화면을 운영평가 조서에 작성합니다."},
