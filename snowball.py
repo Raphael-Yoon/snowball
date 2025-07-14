@@ -24,7 +24,7 @@ import link3_operation
 import snowball_db
 
 app = Flask(__name__)
-app.secret_key = '150606'
+app.secret_key = '150606' 
 
 # 시작할 질문 번호 설정 (1부터 시작)
 if __name__ == '__main__':
