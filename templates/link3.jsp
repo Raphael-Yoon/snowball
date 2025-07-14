@@ -10,6 +10,10 @@
 <body>
     {% include 'navi.jsp' %}
     
+    <div style="position: fixed; top: 80px; right: 32px; z-index: 9999;">
+        <a id="template-download-btn" href="#" style="padding: 8px 16px; background: #28a745; color: #fff; border-radius: 4px; text-decoration: none; pointer-events: none; opacity: 0.5;">템플릿 다운로드</a>
+    </div>
+
     <div class="container-fluid h-100">
         <div class="row h-100">
             <!-- 왼쪽 사이드바 -->
@@ -70,6 +74,19 @@
             'CO': 'Computer Operations'
         };
 
+        function updateTemplateButton(selectedValue) {
+            const btn = document.getElementById('template-download-btn');
+            if (!selectedValue) {
+                btn.href = "#";
+                btn.style.pointerEvents = "none";
+                btn.style.opacity = "0.5";
+                return;
+            }
+            btn.href = `/static/paper/${selectedValue}_paper.xlsx`;
+            btn.style.pointerEvents = "auto";
+            btn.style.opacity = "1";
+        }
+
         function initializeSidebar() {
             const categoryList = document.getElementById('categoryList');
             categoryList.innerHTML = '';
@@ -96,6 +113,7 @@
                         document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
                         this.classList.add('active');
                         updateContent(this.dataset.value);
+                        updateTemplateButton(this.dataset.value); // 버튼 동적 변경
                     });
                     
                     optionList.appendChild(link);
@@ -111,7 +129,10 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', initializeSidebar);
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSidebar();
+            updateTemplateButton(null); // 초기 비활성화
+        });
 
         function updateContent(selectedValue) {
             const contentContainer = document.getElementById('contentContainer');
