@@ -63,45 +63,45 @@
                             <select class="form-select" name="a0" required>
                                 <option value="">담당자를 선택하세요</option>
                                 {# {% for i in range(0, users|length, 3) %}
-                                    <option value="{{ users[i+2] }}">{{ users[i] }} - {{ users[i+1] }}</option>
+                                    <option value="{{ users[i+2] }}" {% if answer[0] == users[i+2] %}selected{% endif %}>{{ users[i] }} - {{ users[i+1] }}</option>
                                 {% endfor %} #}
-                                <input type="text" class="form-control" name="a0_text" placeholder="e-Mail 주소를 입력하세요" />
+                                <input type="text" class="form-control" name="a0_text" placeholder="e-Mail 주소를 입력하세요" value="{{ answer[0] }}" />
                             </select>
                         {% elif question.answer_type == '2' %}
-                            <input type="text" class="form-control" name="a{{ current_index }}" required placeholder="{{ question.text_help if question.text_help else '' }}">
+                            <input type="text" class="form-control" name="a{{ current_index }}" required placeholder="{{ question.text_help if question.text_help else '' }}" value="{{ answer[current_index] }}">
                         {% elif question.answer_type == '3' %}
                             <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" id="yes_{{ current_index }}" required>
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" id="yes_{{ current_index }}" required {% if answer[current_index] == 'Y' %}checked{% endif %}>
                                 <span class="form-check-label">예</span>
                             </label>
-                            <input type="text" class="form-control mt-2" name="a{{ current_index }}_1" placeholder="{{ question.text_help if question.text_help else '제품명을 입력하세요' }}" onclick="selectYes({{ current_index }})">
+                            <input type="text" class="form-control mt-2" name="a{{ current_index }}_1" placeholder="{{ question.text_help if question.text_help else '제품명을 입력하세요' }}" onclick="selectYes({{ current_index }})" value="{{ textarea_answer[current_index] }}">
                             <label class="form-check mt-2">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N">
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" {% if answer[current_index] == 'N' %}checked{% endif %}>
                                 <span class="form-check-label">아니요</span>
                             </label>
                         {% elif question.answer_type == '4' %}
                             <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required onchange="toggleTextarea({{ current_index }})">
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required onchange="toggleTextarea({{ current_index }})" {% if answer[current_index] == 'Y' %}checked{% endif %}>
                                 <span class="form-check-label">예</span>
                             </label>
-                            <textarea class="form-control mt-2" name="a{{ current_index }}_1" id="textarea_{{ current_index }}" placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5" readonly onclick="selectYesAndEnableTextarea({{ current_index }})" style="cursor: pointer;"></textarea>
+                            <textarea class="form-control mt-2" name="a{{ current_index }}_1" id="textarea_{{ current_index }}" placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5" {% if answer[current_index] != 'Y' %}readonly{% endif %} onclick="selectYesAndEnableTextarea({{ current_index }})" style="cursor: pointer;">{{ textarea_answer[current_index] }}</textarea>
                             <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" onchange="toggleTextarea({{ current_index }})">
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" onchange="toggleTextarea({{ current_index }})" {% if answer[current_index] == 'N' %}checked{% endif %}>
                                 <span class="form-check-label">아니요</span>
                             </label>
                         {% elif question.answer_type == '5' %}
-                            <textarea class="form-control" name="a{{ current_index }}" placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5"></textarea>
+                            <textarea class="form-control" name="a{{ current_index }}" placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5">{{ answer[current_index] }}</textarea>
                         {% elif question.answer_type == '1' %}
                             <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required>
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required {% if answer[current_index] == 'Y' %}checked{% endif %}>
                                 <span class="form-check-label">예</span>
                             </label>
                             <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N">
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" {% if answer[current_index] == 'N' %}checked{% endif %}>
                                 <span class="form-check-label">아니요</span>
                             </label>
                         {% else %}
-                            <input type="text" class="form-control" name="a{{ current_index }}">
+                            <input type="text" class="form-control" name="a{{ current_index }}" value="{{ answer[current_index] }}">
                         {% endif %}
                     </div>
                 </div>

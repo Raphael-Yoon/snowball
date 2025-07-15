@@ -117,21 +117,31 @@ def link2():
     print("Interview Function")
 
     if request.method == 'GET':
-        # 세션 초기화
-        session.clear()
-        # START_QUESTION이 유효한 범위인지 확인
-        if 1 <= START_QUESTION <= question_count:
-            session['question_index'] = START_QUESTION - 1  # 1-based를 0-based로 변환
-        else:
+        # 쿼리 파라미터로 reset이 있을 때만 세션 초기화
+        if request.args.get('reset') == '1':
+            session.clear()
+            # START_QUESTION이 유효한 범위인지 확인
+            if 1 <= START_QUESTION <= question_count:
+                session['question_index'] = START_QUESTION - 1  # 1-based를 0-based로 변환
+            else:
+                session['question_index'] = 0
+            session['answer'] = [''] * question_count  # 필요한 만큼 동적으로 조절 가능
+            session['textarea_answer'] = [''] * question_count  # textarea 값 저장용
+        # 세션에 값이 없으면(최초 진입)만 초기화
+        elif 'question_index' not in session:
             session['question_index'] = 0
-        session['answer'] = [''] * question_count  # 필요한 만큼 동적으로 조절 가능
-        session['textarea_answer'] = [''] * question_count  # textarea 값 저장용
+            session['answer'] = [''] * question_count
+            session['textarea_answer'] = [''] * question_count
+
         users = snowball_db.get_user_list()
-        return render_template('link2.jsp', question=s_questions[session['question_index']], 
+        return render_template('link2.jsp', 
+                             question=s_questions[session['question_index']], 
                              question_count=question_count, 
                              current_index=session['question_index'],
                              remote_addr=request.remote_addr,
-                             users=users)
+                             users=users,
+                             answer=session['answer'],
+                             textarea_answer=session['textarea_answer'])
 
     question_index = session['question_index']
 
@@ -181,8 +191,27 @@ def link2():
 
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
-    return render_template('link2.jsp', question=question, question_count=question_count, current_index=session['question_index'], remote_addr=request.remote_addr)
+    return render_template(
+        'link2.jsp',
+        question=question,
+        question_count=question_count,
+        current_index=session['question_index'],
+        remote_addr=request.remote_addr,
+        users=snowball_db.get_user_list(),
+        answer=session['answer'],
+        textarea_answer=session['textarea_answer']
+    )
     
+@app.route('/link2/prev')
+def link2_prev():
+    # 세션에서 현재 인덱스 가져오기
+    question_index = session.get('question_index', 0)
+    # 0보다 크면 1 감소
+    if question_index > 0:
+        session['question_index'] = question_index - 1
+    # 다시 질문 페이지로 이동
+    return redirect(url_for('link2'))
+
 # --- 리팩토링: Ineffective 조건 체크 함수 ---
 def is_ineffective(control, answers):
     conditions = {
