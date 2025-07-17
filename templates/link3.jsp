@@ -41,14 +41,15 @@
                 {value: "APD02", text: "Application 부서이동자 권한 회수"},
                 {value: "APD03", text: "Application 퇴사자 접근권한 회수"},
                 {value: "APD04", text: "Application 권한 Monitoring"},
-                {value: "APD05", text: "Application 패스워드"},
-                {value: "APD06", text: "Data 직접변경 승인"},
-                {value: "APD07", text: "DB 접근권한 승인"},
-                {value: "APD08", text: "DB 패스워드"},
-                {value: "APD09", text: "DB 관리자 권한 제한"},
-                {value: "APD10", text: "OS 접근권한 승인"},
-                {value: "APD11", text: "OS 패스워드"},
-                {value: "APD12", text: "OS 관리자 권한 제한"}
+                {value: "APD05", text: "Application 관리자 권한 제한"},
+                {value: "APD06", text: "Application 패스워드"},
+                {value: "APD07", text: "Data 직접변경 승인"},
+                {value: "APD08", text: "DB 접근권한 승인"},
+                {value: "APD09", text: "DB 패스워드"},
+                {value: "APD10", text: "DB 관리자 권한 제한"},
+                {value: "APD11", text: "OS 접근권한 승인"},
+                {value: "APD12", text: "OS 패스워드"},
+                {value: "APD13", text: "OS 관리자 권한 제한"}
             ],
             PC: [
                 {value: "PC01", text: "프로그램 변경"},
@@ -159,7 +160,7 @@
                         <div class="step-card flex-grow-1 d-flex flex-column align-items-center justify-content-center">
                             <div id="step-img" class="text-center"></div>
                             <div id="step-title" class="text-center mt-3 mb-2" style="font-weight:bold;font-size:1.2em;"></div>
-                            <div id="step-desc" class="text-start mb-3" style="max-width:600px;width:100%;margin:0 auto;"></div>
+                            <div id="step-desc" class="text-start mb-3" style="max-width:900px;width:100%;margin:0 auto;"></div>
                             <div id="step-indicator" class="text-center mb-3"></div>
                             <div class="step-btns d-flex justify-content-center">
                                 <button id="prev-btn" class="btn btn-primary me-2">이전</button>
@@ -176,111 +177,115 @@
             // 각 항목별 step 데이터 정의
                 const stepMap = {
                 APD01: [
-                    {img: "/static/img/APD01_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 권한부여 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/APD01_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/APD01_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 권한부여 일자와 승인 일자를 비교하여 사전 승인 여부를 확인합니다.<br>3. 결과를 운영평가 조서에 작성합니다."}
+                    {img: "/static/img/Operation/APD01_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 권한부여 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/APD01_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table 시트에 작성합니다."},
+                    {img: "/static/img/Operation/APD01_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 권한부여 일자와 승인 일자를 비교하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서에 Testing Table에 추가합니다."}
                 ],
                 APD02: [
-                    {img: "/static/img/APD02_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 부서이동자 명단)을 시스템 또는 인사자료에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 전체 데이터와 캡쳐된 화면을 운영평가 조서에 작성합니다."},
-                    {img: "/static/img/APD02_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/APD02_Step3.jpg", title: "Step 3: 권한 회수 여부 점검", desc: "1. 부서이동일 이후 기존 권한의 회수 여부를 확인합니다.<br>2. 모든 사용자가 보유하고 있는 기본권한 등은 회수하지 않아도 무방합니다.<br>3. 회수되지 않은 권한이 있다면 즉시 조치합니다."}
+                    {img: "/static/img/Operation/APD02_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 부서이동자 명단)을 시스템 또는 인사자료에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/APD02_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table에 작성합니다."},
+                    {img: "/static/img/Operation/APD02_Step3.jpg", title: "Step 3: 권한 회수 여부 점검", desc: "1. 부서이동일 이후 기존 권한의 회수 여부를 확인합니다.<br>2. 검토 결과를 운영평가 조서의 Testing Table에 추가합니다."}
                 ],
                 APD03: [
-                    {img: "/static/img/APD03_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 퇴사자 명단)을 시스템 또는 인사자료에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 전체 데이터와 캡쳐된 화면을 운영평가 조서에 작성합니다."},
-                    {img: "/static/img/APD03_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/APD03_Step3.jpg", title: "Step 3: 권한 회수 여부 점검", desc: "1. 퇴사일 이후 접근 권한 회수여부를 확인합니다.<br>2. 회수되지 않은 권한이 있다면 즉시 조치합니다."}
+                    {img: "/static/img/Operation/APD03_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 퇴사자 명단)을 시스템 또는 인사자료에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/APD03_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table에 작성합니다."},
+                    {img: "/static/img/Operation/APD03_Step3.jpg", title: "Step 3: 권한 회수 여부 점검", desc: "1. 퇴사일 이후 접근 권한 회수여부를 확인합니다.<br>2. 검토 결과를 운영평가 조서의 Testing Table에 추가합니다."}
                 ],
                 APD04: [
-                    {img: "/static/img/APD04_Step1.jpg", title: "Step 1: 권한 모니터링 문서 확보 및 검토", desc: "1. 당기 권한 모니터링 문서를 확보합니다.<br>2. 문서에 전체 사용자 및 모든 권한이 포함되어 있는지 확인합니다.<br>3. 부적절한 권한이 탐지된 경우 회수 등 적절한 조치 여부에 대해 확인합니다.<br>4. 설계된 통제주기(연, 분기 등)에 따라 모집단의 완전성을 확인합니다."},
-                    {img: "/static/img/APD04_Step2.jpg", title: "Step 2: 샘플 선정 및 승인 여부 확인", desc: "1. 통제 주기에 따라 샘플 수를 선정합니다.<br>2. 선정된 샘플에 대해 적절한 승인(결재)이 이루어졌는지 확인합니다.<br>3. 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/APD04_Step1.jpg", title: "Step 1: 권한 모니터링 문서 확보 및 검토", desc: "1. 당기 권한 모니터링 문서를 확보합니다.<br>2. 문서에 전체 사용자 및 모든 권한이 포함되어 있는지 확인합니다.<br>3. 부적절한 권한이 탐지된 경우 회수 등 적절한 조치 여부에 대해 확인합니다."},
+                    {img: "/static/img/Operation/APD04_Step2.jpg", title: "Step 2: 샘플 선정 및 승인 여부 확인", desc: "1. 통제 주기에 따라 샘플 수를 선정합니다.<br>2. 선정된 샘플에 대해 적절한 승인(결재)이 이루어졌는지 확인합니다.<br>3. 결과를 운영평가 조서의 Testing Table에 작성합니다."},
                 ],
                 APD05: [
-                    {img: "/static/img/APD05_Step1.jpg", title: "Step 1: 보안규정 및 정책서 확인", desc: "1. 회사의 보안규정 또는 정책서에 패스워드 관련 사항이 명시되어 있는지 확인합니다."},
-                    {img: "/static/img/APD05_Step2.jpg", title: "Step 2: 정책 부합 여부 점검", desc: "1. 실제 시스템의 패스워드 설정이 정책서 기준(예: 최소 길이, 복잡성 등)에 부합하는지 확인합니다.<br>2. 시스템 설정 화면을 캡쳐하여 증빙으로 확보합니다.<br>3. 별도의 규정이 없는 경우, 최소 8자리 및 문자/숫자/특수문자 조합 등 기본 복잡성 요건이 적용되어 있는지 확인합니다.<br>4. 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/APD05_Step1.jpg", title: "Step 1: 관리자 계정 확인", desc: "1. 관리자 권한을 보유하고 있는 계정을 시스템에서 추출합니다."},
+                    {img: "/static/img/Operation/APD05_Step2.jpg", title: "Step 2: 권한 보유자 적정성 검토", desc: "1. 추출된 사용자의 부서, 직무, 담당 업무 등을 검토하여 권한 보유의 적정성을 확인합니다.<br>2. 검토 결과를 운영평가 조서에 작성합니다."},
                 ],
                 APD06: [
-                    {img: "/static/img/APD06_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 데이터 변경 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. DB에 접속하여 쿼리를 통해 데이터를 변경한 내역(Insert, Update, Delete)을 대상으로 하며 시스템이 생성한 쿼리는 제외합니다."},
-                    {img: "/static/img/APD06_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/APD06_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 데이터 변경 일자와 승인 일자를 비교하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/APD06_Step1.jpg", title: "Step 1: 보안규정 및 정책서 확인", desc: "1. 회사의 보안규정 또는 정책서에 패스워드 관련 사항이 명시되어 있는지 확인합니다."},
+                    {img: "/static/img/Operation/APD06_Step2.jpg", title: "Step 2: 정책 부합 여부 점검", desc: "1. 실제 시스템의 패스워드 설정이 정책서 기준(예: 최소 길이, 복잡성 등)에 부합하는지 확인합니다.<br>2. 시스템 설정 화면을 캡쳐하여 증빙으로 확보합니다.<br>3. 별도의 규정이 없는 경우, 최소 8자리 및 문자/숫자/특수문자 조합 등 기본 복잡성 요건이 적용되어 있는지 확인합니다.<br>4. 결과를 운영평가 조서의 Testing Table 시트에 작성합니다."},
                 ],
                 APD07: [
-                    {img: "/static/img/APD07_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 DB 접근권한 부여 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/APD07_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/APD07_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 확인합니다.<br>2. 권한 부여 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/APD07_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 데이터 변경 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. DB에 접속하여 쿼리를 통해 데이터를 변경한 내역(Insert, Update, Delete)을 대상으로 하며 시스템이 생성한 쿼리는 제외합니다.<br>4. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/APD07_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table에 작성합니다."},
+                    {img: "/static/img/Operation/APD07_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 데이터 변경 일자와 승인 일자를 비교하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서의 Testing Table에 추가합니다."},
                 ],
                 APD08: [
-                    {img: "/static/img/APD08_Step1.jpg", title: "Step 1: 보안규정 및 정책서 확인", desc: "1. 회사의 보안규정 또는 정책서에 패스워드 관련 사항이 명시되어 있는지 확인합니다."},
-                    {img: "/static/img/APD08_Step2.jpg", title: "Step 2: 정책 부합 여부 점검", desc: "1. 실제 시스템의 패스워드 설정이 정책서 기준(예: 최소 길이, 복잡성 등)에 부합하는지 확인합니다.<br>2. 시스템 설정 화면을 캡쳐하여 증빙으로 확보합니다.<br>3. 별도의 규정이 없는 경우, 최소 8자리 및 문자/숫자/특수문자 조합 등 기본 복잡성 요건이 적용되어 있는지 확인합니다.<br>4. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/APD08_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 DB 접근권한 부여 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/APD08_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table 시트에 작성합니다."},
+                    {img: "/static/img/Operation/APD08_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 확인합니다.<br>2. 권한 부여 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서의 Testing Table에 추가합니다."},
                 ],
                 APD09: [
-                    {img: "/static/img/APD09_Step1.jpg", title: "Step 1: 관리자 권한 사용자 추출", desc: "1. DB 관리자 권한을 보유한 사용자를 시스템에서 추출합니다.<br>2. 추출 시점의 사용자 목록과 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/APD09_Step2.jpg", title: "Step 2: 부서/직무 등 검토", desc: "1. 추출된 사용자의 부서, 직무, 담당 업무 등을 검토하여 관리자 권한 보유의 적정성을 확인합니다.<br>2. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/APD09_Step1.jpg", title: "Step 1: 보안규정 및 정책서 확인", desc: "1. 회사의 보안규정 또는 정책서에 패스워드 관련 사항이 명시되어 있는지 확인합니다."},
+                    {img: "/static/img/Operation/APD09_Step2.jpg", title: "Step 2: 정책 부합 여부 점검", desc: "1. 실제 시스템의 패스워드 설정이 정책서 기준(예: 최소 길이, 복잡성 등)에 부합하는지 확인합니다.<br>2. 시스템 설정 화면을 캡쳐하여 증빙으로 확보합니다.<br>3. 별도의 규정이 없는 경우, 최소 8자리 및 문자/숫자/특수문자 조합 등 기본 복잡성 요건이 적용되어 있는지 확인합니다.<br>4. 결과를 운영평가 조서의 Testing Table 시트에 작성합니다."},
                 ],
                 APD10: [
-                    {img: "/static/img/APD10_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 OS 접근권한 부여 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/APD10_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/APD10_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 확인합니다.<br>2. 권한 부여 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서에 작성합니다."}
+                    {img: "/static/img/Operation/APD10_Step1.jpg", title: "Step 1: 관리자 계정 확인", desc: "1. 관리자 권한을 보유하고 있는 계정을 시스템에서 추출합니다."},
+                    {img: "/static/img/Operation/APD10_Step2.jpg", title: "Step 2: 권한 보유자 적정성 검토", desc: "1. 추출된 사용자의 부서, 직무, 담당 업무 등을 검토하여 권한 보유의 적정성을 확인합니다.<br>2. 검토 결과를 운영평가 조서의 Testing Table에 작성합니다."},
                 ],
                 APD11: [
-                    {img: "/static/img/APD11_Step1.jpg", title: "Step 1: 보안규정 및 정책서 확인", desc: "1. 회사의 보안규정 또는 정책서에 OS 패스워드 관련 사항이 명시되어 있는지 확인합니다."},
-                    {img: "/static/img/APD11_Step2.jpg", title: "Step 2: 정책 부합 여부 점검", desc: "1. 실제 시스템의 OS 패스워드 설정이 정책서 기준(예: 최소 길이, 복잡성 등)에 부합하는지 확인합니다.<br>2. 시스템 설정 화면을 캡쳐하여 증빙으로 확보합니다.<br>3. 별도의 규정이 없는 경우, 최소 8자리 및 문자/숫자/특수문자 조합 등 기본 복잡성 요건이 적용되어 있는지 확인합니다.<br>4. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/APD11_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 OS 접근권한 부여 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/APD11_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table 시트에 작성합니다."},
+                    {img: "/static/img/Operation/APD11_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 확인합니다.<br>2. 권한 부여 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서의 Testing Table에 추가합니다."},
                 ],
                 APD12: [
-                    {img: "/static/img/APD12_Step1.jpg", title: "Step 1: 관리자 권한 사용자 추출", desc: "1. OS 관리자 권한을 보유한 사용자를 시스템에서 추출합니다.<br>2. 추출 시점의 사용자 목록과 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/APD12_Step2.jpg", title: "Step 2: 부서/직무 등 검토", desc: "1. 추출된 사용자의 부서, 직무, 담당 업무 등을 검토하여 관리자 권한 보유의 적정성을 확인합니다.<br>2. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/APD12_Step1.jpg", title: "Step 1: 보안규정 및 정책서 확인", desc: "1. 회사의 보안규정 또는 정책서에 OS 패스워드 관련 사항이 명시되어 있는지 확인합니다."},
+                    {img: "/static/img/Operation/APD12_Step2.jpg", title: "Step 2: 정책 부합 여부 점검", desc: "1. 실제 시스템의 패스워드 설정이 정책서 기준(예: 최소 길이, 복잡성 등)에 부합하는지 확인합니다.<br>2. 시스템 설정 화면을 캡쳐하여 증빙으로 확보합니다.<br>3. 별도의 규정이 없는 경우, 최소 8자리 및 문자/숫자/특수문자 조합 등 기본 복잡성 요건이 적용되어 있는지 확인합니다.<br>4. 결과를 운영평가 조서의 Testing Table 시트에 작성합니다."},
+                ],
+                APD13: [
+                    {img: "/static/img/Operation/APD13_Step1.jpg", title: "Step 1: 관리자 계정 확인", desc: "1. 관리자 권한을 보유하고 있는 계정을 시스템에서 추출합니다."},
+                    {img: "/static/img/Operation/APD13_Step2.jpg", title: "Step 2: 권한 보유자 적정성 검토", desc: "1. 추출된 사용자의 부서, 직무, 담당 업무 등을 검토하여 권한 보유의 적정성을 확인합니다.<br>2. 검토 결과를 운영평가 조서의 Testing Table에 작성합니다."},
                 ],
                 PC01: [
-                    {img: "/static/img/PC01_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 프로그램 이관 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/PC01_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/PC01_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(변경 요청에 대한 승인, 사용자 테스트 유무, 이관 요청에 대한 승인)을 검토합니다.<br>2. 프로그램 이관 일자와 각 증빙 일자를 비교하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서에 작성합니다.<br>* 프로그램 변경 승인, 프로그램 변경 사용자 테스트, 프로그램 이관 승인은 별개의 통제이나 테스트는 함께 진행할 수 있습니다."}
+                    {img: "/static/img/Operation/PC01_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 프로그램 이관 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/PC01_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table 시트에 작성합니다."},
+                    {img: "/static/img/Operation/PC01_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(변경 요청에 대한 승인, 사용자 테스트 유무, 이관 요청에 대한 승인)을 검토합니다.<br>2. 프로그램 이관 일자와 각 증빙 일자를 비교하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서의 Testing Table 시트에 추가합니다.<br> * 프로그램 변경 승인, 프로그램 변경 사용자 테스트, 프로그램 이관 승인은 별개의 통제이나 테스트는 함께 진행할 수 있습니다."}
                 ],
                 PC04: [
-                    {img: "/static/img/PC04_Step1.jpg", title: "Step 1: 이관담당자 권한 사용자 추출", desc: "1. 이관담당자 권한을 보유한 사용자를 시스템에서 추출합니다.<br>2. 추출 시점의 사용자 목록과 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/PC04_Step2.jpg", title: "Step 2: 부서/직무 등 검토", desc: "1. 추출된 사용자의 부서, 직무, 담당 업무 등을 검토하여 이관담당자 권한 보유의 적정성을 확인합니다.<br>2. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/PC04_Step1.jpg", title: "Step 1: 이관권한자 계정 확인", desc: "1. 이관권한을 보유하고 있는 계정을 시스템에서 추출합니다."},
+                    {img: "/static/img/Operation/PC04_Step2.jpg", title: "Step 2: 권한 보유자 적정성 검토", desc: "1. 추출된 사용자의 부서, 직무, 담당 업무 등을 검토하여 권한 보유의 적정성을 확인합니다.<br>2. 검토 결과를 운영평가 조서의 Testing Table에 작성합니다."},
                 ],
                 PC05: [
-                    {img: "/static/img/PC05_Step1.jpg", title: "Step 1: 개발/운영 환경 분리 현황 확인", desc: "1. 시스템이 운영환경과 별도의 개발환경을 보유하고 있는지 확인합니다."},
-                    {img: "/static/img/PC05_Step2.jpg", title: "Step 2: 증빙 자료 확보", desc: "1. 서버 구성도, IP 목록 등으로 개발환경과 운영환경이 분리되어 있는지 증빙 자료를 확보합니다.<br>2. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/PC05_Step1.jpg", title: "Step 1: 개발/운영 환경 분리 현황 확인", desc: "1. 시스템이 운영환경과 별도의 개발환경을 보유하고 있는지 확인합니다."},
+                    {img: "/static/img/Operation/PC05_Step2.jpg", title: "Step 2: 증빙 자료 확보", desc: "1. 서버 구성도, IP 목록 등으로 개발환경과 운영환경이 분리되어 있는지 증빙 자료를 확보합니다.<br>2. 검토 결과를 운영평가 조서의 Testing Table에 작성합니다."},
                 ],
                 PC06: [
-                    {img: "/static/img/PC06_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 DB 패치 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/PC06_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/PC06_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 패치 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/PC07_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 DB 패치 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/PC07_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table 시트에 작성합니다."},
+                    {img: "/static/img/Operation/PC07_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 패치 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서의 Testing Table 시트에 추가합니다."},
                 ],
                 PC07: [
-                    {img: "/static/img/PC07_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 OS 패치 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/PC07_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/PC07_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 패치 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/PC07_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 OS 패치 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/PC07_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table 시트에 작성합니다."},
+                    {img: "/static/img/Operation/PC07_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 패치 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서의 Testing Table 시트에 추가합니다."},
                 ],
                 PC08: [
-                    {img: "/static/img/PC08_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 시스템 패치 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>* 해당 통제는 SAP ERP, Oracle ERP 등 Package 형태의 ERP 시스템을 운영하는 경우에만 적용됩니다."},
-                    {img: "/static/img/PC08_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/PC08_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 패치 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/PC07_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 Application 패치 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/PC07_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table 시트에 작성합니다."},
+                    {img: "/static/img/Operation/PC07_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 패치 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서의 Testing Table 시트에 추가합니다."},
                 ],
                 CO01: [
-                    {img: "/static/img/CO01_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 Batch Schedule 등록 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/CO01_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다. (예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서에 별도로 작성합니다."},
-                    {img: "/static/img/CO01_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 배치 스케줄 등록 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/CO01_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 해당 통제의 모집단(당기 Batch Schedule 등록 이력)을 시스템에서 추출합니다.<br>2. 추출 시점의 데이터 건수와 캡쳐 화면을 확보하여 완전성을 확인합니다.<br>3. 운영평가 조서의 Population 시트를 선택하여 모집단 데이터와 캡쳐 화면을 작성합니다."},
+                    {img: "/static/img/Operation/CO01_Step2.jpg", title: "Step 2: 샘플 선정", desc: "1. 모집단 수에 따라 샘플 수를 결정합니다.<br>(예: 모집단이 10개인 경우 Quarterly와 Monthly 사이이므로 2개, 13개인 경우 Monthly와 Weekly 사이이므로 5개 선정 등)<br>2. 샘플 선정은 무작위 표본추출(Simple Random Sampling) 방식으로 해야 하며, 임의의 데이터를 선택하면 안됩니다.<br>3. 선정된 샘플만 운영평가 조서의 Testing Table 시트에 작성합니다."},
+                    {img: "/static/img/Operation/CO01_Step3.jpg", title: "Step 3: 증빙 확인", desc: "1. 선정된 샘플에 대한 증빙(승인 내역)을 검토합니다.<br>2. 배치 스케줄 등록 일자와 승인 일자를 대사하여 사전 승인 여부를 확인합니다.<br>3. 검토 결과를 운영평가 조서의 Testing Table 시트에 추가합니다."},
                 ],
                 CO02: [
-                    {img: "/static/img/CO02_Step1.jpg", title: "Step 1: 배치잡 등록 권한 사용자 추출", desc: "1. 배치잡 등록 권한을 보유한 사용자를 시스템에서 추출합니다.<br>2. 추출 시점의 사용자 목록과 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/CO02_Step2.jpg", title: "Step 2: 부서/직무 등 검토", desc: "1. 추출된 사용자의 부서, 직무, 담당 업무 등을 검토하여 배치잡 등록 권한 보유의 적정성을 확인합니다.<br>2. 검토 결과를 운영평가 조서에 작성합니다."},
+                    {img: "/static/img/Operation/CO02_Step1.jpg", title: "Step 1: Batch Schedule 등록 계정 확인", desc: "1. Batch Schedule 등록 권한을 보유하고 있는 계정을 시스템에서 추출합니다."},
+                    {img: "/static/img/Operation/CO02_Step2.jpg", title: "Step 2: 권한 보유자 적정성 검토", desc: "1. 추출된 사용자의 부서, 직무, 담당 업무 등을 검토하여 권한 보유의 적정성을 확인합니다.<br>2. 검토 결과를 운영평가 조서의 Testing Table 시트에 작성합니다."},
                 ],
                 CO03: [
-                    {img: "/static/img/CO03_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 배치잡 스케줄 실행 상태를 시스템에서 추출합니다.<br>2. 추출 시점의 실행 내역과 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/CO03_Step2.jpg", title: "Step 2: 증빙 확인", desc: "1. 오류 발생 시 원인 분석 및 조치 내역을 확인합니다.<br>2. 오류에 대한 조치와 기록이 적절하게 남아 있는지 확인합니다."},
+                    {img: "/static/img/Operation/CO03_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 배치잡 스케줄 실행 상태를 시스템에서 추출합니다.<br>2. 추출 시점의 실행 내역과 캡쳐 화면을 확보하여 완전성을 확인합니다."},
+                    {img: "/static/img/Operation/CO03_Step2.jpg", title: "Step 2: 증빙 확인", desc: "1. 오류 발생 시 원인 분석 및 조치 내역을 확인합니다.<br>2. 오류에 대한 조치와 기록이 적절하게 남아 있는지 확인합니다."},
                 ],
                 CO04: [
-                    {img: "/static/img/CO04_Step1.jpg", title: "Step 1: 모니터링 문서 확보 및 검토", desc: "1. 당기 백업 모니터링 문서를 확보합니다.<br>2. 문서에 In-Scope System의 포함여부를 확인합니다.<br>3. 오류가 있었을 경우 적시에 적절한 조치가 이루어졌는지 확인합니다.<br>4. 설계된 통제주기(연, 분기 등)에 따라 모집단의 완전성을 확인합니다."},
-                    {img: "/static/img/CO04_Step2.jpg", title: "Step 2: 샘플 선정 및 승인 여부 확인", desc: "1. 통제 주기에 따라 샘플 수를 선정합니다.<br>2. 선정된 샘플에 대해 적절한 승인(결재)이 이루어졌는지 확인합니다."},
+                    {img: "/static/img/Operation/CO04_Step1.jpg", title: "Step 1: 모니터링 문서 확보 및 검토", desc: "1. 당기 백업 모니터링 문서를 확보합니다.<br>2. 문서에 In-Scope System의 포함여부를 확인합니다.<br>3. 오류가 있었을 경우 적시에 적절한 조치가 이루어졌는지 확인합니다.<br>4. 설계된 통제주기(연, 분기 등)에 따라 모집단의 완전성을 확인합니다."},
+                    {img: "/static/img/Operation/CO04_Step2.jpg", title: "Step 2: 샘플 선정 및 승인 여부 확인", desc: "1. 통제 주기에 따라 샘플 수를 선정합니다.<br>2. 선정된 샘플에 대해 적절한 승인(결재)이 이루어졌는지 확인합니다."},
                 ],
                 CO05: [
-                    {img: "/static/img/CO05_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 장애 발생 내역을 확보합니다.<br>- 장애이력은 시스템에 기록되지 않을 수 있으므로 수기대장도 모집단으로 사용합니다."},
-                    {img: "/static/img/CO05_Step2.jpg", title: "Step 2: 증빙 확인", desc: "1. 장애에 대한 조치 내역이 적절하게 기록되어 있는지 확인합니다."},
+                    {img: "/static/img/Operation/CO05_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 장애 발생 내역을 확보합니다.<br>- 장애이력은 시스템에 기록되지 않을 수 있으므로 수기대장도 모집단으로 사용합니다."},
+                    {img: "/static/img/Operation/CO05_Step2.jpg", title: "Step 2: 증빙 확인", desc: "1. 장애에 대한 조치 내역이 적절하게 기록되어 있는지 확인합니다."},
                 ],
                 CO06: [
-                    {img: "/static/img/CO06_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 서버실 출입 요청 및 출입 내역을 시스템에서 추출합니다.<br>2. 추출 시점의 출입 내역과 캡쳐 화면을 확보하여 완전성을 확인합니다."},
-                    {img: "/static/img/CO06_Step2.jpg", title: "Step 2: 증빙 확인", desc: "1. 출입 요청에 대한 승인 내역과 출입 기록이 적절하게 남아 있는지 확인합니다."},
+                    {img: "/static/img/Operation/CO06_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 서버실 출입 요청 및 출입 내역을 시스템에서 추출합니다.<br>2. 추출 시점의 출입 내역과 캡쳐 화면을 확보하여 완전성을 확인합니다."},
+                    {img: "/static/img/Operation/CO06_Step2.jpg", title: "Step 2: 증빙 확인", desc: "1. 출입 요청에 대한 승인 내역과 출입 기록이 적절하게 남아 있는지 확인합니다."},
                 ],
             };
             const steps = stepMap[type];

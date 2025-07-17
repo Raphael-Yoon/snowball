@@ -35,15 +35,9 @@
                     </li>
                     <li class="nav-item">
                         <form action="/link3" method="POST" class="d-inline">
-                            {% if client_ip == '127.0.0.1' %}
-                                <a href="/link3" class="nav-link">
-                                    <i class="fas fa-cogs me-1"></i>Operation Test
-                                </a>
-                            {% else %}
-                                <a href="/link3" class="nav-link" onclick="event.preventDefault(); alert('더 좋은 서비스를 위해 공사중입니다');">
-                                    <i class="fas fa-cogs me-1"></i>Operation
-                                </a>
-                            {% endif %}
+                            <a href="/link3" class="nav-link">
+                                <i class="fas fa-cogs me-1"></i>Operation
+                            </a>
                         </form>
                     </li>
                     <li class="nav-item">
