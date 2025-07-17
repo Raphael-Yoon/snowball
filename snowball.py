@@ -37,11 +37,7 @@ load_dotenv()
 @app.route('/')
 def index():
     result = snowball_db.get_user_list()
-    client_ip = request.remote_addr
-    host = request.host
-    # 127.0.0.1 또는 pythonanywhere 도메인에서 접근 시 허용
-    is_allowed = (client_ip == '127.0.0.1') or ('pythonanywhere' in host)
-    return render_template('index.jsp', user_name = result, return_code=0, client_ip=client_ip, is_allowed=is_allowed)
+    return render_template('index.jsp', user_name = result, return_code=0)
 
 def main():
     app.run(host='0.0.0.0', debug=False, port=5001)
@@ -712,7 +708,7 @@ def get_content_link3():
     # 모든 type에 대해 공통 step-card 템플릿 반환
     return render_template('link3_detail.jsp')
 
-def send_gmail(to, subject, body):
+def get_gmail_credentials():
     SCOPES = ['https://www.googleapis.com/auth/gmail.send']
     creds = None
     if os.path.exists('token.pickle'):
@@ -726,6 +722,10 @@ def send_gmail(to, subject, body):
             creds = flow.run_local_server(port=0)
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
+    return creds
+
+def send_gmail(to, subject, body):
+    creds = get_gmail_credentials()
     service = build('gmail', 'v1', credentials=creds)
     message = MIMEText(body)
     message['to'] = to
@@ -736,19 +736,7 @@ def send_gmail(to, subject, body):
     return send_message
 
 def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=None, file_name=None):
-    SCOPES = ['https://www.googleapis.com/auth/gmail.send']
-    creds = None
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
-            creds = pickle.load(token)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open('token.pickle', 'wb') as token:
-            pickle.dump(creds, token)
+    creds = get_gmail_credentials()
     service = build('gmail', 'v1', credentials=creds)
 
     # 메일 생성

@@ -292,6 +292,9 @@ button:hover{
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     background: #fff;
     text-align: center;
+    transform: scale(0.9);
+    margin: auto;
+    transform-origin: center center;
 }
 .step-card img,
 .step-img-el {
