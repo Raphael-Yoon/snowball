@@ -300,11 +300,60 @@ button:hover{
 .step-img-el {
     display: block;
     width: 100%;
-    max-width: 1000px;
-    height: 600px;
+    max-width: 100%;
+    height: auto;
+    max-height: 50vh;
     object-fit: contain;
     margin: 0 auto 16px auto;
     border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+    .step-card img,
+    .step-img-el {
+        max-height: 40vh;
+        margin: 0 auto 12px auto;
+    }
+    
+    .step-card {
+        padding: 16px;
+        margin: 10px;
+    }
+    
+    .step-desc {
+        font-size: 0.9rem;
+        line-height: 1.4;
+        margin-bottom: 16px;
+    }
+    
+    .step-title {
+        font-size: 1.1rem !important;
+        margin-bottom: 12px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .step-card img,
+    .step-img-el {
+        max-height: 35vh;
+        margin: 0 auto 8px auto;
+    }
+    
+    .step-card {
+        padding: 12px;
+        margin: 8px;
+    }
+    
+    .step-desc {
+        font-size: 0.85rem;
+        line-height: 1.3;
+        margin-bottom: 12px;
+    }
+    
+    .step-title {
+        font-size: 1rem !important;
+        margin-bottom: 8px !important;
+    }
 }
 .step-btns {
     display: flex;
@@ -360,4 +409,18 @@ button:hover{
 
 .step-desc {
   white-space: pre-line;
+}
+
+/* 동적 크기 조정을 위한 추가 스타일 */
+.content-area {
+    width: calc(100vw - 300px);
+    max-width: 80vw;
+    min-width: 400px;
+}
+
+@media (max-width: 768px) {
+    .content-area {
+        width: calc(100vw - 250px);
+        max-width: 85vw;
+    }
 }

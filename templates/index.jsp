@@ -56,7 +56,7 @@
                             <h5 class="feature-title text-center">Interview/Design Test</h5>
                             <p class="feature-description">전문가와의 인터뷰를 통해 시스템의 현재 상태와 개선점을 파악합니다.</p>
                             <div class="text-center">
-                                <a href="/link2" class="feature-link">자세히 보기</a>
+                                <a href="/link2?reset=1" class="feature-link">자세히 보기</a>
                             </div>
                         </div>
                     </div>

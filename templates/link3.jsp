@@ -6,14 +6,11 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/common.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
+
 </head>
 <body>
     {% include 'navi.jsp' %}
     
-    <div style="position: fixed; top: 80px; right: 32px; z-index: 9999;">
-        <a id="template-download-btn" href="#" style="padding: 8px 16px; background: #28a745; color: #fff; border-radius: 4px; text-decoration: none; pointer-events: none; opacity: 0.5;">템플릿 다운로드</a>
-    </div>
-
     <div class="container-fluid h-100">
         <div class="row h-100">
             <!-- 왼쪽 사이드바 -->
@@ -22,12 +19,20 @@
             </div>
             
             <!-- 오른쪽 컨텐츠 영역 -->
-            <div class="col-md-9 col-lg-9 content-area d-flex align-items-stretch h-100" style="padding:0;">
+            <div class="col-md-9 col-lg-9 content-area d-flex align-items-stretch h-100" style="padding:0; position: relative;">
+                <!-- 템플릿 다운로드 버튼을 별도 컨테이너로 분리 -->
+                <div id="template-button-container" style="position: absolute; top: 60px; right: 80px; z-index: 9999;">
+                    <a id="template-download-btn" href="#" style="padding: 8px 16px; background: #28a745; color: #fff; border-radius: 4px; text-decoration: none; pointer-events: none; opacity: 0.5;">템플릿 다운로드</a>
+                </div>
                 <div id="contentContainer" class="flex-grow-1 d-flex flex-column justify-content-center align-items-stretch h-100" style="padding:0;">
                     <div class="text-center text-muted">
                         <h3>항목을 선택해주세요</h3>
                         <p>왼쪽 메뉴에서 원하는 항목을 선택하시면 상세 내용이 표시됩니다.</p>
                     </div>
+                </div>
+                <!-- AI 샘플데이터 코멘트 -->
+                <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 9999;">
+                    <small style="color: #999; font-size: 0.8rem; text-align: center;">해당 데이터는 AI로 생성한 샘플데이터이므로 실제와 다를 수 있습니다</small>
                 </div>
             </div>
         </div>
@@ -137,6 +142,9 @@
 
         function updateContent(selectedValue) {
             const contentContainer = document.getElementById('contentContainer');
+            const templateButtonContainer = document.getElementById('template-button-container');
+            
+            // 버튼 컨테이너는 건드리지 않고 contentContainer만 업데이트
             contentContainer.innerHTML = '';
 
             // 준비중 메시지를 보여줄 value 목록
@@ -152,24 +160,20 @@
                 return;
             }
 
-            // 모든 메뉴에 step-by-step SPA 적용
-            fetch(`/get_content_link3?type=${selectedValue}`)
-                .then(response => response.text())
-                .then(html => {
-                    contentContainer.innerHTML = `
-                        <div class="step-card flex-grow-1 d-flex flex-column align-items-center justify-content-center">
-                            <div id="step-img" class="text-center"></div>
-                            <div id="step-title" class="text-center mt-3 mb-2" style="font-weight:bold;font-size:1.2em;"></div>
-                            <div id="step-desc" class="text-start mb-3" style="max-width:900px;width:100%;margin:0 auto;"></div>
-                            <div id="step-indicator" class="text-center mb-3"></div>
-                            <div class="step-btns d-flex justify-content-center">
-                                <button id="prev-btn" class="btn btn-primary me-2">이전</button>
-                                <button id="next-btn" class="btn btn-primary">다음</button>
-                            </div>
-                        </div>
-                    `;
-                    enableStepByStep(selectedValue);
-                });
+            // step-by-step 컨텐츠 생성
+            contentContainer.innerHTML = `
+                <div class="step-card flex-grow-1 d-flex flex-column align-items-center justify-content-center">
+                    <div id="step-img" class="text-center"></div>
+                    <div id="step-title" class="text-center mt-3 mb-2" style="font-weight:bold;font-size:1.2em;"></div>
+                    <div id="step-desc" class="text-start mb-3" style="max-width:900px;width:100%;margin:0 auto;"></div>
+                    <div id="step-indicator" class="text-center mb-3"></div>
+                    <div class="step-btns d-flex justify-content-center">
+                        <button id="prev-btn" class="btn btn-primary me-2">이전</button>
+                        <button id="next-btn" class="btn btn-primary">다음</button>
+                    </div>
+                </div>
+            `;
+            enableStepByStep(selectedValue);
         }
 
         // 모든 메뉴에 대해 step-by-step 로직
@@ -272,7 +276,7 @@
                     {img: "/static/img/Operation/CO02_Step2.jpg", title: "Step 2: 권한 보유자 적정성 검토", desc: "1. 추출된 사용자의 부서, 직무, 담당 업무 등을 검토하여 권한 보유의 적정성을 확인합니다.<br>2. 검토 결과를 운영평가 조서의 Testing Table 시트에 작성합니다."},
                 ],
                 CO03: [
-                    {img: "/static/img/Operation/CO03_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 배치잡 스케줄 실행 상태를 시스템에서 추출합니다.<br>2. 추출 시점의 실행 내역과 캡쳐 화면을 확보하여 완전성을 확인합니다."},
+                    {img: "/static/img/Operation/CO03_Step1.jpg", title: "Step 1: 모집단 확인", desc: "1. 배치잡 스케줄 실행 중 오류 내역을 추출합니다.<br>2. 추출 시점의 실행 내역과 캡쳐 화면을 확보하여 완전성을 확인합니다."},
                     {img: "/static/img/Operation/CO03_Step2.jpg", title: "Step 2: 증빙 확인", desc: "1. 오류 발생 시 원인 분석 및 조치 내역을 확인합니다.<br>2. 오류에 대한 조치와 기록이 적절하게 남아 있는지 확인합니다."},
                 ],
                 CO04: [

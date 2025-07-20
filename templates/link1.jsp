@@ -12,7 +12,7 @@
 		{% include 'navi.jsp' %}
 		<div class="form-container">
 			<h1 class="section-title">
-				<i class="fas fa-file-alt"></i> ITGC RCM 자동 생성
+				<i class="fas fa-file-alt"></i> ITGC RCM Builder
 			</h1>
 			<div class="card">
 				<div class="card-body">
@@ -104,8 +104,8 @@
 							</div>
 						</div>
 						<!-- <button type="submit" class="submit-btn" onclick="event.preventDefault(); alert('더 좋은 서비스를 위해 공사중입니다');"> -->
-						<button type="submit" class="submit-btn";">
-							<i class="fas fa-download"></i> Download
+						<button type="submit" class="submit-btn">
+							<i class="fas fa-envelope"></i> 메일로 보내기
 						</button>
 					</form>
 				</div>
