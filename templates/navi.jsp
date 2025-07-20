@@ -28,7 +28,7 @@
                     </li>
                     <li class="nav-item">
                         <form action="/link2" method="POST" class="d-inline">
-                            <a href="/link2" class="nav-link">
+                            <a href="/link2?reset=1" class="nav-link">
                                 <i class="fas fa-user-tie me-1"></i>Interview
                             </a>
                         </form>
