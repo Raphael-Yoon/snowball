@@ -5,6 +5,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import pickle
 import os
+from datetime import datetime
+# argparse import 및 관련 코드 제거
 
 # 필요한 권한 범위 설정
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
@@ -53,12 +55,38 @@ def send_email(service, to, subject, body):
         print(f'에러 발생: {e}')
         return None
 
+def send_gmail_with_today(service, to, subject):
+    """오늘 날짜가 본문에 포함된 이메일 보내기"""
+    today = datetime.today().strftime('%Y-%m-%d')
+    body = f'오늘 날짜는 {today}입니다.'
+    message = MIMEText(body)
+    message['to'] = to
+    message['subject'] = subject
+    raw_message = base64.urlsafe_b64encode(message.as_string().encode('utf-8')).decode('utf-8')
+    try:
+        sent_message = service.users().messages().send(
+            userId='me',
+            body={'raw': raw_message}
+        ).execute()
+        print(f'메시지 ID: {sent_message["id"]}')
+        return sent_message
+    except Exception as e:
+        print(f'에러 발생: {e}')
+        return None
+
 # 사용 예시
 if __name__ == '__main__':
+    # 받는 사람과 제목을 하드코딩
+    to = 'snowball1566@gmail.com'
+    subject = '테스트 메일 발송'
+
     service = get_gmail_service()
-    send_email(
+    result = send_gmail_with_today(
         service=service,
-        to='recipient@example.com',
-        subject='Gmail API 테스트',
-        body='Gmail API를 사용한 이메일 전송 테스트입니다.'
+        to=to,
+        subject=subject
     )
+    if result:
+        print('메일이 성공적으로 전송되었습니다.')
+    else:
+        print('메일 전송에 실패했습니다.')
