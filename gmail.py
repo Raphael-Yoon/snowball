@@ -56,9 +56,9 @@ def send_email(service, to, subject, body):
         return None
 
 def send_gmail_with_today(service, to, subject):
-    """오늘 날짜가 본문에 포함된 이메일 보내기"""
-    today = datetime.today().strftime('%Y-%m-%d')
-    body = f'오늘 날짜는 {today}입니다.'
+    """오늘 날짜와 시간이 본문에 포함된 이메일 보내기"""
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    body = f'현재 일시: {now} 입니다.'
     message = MIMEText(body)
     message['to'] = to
     message['subject'] = subject
@@ -78,7 +78,7 @@ def send_gmail_with_today(service, to, subject):
 if __name__ == '__main__':
     # 받는 사람과 제목을 하드코딩
     to = 'snowball1566@gmail.com'
-    subject = '테스트 메일 발송'
+    subject = '계정 활성화 여부'
 
     service = get_gmail_service()
     result = send_gmail_with_today(
