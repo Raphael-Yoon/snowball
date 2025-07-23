@@ -77,7 +77,7 @@ def send_gmail_with_today(service, to, subject):
 # 사용 예시
 if __name__ == '__main__':
     # 받는 사람과 제목을 하드코딩
-    to = 'snowball1566@gmail.com'
+    to = 'snowball1566@gmail.com,daiyeolyoon@naver.com'
     subject = '계정 활성화 여부'
 
     service = get_gmail_service()
