@@ -51,6 +51,207 @@ s_questions = [
 
 question_count = len(s_questions)
 
+# --- 리팩토링: Ineffective 조건 체크 함수 ---
+def is_ineffective(control, answers):
+    conditions = {
+        'APD01': len(answers) > 14 and (answers[12] == 'N' or answers[14] == 'N'),
+        'APD02': len(answers) > 15 and answers[15] == 'N',
+        'APD03': len(answers) > 16 and answers[16] == 'N',
+        'APD04': len(answers) > 17 and answers[17] == 'N',
+        'APD06': len(answers) > 20 and (answers[19] == 'N' or answers[20] == 'N'),
+        'APD07': len(answers) > 22 and (answers[21] == 'N' or answers[22] == 'N'),
+        'APD10': len(answers) > 26 and (answers[25] == 'N' or answers[26] == 'N'),
+        'PC01': (len(answers) > 30 and answers[29] == 'N') or (len(answers) > 30 and answers[30] == 'N'),
+        'PC02': (len(answers) > 31 and answers[29] == 'N') or (len(answers) > 31 and answers[31] == 'N'),
+        'PC03': (len(answers) > 32 and answers[29] == 'N') or (len(answers) > 32 and answers[32] == 'N'),
+        'PC05': len(answers) > 34 and answers[34] == 'N',
+        'CO01': len(answers) > 36 and (answers[35] == 'N' or answers[36] == 'N'),
+    }
+    return conditions.get(control, False)
+
+# --- 리팩토링: 시트 값 입력 함수 ---
+def fill_sheet(ws, text_data, answers):
+    if 'A1' in text_data:
+        ws['C7'] = text_data['A1']
+    if 'B1' in text_data:
+        ws['C8'] = text_data['B1']
+    if 'B2' in text_data:
+        ws['C12'] = text_data['B2']
+        value = str(text_data['B2'])
+        num_lines = value.count('\n') + 1
+        approx_lines = num_lines + (len(value) // 50)
+        ws.row_dimensions[12].height = 15 * approx_lines
+    # B3: company_name, B5: user_name
+    if len(answers) > 0 and answers[0]:
+        company_name = "Company Name" # Placeholder for company name
+        user_name = "User Name" # Placeholder for user name
+        ws['B3'] = company_name
+        ws['B5'] = user_name
+
+def get_text_itgc(answers, control_number, textarea_answers=None):
+    result = {}
+    if textarea_answers is None:
+        textarea_answers = [''] * len(answers)
+    
+    if control_number == 'APD01':
+        result['A1'] = "APD01"
+        result['B1'] = "사용자 신규 권한 승인"
+        result['B2'] = "사용자 권한 부여 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[12] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+            "새로운 권한 요청 시, 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                f"\n{textarea_answers[14]}" if textarea_answers[14] else "\n\n권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다."
+            ) if answers[14] == 'Y' else "새로운 권한 요청 시 승인 절차가 없습니다.")
+    
+    elif control_number == 'APD02':
+        result['A1'] = "APD02"
+        result['B1'] = "부서이동자 권한 회수"
+        result['B2'] = "사용자 권한 회수 이력이 시스템에 " + ("기록되고 있습니다." if answers[13] == 'Y' else "기록되지 않습니다.") + "\n\n" + (
+            "부서 이동 시 기존 권한을 회수하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                f"\n{textarea_answers[15]}" if textarea_answers[15] else "\n\n부서 이동 시 권한 회수 절차에 대한 상세 기술이 제공되지 않았습니다."
+            ) if answers[15] == 'Y' else "부서 이동 시 기존 권한 회수 절차가 없습니다.")
+
+    elif control_number == 'APD03':
+        result['A1'] = "APD03"
+        result['B1'] = "퇴사자 접근권한 회수"
+        result['B2'] = "퇴사자 발생 시 접근권한을 " + ("차단하는 절차가 있으며 그 절차는 아래와 같습니다." if answers[16] == 'Y' else "차단 절차가 없습니다.") + (
+            f"\n{textarea_answers[16]}" if textarea_answers[16] else "\n퇴사자 접근권한 차단 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'APD04':
+        result['A1'] = "APD04"
+        result['B1'] = "사용자 권한 Monitoring"
+        result['B2'] = "전체 사용자가 보유한 권한에 대한 적절성을 " + ("모니터링하는 절차가 있습니다." if answers[17] == 'Y' else "모니터링 절차가 존재하지 않습니다.")
+
+    elif control_number == 'APD05':
+        result['A1'] = "APD05"
+        result['B1'] = "Application 패스워드"
+        result['B2'] = "패스워드 설정 사항은 아래와 같습니다 \n\n" + (answers[18] if answers[18] else "패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.")
+    
+    elif control_number == 'APD06':
+        result['A1'] = "APD06"
+        result['B1'] = "데이터 직접 변경"
+        result['B2'] = "데이터 변경 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[19] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+            "데이터 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                f"\n{textarea_answers[20]}" if textarea_answers[20] else "데이터 변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
+            ) if answers[20] == 'Y' else "데이터 변경 시 승인 절차가 없습니다.")
+
+    elif control_number == 'APD07':
+        result['A1'] = "APD07"
+        result['B1'] = "DB 접근권한 승인"
+        result['B2'] = f"DB 종류와 버전: {answers[9]}" + f"\n\nDB 접근제어 Tool 사용 여부: {'사용' if answers[10] == 'Y' else '미사용'}" + "\n\n" + (
+            "DB 접근권한 부여 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[21] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+                "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                    f"\n{textarea_answers[22]}" if textarea_answers[22] else "DB 접근권한 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
+                ) if answers[22] == 'Y' else "DB 접근권한 요청 시 승인 절차가 없습니다."
+            )
+        )
+
+    elif control_number == 'APD08':
+        result['A1'] = "APD08"
+        result['B1'] = "DB 관리자 권한 제한"
+        result['B2'] = "DB 관리자 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[23] if answers[23] else "DB 관리자 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'APD09':
+        result['A1'] = "APD09"
+        result['B1'] = "DB 패스워드"
+        result['B2'] = "DB 패스워드 설정사항은 아래와 같습니다.\n" + (answers[24] if answers[24] else "DB 패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'APD10':
+        result['A1'] = "APD10"
+        result['B1'] = "OS 접근권한 승인"
+        result['B2'] = f"OS 종류와 버전: {answers[7]}" + f"\n\nOS 접근제어 Tool 사용 여부: {'사용' if answers[8] == 'Y' else '미사용'}" + "\n\n" + (
+            "OS 접근권한 부여 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[25] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+                "OS 접근권한이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                    f"\n{textarea_answers[26]}" if textarea_answers[26] else "OS 접근권한 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
+                ) if answers[26] == 'Y' else "OS 접근권한 요청 시 승인 절차가 없습니다."
+            )
+        )
+
+    elif control_number == 'APD11':
+        result['A1'] = "APD11"
+        result['B1'] = "OS 관리자 권한 제한"
+        result['B2'] = "OS 관리자 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[27] if answers[27] else "OS 관리자 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'APD12':
+        result['A1'] = "APD12"
+        result['B1'] = "OS 패스워드"
+        result['B2'] = "OS 패스워드 설정사항은 아래와 같습니다.\n" + (answers[28] if answers[28] else "OS 패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'PC01':
+        result['A1'] = "PC01"
+        result['B1'] = "프로그램 변경 승인"
+        result['B2'] = "프로그램 변경 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[29] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+            "프로그램 변경 시 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                f"\n{textarea_answers[30]}" if textarea_answers[30] else "\n프로그램 변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
+            ) if answers[30] == 'Y' else "프로그램 변경 시 승인 절차가 없습니다.")
+
+    elif control_number == 'PC02':
+        result['A1'] = "PC02"
+        result['B1'] = "프로그램 변경 사용자 테스트"
+        result['B2'] = "프로그램 변경 시 사용자 테스트를 " + ("수행하고 그 결과를 문서화하는 절차가 있으며 그 절차는 아래와 같습니다." if answers[31] == 'Y' else "수행하지 않습니다.") + (
+            f"\n{textarea_answers[31]}" if textarea_answers[31] else "\n프로그램 변경 사용자 테스트 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'PC03':
+        result['A1'] = "PC03"
+        result['B1'] = "프로그램 변경 이관 승인"
+        result['B2'] = "프로그램 변경 완료 후 이관(배포)을 위해 " + ("부서장 등의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." if answers[32] == 'Y' else "이관(배포) 절차가 없습니다.") + (
+            f"\n{textarea_answers[32]}" if textarea_answers[32] else "\n프로그램 변경 이관 승인 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'PC04':
+        result['A1'] = "PC04"
+        result['B1'] = "이관(배포) 권한 제한"
+        result['B2'] = "이관(배포) 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[33] if answers[33] else "이관(배포) 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'PC05':
+        result['A1'] = "PC05"
+        result['B1'] = "개발/운영 환경 분리"
+        result['B2'] = "운영서버 외 별도의 개발 또는 테스트 서버를 " + ("운용하고 있습니다." if answers[34] == 'Y' else "운용하지 않습니다.")
+
+    elif control_number == 'CO01':
+        result['A1'] = "CO01"
+        result['B1'] = "배치 스케줄 등록/변경 승인"
+        result['B2'] = "배치 스케줄 등록/변경 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[35] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
+            "배치 스케줄 등록/변경 시 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
+                f"\n{textarea_answers[36]}" if textarea_answers[36] else "\n배치 스케줄 등록/변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
+            ) if answers[36] == 'Y' else "배치 스케줄 등록/변경 시 승인 절차가 없습니다.")
+
+    elif control_number == 'CO02':
+        result['A1'] = "CO02"
+        result['B1'] = "배치 스케줄 등록/변경 권한 제한"
+        result['B2'] = "배치 스케줄 등록/변경 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[37] if answers[37] else "배치 스케줄 등록/변경 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'CO03':
+        result['A1'] = "CO03"
+        result['B1'] = "배치 실행 모니터링"
+        result['B2'] = "배치 실행 오류 등에 대한 모니터링은 아래와 같이 수행되고 있습니다\n" + (answers[38] if answers[38] else "배치 실행 오류 등에 대한 모니터링 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'CO04':
+        result['A1'] = "CO04"
+        result['B1'] = "장애 대응 절차"
+        result['B2'] = "장애 발생시 이에 대응하고 조치하는 절차는 아래와 같습니다\n" + (answers[39] if answers[39] else "장애 발생시 이에 대응하고 조치하는 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'CO05':
+        result['A1'] = "CO05"
+        result['B1'] = "백업 및 모니터링"
+        result['B2'] = "백업 수행 및 모니터링 절차는 아래와 같습니다.\n" + (answers[40] if answers[40] else "백업 수행 및 모니터링 절차에 대한 상세 기술이 제공되지 않았습니다.")
+
+    elif control_number == 'CO06':
+        result['A1'] = "CO06"
+        result['B1'] = "서버실 출입 절차"
+        result['B2'] = "서버실 출입 절차는 아래와 같습니다.\n" + (answers[41] if answers[41] else "서버실 출입 절차에 대한 상세 기술이 제공되지 않았습니다.")
+        
+    else:
+        result['A1'] = f"Unknown control number: {control_number}"
+        result['B1'] = ""
+        result['B2'] = "알 수 없는 통제 번호입니다."
+    
+    return result
+
+# link2_prev의 핵심 로직만 분리 (세션 객체는 snowball.py에서 전달)
+def link2_prev_logic(session):
+    question_index = session.get('question_index', 0)
+    if question_index > 0:
+        session['question_index'] = question_index - 1
+    return session
+
 def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fill_sheet, is_ineffective, send_gmail_with_attachment):
     """
     인터뷰 답변을 받아 엑셀 파일을 생성하고 메일로 전송합니다.
