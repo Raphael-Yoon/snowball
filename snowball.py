@@ -13,6 +13,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 from io import BytesIO
 from openpyxl import load_workbook
+from snowball_link1 import generate_and_send_rcm_excel
 
 app = Flask(__name__)
 app.secret_key = '150606' 
@@ -266,10 +267,6 @@ def save_to_excel():
     user_email = ''
     if answers and answers[0]:
         user_email = answers[0]
-    elif 'a0_text' in answers:
-        user_email = answers['a0_text']
-    elif len(answers) > 0 and hasattr(answers, 'get') and answers.get('a0_text'):
-        user_email = answers.get('a0_text')
 
     if user_email:
         subject = '인터뷰 결과 파일'
@@ -501,45 +498,15 @@ def set_regist():
 @app.route('/rcm_generate', methods=['POST'])
 def rcm_generate():
     form_data = request.form.to_dict()
-    # 파일명 생성: 입력받은 파일명(param2)_RCM_YYMMDD.xlsx
-    base_name = form_data.get('param2', 'output')
-    today = datetime.today().strftime('%y%m%d')
-    file_name = f"{base_name}_ITGC_RCM_{today}.xlsx"
-    # excel_stream = link1_rcm.rcm_generate(form_data, file_name=file_name) # Removed link1_rcm
-    # Placeholder for rcm_generate logic
-    excel_stream = BytesIO()
-    wb = load_workbook(os.path.join("static", "Design_Template.xlsx")) # Use a dummy template
-    wb.save(excel_stream)
-    excel_stream.seek(0)
-
-    # 담당자 user_id는 param1
-    user_email = form_data.get('param1')
-
-    if user_email:
-        subject = 'RCM 자동생성 결과 파일'
-        body = '요청하신 RCM 자동생성 엑셀 파일을 첨부합니다.'
-        try:
-            send_gmail_with_attachment(
-                to=user_email,
-                subject=subject,
-                body=body,
-                file_stream=excel_stream,
-                file_name=file_name
-            )
-            return render_template('mail_sent.jsp', user_email=user_email)
-        except Exception as e:
-            return f'<h3>메일 전송에 실패했습니다: {e}</h3>'
+    success, user_email, error = generate_and_send_rcm_excel(form_data, send_gmail_with_attachment)
+    if success:
+        return render_template('mail_sent.jsp', user_email=user_email)
     else:
-        return '<h3>메일 주소가 없습니다. 담당자 정보를 확인해 주세요.</h3>'
+        if user_email:
+            return f'<h3>메일 전송에 실패했습니다: {error}</h3>'
+        else:
+            return '<h3>메일 주소가 없습니다. 담당자 정보를 확인해 주세요.</h3>'
     
-    # 바로 다운로드로 반환
-    # return send_file(
-    #     excel_stream,
-    #     as_attachment=True,
-    #     download_name=file_name,
-    #     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    #  )
-
 @app.route('/rcm_request', methods=['POST'])
 def rcm_request():
 
@@ -665,9 +632,9 @@ def get_content_link4():
             'desc': 'ITGC 모니터링 통제 영상'
         },
     }
-    data = video_map.get(content_type, None)
-    if not data:
+    if not content_type or content_type not in video_map:
         return '<div style="text-align: center; padding: 20px;"><h3>준비 중입니다</h3><p>해당 항목은 현재 영상제작 중 입니다.</p></div>'
+    data = video_map[content_type]
     return render_template('link4_detail.jsp',
         youtube_url=data['youtube_url'],
         img_url=data['img_url'],
