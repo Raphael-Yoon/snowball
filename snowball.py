@@ -1,7 +1,4 @@
 from flask import Flask, render_template, request, send_file, redirect, url_for, session
-from flask_login import LoginManager, UserMixin, login_user, current_user
-from openpyxl import load_workbook
-import pandas as pd
 import os
 from datetime import datetime
 from dotenv import load_dotenv
@@ -15,13 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from io import BytesIO
-
-import link_admin
-import link1_rcm
-import link1_pbc
-import link2_design
-import link3_operation
-import snowball_db
+from openpyxl import load_workbook
 
 app = Flask(__name__)
 app.secret_key = '150606' 
@@ -36,18 +27,12 @@ load_dotenv()
 
 @app.route('/')
 def index():
-    result = snowball_db.get_user_list()
+    result = "User List" # Placeholder for user list
     return render_template('index.jsp', user_name = result, return_code=0)
 
 def main():
     app.run(host='0.0.0.0', debug=False, port=5001)
     #app.run(host='127.0.0.1', debug=False, port=8001)
-
-@app.route('/link_admin')
-def link():
-    print("Admin Function")
-    result = snowball_db.get_user_request()
-    return render_template('link0.jsp', login_code = 0)
 
 @app.route('/link0')
 def link0():
@@ -57,7 +42,7 @@ def link0():
 @app.route('/link1')
 def link1():
     print("RCM Function")
-    users = snowball_db.get_user_list()
+    users = "User List" # Placeholder for user list
     return render_template('link1.jsp', return_code=0, users=users)
 
 # Answer Type: 0: 리스트박스, 1: Y/N, 2: Textbox, 3: Y/N-Textbox, 4: Y/N-Textarea, 5: Textarea
@@ -129,7 +114,7 @@ def link2():
             session['answer'] = [''] * question_count
             session['textarea_answer'] = [''] * question_count
 
-        users = snowball_db.get_user_list()
+        users = "User List" # Placeholder for user list
         return render_template('link2.jsp', 
                              question=s_questions[session['question_index']], 
                              question_count=question_count, 
@@ -193,7 +178,7 @@ def link2():
         question_count=question_count,
         current_index=session['question_index'],
         remote_addr=request.remote_addr,
-        users=snowball_db.get_user_list(),
+        users="User List", # Placeholder for user list
         answer=session['answer'],
         textarea_answer=session['textarea_answer']
     )
@@ -240,8 +225,8 @@ def fill_sheet(ws, text_data, answers):
         ws.row_dimensions[12].height = 15 * approx_lines
     # B3: company_name, B5: user_name
     if len(answers) > 0 and answers[0]:
-        company_name = snowball_db.get_user_info(answers[0], 1)
-        user_name = snowball_db.get_user_info(answers[0], 2)
+        company_name = "Company Name" # Placeholder for company name
+        user_name = "User Name" # Placeholder for user name
         ws['B3'] = company_name
         ws['B5'] = user_name
 
@@ -483,28 +468,6 @@ def link9():
     print("ETC Function")
     return render_template('link9.jsp')
 
-@app.route('/login', methods=['POST'])
-def login():
-    print('login function')
-    form_data = request.form.to_dict()
-
-    param1 = form_data.get('param1')
-    param2 = form_data.get('param2')
-
-    print("Param1 = ", param1)
-    print("Param2 = ", param2)
-
-    result = snowball_db.get_login(param1, param2)
-
-    if result:
-        print("Login Success")
-        snowball_db.set_login(param1, param2)
-        return render_template('link0.jsp', login_id = param1, login_code = 0)
-    else:
-        print("Login Fail")
-        result = snowball_db.get_user_list()
-        return render_template('index.jsp', user_name = result, return_code=1)
-
 @app.route('/register', methods=['POST'])
 def register():
     print("Register")
@@ -524,8 +487,7 @@ def register_request():
     print("Param2 = ", param2)
     print("Param3 = ", param3)
 
-    result = snowball_db.set_user_regist_request(param1, param2, param3)
-    result = snowball_db.get_user_list()
+    result = "User Registered" # Placeholder for registration result
     return render_template('index.jsp', user_name = result, return_code=2)
 
 @app.route('/set_regist', methods=['POST'])
@@ -533,10 +495,8 @@ def set_regist():
 
     form_data = request.form.to_dict()
 
-    result = link_admin.set_regist(form_data)
-
-    request_list = snowball_db.get_user_request()
-    return render_template('link.jsp', user_request = request_list)
+    result = "Regist Set" # Placeholder for regist setting result
+    return render_template('link.jsp', user_request = "User Request List") # Placeholder for user request list
     
 @app.route('/rcm_generate', methods=['POST'])
 def rcm_generate():
@@ -545,7 +505,12 @@ def rcm_generate():
     base_name = form_data.get('param2', 'output')
     today = datetime.today().strftime('%y%m%d')
     file_name = f"{base_name}_ITGC_RCM_{today}.xlsx"
-    excel_stream = link1_rcm.rcm_generate(form_data, file_name=file_name)
+    # excel_stream = link1_rcm.rcm_generate(form_data, file_name=file_name) # Removed link1_rcm
+    # Placeholder for rcm_generate logic
+    excel_stream = BytesIO()
+    wb = load_workbook(os.path.join("static", "Design_Template.xlsx")) # Use a dummy template
+    wb.save(excel_stream)
+    excel_stream.seek(0)
 
     # 담당자 user_id는 param1
     user_email = form_data.get('param1')
@@ -579,8 +544,10 @@ def rcm_generate():
 def rcm_request():
 
     form_data = request.form.to_dict()
-    link1_rcm.rcm_request(form_data)
-
+    # link1_rcm.rcm_request(form_data) # Removed link1_rcm
+    # Placeholder for rcm_request logic
+    print("RCM Request called (placeholder)")
+    print("Form data:", form_data)
     return render_template('link1.jsp', return_code=1)
 
 @app.route('/paper_request', methods=['POST'])
@@ -588,8 +555,9 @@ def paper_request():
     print("Paper Request called")
 
     form_data = request.form.to_dict()
-    output_path = link2_design.paper_request(form_data)
-
+    # output_path = link2_design.paper_request(form_data) # Removed link2_design
+    # Placeholder for paper_request logic
+    print("Paper Request form data:", form_data)
     return render_template('link2.jsp', return_code = 2)
 
 @app.route('/design_generate', methods=['POST'])
@@ -597,31 +565,34 @@ def design_generate():
     print("Design Generate called")
 
     form_data = request.form.to_dict()
-    output_path = link2_design.design_generate(form_data)
-
-    return send_file(output_path, as_attachment=True)
+    # output_path = link2_design.design_generate(form_data) # Removed link2_design
+    # Placeholder for design_generate logic
+    print("Design Generate form data:", form_data)
+    return send_file(os.path.join("static", "Design_Template.xlsx"), as_attachment=True) # Use a dummy template
 
 @app.route('/design_template_download', methods=['POST']) 
 def design_template_downloade():
     print("Design Template Download called")
 
     form_data = request.form.to_dict()
-    output_path = link2_design.design_template_download(form_data)
-
-    return send_file(output_path, as_attachment=True)
+    # output_path = link2_design.design_template_download(form_data) # Removed link2_design
+    # Placeholder for design_template_download logic
+    print("Design Template Download form data:", form_data)
+    return send_file(os.path.join("static", "Design_Template.xlsx"), as_attachment=True) # Use a dummy template
 
 @app.route('/paper_template_download', methods=['POST'])
 def paper_template_download():
 
     form_data = request.form.to_dict()
-    output_path = link3_operation.paper_template_download(form_data)
-
+    # output_path = link3_operation.paper_template_download(form_data) # Removed link3_operation
+    # Placeholder for paper_template_download logic
+    print("Paper Template Download form data:", form_data)
     param1 = form_data.get('param1')
     param2 = form_data.get('param2')
 
-    print('output = ', output_path)
-    if output_path != '':
-        return send_file(output_path, as_attachment=True)
+    print('output = ', os.path.join("static", "Design_Template.xlsx")) # Use a dummy template
+    if os.path.exists(os.path.join("static", "Design_Template.xlsx")): # Use a dummy template
+        return send_file(os.path.join("static", "Design_Template.xlsx"), as_attachment=True) # Use a dummy template
     else:
         return render_template('link3.jsp', return_param1=param1, return_param2=param2)
 
@@ -629,9 +600,10 @@ def paper_template_download():
 def paper_generate():
 
     form_data = request.form.to_dict()
-    output_path = link3_operation.paper_generate(form_data)
-
-    return send_file(output_path, as_attachment=True)
+    # output_path = link3_operation.paper_generate(form_data) # Removed link3_operation
+    # Placeholder for paper_generate logic
+    print("Paper Generate form data:", form_data)
+    return send_file(os.path.join("static", "Design_Template.xlsx"), as_attachment=True) # Use a dummy template
 
 @app.route('/get_content_link4')
 def get_content_link4():
