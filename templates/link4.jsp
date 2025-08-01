@@ -48,7 +48,7 @@
             ETC: [
                 {value: "PW", text: "패스워드 기준"},
                 {value: "PW_DETAIL", text: "패스워드 기준 상세"},
-                {value: "MONITOR", text: "모니터링 통제"}
+                {value: "MONITOR", text: "데이터 변경 모니터링"}
             ]
         };
 
@@ -62,7 +62,7 @@
             const categoryList = document.getElementById('categoryList');
             categoryList.innerHTML = '';
 
-            const disabledList = ['ITPWC01', 'APD07', 'APD08', 'PC01', 'CO01', 'MONITOR'];
+            const disabledList = ['ITPWC01', 'APD07', 'APD08', 'PC01', 'CO01']; // 'MONITOR' 제거
 
             Object.keys(options).forEach(category => {
                 const categoryTitle = document.createElement('div');
@@ -110,7 +110,7 @@
             contentContainer.innerHTML = '';
 
             // 준비중 메시지를 보여줄 value 목록
-            const preparingList = ['APD07', 'APD08', 'PC01', 'CO01', 'MONITOR'];
+            const preparingList = ['APD07', 'APD08', 'PC01', 'CO01'];
 
             if (preparingList.includes(selectedValue)) {
                 contentContainer.innerHTML = `

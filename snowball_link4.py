@@ -50,10 +50,10 @@ video_map = {
         'desc': 'ITGC 패스워드 기준 심화 영상'
     },
     'MONITOR': {
-        'youtube_url': 'https://www.youtube.com/embed/XXEE7C0t_70?si=fjx-2AbZwz9c0vwp&autoplay=1&mute=1',
+        'youtube_url': 'https://www.youtube.com/embed/gT0g192562I?si=YU5Tz_tTpSDfj_Q8&autoplay=1&mute=1',
         'img_url': None,
-        'title': '모니터링 통제',
-        'desc': 'ITGC 모니터링 통제 영상'
+        'title': '데이터 변경 모니터링',
+        'desc': 'ITGC 데이터 변경 모니터링 통제 논의'
     },
 }
 
