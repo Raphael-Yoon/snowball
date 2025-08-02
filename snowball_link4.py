@@ -55,6 +55,12 @@ video_map = {
         'title': '데이터 변경 모니터링',
         'desc': 'ITGC 데이터 변경 모니터링 통제 논의'
     },
+    'DDL': {
+        'youtube_url': 'https://www.youtube.com/embed/3K9GSKSSwxs?si=iOK746wefUzevGbo&autoplay=1&mute=1',
+        'img_url': None,
+        'title': 'DDL',
+        'desc': 'DDL 관련 영상'
+    },
 }
 
 def get_link4_content(content_type):

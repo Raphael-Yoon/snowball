@@ -48,7 +48,8 @@
             ETC: [
                 {value: "PW", text: "패스워드 기준"},
                 {value: "PW_DETAIL", text: "패스워드 기준 상세"},
-                {value: "MONITOR", text: "데이터 변경 모니터링"}
+                {value: "MONITOR", text: "데이터 변경 모니터링"},
+                {value: "DDL", text: "DDL 변경 통제"}
             ]
         };
 
