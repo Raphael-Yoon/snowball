@@ -63,7 +63,7 @@
             const categoryList = document.getElementById('categoryList');
             categoryList.innerHTML = '';
 
-            const disabledList = ['ITPWC01', 'APD07', 'APD08', 'PC01', 'CO01']; // 'MONITOR' 제거
+            const disabledList = ['APD07', 'APD08', 'PC01', 'CO01']; // 'MONITOR' 제거
 
             Object.keys(options).forEach(category => {
                 const categoryTitle = document.createElement('div');
