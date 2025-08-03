@@ -61,6 +61,12 @@ video_map = {
         'title': 'DDL',
         'desc': 'DDL 관련 영상'
     },
+    'ITPWC01': {
+        'youtube_url': 'https://www.youtube.com/embed/bgSEzVWXp54?si=-biqR9k8bKaD-Pcv&autoplay=1&mute=1',
+        'img_url': None,
+        'title': 'ITGC In-Scope',
+        'desc': 'ITGC In-Scope 기준'
+    },
 }
 
 def get_link4_content(content_type):
