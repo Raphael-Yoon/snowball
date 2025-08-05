@@ -47,7 +47,7 @@
                             </a>
                         </form>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" style="display: none;">
                         <a href="/contact" class="nav-link">
                             <i class="fas fa-envelope me-1"></i>Contact Us
                         </a>
