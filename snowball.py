@@ -184,7 +184,7 @@ def link9():
 @app.route('/rcm_generate', methods=['POST'])
 def rcm_generate():
     form_data = request.form.to_dict()
-    success, user_email, error = generate_and_send_rcm_excel(form_data, send_gmail_with_attachment)
+    success, user_email, error = generate_and_send_rcm_excel(form_data)
     if success:
         return render_template('mail_sent.jsp', user_email=user_email)
     else:
