@@ -35,8 +35,8 @@ def generate_and_send_rcm_excel(form_data):
         
         # 2행부터 시작 (헤더 제외)
         for row_num in range(2, ws.max_row + 1):
-            section_col = ws[f'B{row_num}'].value  # B컬럼 (Section)
-            value_col = ws[f'C{row_num}'].value    # C컬럼 (Value)
+            section_col = ws[f'BR{row_num}'].value  # B컬럼 (Section)
+            value_col = ws[f'BS{row_num}'].value    # C컬럼 (Value)
             
             # B컬럼이 Common인 경우는 유지
             if section_col == 'Common':
@@ -62,6 +62,11 @@ def generate_and_send_rcm_excel(form_data):
             ws.delete_rows(row_num)
         
         print(f"필터링 완료: {len(rows_to_delete)}개 행 삭제됨")
+        # B, C 열 삭제
+        ws.delete_cols(70, 2)
+        # 커서를 B2 셀로 이동
+        ws.sheet_view.selection[0].activeCell = 'B2'
+        ws.sheet_view.selection[0].sqref = 'B2'
             
     wb.save(excel_stream)
     wb.close()
