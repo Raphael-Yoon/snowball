@@ -96,7 +96,7 @@
     </section>
 
     <!-- Contact Us 바로가기 -->
-    <section class="py-2">
+    <section class="py-2" style="display: none;">
         <div class="container text-center">
             <a href="/contact" class="btn btn-outline-primary btn-lg">
                 <i class="fas fa-envelope me-1"></i>Contact Us
