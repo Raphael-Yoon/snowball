@@ -47,7 +47,7 @@
                             </a>
                         </form>
                     </li>
-                    {% if remote_addr == '127.0.0.1' %}
+                    {% if remote_addr == '127.0.0.1' or request.host == 'snowball.pythonanywhere.com' %}
                     <li class="nav-item">
                         <a href="/link5" class="nav-link">
                             <i class="fas fa-robot me-1"></i>AI

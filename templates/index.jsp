@@ -91,16 +91,16 @@
                         </div>
                     </div>
                 </div>
-                {% if remote_addr == '127.0.0.1' %}
+                {% if remote_addr == '127.0.0.1' or request.host == 'snowball.pythonanywhere.com' %}
                 <div class="col-md-3">
                     <div class="feature-card">
-                        <img src="{{ url_for('static', filename='img/interview.png')}}" class="feature-img" alt="GPT 챗봇">
+                        <img src="{{ url_for('static', filename='img/interview.png')}}" class="feature-img" alt="AI">
                         <div class="card-body p-4">
                             <div class="feature-icon text-center">
                                 <i class="fas fa-robot"></i>
                             </div>
                             <h5 class="feature-title text-center">AI</h5>
-                            <p class="feature-description">Ollama 기반 GPT 챗봇과 대화할 수 있습니다.</p>
+                            <p class="feature-description">Ollama 기반 AI 챗봇과 대화할 수 있습니다.</p>
                             <div class="text-center">
                                 <a href="/link5" class="feature-link">자세히 보기</a>
                             </div>
