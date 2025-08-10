@@ -50,7 +50,7 @@
                     {% if remote_addr == '127.0.0.1' %}
                     <li class="nav-item">
                         <a href="/link5" class="nav-link">
-                            <i class="fas fa-robot me-1"></i>GPT 챗봇
+                            <i class="fas fa-robot me-1"></i>AI
                         </a>
                     </li>
                     {% endif %}

@@ -10,19 +10,14 @@
 <body>
     {% include 'navi.jsp' %}
     <div class="container mt-4">
-        {% if remote_addr == '127.0.0.1' %}
         <h4>GPT 챗봇</h4>
         <div class="input-group mb-3">
             <input type="text" id="chat-input" class="form-control" placeholder="질문을 입력하세요...">
             <button class="btn btn-success" id="chat-send">전송</button>
         </div>
         <div id="chat-answer" class="alert alert-secondary" style="display:none;"></div>
-        {% else %}
-        <div class="alert alert-warning mt-5">이 기능은 로컬(127.0.0.1)에서만 사용할 수 있습니다.</div>
-        {% endif %}
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    {% if remote_addr == '127.0.0.1' %}
     <script>
     let loadingInterval = null;
     function startLoadingAnimation() {
@@ -68,6 +63,5 @@
         }
     });
     </script>
-    {% endif %}
 </body>
 </html>
