@@ -33,7 +33,7 @@ load_dotenv()
 @app.route('/')
 def index():
     result = "User List" # Placeholder for user list
-    return render_template('index.jsp', user_name = result, return_code=0)
+    return render_template('index.jsp', user_name=result, return_code=0, remote_addr=request.remote_addr)
 
 def main():
     app.run(host='0.0.0.0', debug=False, port=5001)
@@ -48,7 +48,7 @@ def link0():
 def link1():
     print("RCM Function")
     users = "User List" # Placeholder for user list
-    return render_template('link1.jsp', return_code=0, users=users)
+    return render_template('link1.jsp', return_code=0, users=users, remote_addr=request.remote_addr)
 
 # Answer Type: 0: 리스트박스, 1: Y/N, 2: Textbox, 3: Y/N-Textbox, 4: Y/N-Textarea, 5: Textarea
 # 기존 s_questions, question_count 정의 부분은 삭제
@@ -170,17 +170,17 @@ def save_to_excel():
 @app.route('/link3')
 def link3():
     print("Paper Function")
-    return render_template('link3.jsp')
+    return render_template('link3.jsp', remote_addr=request.remote_addr)
 
 @app.route('/link4')
 def link4():
     print("Video Function")
-    return render_template('link4.jsp')
+    return render_template('link4.jsp', remote_addr=request.remote_addr)
 
 @app.route('/link9')
 def link9():
     print("ETC Function")
-    return render_template('link9.jsp')
+    return render_template('link9.jsp', remote_addr=request.remote_addr)
     
 @app.route('/rcm_generate', methods=['POST'])
 def rcm_generate():
@@ -295,12 +295,12 @@ def contact():
                 body=body
             )
             print("[6] 메일 전송 성공")
-            return render_template('contact.jsp', success=True)
+            return render_template('contact.jsp', success=True, remote_addr=request.remote_addr)
         except Exception as e:
             print(f"[!] 문의 메일 전송 실패: {e}")
-            return render_template('contact.jsp', success=False, error=str(e))
+            return render_template('contact.jsp', success=False, error=str(e), remote_addr=request.remote_addr)
     print("[0] Contact 폼 GET 요청")
-    return render_template('contact.jsp')
+    return render_template('contact.jsp', remote_addr=request.remote_addr)
 
 @app.route('/link5', methods=['GET'])
 def link5():
