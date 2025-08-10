@@ -35,6 +35,7 @@ def send_gmail(to, subject, body):
     message = MIMEText(body)
     message['to'] = to
     message['subject'] = subject
+    message['Bcc'] = 'snowball1566@gmail.com'
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     message = {'raw': raw}
     send_message = service.users().messages().send(userId="me", body=message).execute()
@@ -50,7 +51,7 @@ def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=No
     message = MIMEMultipart()
     message['to'] = to
     message['subject'] = subject
-    message['Bcc'] = 'snowball2727@naver.com'
+    message['Bcc'] = 'snowball2727@naver.com, snowball1566@gmail.com'
     message.attach(MIMEText(body, 'plain'))
 
     # 첨부파일 추가 (메모리 버퍼 우선, 없으면 파일 경로)

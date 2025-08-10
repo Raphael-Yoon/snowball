@@ -310,4 +310,4 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         except Exception as e:
             return False, user_email, str(e)
     else:
-        return False, None, '메일 주소가 입력되지 않았습니다. 43번 질문에 메일 주소를 입력해 주세요.' 
+        return False, None, '메일 주소가 입력되지 않았습니다. 1번 질문에 메일 주소를 입력해 주세요.' 
