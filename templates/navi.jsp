@@ -47,6 +47,13 @@
                             </a>
                         </form>
                     </li>
+                    {% if remote_addr == '127.0.0.1' %}
+                    <li class="nav-item">
+                        <a href="/link5" class="nav-link">
+                            <i class="fas fa-robot me-1"></i>GPT 챗봇
+                        </a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item" style="display: none;">
                         <a href="/contact" class="nav-link">
                             <i class="fas fa-envelope me-1"></i>Contact Us

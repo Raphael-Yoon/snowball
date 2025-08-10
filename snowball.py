@@ -17,6 +17,7 @@ from snowball_link1 import generate_and_send_rcm_excel
 from snowball_link2 import export_interview_excel_and_send, s_questions, question_count, is_ineffective, fill_sheet, link2_prev_logic, get_text_itgc
 from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
+from snowball_link5 import bp_link5
 
 app = Flask(__name__)
 app.secret_key = '150606' 
@@ -300,6 +301,12 @@ def contact():
             return render_template('contact.jsp', success=False, error=str(e))
     print("[0] Contact 폼 GET 요청")
     return render_template('contact.jsp')
+
+@app.route('/link5', methods=['GET'])
+def link5():
+    return render_template('link5.jsp')
+
+app.register_blueprint(bp_link5)
 
 if __name__ == '__main__':
     main()
