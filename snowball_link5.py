@@ -4,7 +4,7 @@ from requests.exceptions import Timeout, ConnectionError
 
 bp_link5 = Blueprint('link5', __name__)
 
-OLLAMA_URL = "http://192.168.45.39:11434/api/generate"
+OLLAMA_URL = "http://192.168.45.181:11434/api/generate"
 OLLAMA_MODEL = "gpt-oss:20b"  # 필요시 변경
 
 @bp_link5.route('/link5_chat', methods=['POST'])
