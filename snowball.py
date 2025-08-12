@@ -181,7 +181,6 @@ def link4():
 def link5():
     return render_template('link5.jsp', remote_addr=request.remote_addr)
 
-
 @app.route('/link9')
 def link9():
     print("ETC Function")
