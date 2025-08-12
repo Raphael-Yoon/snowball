@@ -177,6 +177,10 @@ def link4():
     print("Video Function")
     return render_template('link4.jsp', remote_addr=request.remote_addr)
 
+@app.route('/link5', methods=['GET'])
+def link5():
+    return render_template('link5.jsp', remote_addr=request.remote_addr)
+
 @app.route('/link9')
 def link9():
     print("ETC Function")
@@ -301,10 +305,6 @@ def contact():
             return render_template('contact.jsp', success=False, error=str(e), remote_addr=request.remote_addr)
     print("[0] Contact 폼 GET 요청")
     return render_template('contact.jsp', remote_addr=request.remote_addr)
-
-@app.route('/link5', methods=['GET'])
-def link5():
-    return render_template('link5.jsp')
 
 app.register_blueprint(bp_link5)
 

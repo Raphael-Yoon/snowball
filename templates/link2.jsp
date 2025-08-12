@@ -28,11 +28,11 @@
             <h1 class="section-title">
                 {% if 0 <= current_index <= 11 %}
                     <i class="fas fa-server"></i> 공통사항
-                {% elif 12 <= current_index <= 28 %}
+                {% elif 12 <= current_index <= 30 %}
                     <i class="fas fa-lock"></i> APD(Access to Program & Data)
-                {% elif 29 <= current_index <= 34 %}
+                {% elif 31 <= current_index <= 36 %}
                     <i class="fas fa-laptop-code"></i> PC(Program Change)
-                {% elif 35 <= current_index <= 41 %}
+                {% elif 37 <= current_index <= 43 %}
                     <i class="fas fa-cogs"></i> CO(Computer Operation)
                 {% else %}
                     <i class="fas fa-check-circle"></i> 모든 질문이 완료되었습니다.
@@ -265,28 +265,33 @@
                 14: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 및 승인' }, // 사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
                 15: { type: 'radio_textarea', radio: 'Y', textarea: '인사명령 후 권한 회수' }, // 부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?
                 16: { type: 'radio_textarea', radio: 'N', textarea: '퇴사자 접근권한 차단' }, // 퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?
-                17: { type: 'radio', value: 'Y' }, // 전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?
-                18: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // 패스워드 설정사항을 기술해 주세요.
-                19: { type: 'radio', value: 'Y' }, // 데이터 변경 이력이 시스템에 기록되고 있습니까?
-                20: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                21: { type: 'radio', value: 'Y' }, // DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?
-                22: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                23: { type: 'textarea', value: '인프라관리팀 심범석 차장' }, // DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.
-                24: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // DB 패스워드 설정사항을 기술해 주세요.
-                25: { type: 'radio', value: 'Y' }, // OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?
-                26: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                27: { type: 'textarea', value: '인프라관리팀 손현호 차장' }, // OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.
-                28: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // OS 패스워드 설정사항을 기술해 주세요.
-                29: { type: 'radio', value: 'N' }, // 프로그램 변경 이력이 시스템에 기록되고 있습니까?
-                30: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?
-                31: { type: 'radio_textarea', radio: 'Y', textarea: '사용자 테스트 및 결과 문서화' }, // 프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?
-                32: { type: 'radio_textarea', radio: 'Y', textarea: '이관 요청서 및 승인' }, // 프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?
-                33: { type: 'textarea', value: '인프라관리팀 윤대호 차장' }, // 이관(배포)권한을 보유한 인원에 대해 기술해 주세요.
-                34: { type: 'radio', value: 'Y' }, // 운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?
-                35: { type: 'radio', value: 'Y' }, // 배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?
-                36: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                37: { type: 'textarea', value: '시스템 운영팀 신혁수 과장' }, // 배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.
-                38: { type: 'textarea', value: '매일 아침 배치수행결과 확인 및 문서화' } // 배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.
+                17: { type: 'textarea', value: 'IT운영팀 조윤진 책임' }, // Application 관리자(Superuser) 권한을 보유한 인원에 대해 기술해 주세요.
+                18: { type: 'radio', value: 'Y' }, // 전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?
+                19: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // 패스워드 설정사항을 기술해 주세요.
+                20: { type: 'radio', value: 'Y' }, // 데이터 변경 이력이 시스템에 기록되고 있습니까?
+                21: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                22: { type: 'textarea', value: 'IT운영팀 윤소영 책임' }, // 데이터 변경 권한을 보유한 인원에 대해 기술해 주세요.
+                23: { type: 'radio', value: 'Y' }, // DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?
+                24: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                25: { type: 'textarea', value: '인프라관리팀 심범석 차장' }, // DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.
+                26: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // DB 패스워드 설정사항을 기술해 주세요.
+                27: { type: 'radio', value: 'Y' }, // OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?
+                28: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                29: { type: 'textarea', value: '인프라관리팀 손현호 차장' }, // OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.
+                30: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // OS 패스워드 설정사항을 기술해 주세요.
+                31: { type: 'radio', value: 'N' }, // 프로그램 변경 이력이 시스템에 기록되고 있습니까?
+                32: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?
+                33: { type: 'radio_textarea', radio: 'Y', textarea: '사용자 테스트 및 결과 문서화' }, // 프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?
+                34: { type: 'radio_textarea', radio: 'Y', textarea: '이관 요청서 및 승인' }, // 프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?
+                35: { type: 'textarea', value: '인프라관리팀 윤대호 차장' }, // 이관(배포)권한을 보유한 인원에 대해 기술해 주세요.
+                36: { type: 'radio', value: 'Y' }, // 운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?
+                37: { type: 'radio', value: 'Y' }, // 배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?
+                38: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 및 승인' }, // 배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                39: { type: 'textarea', value: '시스템 운영팀 신혁수 과장' }, // 배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.
+                40: { type: 'textarea', value: '매일 아침 배치수행결과 확인 및 문서화' }, // 배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.
+                41: { type: 'textarea', value: '적당히 알아서 함' }, // 장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.
+                42: { type: 'textarea', value: '내가 알아서 함' }, // 백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.
+                43: { type: 'textarea', value: '못들어가게 막음' } // 서버실 출입시의 절차에 대해 기술해 주세요.
             };
             const sample = samples[questionNumber];
             if (!sample) return;
