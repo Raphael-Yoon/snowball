@@ -294,8 +294,8 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         if is_ineffective(control, answers):
             ws['C14'] = 'Ineffective'
             ws.sheet_properties.tabColor = "FF0000"
-        else:
-            ws['C13'] = '화면 증빙을 첨부해주세요'
+        #else:
+        #    ws['C13'] = '화면 증빙을 첨부해주세요'
 
     # 메모리 버퍼에 저장
     excel_stream = BytesIO()
