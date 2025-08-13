@@ -3,5 +3,6 @@
 *.env
 *.pickle
 *.json
+*.pyc
 downloads/
 uploads/
