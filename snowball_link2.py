@@ -292,6 +292,7 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         ws = wb[control]
         fill_sheet(ws, text_data, answers)
         if is_ineffective(control, answers):
+            ws['C13'] = ''
             ws['C14'] = 'Ineffective'
             ws.sheet_properties.tabColor = "FF0000"
         #else:
