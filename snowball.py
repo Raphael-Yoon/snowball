@@ -18,6 +18,7 @@ from snowball_link2 import export_interview_excel_and_send, s_questions, questio
 from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
+from snowball_link6 import bp_link6
 
 app = Flask(__name__)
 app.secret_key = '150606' 
@@ -181,6 +182,10 @@ def link4():
 def link5():
     return render_template('link5.jsp', remote_addr=request.remote_addr)
 
+@app.route('/link6', methods=['GET'])
+def link6():
+    return render_template('link6.jsp', remote_addr=request.remote_addr)
+
 @app.route('/link9')
 def link9():
     print("ETC Function")
@@ -307,6 +312,7 @@ def contact():
     return render_template('contact.jsp', remote_addr=request.remote_addr)
 
 app.register_blueprint(bp_link5)
+app.register_blueprint(bp_link6)
 
 if __name__ == '__main__':
     main()

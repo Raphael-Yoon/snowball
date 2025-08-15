@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Ollama</title>
+    <title>Chat GPT</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/common.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
@@ -10,7 +10,7 @@
 <body>
     {% include 'navi.jsp' %}
     <div class="container mt-4">
-        <h4>Ollama</h4>
+        <h4>Chat GPT</h4>
         <div class="input-group mb-3">
             <input type="text" id="chat-input" class="form-control" placeholder="질문을 입력하세요...">
             <button class="btn btn-success" id="chat-send">전송</button>
@@ -39,7 +39,7 @@
         if (!question) return;
         answerDiv.style.display = 'block';
         startLoadingAnimation();
-        fetch('/link5_chat', {
+        fetch('/link6_chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: question })
