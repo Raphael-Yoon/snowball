@@ -107,6 +107,21 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-md-3">
+                    <div class="feature-card">
+                        <img src="{{ url_for('static', filename='img/interview.png')}}" class="feature-img" alt="AI+">
+                        <div class="card-body p-4">
+                            <div class="feature-icon text-center">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <h5 class="feature-title text-center">Interview/Design Test w/AI</h5>
+                            <p class="feature-description">AI와의 인터뷰를 통해 시스템의 현재 상태와 개선점을 파악합니다.</p>
+                            <div class="text-center">
+                                <a href="/link6" class="feature-link">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 {% endif %}
             </div>
         </div>

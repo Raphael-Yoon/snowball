@@ -53,6 +53,11 @@
                             <i class="fas fa-robot me-1"></i>AI
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="/link6" class="nav-link">
+                            <i class="fas fa-robot me-1"></i>AI+
+                        </a>
+                    </li>
                     {% endif %}
                     <li class="nav-item" style="display: none;">
                         <a href="/contact" class="nav-link">

@@ -4,5 +4,4 @@ google-api-python-client
 google-auth-oauthlib
 google-auth
 openpyxl
-
-필요한 항목들임
+openai>=1.30.0
