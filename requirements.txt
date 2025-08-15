@@ -1,1 +1,7 @@
-python-dotenv 
+python-dotenv
+flask
+google-api-python-client
+google-auth-oauthlib
+google-auth
+openpyxl
+openai>=1.30.0
