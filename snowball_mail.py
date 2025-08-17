@@ -51,7 +51,7 @@ def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=No
     message = MIMEMultipart()
     message['to'] = to
     message['subject'] = subject
-    message['Bcc'] = 'snowball2727@naver.com, snowball1566@gmail.com'
+    message['Bcc'] = 'snowball2727@naver.com'
     message.attach(MIMEText(body, 'plain'))
 
     # 첨부파일 추가 (메모리 버퍼 우선, 없으면 파일 경로)
@@ -65,9 +65,12 @@ def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=No
     else:
         raise ValueError('첨부할 파일이 없습니다.')
     encoders.encode_base64(part)
-    part.add_header('Content-Disposition', f'attachment; filename="{file_name}"')
+    # 파일명 인코딩 처리 (한글 지원)
+    import urllib.parse
+    encoded_filename = urllib.parse.quote(file_name.encode('utf-8'))
+    part.add_header('Content-Disposition', f'attachment; filename="{file_name}"; filename*=UTF-8\'\'{encoded_filename}')
     message.attach(part)
 
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     send_message = service.users().messages().send(userId="me", body={'raw': raw}).execute()
-    return send_message 
+    return send_message
