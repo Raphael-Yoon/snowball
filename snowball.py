@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, redirect, url_for, session
+from flask import Flask, render_template, request, send_file, redirect, url_for, session, jsonify
 import os
 from datetime import datetime
 from dotenv import load_dotenv
@@ -21,7 +21,7 @@ from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
 
 app = Flask(__name__)
-app.secret_key = '150606' 
+app.secret_key = '150606'
 
 # 시작할 질문 번호 설정 (1부터 시작)
 if __name__ == '__main__':
@@ -35,6 +35,7 @@ load_dotenv()
 def index():
     result = "User List" # Placeholder for user list
     return render_template('index.jsp', user_name=result, return_code=0, remote_addr=request.remote_addr)
+
 
 def main():
     app.run(host='0.0.0.0', debug=False, port=5001)
@@ -76,9 +77,9 @@ def link2():
             session['textarea_answer'] = [''] * question_count
 
         users = "User List" # Placeholder for user list
-        return render_template('link2.jsp', 
-                             question=s_questions[session['question_index']], 
-                             question_count=question_count, 
+        return render_template('link2.jsp',
+                             question=s_questions[session['question_index']],
+                             question_count=question_count,
                              current_index=session['question_index'],
                              remote_addr=request.remote_addr,
                              users=users,
@@ -110,16 +111,18 @@ def link2():
         }
         next_question.update(conditional_routes)
 
-        # 마지막 질문 제출 시에만 save_to_excel 호출(메일 전송)
+        # 마지막 질문 제출 시 processing 페이지로 이동
         if question_index == question_count - 1:
-            print('excel download')
+            print('interview completed - redirecting to processing page')
             print('--- 모든 답변(answers) ---')
             for idx, ans in enumerate(session.get('answer', [])):
                 print(f"a{idx}: {ans}")
             print('--- 모든 textarea 답변(textarea_answer) ---')
             for idx, ans in enumerate(session.get('textarea_answer', [])):
                 print(f"a{idx}_1: {ans}")
-            return save_to_excel()
+
+            # processing 페이지로 리디렉션
+            return redirect(url_for('processing'))
 
         session['question_index'] = next_question.get(question_index, question_index)
         print(f"goto {session['question_index']}")
@@ -143,7 +146,7 @@ def link2():
         answer=session['answer'],
         textarea_answer=session['textarea_answer']
     )
-    
+
 @app.route('/link2/prev')
 def link2_prev():
     # 세션에서 현재 인덱스 가져오기 및 이전으로 이동 (로직 분리)
@@ -155,13 +158,17 @@ def link2_prev():
 def save_to_excel():
     answers = session.get('answer', [])
     textarea_answers = session.get('textarea_answer', [])
+    # AI 검토 기능 활성화 (환경변수로 제어 가능)
+    enable_ai_review = os.getenv('ENABLE_AI_REVIEW', 'false').lower() == 'true'
+
     success, user_email, error = export_interview_excel_and_send(
         answers,
         textarea_answers,
         get_text_itgc,
         fill_sheet,
         is_ineffective,
-        send_gmail_with_attachment
+        send_gmail_with_attachment,
+        enable_ai_review
     )
     if success:
         return '<h3>인터뷰 내용에 따른 ITGC 설계평가 문서가 입력하신 메일로 전송되었습니다.<br>메일함을 확인해 주세요.</h3>\n<a href="/" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#1976d2;color:#fff;text-decoration:none;border-radius:5px;">처음으로</a>'
@@ -190,7 +197,7 @@ def link6():
 def link9():
     print("ETC Function")
     return render_template('link9.jsp', remote_addr=request.remote_addr)
-    
+
 @app.route('/rcm_generate', methods=['POST'])
 def rcm_generate():
     form_data = request.form.to_dict()
@@ -202,7 +209,7 @@ def rcm_generate():
             return f'<h3>메일 전송에 실패했습니다: {error}</h3>'
         else:
             return '<h3>메일 주소가 없습니다. 담당자 정보를 확인해 주세요.</h3>'
-    
+
 @app.route('/rcm_request', methods=['POST'])
 def rcm_request():
 
@@ -233,7 +240,7 @@ def design_generate():
     print("Design Generate form data:", form_data)
     return send_file(os.path.join("static", "Design_Template.xlsx"), as_attachment=True) # Use a dummy template
 
-@app.route('/design_template_download', methods=['POST']) 
+@app.route('/design_template_download', methods=['POST'])
 def design_template_downloade():
     print("Design Template Download called")
 
@@ -285,6 +292,54 @@ def get_content_link4():
 def get_content_link3():
     # 모든 type에 대해 공통 step-card 템플릿 반환
     return render_template('link3_detail.jsp')
+
+@app.route('/processing')
+def processing():
+    """인터뷰 완료 후 처리 중 화면"""
+    user_email = session.get('answer', [''])[0] if session.get('answer') else ''
+    return render_template('processing.jsp', user_email=user_email)
+
+@app.route('/process_interview', methods=['POST'])
+def process_interview():
+    """실제 인터뷰 처리 및 메일 발송"""
+    try:
+        # 세션에서 답변 데이터 가져오기
+        answers = session.get('answer', [])
+        textarea_answers = session.get('textarea_answer', [])
+        
+        if not answers:
+            return jsonify({'success': False, 'error': '인터뷰 데이터가 없습니다.'})
+        
+        user_email = answers[0] if answers else ''
+        if not user_email:
+            return jsonify({'success': False, 'error': '메일 주소가 입력되지 않았습니다.'})
+        
+        # AI 검토 기능 활성화 (환경변수로 제어 가능)
+        enable_ai_review = os.getenv('ENABLE_AI_REVIEW', 'false').lower() == 'true'
+        
+        print(f"Processing interview for {user_email}")
+        
+        # 메일 발송 처리
+        success, returned_email, error = export_interview_excel_and_send(
+            answers,
+            textarea_answers,
+            get_text_itgc,
+            fill_sheet,
+            is_ineffective,
+            send_gmail_with_attachment,
+            enable_ai_review
+        )
+        
+        if success:
+            print(f"Mail sent successfully to {returned_email}")
+            return jsonify({'success': True, 'email': returned_email})
+        else:
+            print(f"Mail send failed: {error}")
+            return jsonify({'success': False, 'error': error})
+            
+    except Exception as e:
+        print(f"Error in process_interview: {e}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
