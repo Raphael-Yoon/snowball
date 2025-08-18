@@ -445,10 +445,12 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
 
     # AI 검토 기능이 활성화되어 있고 B2 값이 있는 경우 AI 검토 수행
     if enable_ai_review and 'B2' in result and result['B2']:
+        print(f"🤖 AI 검토 시작: {control_number}")
         ai_review = get_ai_review(result['B2'], control_number)
         result['AI_Review'] = ai_review
         # Summary 시트용 AI 검토 결과도 저장
         result['AI_Summary'] = ai_review
+        print(f"✅ AI 검토 완료: {control_number}")
 
     return result
 
@@ -534,36 +536,106 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         #    ws['C13'] = '화면 증빙을 첨부해주세요'
 
     # 4. Summary 시트에 AI 검토 결과 작성
-    if enable_ai_review and summary_ai_reviews and 'Summary' in wb.sheetnames:
-        summary_ws = wb['Summary']
-        row_index = 2  # 헤더 다음 행부터 시작
+    if enable_ai_review and summary_ai_reviews:
+        try:
+            # Summary 시트가 존재하는지 확인하고 없으면 생성
+            if 'Summary' not in wb.sheetnames:
+                summary_ws = wb.create_sheet('Summary')
+                # 헤더 추가
+                summary_ws['A1'] = '통제번호'
+                summary_ws['B1'] = '통제명'
+                summary_ws['C1'] = '검토결과'
+                summary_ws['D1'] = '결론'
+                summary_ws['E1'] = '개선필요사항'
+            else:
+                summary_ws = wb['Summary']
 
-        for control, ai_review in summary_ai_reviews.items():
-            if isinstance(ai_review, dict):
-                # A열: 통제번호, B열: 통제명 (기존 데이터가 있다고 가정)
-                summary_ws[f'A{row_index}'] = control
-                # C열: 검토결과
-                summary_ws[f'C{row_index}'] = ai_review.get('review_result', '')
-                # D열: 결론
-                summary_ws[f'D{row_index}'] = ai_review.get('conclusion', '')
-                # E열: 개선필요사항
-                summary_ws[f'E{row_index}'] = ai_review.get('improvements', '')
-                row_index += 1
+            # 통제명 매핑 딕셔너리
+            control_names = {
+                'APD01': '사용자 신규 권한 승인',
+                'APD02': '부서이동자 권한 회수',
+                'APD03': '퇴사자 접근권한 회수',
+                'APD04': 'Application 관리자 권한 제한',
+                'APD05': '사용자 권한 Monitoring',
+                'APD06': 'Application 패스워드',
+                'APD07': '데이터 직접 변경',
+                'APD08': '데이터 변경 권한 제한',
+                'APD09': 'DB 접근권한 승인',
+                'APD10': 'DB 관리자 권한 제한',
+                'APD11': 'DB 패스워드',
+                'APD12': 'OS 접근권한 승인',
+                'APD13': 'OS 관리자 권한 제한',
+                'APD14': 'OS 패스워드',
+                'PC01': '프로그램 변경 승인',
+                'PC02': '프로그램 변경 사용자 테스트',
+                'PC03': '프로그램 변경 이관 승인',
+                'PC04': '이관(배포) 권한 제한',
+                'PC05': '개발/운영 환경 분리',
+                'CO01': '배치 스케줄 등록/변경 승인',
+                'CO02': '배치 스케줄 등록/변경 권한 제한',
+                'CO03': '배치 실행 모니터링',
+                'CO04': '장애 대응 절차',
+                'CO05': '백업 및 모니터링',
+                'CO06': '서버실 출입 절차'
+            }
+
+            row_index = 2  # 헤더 다음 행부터 시작
+
+            for control, ai_review in summary_ai_reviews.items():
+                if isinstance(ai_review, dict):
+                    # A열: 통제번호
+                    summary_ws[f'A{row_index}'] = control
+                    # B열: 통제명
+                    summary_ws[f'B{row_index}'] = control_names.get(control, '')
+                    # C열: 검토결과
+                    review_result = ai_review.get('review_result', '')
+                    if len(review_result) > 32767:  # 엑셀 셀 최대 문자 수 제한
+                        review_result = review_result[:32760] + "..."
+                    summary_ws[f'C{row_index}'] = review_result
+                    # D열: 결론
+                    summary_ws[f'D{row_index}'] = ai_review.get('conclusion', '')
+                    # E열: 개선필요사항
+                    improvements = ai_review.get('improvements', '')
+                    if len(improvements) > 32767:  # 엑셀 셀 최대 문자 수 제한
+                        improvements = improvements[:32760] + "..."
+                    summary_ws[f'E{row_index}'] = improvements
+                    row_index += 1
+        except Exception as e:
+            print(f"Summary 시트 작성 중 오류 발생: {str(e)}")
+            # Summary 시트 오류가 발생해도 전체 프로세스는 계속 진행
 
     # 메모리 버퍼에 저장 (안전한 방식)
     excel_stream = BytesIO()
+    excel_stream_copy = None
     try:
+        # 엑셀 파일 저장 전 검증
+        if not wb.worksheets:
+            raise Exception("워크북에 시트가 없습니다.")
+        
         wb.save(excel_stream)
         excel_stream.seek(0)
 
         # 전송용 복사본 생성
         excel_data = excel_stream.getvalue()
+        
+        # 파일 크기 검증 (최소 크기 체크)
+        if len(excel_data) < 1000:  # 1KB 미만이면 문제가 있을 가능성
+            raise Exception("생성된 엑셀 파일이 너무 작습니다. 파일 생성에 문제가 있을 수 있습니다.")
+        
         excel_stream_copy = BytesIO(excel_data)
+        
     except Exception as e:
+        # 오류 발생 시 리소스 정리
+        if excel_stream:
+            excel_stream.close()
+        if excel_stream_copy:
+            excel_stream_copy.close()
+        wb.close()
         raise Exception(f"엑셀 파일 생성 중 오류 발생: {str(e)}")
     finally:
-        wb.close()
-        excel_stream.close()
+        # 원본 스트림은 항상 닫기
+        if excel_stream:
+            excel_stream.close()
 
     user_email = ''
     if answers and answers[0]:
@@ -573,6 +645,13 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         subject = '인터뷰 결과 파일'
         body = '인터뷰 내용에 따라 ITGC 설계평가 문서를 첨부합니다.'
         try:
+            # 파일 스트림 검증
+            if not excel_stream_copy:
+                raise Exception("엑셀 파일 스트림이 생성되지 않았습니다.")
+            
+            # 파일 스트림 위치 확인 및 리셋
+            excel_stream_copy.seek(0)
+            
             send_gmail_with_attachment(
                 to=user_email,
                 subject=subject,
@@ -583,7 +662,16 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
             return True, user_email, None
         except Exception as e:
             return False, user_email, str(e)
+        finally:
+            # 전송 완료 후 스트림 정리
+            if excel_stream_copy:
+                excel_stream_copy.close()
+            wb.close()
     else:
+        # 이메일이 없는 경우에도 리소스 정리
+        if excel_stream_copy:
+            excel_stream_copy.close()
+        wb.close()
         return False, None, '메일 주소가 입력되지 않았습니다. 1번 질문에 메일 주소를 입력해 주세요.'
 
 def test_ai_review_feature():
