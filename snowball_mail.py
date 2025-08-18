@@ -35,7 +35,7 @@ def send_gmail(to, subject, body):
     message = MIMEText(body)
     message['to'] = to
     message['subject'] = subject
-    message['Bcc'] = 'snowball1566@gmail.com'
+    message['Bcc'] = 'snowball2727@naver.com'
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     message = {'raw': raw}
     send_message = service.users().messages().send(userId="me", body=message).execute()
@@ -67,8 +67,13 @@ def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=No
     encoders.encode_base64(part)
     # 파일명 인코딩 처리 (한글 지원)
     import urllib.parse
-    encoded_filename = urllib.parse.quote(file_name.encode('utf-8'))
-    part.add_header('Content-Disposition', f'attachment; filename="{file_name}"; filename*=UTF-8\'\'{encoded_filename}')
+    try:
+        encoded_filename = urllib.parse.quote(file_name.encode('utf-8'))
+        part.add_header('Content-Disposition', f'attachment; filename="{file_name}"; filename*=UTF-8\'\'{encoded_filename}')
+    except Exception as e:
+        # 인코딩 실패 시 안전한 파일명 사용
+        safe_filename = file_name.encode('ascii', 'ignore').decode('ascii')
+        part.add_header('Content-Disposition', f'attachment; filename="{safe_filename}"')
     message.attach(part)
 
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()

@@ -474,6 +474,8 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
 
     # 1. 템플릿 파일 불러오기
     template_path = os.path.join("static", "Design_Template.xlsx")
+    if not os.path.exists(template_path):
+        raise FileNotFoundError(f"템플릿 파일을 찾을 수 없습니다: {template_path}")
     wb = load_workbook(template_path)
 
     # 2. Summary sheet에 작성할 AI 검토 결과 수집
@@ -557,8 +559,11 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         # 전송용 복사본 생성
         excel_data = excel_stream.getvalue()
         excel_stream_copy = BytesIO(excel_data)
+    except Exception as e:
+        raise Exception(f"엑셀 파일 생성 중 오류 발생: {str(e)}")
     finally:
         wb.close()
+        excel_stream.close()
 
     user_email = ''
     if answers and answers[0]:
