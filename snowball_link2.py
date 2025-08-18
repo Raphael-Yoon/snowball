@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from io import BytesIO
 from openpyxl import load_workbook
+from openai import OpenAI
 
 # 인터뷰 질문 리스트 (생략 없이 전체 복사)
 s_questions = [
@@ -53,6 +54,109 @@ s_questions = [
 
 question_count = len(s_questions)
 
+# --- 통제별 검토 기준 정의 (토큰 절약을 위해 간소화) ---
+CONTROL_SPECIFIC_CRITERIA = {
+    'APD01': [
+        "권한 부여 이력이 시스템에 기록되는지 확인"
+    ],
+    'APD02': [
+        "부서이동 시 자동 또는 수동 권한 회수 절차가 있는지 확인",
+        "부서이동자가 직접 요청항 회수하는 경우는 인정 안됨"
+    ],
+    'APD03': [
+        "퇴사자 발생 시 자동 또는 수동 권한 회수 절차가 있는지 확인"
+    ],
+    'APD04': [
+        "Application 관리자 권한 보유 인원이 명확히 식별되는지 확인",
+        "관리자 권한 보유자의 부서, 직급, 직무가 구체적으로 기술되어 있는지 확인",
+        "권한 보유자가 1명인 것은 이슈가 아님"
+    ],
+    'APD05': [
+        "사용자 권한 모니터링 절차가 정기적으로 수행되는지 확인",
+        "모니터링 결과에 따른 조치 절차가 있는지 확인",
+        "권한 검토 주기는 판단하지 않음"
+    ],
+    'APD06': [
+        "Application 패스워드 최소 길이가 8자 이상인지 확인",
+        "Application 패스워드 복잡성(영문/숫자/특수문자) 요구사항이 있는지 확인"
+    ],
+    'APD07': [
+        "데이터 변경 이력이 시스템에 기록되는지 확인"
+    ],
+    'APD08': [
+        "데이터 변경 권한 보유 인원이 명확히 식별되는지 확인",
+        "권한 보유자가 1명인 것은 이슈가 아님"
+    ],
+    'APD09': [
+        "DB 접근권한 부여 이력이 시스템에 기록되는지 확인"
+    ],
+    'APD10': [
+        "DB 관리자 권한 보유 인원이 명확히 식별되는지 확인",
+        "권한 보유자가 1명인 것은 이슈가 아님",
+        "DB 관리자의 자격 요건이 적절한지 확인"
+    ],
+    'APD11': [
+        "DB 패스워드 최소 길이가 8자 이상인지 확인",
+        "DB 패스워드 복잡성(영문/숫자/특수문자) 요구사항이 있는지 확인"
+    ],
+    'APD12': [
+        "OS 접근권한 부여 이력이 시스템에 기록되는지 확인"
+    ],
+    'APD13': [
+        "OS 관리자 권한 보유 인원이 명확히 식별되는지 확인",
+        "권한 보유자가 1명인 것은 이슈가 아님",
+        "OS 관리자의 자격 요건이 적절한지 확인"
+    ],
+    'APD14': [
+        "OS 패스워드 최소 길이가 8자 이상인지 확인",
+        "OS 패스워드 복잡성(영문/숫자/특수문자) 요구사항이 있는지 확인"
+    ],
+    'PC01': [
+        "프로그램 변경 이력이 시스템에 기록되는지 확인"
+    ],
+    'PC02': [
+        "프로그램 변경 시 사용자 테스트 수행 절차가 있는지 확인",
+        "사용자 테스트는 요청자가 수행하는 것이 정상",
+        "테스트 결과 문서화 절차가 있는지 확인"
+    ],
+    'PC03': [
+        "프로그램 변경 이관(배포) 승인 절차가 있는지 확인"
+    ],
+    'PC04': [
+        "이관(배포) 권한 보유 인원이 명확히 식별되는지 확인",
+        "권한 보유자가 1명인 것은 이슈가 아님"
+    ],
+    'PC05': [
+        "운영환경과 개발/테스트 환경이 물리적 또는 논리적으로 분리되어 있는지 확인"
+    ],
+    'CO01': [
+        "배치 스케줄 등록/변경 이력이 시스템에 기록되는지 확인"
+    ],
+    'CO02': [
+        "배치 스케줄 등록/변경 권한 보유 인원이 명확히 식별되는지 확인",
+        "권한 보유자가 1명인 것은 이슈가 아님"
+    ],
+    'CO03': [
+        "배치 실행 결과 모니터링 절차가 있는지 확인",
+        "모니터링 결과 문서화 및 보관 절차가 있는지 확인"
+    ],
+    'CO04': [
+        "장애 발생 시 대응 절차가 명확하게 정의되어 있는지 확인",
+        "장애 대응 담당자가 명확히 지정되어 있는지 확인",
+        "장애 처리 결과 문서화 및 사후 분석 절차가 있는지 확인"
+    ],
+    'CO05': [
+        "백업 수행 절차가 명확하게 정의되어 있는지 확인",
+        "백업 결과 모니터링 및 확인 절차가 있는지 확인",
+        "백업 데이터 복구 테스트가 정기적으로 수행되는지 확인"
+    ],
+    'CO06': [
+        "서버실 출입 승인 절차가 있는지 확인",
+        "서버실 출입 기록이 관리되는지 확인",
+        "서버실 물리적 보안 체계가 적절한지 확인"
+    ]
+}
+
 # --- 리팩토링: Ineffective 조건 체크 함수 ---
 def is_ineffective(control, answers):
     conditions = {
@@ -70,6 +174,90 @@ def is_ineffective(control, answers):
         'CO01': len(answers) > 36 and (answers[35] == 'N' or answers[36] == 'N'),
     }
     return conditions.get(control, False)
+
+def get_ai_review(content, control_number=None):
+    """
+    AI를 사용하여 ITGC 내용을 검토하고 개선 제안을 반환합니다.
+    Summary 시트의 C열(검토결과), D열(결론), E열(개선필요사항)에 맞는 구조화된 결과를 반환합니다.
+    """
+    try:
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        
+        # 통제별 특정 기준만 가져오기 (토큰 절약)
+        specific_criteria = CONTROL_SPECIFIC_CRITERIA.get(control_number, [])
+        
+        # 간소화된 기준 텍스트 생성 (토큰 절약)
+        if specific_criteria:
+            criteria_text = f"검토기준: " + ", ".join(specific_criteria)
+        else:
+            criteria_text = "기본기준: 담당자1명 허용, 절차/이력 부재시 미비점"
+        
+        # 공통 기준은 프롬프트에 간단히 포함
+        common_note = "공통기준: 보완통제 유무는 검토대상 아님, 부서장승인 필요"
+
+        prompt = f"""ITGC {control_number} 검토:
+{content}
+
+{criteria_text}
+{common_note}
+
+응답형식:
+검토결과: [간결한 분석]
+결론: [Effective/Ineffective]
+개선필요사항: [Ineffective시만 3가지 이내, Effective시 공란]
+"""
+
+        model_name = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')  # 기본값으로 gpt-4o-mini 사용
+
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": "ITGC 검토 전문가. 간결하고 정확한 검토 제공."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=400,
+            temperature=0.1
+        )
+
+        ai_response = response.choices[0].message.content
+
+        # AI 응답을 파싱하여 각 컬럼별로 분리
+        result = {
+            'review_result': '',  # C열: 검토결과
+            'conclusion': '',     # D열: 결론
+            'improvements': ''    # E열: 개선필요사항
+        }
+
+        lines = ai_response.split('\n')
+        current_section = None
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith('검토결과:'):
+                result['review_result'] = line.replace('검토결과:', '').strip()
+                current_section = 'review_result'
+            elif line.startswith('결론:'):
+                result['conclusion'] = line.replace('결론:', '').strip()
+                current_section = 'conclusion'
+            elif line.startswith('개선필요사항:'):
+                result['improvements'] = line.replace('개선필요사항:', '').strip()
+                current_section = 'improvements'
+            elif line and current_section:
+                # 다음 섹션이 시작되기 전까지 내용을 이어서 추가
+                if not any(line.startswith(prefix) for prefix in ['검토결과:', '결론:', '개선필요사항:']):
+                    if result[current_section]:
+                        result[current_section] += '\n' + line
+                    else:
+                        result[current_section] = line
+
+        return result
+
+    except Exception as e:
+        return {
+            'review_result': f"AI 검토 중 오류 발생: {str(e)}",
+            'conclusion': "검토 불가",
+            'improvements': "AI 검토 시스템 점검 필요"
+        }
 
 # --- 리팩토링: 시트 값 입력 함수 ---
 def fill_sheet(ws, text_data, answers):
@@ -90,11 +278,11 @@ def fill_sheet(ws, text_data, answers):
         ws['B3'] = company_name
         ws['B5'] = user_name
 
-def get_text_itgc(answers, control_number, textarea_answers=None):
+def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_review=False):
     result = {}
     if textarea_answers is None:
         textarea_answers = [''] * len(answers)
-    
+
     if control_number == 'APD01':
         result['A1'] = "APD01"
         result['B1'] = "사용자 신규 권한 승인"
@@ -102,7 +290,7 @@ def get_text_itgc(answers, control_number, textarea_answers=None):
             "새로운 권한 요청 시, 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
                 f"\n{textarea_answers[14]}" if textarea_answers[14] else "\n\n권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다."
             ) if answers[14] == 'Y' else "새로운 권한 요청 시 승인 절차가 없습니다.")
-    
+
     elif control_number == 'APD02':
         result['A1'] = "APD02"
         result['B1'] = "부서이동자 권한 회수"
@@ -116,7 +304,7 @@ def get_text_itgc(answers, control_number, textarea_answers=None):
         result['B1'] = "퇴사자 접근권한 회수"
         result['B2'] = "퇴사자 발생 시 접근권한을 " + ("차단하는 절차가 있으며 그 절차는 아래와 같습니다." if answers[16] == 'Y' else "차단 절차가 없습니다.") + (
             f"\n{textarea_answers[16]}" if textarea_answers[16] else "\n퇴사자 접근권한 차단 절차에 대한 상세 기술이 제공되지 않았습니다.")
-        
+
     elif control_number == 'APD04':
         result['A1'] = "APD04"
         result['B1'] = "Application 관리자 권한 제한"
@@ -131,7 +319,7 @@ def get_text_itgc(answers, control_number, textarea_answers=None):
         result['A1'] = "APD06"
         result['B1'] = "Application 패스워드"
         result['B2'] = "패스워드 설정 사항은 아래와 같습니다 \n\n" + (answers[19] if answers[19] else "패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.")
-    
+
     elif control_number == 'APD07':
         result['A1'] = "APD07"
         result['B1'] = "데이터 직접 변경"
@@ -249,12 +437,21 @@ def get_text_itgc(answers, control_number, textarea_answers=None):
         result['A1'] = "CO06"
         result['B1'] = "서버실 출입 절차"
         result['B2'] = "서버실 출입 절차는 아래와 같습니다.\n" + (answers[43] if answers[43] else "서버실 출입 절차에 대한 상세 기술이 제공되지 않았습니다.")
-        
+
     else:
         result['A1'] = f"Unknown control number: {control_number}"
         result['B1'] = ""
         result['B2'] = "알 수 없는 통제 번호입니다."
-    
+
+    # AI 검토 기능이 활성화되어 있고 B2 값이 있는 경우 AI 검토 수행
+    if enable_ai_review and 'B2' in result and result['B2']:
+        print(f"🤖 AI 검토 시작: {control_number}")
+        ai_review = get_ai_review(result['B2'], control_number)
+        result['AI_Review'] = ai_review
+        # Summary 시트용 AI 검토 결과도 저장
+        result['AI_Summary'] = ai_review
+        print(f"✅ AI 검토 완료: {control_number}")
+
     return result
 
 # link2_prev의 핵심 로직만 분리 (세션 객체는 snowball.py에서 전달)
@@ -264,7 +461,7 @@ def link2_prev_logic(session):
         session['question_index'] = question_index - 1
     return session
 
-def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fill_sheet, is_ineffective, send_gmail_with_attachment):
+def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fill_sheet, is_ineffective, send_gmail_with_attachment, enable_ai_review=False):
     """
     인터뷰 답변을 받아 엑셀 파일을 생성하고 메일로 전송합니다.
     answers: list (사용자 답변)
@@ -279,30 +476,166 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
 
     # 1. 템플릿 파일 불러오기
     template_path = os.path.join("static", "Design_Template.xlsx")
+    if not os.path.exists(template_path):
+        raise FileNotFoundError(f"템플릿 파일을 찾을 수 없습니다: {template_path}")
     wb = load_workbook(template_path)
 
-    # 2. 각 통제별 시트에 값 입력
+    # 2. Summary sheet에 작성할 AI 검토 결과 수집
+    summary_ai_reviews = {}
+
+    # 3. 각 통제별 시트에 값 입력
     control_list = [
         'APD01', 'APD02', 'APD03', 'APD04', 'APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14',
         'PC01', 'PC02', 'PC03', 'PC04', 'PC05',
         'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06'
     ]
     for control in control_list:
-        text_data = get_text_itgc(answers, control, textarea_answers)
+        text_data = get_text_itgc(answers, control, textarea_answers, enable_ai_review)
         ws = wb[control]
         fill_sheet(ws, text_data, answers)
-        if is_ineffective(control, answers):
+
+        # AI 검토 결과가 있는 경우 Summary 시트용 데이터 수집
+        if enable_ai_review and 'AI_Summary' in text_data and isinstance(text_data['AI_Summary'], dict):
+            summary_ai_reviews[control] = text_data['AI_Summary']
+
+        # AI 검토 결과가 있는 경우와 없는 경우에 따라 C14 처리
+        ai_review_processed = False
+        if enable_ai_review and 'AI_Review' in text_data:
+            if isinstance(text_data['AI_Review'], dict):
+                # 결론만 C14에 기록
+                conclusion = text_data['AI_Review'].get('conclusion', '')
+                ws['C14'] = conclusion
+                ai_review_processed = True
+
+                # AI 결론이 Ineffective인 경우 시트 탭 색상을 빨간색으로 변경
+                if 'Ineffective' in conclusion:
+                    ws.sheet_properties.tabColor = "FF0000"
+
+                # 전체 AI 검토 결과를 C15 셀에 추가 (기존 기능 유지)
+                review_text = f"검토결과: {text_data['AI_Review'].get('review_result', '')}\n결론: {text_data['AI_Review'].get('conclusion', '')}\n개선필요사항: {text_data['AI_Review'].get('improvements', '')}"
+                ws['C15'] = f"=== AI 검토 결과 ===\n{review_text}"
+                # AI 검토 결과 셀의 높이 조정
+                ai_review_lines = review_text.count('\n') + 1
+                ws.row_dimensions[15].height = 15 * max(5, ai_review_lines // 3)
+            else:
+                # 기존 형식인 경우 그대로 C14에 기록
+                ws['C14'] = str(text_data['AI_Review'])
+                ai_review_processed = True
+
+                # 기존 형식에서도 Ineffective 체크
+                if 'Ineffective' in str(text_data['AI_Review']):
+                    ws.sheet_properties.tabColor = "FF0000"
+
+        # AI 검토 결과가 없는 경우에만 기존 로직 적용
+        if not ai_review_processed and is_ineffective(control, answers):
             ws['C13'] = ''
             ws['C14'] = 'Ineffective'
             ws.sheet_properties.tabColor = "FF0000"
+            # ws.sheet_properties.tabColor = "FF0000"
         #else:
         #    ws['C13'] = '화면 증빙을 첨부해주세요'
 
-    # 메모리 버퍼에 저장
+    # 4. Summary 시트에 AI 검토 결과 작성
+    if enable_ai_review and summary_ai_reviews:
+        try:
+            # Summary 시트가 존재하는지 확인하고 없으면 생성
+            if 'Summary' not in wb.sheetnames:
+                summary_ws = wb.create_sheet('Summary')
+                # 헤더 추가
+                summary_ws['A1'] = '통제번호'
+                summary_ws['B1'] = '통제명'
+                summary_ws['C1'] = '검토결과'
+                summary_ws['D1'] = '결론'
+                summary_ws['E1'] = '개선필요사항'
+            else:
+                summary_ws = wb['Summary']
+
+            # 통제명 매핑 딕셔너리
+            control_names = {
+                'APD01': '사용자 신규 권한 승인',
+                'APD02': '부서이동자 권한 회수',
+                'APD03': '퇴사자 접근권한 회수',
+                'APD04': 'Application 관리자 권한 제한',
+                'APD05': '사용자 권한 Monitoring',
+                'APD06': 'Application 패스워드',
+                'APD07': '데이터 직접 변경',
+                'APD08': '데이터 변경 권한 제한',
+                'APD09': 'DB 접근권한 승인',
+                'APD10': 'DB 관리자 권한 제한',
+                'APD11': 'DB 패스워드',
+                'APD12': 'OS 접근권한 승인',
+                'APD13': 'OS 관리자 권한 제한',
+                'APD14': 'OS 패스워드',
+                'PC01': '프로그램 변경 승인',
+                'PC02': '프로그램 변경 사용자 테스트',
+                'PC03': '프로그램 변경 이관 승인',
+                'PC04': '이관(배포) 권한 제한',
+                'PC05': '개발/운영 환경 분리',
+                'CO01': '배치 스케줄 등록/변경 승인',
+                'CO02': '배치 스케줄 등록/변경 권한 제한',
+                'CO03': '배치 실행 모니터링',
+                'CO04': '장애 대응 절차',
+                'CO05': '백업 및 모니터링',
+                'CO06': '서버실 출입 절차'
+            }
+
+            row_index = 2  # 헤더 다음 행부터 시작
+
+            for control, ai_review in summary_ai_reviews.items():
+                if isinstance(ai_review, dict):
+                    # A열: 통제번호
+                    summary_ws[f'A{row_index}'] = control
+                    # B열: 통제명
+                    summary_ws[f'B{row_index}'] = control_names.get(control, '')
+                    # C열: 검토결과
+                    review_result = ai_review.get('review_result', '')
+                    if len(review_result) > 32767:  # 엑셀 셀 최대 문자 수 제한
+                        review_result = review_result[:32760] + "..."
+                    summary_ws[f'C{row_index}'] = review_result
+                    # D열: 결론
+                    summary_ws[f'D{row_index}'] = ai_review.get('conclusion', '')
+                    # E열: 개선필요사항
+                    improvements = ai_review.get('improvements', '')
+                    if len(improvements) > 32767:  # 엑셀 셀 최대 문자 수 제한
+                        improvements = improvements[:32760] + "..."
+                    summary_ws[f'E{row_index}'] = improvements
+                    row_index += 1
+        except Exception as e:
+            print(f"Summary 시트 작성 중 오류 발생: {str(e)}")
+            # Summary 시트 오류가 발생해도 전체 프로세스는 계속 진행
+
+    # 메모리 버퍼에 저장 (안전한 방식)
     excel_stream = BytesIO()
-    wb.save(excel_stream)
-    wb.close()
-    excel_stream.seek(0)
+    excel_stream_copy = None
+    try:
+        # 엑셀 파일 저장 전 검증
+        if not wb.worksheets:
+            raise Exception("워크북에 시트가 없습니다.")
+        
+        wb.save(excel_stream)
+        excel_stream.seek(0)
+
+        # 전송용 복사본 생성
+        excel_data = excel_stream.getvalue()
+        
+        # 파일 크기 검증 (최소 크기 체크)
+        if len(excel_data) < 1000:  # 1KB 미만이면 문제가 있을 가능성
+            raise Exception("생성된 엑셀 파일이 너무 작습니다. 파일 생성에 문제가 있을 수 있습니다.")
+        
+        excel_stream_copy = BytesIO(excel_data)
+        
+    except Exception as e:
+        # 오류 발생 시 리소스 정리
+        if excel_stream:
+            excel_stream.close()
+        if excel_stream_copy:
+            excel_stream_copy.close()
+        wb.close()
+        raise Exception(f"엑셀 파일 생성 중 오류 발생: {str(e)}")
+    finally:
+        # 원본 스트림은 항상 닫기
+        if excel_stream:
+            excel_stream.close()
 
     user_email = ''
     if answers and answers[0]:
@@ -312,15 +645,76 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         subject = '인터뷰 결과 파일'
         body = '인터뷰 내용에 따라 ITGC 설계평가 문서를 첨부합니다.'
         try:
+            # 파일 스트림 검증
+            if not excel_stream_copy:
+                raise Exception("엑셀 파일 스트림이 생성되지 않았습니다.")
+            
+            # 파일 스트림 위치 확인 및 리셋
+            excel_stream_copy.seek(0)
+            
             send_gmail_with_attachment(
                 to=user_email,
                 subject=subject,
                 body=body,
-                file_stream=excel_stream,
+                file_stream=excel_stream_copy,
                 file_name=file_name
             )
             return True, user_email, None
         except Exception as e:
             return False, user_email, str(e)
+        finally:
+            # 전송 완료 후 스트림 정리
+            if excel_stream_copy:
+                excel_stream_copy.close()
+            wb.close()
     else:
-        return False, None, '메일 주소가 입력되지 않았습니다. 1번 질문에 메일 주소를 입력해 주세요.' 
+        # 이메일이 없는 경우에도 리소스 정리
+        if excel_stream_copy:
+            excel_stream_copy.close()
+        wb.close()
+        return False, None, '메일 주소가 입력되지 않았습니다. 1번 질문에 메일 주소를 입력해 주세요.'
+
+def test_ai_review_feature():
+    """
+    AI 검토 기능을 테스트하는 함수 (Summary 시트 기능 포함)
+    """
+    # 테스트용 답변 데이터
+    test_answers = ['test@example.com', 'Test System', 'Y'] + ['N'] * 40
+    test_textarea_answers = [''] * 43
+
+    # AI 검토 기능 활성화로 테스트
+    result = get_text_itgc(test_answers, 'APD01', test_textarea_answers, enable_ai_review=True)
+
+    print("=== AI 검토 기능 테스트 (Summary 시트 포함) ===")
+    print(f"Control: APD01")
+    print(f"B1: {result.get('B1', 'N/A')}")
+    print(f"B2: {result.get('B2', 'N/A')}")
+    print(f"AI Review 존재 여부: {'AI_Review' in result}")
+    print(f"AI Summary 존재 여부: {'AI_Summary' in result}")
+
+    if 'AI_Review' in result:
+        ai_review = result['AI_Review']
+        if isinstance(ai_review, dict):
+            print(f"\n=== Summary 시트용 AI 검토 결과 ===")
+            print(f"검토결과 (C열): {ai_review.get('review_result', 'N/A')}")
+            print(f"결론 (D열): {ai_review.get('conclusion', 'N/A')}")
+            print(f"개선필요사항 (E열): {ai_review.get('improvements', 'N/A')}")
+        else:
+            print(f"\n기존 형식 AI 검토 결과:\n{ai_review}")
+
+    # 직접 AI 검토 함수 테스트
+    test_content = "사용자 권한 부여 이력이 시스템에 기록되지 않아 모집단 확보가 불가합니다. 새로운 권한 요청 시 승인 절차가 없습니다."
+    direct_ai_result = get_ai_review(test_content, 'APD01')
+
+    print(f"\n=== 직접 AI 검토 함수 테스트 ===")
+    if isinstance(direct_ai_result, dict):
+        print(f"검토결과: {direct_ai_result.get('review_result', 'N/A')}")
+        print(f"결론: {direct_ai_result.get('conclusion', 'N/A')}")
+        print(f"개선필요사항: {direct_ai_result.get('improvements', 'N/A')}")
+    else:
+        print(f"오류 또는 예상치 못한 형식: {direct_ai_result}")
+
+    return result
+
+if __name__ == "__main__":
+    test_ai_review_feature()

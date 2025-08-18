@@ -35,7 +35,7 @@ def send_gmail(to, subject, body):
     message = MIMEText(body)
     message['to'] = to
     message['subject'] = subject
-    message['Bcc'] = 'snowball1566@gmail.com'
+    message['Bcc'] = 'snowball2727@naver.com'
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     message = {'raw': raw}
     send_message = service.users().messages().send(userId="me", body=message).execute()
@@ -51,7 +51,7 @@ def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=No
     message = MIMEMultipart()
     message['to'] = to
     message['subject'] = subject
-    message['Bcc'] = 'snowball2727@naver.com, snowball1566@gmail.com'
+    message['Bcc'] = 'snowball2727@naver.com'
     message.attach(MIMEText(body, 'plain'))
 
     # 첨부파일 추가 (메모리 버퍼 우선, 없으면 파일 경로)
@@ -65,9 +65,17 @@ def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=No
     else:
         raise ValueError('첨부할 파일이 없습니다.')
     encoders.encode_base64(part)
-    part.add_header('Content-Disposition', f'attachment; filename="{file_name}"')
+    # 파일명 인코딩 처리 (한글 지원)
+    import urllib.parse
+    try:
+        encoded_filename = urllib.parse.quote(file_name.encode('utf-8'))
+        part.add_header('Content-Disposition', f'attachment; filename="{file_name}"; filename*=UTF-8\'\'{encoded_filename}')
+    except Exception as e:
+        # 인코딩 실패 시 안전한 파일명 사용
+        safe_filename = file_name.encode('ascii', 'ignore').decode('ascii')
+        part.add_header('Content-Disposition', f'attachment; filename="{safe_filename}"')
     message.attach(part)
 
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     send_message = service.users().messages().send(userId="me", body={'raw': raw}).execute()
-    return send_message 
+    return send_message
