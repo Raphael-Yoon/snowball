@@ -14,7 +14,7 @@ from email import encoders
 from io import BytesIO
 from openpyxl import load_workbook
 from snowball_link1 import generate_and_send_rcm_excel
-from snowball_link2 import export_interview_excel_and_send, s_questions, question_count, is_ineffective, fill_sheet, link2_prev_logic, get_text_itgc, ai_improve_answer_consistency
+from snowball_link2 import export_interview_excel_and_send, s_questions, question_count, is_ineffective, fill_sheet, link2_prev_logic, get_text_itgc
 from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
@@ -523,23 +523,6 @@ def contact():
     return render_template('contact.jsp', remote_addr=request.remote_addr)
 
 
-@app.route('/check_consistency', methods=['POST'])
-def check_consistency():
-    """답변들의 일관성을 체크합니다."""
-    try:
-        data = request.get_json()
-        answers = data.get('answers', [])
-        textarea_answers = data.get('textarea_answers', [])
-        
-        result = ai_improve_answer_consistency(answers, textarea_answers)
-        return jsonify(result)
-        
-    except Exception as e:
-        print(f"일관성 체크 API 오류: {e}")
-        return jsonify({
-            'ai_consistency_check': f'일관성 체크 중 오류가 발생했습니다: {str(e)}',
-            'basic_consistency_issues': []
-        })
 
 app.register_blueprint(bp_link5)
 app.register_blueprint(bp_link6)
