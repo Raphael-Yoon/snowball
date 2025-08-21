@@ -474,30 +474,26 @@ def ai_improve_interview_answer(question_text, answer_text):
     """
     try:
         api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            return {
-                'improved_answer': answer_text,
-                'suggestions': "OpenAI API 키가 설정되지 않았습니다."
-            }
-        
-        client = OpenAI(api_key=api_key)
-        
-        prompt = AI_REFINEMENT_PROMPT.format(answer_text=answer_text)
-
-        # AI 모델 설정 사용
-        model_name = os.getenv('OPENAI_MODEL', AI_MODEL_CONFIG['model'])
-        
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": "한국어 문서 교정 전문가"},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=AI_MODEL_CONFIG['max_tokens'],
-            temperature=AI_MODEL_CONFIG['temperature']
-        )
-        
-        result = response.choices[0].message.content.strip()
+        if api_key:
+            # API 키가 있으면 AI로 개선
+            client = OpenAI(api_key=api_key)
+            prompt = AI_REFINEMENT_PROMPT.format(answer_text=answer_text)
+            model_name = os.getenv('OPENAI_MODEL', AI_MODEL_CONFIG['model'])
+            
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": "한국어 문서 교정 전문가"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=AI_MODEL_CONFIG['max_tokens'],
+                temperature=AI_MODEL_CONFIG['temperature']
+            )
+            
+            result = response.choices[0].message.content.strip()
+        else:
+            # API 키가 없으면 원본 텍스트 사용
+            result = answer_text
         
         # 불필요한 접두사 및 문구 제거
         for prefix in PREFIXES_TO_REMOVE:
@@ -515,23 +511,14 @@ def ai_improve_interview_answer(question_text, answer_text):
         # 텍스트 형식 개선 (설정에 따라 적용)
         import re
         
-        if AUTO_PARAGRAPH_BREAK['enable_phrase_break']:
-            # "다음과 같습니다" 뒤에 엔터값 추가
-            result = re.sub(r'다음과 같습니다(?!\n\n)', '다음과 같습니다\n\n', result)
-            result = re.sub(r'아래와 같습니다(?!\n\n)', '아래와 같습니다\n\n', result)
-        
+        # 마침표 뒤 엔터값 추가 (마침표+공백 패턴만)
         if AUTO_PARAGRAPH_BREAK['enable_sentence_break']:
-            # 서술형 마침표(.) 뒤에 엔터값 추가 (단, 이미 엔터가 있거나 문서 끝인 경우 제외)
-            # 마침표 뒤에 공백이 있고 다음 문장이 바로 이어지는 경우에만 적용
-            result = re.sub(r'\.(\s+)([가-힣])', r'.\n\n\2', result)
-            
-            # 마침표 뒤에 바로 한글이 오는 경우 (공백 없이)
-            result = re.sub(r'\.([가-힣])', r'.\n\n\1', result)
+            result = re.sub(r'[.] ', '.\n\n', result)
         
         # 추가 텍스트 처리 규칙 적용
         if TEXT_PROCESSING_RULES['remove_double_spaces']:
-            # 이중 공백 제거
-            result = re.sub(r'\s{2,}', ' ', result)
+            # 이중 공백 제거 (줄바꿈은 제외)
+            result = re.sub(r' {2,}', ' ', result)
         
         if TEXT_PROCESSING_RULES['unify_punctuation']:
             # 문장부호 통일
