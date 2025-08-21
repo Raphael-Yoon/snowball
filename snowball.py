@@ -23,12 +23,19 @@ from snowball_link6 import bp_link6
 app = Flask(__name__)
 app.secret_key = '150606'
 
-# 전역 진행률 상태 관리
-progress_status = {
-    'percentage': 0,
-    'current_task': 'AI 검토를 준비하고 있습니다...',
-    'is_processing': False
-}
+# 전역 진행률 상태 관리 (세션 기반으로 변경)
+# 서버 환경에서 다중 프로세스 문제 해결을 위해 세션에 저장
+def get_progress_status():
+    if 'progress_status' not in session:
+        session['progress_status'] = {
+            'percentage': 0,
+            'current_task': 'AI 검토를 준비하고 있습니다...',
+            'is_processing': False
+        }
+    return session['progress_status']
+
+def set_progress_status(status):
+    session['progress_status'] = status
 
 # 시작할 질문 번호 설정 (1부터 시작)
 if __name__ == '__main__':
@@ -40,17 +47,21 @@ load_dotenv()
 
 def update_progress(percentage, task_description):
     """진행률 업데이트 함수"""
-    global progress_status
+    progress_status = get_progress_status()
     progress_status['percentage'] = percentage
     progress_status['current_task'] = task_description
+    progress_status['is_processing'] = True
+    set_progress_status(progress_status)
     print(f"Progress: {percentage}% - {task_description}")
 
 def reset_progress():
     """진행률 초기화 함수"""
-    global progress_status
-    progress_status['percentage'] = 0
-    progress_status['current_task'] = 'AI 검토를 준비하고 있습니다...'
-    progress_status['is_processing'] = False
+    progress_status = {
+        'percentage': 0,
+        'current_task': 'AI 검토를 준비하고 있습니다...',
+        'is_processing': False
+    }
+    set_progress_status(progress_status)
 
 @app.route('/')
 def index():
@@ -347,15 +358,17 @@ def processing():
 @app.route('/get_progress')
 def get_progress():
     """진행률 상태 조회 엔드포인트"""
-    global progress_status
+    progress_status = get_progress_status()
     return jsonify(progress_status)
 
 @app.route('/process_interview', methods=['POST'])
 def process_interview():
     """실제 인터뷰 처리 및 메일 발송"""
-    global progress_status
     try:
+        # 세션 기반 진행률 관리로 변경
+        progress_status = get_progress_status()
         progress_status['is_processing'] = True
+        set_progress_status(progress_status)
         update_progress(5, "인터뷰 데이터를 확인하고 있습니다...")
         
         # 세션에서 답변 데이터 가져오기
@@ -393,7 +406,9 @@ def process_interview():
         
         if success:
             update_progress(100, "처리가 완료되었습니다!")
+            progress_status = get_progress_status()
             progress_status['is_processing'] = False
+            set_progress_status(progress_status)
             print(f"Mail sent successfully to {returned_email}")
             return jsonify({'success': True, 'email': returned_email})
         else:
