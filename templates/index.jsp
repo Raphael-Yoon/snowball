@@ -20,8 +20,8 @@
                     <img src="{{ url_for('static', filename='img/snowball.jpg')}}" alt="SnowBall" class="img-fluid" style="max-height: 80px; width: auto;">
                 </div>
                 <div class="col-lg-10 hero-content">
-                    <h1 class="hero-title" style="font-size: 1.8rem;">SnowBall System</h1>
-                    <p class="hero-subtitle" style="font-size: 0.9rem;">내부통제 평가와 IT감사 대응을 위한 종합 솔루션</p>
+                    <h1 class="hero-title">SnowBall System</h1>
+                    <p class="hero-subtitle">내부통제 평가와 IT감사 대응을 위한 종합 솔루션</p>
                 </div>
             </div>
         </div>
@@ -32,7 +32,8 @@
         <div class="container">
             <h2 class="section-title">주요 기능</h2>
             <div class="row g-4">
-                <div class="col-md-3">
+                <!-- 기본 4개 카드 -->
+                <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/rcm.jpg')}}" class="feature-img" alt="RCM">
                         <div class="card-body p-4">
@@ -47,7 +48,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/interview.jpg')}}" class="feature-img" alt="Interview">
                         <div class="card-body p-4">
@@ -62,7 +63,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/testing.jpg')}}" class="feature-img" alt="Operation Test">
                         <div class="card-body p-4">
@@ -77,7 +78,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/video.jpg')}}" class="feature-img" alt="교육자료">
                         <div class="card-body p-4">
@@ -92,8 +93,12 @@
                         </div>
                     </div>
                 </div>
-                {% if remote_addr == '127.0.0.1' or request.host == 'snowball.pythonanywhere.com' %}
-                <div class="col-md-3">
+            </div>
+            
+            <!-- AI 관련 카드들 (조건부) -->
+            {% if remote_addr == '127.0.0.1' or request.host == 'snowball.pythonanywhere.com' %}
+            <div class="row g-4 mt-3">
+                <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/interview.png')}}" class="feature-img" alt="AI">
                         <div class="card-body p-4">
@@ -108,7 +113,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/interview.png')}}" class="feature-img" alt="AI+">
                         <div class="card-body p-4">
@@ -123,8 +128,8 @@
                         </div>
                     </div>
                 </div>
-                {% endif %}
             </div>
+            {% endif %}
         </div>
     </section>
 
