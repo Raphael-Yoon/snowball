@@ -6,7 +6,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/processing.css')}}" rel="stylesheet">
 </head>
 <body>
     <div class="container text-center mt-5">
@@ -50,17 +49,26 @@
 
     <script>
         let progressInterval;
+        const taskId = '{{ task_id }}'; // 서버에서 전달된 task_id
         
         // 진행률 업데이트 함수
         function updateProgress() {
-            console.log('🔄 Requesting progress update...');
-            fetch('/get_progress')
+            console.log(`🔄 Requesting progress update for task ${taskId}...`);
+            fetch(`/get_progress?task_id=${taskId}`)
                 .then(response => {
-                    console.log('📡 Progress response:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.statusText}`);
+                    }
                     return response.json();
                 })
                 .then(data => {
                     console.log('📊 Progress data:', data);
+                    if (data.error) {
+                        console.error('Error from server:', data.error);
+                        clearInterval(progressInterval);
+                        return;
+                    }
+
                     const progressBar = document.getElementById('progressBar');
                     const progressText = document.getElementById('progressText');
                     const currentTask = document.getElementById('currentTask');
@@ -72,97 +80,77 @@
                     currentTask.textContent = data.current_task;
                     
                     // 브라우저 제목도 업데이트
-                    document.title = `작업 진행 중 (${data.percentage}%) - ${data.current_task.substring(0, 20)}...`;
-                    
-                    console.log(`✅ Updated UI: ${data.percentage}% - ${data.current_task}`);
+                    document.title = `작업 진행 중 (${data.percentage}%)`;
                     
                     // 처리 완료 또는 처리 중이 아닐 때 폴링 중단
                     if (!data.is_processing || data.percentage >= 100) {
-                        console.log('🛑 Stopping progress polling:', data);
+                        console.log('🛑 Stopping progress polling.');
                         clearInterval(progressInterval);
                     }
                 })
                 .catch(error => {
                     console.error('❌ Progress update error:', error);
+                    clearInterval(progressInterval); // 오류 발생 시 폴링 중단
                 });
         }
         
         // 페이지 로드 후 자동으로 작업 시작
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Page loaded, starting progress monitoring...');
-            // 즉시 한 번 호출
-            updateProgress();
-            // 진행률 폴링 시작 (1초마다)
-            progressInterval = setInterval(updateProgress, 1000);
-            console.log('⏰ Progress polling started (every 1 second)');
+            console.log(`🚀 Page loaded, starting process for task ${taskId}...`);
             
-            // 실제 작업을 시작하는 AJAX 요청 (브라우저 호환성 개선)
-            console.log('Starting process_interview request...'); // 디버깅용 로그 추가
+            // 즉시 한 번 호출하여 초기 상태 표시
+            updateProgress();
+            // 진행률 폴링 시작 (1.5초마다)
+            progressInterval = setInterval(updateProgress, 1500);
+            
+            // 실제 작업을 시작하는 AJAX 요청
             var processXhr = new XMLHttpRequest();
             processXhr.open('POST', '/process_interview', true);
             processXhr.setRequestHeader('Content-Type', 'application/json');
             processXhr.onreadystatechange = function() {
                 if (processXhr.readyState === 4) {
-                    console.log('Process interview response status:', processXhr.status); // 디버깅용 로그 추가
-                    // 진행률 폴링 중단
+                    // 최종 상태를 한 번 더 업데이트하여 100%를 확실히 표시
+                    updateProgress();
                     clearInterval(progressInterval);
-                    
+
                     if (processXhr.status === 200) {
                         try {
                             var data = JSON.parse(processXhr.responseText);
-                            console.log('Process interview data:', data); // 디버깅용 로그 추가
-                            
                             if (data.success) {
-                                // 성공 시 탭 제목과 메시지 업데이트
                                 document.title = '작업 완료';
                                 document.querySelector('h2').innerHTML = '✅ AI 검토 및 문서 생성이 완료되었습니다';
                                 document.querySelector('.processing-message').innerHTML = 
                                     '<p class="text-success"><strong>🎉 ITGC 설계평가 문서가 성공적으로 생성되어 메일로 전송되었습니다!</strong></p>' +
                                     '<p>📮 메일함을 확인해 주세요.</p>';
-                                document.querySelector('.spinner-border').style.display = 'none';
-                                document.querySelector('.progress-container').style.display = 'none';
-                                document.querySelector('.alert').style.display = 'none';
-                                // AI 검토 완료 후 메인으로 이동 버튼 표시
-                                document.getElementById('mainPageBtn').style.display = 'inline-block';
+                                document.getElementById('progressBar').style.width = '100%';
+                                document.getElementById('progressText').textContent = '100%';
+                                document.getElementById('currentTask').textContent = '작업 완료!';
                             } else {
-                                // 실패 시 탭 제목과 메시지 업데이트
                                 document.title = '작업 오류';
                                 document.querySelector('h2').innerHTML = '❌ 처리 중 오류가 발생했습니다';
                                 document.querySelector('.processing-message').innerHTML = 
                                     '<p class="text-danger"><strong>⚠️ 처리 중 오류가 발생했습니다.</strong></p>' +
                                     '<p>🔧 ' + (data.error || '알 수 없는 오류가 발생했습니다.') + '</p>';
-                                document.querySelector('.spinner-border').style.display = 'none';
-                                document.querySelector('.progress-container').style.display = 'none';
-                                // 오류 발생 시에도 메인으로 이동 버튼 표시
-                                document.getElementById('mainPageBtn').style.display = 'inline-block';
                             }
                         } catch (e) {
-                            console.error('JSON parsing error:', e);
-                            // 파싱 오류 처리
                             document.title = '처리 오류';
                             document.querySelector('h2').innerHTML = '❌ 응답 처리 중 오류가 발생했습니다';
                             document.querySelector('.processing-message').innerHTML = 
-                                '<p class="text-danger"><strong>⚠️ 서버 응답 처리 중 오류가 발생했습니다.</strong></p>' +
-                                '<p>🔄 페이지를 새로고침하거나 잠시 후 다시 시도해 주세요.</p>';
-                            document.querySelector('.spinner-border').style.display = 'none';
-                            document.querySelector('.progress-container').style.display = 'none';
-                            document.getElementById('mainPageBtn').style.display = 'inline-block';
+                                '<p class="text-danger"><strong>⚠️ 서버 응답 처리 중 오류가 발생했습니다.</strong></p>';
                         }
                     } else {
-                        // HTTP 오류 처리
-                        console.error('HTTP Error:', processXhr.status);
                         document.title = '네트워크 오류';
                         document.querySelector('h2').innerHTML = '🌐 네트워크 오류 발생';
                         document.querySelector('.processing-message').innerHTML = 
-                            '<p class="text-danger"><strong>📡 네트워크 오류가 발생했습니다.</strong></p>' +
-                            '<p>🔄 페이지를 새로고침하거나 잠시 후 다시 시도해 주세요.</p>';
-                        document.querySelector('.spinner-border').style.display = 'none';
-                        document.querySelector('.progress-container').style.display = 'none';
-                        document.getElementById('mainPageBtn').style.display = 'inline-block';
+                            '<p class="text-danger"><strong>📡 서버와 통신 중 오류가 발생했습니다.</strong></p>';
                     }
+                    // 공통 UI 처리
+                    document.querySelector('.spinner-border').style.display = 'none';
+                    document.getElementById('mainPageBtn').style.display = 'inline-block';
                 }
             };
-            processXhr.send();
+            // 요청 본문에 task_id 포함
+            processXhr.send(JSON.stringify({ task_id: taskId }));
         });
     </script>
 </body>
