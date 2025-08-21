@@ -73,24 +73,35 @@
                     const progressText = document.getElementById('progressText');
                     const currentTask = document.getElementById('currentTask');
                     
-                    // 진행률 업데이트
-                    progressBar.style.width = data.percentage + '%';
-                    progressBar.setAttribute('aria-valuenow', data.percentage);
-                    progressText.textContent = data.percentage + '%';
-                    currentTask.textContent = data.current_task;
+                    // 진행률 업데이트 (안전한 타입 체크 추가)
+                    const percentage = parseInt(data.percentage) || 0;
+                    const currentTaskText = data.current_task || 'AI 검토를 준비하고 있습니다...';
+                    
+                    progressBar.style.width = percentage + '%';
+                    progressBar.setAttribute('aria-valuenow', percentage);
+                    progressText.textContent = percentage + '%';
+                    currentTask.textContent = currentTaskText;
                     
                     // 브라우저 제목도 업데이트
-                    document.title = `작업 진행 중 (${data.percentage}%)`;
+                    document.title = `작업 진행 중 (${percentage}%)`;
                     
                     // 처리 완료 또는 처리 중이 아닐 때 폴링 중단
-                    if (!data.is_processing || data.percentage >= 100) {
+                    if (!data.is_processing || percentage >= 100) {
                         console.log('🛑 Stopping progress polling.');
                         clearInterval(progressInterval);
                     }
                 })
                 .catch(error => {
                     console.error('❌ Progress update error:', error);
-                    clearInterval(progressInterval); // 오류 발생 시 폴링 중단
+                    // 네트워크 오류 시 재시도 카운터 추가
+                    if (!window.retryCount) window.retryCount = 0;
+                    window.retryCount++;
+                    
+                    if (window.retryCount >= 5) {
+                        console.log('❌ Too many retries, stopping progress polling.');
+                        clearInterval(progressInterval);
+                        document.getElementById('currentTask').textContent = '네트워크 오류로 진행상태를 확인할 수 없습니다.';
+                    }
                 });
         }
         
