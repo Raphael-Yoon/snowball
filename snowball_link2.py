@@ -454,9 +454,12 @@ def is_ineffective(control, answers):
         'APD02': len(answers) > 15 and answers[15] == 'N',
         'APD03': len(answers) > 16 and answers[16] == 'N',
         'APD04': len(answers) > 17 and answers[17] == 'N',
+        'APD05': len(answers) > 18 and answers[18] == 'N',  # 사용자 권한 Monitoring
         'APD06': len(answers) > 20 and (answers[19] == 'N' or answers[20] == 'N'),
         'APD07': len(answers) > 22 and (answers[21] == 'N' or answers[22] == 'N'),
+        'APD08': len(answers) > 22 and answers[22] == 'N',  # 데이터 변경 권한 제한
         'APD10': len(answers) > 26 and (answers[25] == 'N' or answers[26] == 'N'),
+        'APD13': len(answers) > 29 and answers[29] == 'N',  # OS 관리자 권한 제한
         'PC01': (len(answers) > 30 and answers[29] == 'N') or (len(answers) > 30 and answers[30] == 'N'),
         'PC02': (len(answers) > 31 and answers[29] == 'N') or (len(answers) > 31 and answers[31] == 'N'),
         'PC03': (len(answers) > 32 and answers[29] == 'N') or (len(answers) > 32 and answers[32] == 'N'),
