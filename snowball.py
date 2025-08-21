@@ -26,19 +26,32 @@ app = Flask(__name__)
 app.secret_key = '150606'
 
 # --- File-based Progress Tracking ---
-PROGRESS_DIR = 'progress_data'
+# WSGI 환경에서 안전한 경로 사용
+PROGRESS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'progress_data')
 if not os.path.exists(PROGRESS_DIR):
-    os.makedirs(PROGRESS_DIR)
+    try:
+        os.makedirs(PROGRESS_DIR, exist_ok=True)
+        print(f"Created progress directory: {PROGRESS_DIR}")
+    except Exception as e:
+        print(f"Error creating progress directory {PROGRESS_DIR}: {e}")
+        # 시스템 임시 디렉토리를 대안으로 사용
+        import tempfile
+        PROGRESS_DIR = os.path.join(tempfile.gettempdir(), 'snowball_progress')
+        os.makedirs(PROGRESS_DIR, exist_ok=True)
+        print(f"Using fallback progress directory: {PROGRESS_DIR}")
 
 def get_progress_status(task_id):
     """파일에서 진행률 상태 읽기"""
     progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
     if os.path.exists(progress_file):
         try:
-            with open(progress_file, 'r') as f:
-                return json.load(f)
+            with open(progress_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                print(f"Progress read for task {task_id}: {data}")  # 디버그 로그
+                return data
         except (IOError, json.JSONDecodeError) as e:
-            print(f"Error reading progress file: {e}")
+            print(f"Error reading progress file for task {task_id}: {e}")
+    print(f"Progress file not found for task {task_id}, returning default")
     return {
         'percentage': 0,
         'current_task': 'AI 검토를 준비하고 있습니다...',
@@ -49,20 +62,39 @@ def set_progress_status(task_id, status):
     """파일에 진행률 상태 저장"""
     progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
     try:
-        with open(progress_file, 'w') as f:
-            json.dump(status, f)
+        # 임시 파일에 먼저 쓰고 원자적으로 이동 (WSGI 환경에서 안전)
+        temp_file = progress_file + '.tmp'
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            json.dump(status, f, ensure_ascii=False, indent=2)
+            f.flush()  # 버퍼를 즉시 플러시
+            os.fsync(f.fileno())  # 디스크에 강제로 쓰기
+        
+        # 원자적으로 파일 이동
+        os.replace(temp_file, progress_file)
+        print(f"Progress written for task {task_id}: {status}")  # 디버그 로그
     except IOError as e:
-        print(f"Error writing progress file: {e}")
+        print(f"Error writing progress file for task {task_id}: {e}")
+        # 임시 파일이 남아있으면 삭제
+        try:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+        except:
+            pass
 
 def update_progress(task_id, percentage, task_description):
     """진행률 업데이트 함수 (파일 기반)"""
+    if task_id is None:
+        print(f"Warning: task_id is None, cannot update progress")
+        return
+        
     status = {
-        'percentage': percentage,
-        'current_task': task_description,
-        'is_processing': True
+        'percentage': int(percentage),  # 정수로 변환
+        'current_task': str(task_description),  # 문자열로 변환
+        'is_processing': percentage < 100,  # 100%가 되면 처리 완료
+        'timestamp': datetime.now().isoformat()  # 타임스탬프 추가
     }
     set_progress_status(task_id, status)
-    print(f"Progress (Task {task_id}): {percentage}% - {task_description}")
+    print(f"Progress Update (Task {task_id}): {percentage}% - {task_description}")
 
 def reset_progress(task_id):
     """진행률 파일 삭제 함수"""
@@ -392,8 +424,12 @@ def get_progress():
     """진행률 상태 조회 엔드포인트"""
     task_id = request.args.get('task_id')
     if not task_id:
+        print("Error: No task_id provided in get_progress")
         return jsonify({'error': 'No task_id provided'}), 400
+    
+    print(f"GET /get_progress called for task_id: {task_id}")
     status = get_progress_status(task_id)
+    print(f"Returning status for task {task_id}: {status}")
     return jsonify(status)
 
 @app.route('/process_interview', methods=['POST'])
