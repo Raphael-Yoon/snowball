@@ -31,7 +31,11 @@ AI_MODEL_CONFIG = {
 
 # 텍스트 길이 제한 (토큰 절약)
 TEXT_LENGTH_LIMITS = {
+<<<<<<< HEAD
+    'min_length': 20,        # 이보다 짧으면 AI 다듬기 건너뜀 (Summary 시트 포함을 위해 낮춤)
+=======
     'min_length': 50,        # 이보다 짧으면 AI 다듬기 건너뜀
+>>>>>>> b1971d66179e3dd63bae9198d43959fd84232190
     'max_length': 2000,      # 이보다 길면 AI 다듬기 건너뜀
 }
 
@@ -967,6 +971,9 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
     ]
     
     total_controls = len(control_list)
+    processed_controls = []
+    failed_controls = []
+    
     for idx, control in enumerate(control_list):
         # 진행률 계산 (20%에서 80% 사이에서 진행)
         progress_percent = 20 + int((idx / total_controls) * 60)
@@ -977,13 +984,22 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
             else:
                 progress_callback(progress_percent, f"{control} 통제 문서를 생성하고 있습니다... ({idx+1}/{total_controls})")
         
-        text_data = get_text_itgc(answers, control, textarea_answers, enable_ai_review)
-        ws = wb[control]
-        fill_sheet(ws, text_data, answers)
+        try:
+            text_data = get_text_itgc(answers, control, textarea_answers, enable_ai_review)
+            ws = wb[control]
+            fill_sheet(ws, text_data, answers)
+            processed_controls.append(control)
+            print(f"✓ {control} 처리 완료")
+        except Exception as e:
+            failed_controls.append((control, str(e)))
+            print(f"✗ {control} 처리 실패: {str(e)}")
 
         # AI 검토 결과가 있는 경우 Summary 시트용 데이터 수집
         if enable_ai_review and 'AI_Summary' in text_data and isinstance(text_data['AI_Summary'], dict):
             summary_ai_reviews[control] = text_data['AI_Summary']
+            print(f"📊 {control} AI 검토 결과 Summary 수집 완료")
+        elif enable_ai_review:
+            print(f"⚠️ {control} AI_Summary 데이터 없음: keys={list(text_data.keys()) if hasattr(text_data, 'keys') else 'N/A'}")
 
         # AI 검토 결과가 있는 경우와 없는 경우에 따라 C14 처리
         ai_review_processed = False
@@ -1022,7 +1038,18 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         #else:
         #    ws['C13'] = '화면 증빙을 첨부해주세요'
 
+    # 처리 결과 요약 출력
+    print(f"\n📋 처리 완료: {len(processed_controls)}개 통제")
+    print(f"❌ 처리 실패: {len(failed_controls)}개 통제")
+    if failed_controls:
+        for control, error in failed_controls:
+            print(f"  - {control}: {error}")
+    
     # 4. Summary 시트 처리
+    print(f"\n📊 Summary 시트 데이터: {len(summary_ai_reviews)}개 통제")
+    for control in summary_ai_reviews.keys():
+        print(f"  - {control}")
+    
     if enable_ai_review and summary_ai_reviews:
         # AI 검토가 활성화된 경우 Summary 시트 생성
         try:
