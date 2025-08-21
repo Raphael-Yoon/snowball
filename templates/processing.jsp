@@ -7,7 +7,7 @@
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
 </head>
-<body>
+<body class="processing-page" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; margin: 0;">
     <div class="container text-center mt-5">
         <div class="mb-4">
             <div class="spinner-border text-primary mb-3" role="status">
@@ -146,6 +146,7 @@
                     }
                     // 공통 UI 처리
                     document.querySelector('.spinner-border').style.display = 'none';
+                    document.querySelector('.alert-info').style.display = 'none';
                     document.getElementById('mainPageBtn').style.display = 'inline-block';
                 }
             };
