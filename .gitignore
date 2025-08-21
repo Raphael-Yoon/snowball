@@ -6,3 +6,4 @@ credentials.json
 *.pyc
 downloads/
 uploads/
+progress_data/
