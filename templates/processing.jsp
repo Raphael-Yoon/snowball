@@ -53,9 +53,14 @@
         
         // 진행률 업데이트 함수
         function updateProgress() {
+            console.log('🔄 Requesting progress update...');
             fetch('/get_progress')
-                .then(response => response.json())
+                .then(response => {
+                    console.log('📡 Progress response:', response.status);
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('📊 Progress data:', data);
                     const progressBar = document.getElementById('progressBar');
                     const progressText = document.getElementById('progressText');
                     const currentTask = document.getElementById('currentTask');
@@ -66,20 +71,30 @@
                     progressText.textContent = data.percentage + '%';
                     currentTask.textContent = data.current_task;
                     
+                    // 브라우저 제목도 업데이트
+                    document.title = `작업 진행 중 (${data.percentage}%) - ${data.current_task.substring(0, 20)}...`;
+                    
+                    console.log(`✅ Updated UI: ${data.percentage}% - ${data.current_task}`);
+                    
                     // 처리 완료 또는 처리 중이 아닐 때 폴링 중단
                     if (!data.is_processing || data.percentage >= 100) {
+                        console.log('🛑 Stopping progress polling:', data);
                         clearInterval(progressInterval);
                     }
                 })
                 .catch(error => {
-                    console.error('Progress update error:', error);
+                    console.error('❌ Progress update error:', error);
                 });
         }
         
         // 페이지 로드 후 자동으로 작업 시작
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Page loaded, starting progress monitoring...');
+            // 즉시 한 번 호출
+            updateProgress();
             // 진행률 폴링 시작 (1초마다)
             progressInterval = setInterval(updateProgress, 1000);
+            console.log('⏰ Progress polling started (every 1 second)');
             
             // 실제 작업을 시작하는 AJAX 요청 (브라우저 호환성 개선)
             console.log('Starting process_interview request...'); // 디버깅용 로그 추가
