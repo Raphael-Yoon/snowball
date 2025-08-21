@@ -1,10 +1,12 @@
-button{
+/* 기본 버튼 스타일 */
+.btn-default {
     width: 180px;
     height: 50px;
     border-radius: 20px;
     font-size: 17px;
     color: white;
     background-color: #000000;
+    border: none;
 }
 
 /* processing.jsp styles moved from inline <style> */
@@ -18,7 +20,7 @@ button{
     margin: 0;
 } */
 
-.container {
+.processing-container {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     border-radius: 20px;
@@ -194,7 +196,7 @@ h2 {
 }
 
 @media (max-width: 768px) {
-    .container {
+    .processing-container {
         margin: 1rem;
         padding: 2rem 1.5rem;
     }
@@ -208,7 +210,7 @@ h2 {
         font-size: 16px;
     }
 }
-button:hover{
+.btn-default:hover {
     background-color: #4000c7;
     box-shadow: rgba(99, 99, 99, 0.4) 0px 2px 8px 0px;
 }
@@ -244,29 +246,7 @@ button:hover{
     max-width:400px;
 }
 
-.category-title {
-    padding: 10px 15px;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
-    border-radius: 4px;
-}
-
-.category-title:hover {
-    background-color: #e9ecef;
-}
-
-.category-title i {
-    transition: transform 0.3s ease;
-}
-
-.category-title.collapsed i {
-    transform: rotate(-90deg);
-}
+/* .category-title 스타일은 common.css에서 통합 정의됨 */
 
 .option-list {
     padding-left: 15px;
@@ -278,22 +258,7 @@ button:hover{
     display: block;
 }
 
-.nav-link {
-    padding: 8px 15px;
-    color: #495057;
-    text-decoration: none;
-    display: block;
-    border-radius: 4px;
-}
-
-.nav-link:hover {
-    background-color: #e9ecef;
-}
-
-.nav-link.active {
-    background-color: #0d6efd;
-    color: white;
-}
+/* .nav-link 스타일은 common.css에서 정의됨 */
 
 .hero-section {
     background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
@@ -321,16 +286,19 @@ button:hover{
 }
 
 .hero-title {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 10px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    font-size: 2.2rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    letter-spacing: -0.5px;
 }
 
 .hero-subtitle {
-    font-size: 1rem;
-    opacity: 0.9;
+    font-size: 1.1rem;
+    opacity: 0.95;
     margin-bottom: 0;
+    font-weight: 300;
+    line-height: 1.5;
 }
 
 .feature-card {
@@ -389,6 +357,9 @@ button:hover{
 }
 
 .section-title {
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 2rem;
     text-align: center;
     margin-bottom: 50px;
     position: relative;
@@ -428,11 +399,7 @@ button:hover{
     color: #2c3e50;
 }
 
-.form-control {
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-}
+/* .form-control 스타일은 common.css에서 정의됨 */
 
 .btn-login {
     background: linear-gradient(90deg, #3498db, #2c3e50);
@@ -452,6 +419,7 @@ button:hover{
     margin-top: 20px;
 }
 
+/* 히어로 섹션 모바일 스타일 */
 @media (max-width: 768px) {
     .hero-title {
         font-size: 1.8rem;
@@ -668,15 +636,7 @@ button:hover{
   flex: 1 1 auto;
 }
 
-.sidebar {
-  width: 20% !important;
-  max-width: 20% !important;
-  min-width: 180px;
-}
-.content-area {
-  width: 80% !important;
-  max-width: 80% !important;
-}
+/* 사이드바 및 콘텐츠 영역 스타일은 common.css에서 정의됨 */
 
 .step-btns button:disabled {
   background: #e0e0e0 !important;
@@ -691,19 +651,7 @@ button:hover{
   white-space: pre-line;
 }
 
-/* 동적 크기 조정을 위한 추가 스타일 */
-.content-area {
-    width: calc(100vw - 300px);
-    max-width: 80vw;
-    min-width: 400px;
-}
-
-@media (max-width: 768px) {
-    .content-area {
-        width: calc(100vw - 250px);
-        max-width: 85vw;
-    }
-}
+/* 동적 크기 조정 스타일은 common.css로 이동됨 */
 
 /* styles for link2_ai_review.jsp */
 .ai-option-card {

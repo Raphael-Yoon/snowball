@@ -8,7 +8,7 @@
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
 </head>
 <body class="processing-page" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; margin: 0;">
-    <div class="container text-center mt-5">
+    <div class="processing-container text-center mt-5">
         <div class="mb-4">
             <div class="spinner-border text-primary mb-3" role="status">
                 <span class="visually-hidden">Loading...</span>
