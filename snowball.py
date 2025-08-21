@@ -26,7 +26,7 @@ app = Flask(__name__)
 app.secret_key = '150606'
 
 # --- File-based Progress Tracking ---
-PROGRESS_DIR = '/tmp/snowball_progress'
+PROGRESS_DIR = 'progress_data'
 if not os.path.exists(PROGRESS_DIR):
     os.makedirs(PROGRESS_DIR)
 
