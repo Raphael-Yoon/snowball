@@ -23,12 +23,47 @@ from snowball_link6 import bp_link6
 app = Flask(__name__)
 app.secret_key = '150606'
 
-# 전역 진행률 상태 관리
-progress_status = {
-    'percentage': 0,
-    'current_task': 'AI 검토를 준비하고 있습니다...',
-    'is_processing': False
-}
+# 진행률 상태 관리 (서버 환경용 - 파일 기반)
+import json
+import os
+import fcntl  # 파일 락킹용
+
+PROGRESS_FILE = '/tmp/snowball_progress.json'
+
+def get_progress_status():
+    """진행률 상태 조회 (파일에서 읽기)"""
+    try:
+        if os.path.exists(PROGRESS_FILE):
+            with open(PROGRESS_FILE, 'r', encoding='utf-8') as f:
+                fcntl.flock(f.fileno(), fcntl.LOCK_SH)  # 공유 락
+                data = json.load(f)
+                return data
+    except (FileNotFoundError, json.JSONDecodeError, PermissionError):
+        pass
+    
+    # 기본값 반환
+    return {
+        'percentage': 0,
+        'current_task': 'AI 검토를 준비하고 있습니다...',
+        'is_processing': False
+    }
+
+def set_progress_status(status):
+    """진행률 상태 저장 (파일에 쓰기)"""
+    try:
+        # 원자적 쓰기를 위해 임시 파일 사용
+        temp_file = PROGRESS_FILE + '.tmp'
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)  # 독점 락
+            json.dump(status, f, ensure_ascii=False, indent=2)
+        
+        # 원자적으로 파일 교체
+        os.rename(temp_file, PROGRESS_FILE)
+    except Exception as e:
+        print(f"Error saving progress: {e}")
+
+# 로컬 환경에서는 전역 변수도 유지 (백워드 호환성)
+progress_status = get_progress_status()
 
 # 시작할 질문 번호 설정 (1부터 시작)
 if __name__ == '__main__':
@@ -40,18 +75,22 @@ load_dotenv()
 
 def update_progress(percentage, task_description):
     """진행률 업데이트 함수"""
-    global progress_status
-    progress_status['percentage'] = percentage
-    progress_status['current_task'] = task_description
-    progress_status['is_processing'] = True
+    status = {
+        'percentage': percentage,
+        'current_task': task_description,
+        'is_processing': True
+    }
+    set_progress_status(status)
     print(f"Progress: {percentage}% - {task_description}")
 
 def reset_progress():
     """진행률 초기화 함수"""
-    global progress_status
-    progress_status['percentage'] = 0
-    progress_status['current_task'] = 'AI 검토를 준비하고 있습니다...'
-    progress_status['is_processing'] = False
+    status = {
+        'percentage': 0,
+        'current_task': 'AI 검토를 준비하고 있습니다...',
+        'is_processing': False
+    }
+    set_progress_status(status)
 
 @app.route('/')
 def index():
@@ -348,15 +387,13 @@ def processing():
 @app.route('/get_progress')
 def get_progress():
     """진행률 상태 조회 엔드포인트"""
-    global progress_status
-    return jsonify(progress_status)
+    status = get_progress_status()
+    return jsonify(status)
 
 @app.route('/process_interview', methods=['POST'])
 def process_interview():
     """실제 인터뷰 처리 및 메일 발송"""
-    global progress_status
     try:
-        progress_status['is_processing'] = True
         update_progress(5, "인터뷰 데이터를 확인하고 있습니다...")
         
         # 세션에서 답변 데이터 가져오기
@@ -393,8 +430,12 @@ def process_interview():
         )
         
         if success:
-            update_progress(100, "처리가 완료되었습니다!")
-            progress_status['is_processing'] = False
+            # 처리 완료
+            status = get_progress_status()
+            status['percentage'] = 100
+            status['current_task'] = "처리가 완료되었습니다!"
+            status['is_processing'] = False
+            set_progress_status(status)
             print(f"Mail sent successfully to {returned_email}")
             return jsonify({'success': True, 'email': returned_email})
         else:
