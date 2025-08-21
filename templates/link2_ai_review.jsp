@@ -81,34 +81,7 @@
         </div>
     </div>
 
-    <style>
-        .ai-option-card {
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 2px solid #e9ecef;
-        }
-        
-        .ai-option-card:hover {
-            border-color: #007bff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.1);
-        }
-        
-        .ai-option-card.selected {
-            border-color: #007bff;
-            background-color: #f8f9ff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
-        }
-        
-        .ai-option-card.selected .card-title {
-            color: #007bff;
-        }
-        
-        .card-body {
-            min-height: 250px;
-        }
-    </style>
+    
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
