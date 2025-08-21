@@ -36,7 +36,6 @@
                                         <ul class="list-unstyled text-start small mb-3">
                                             <li><i class="fas fa-check text-success me-2"></i>답변 내용 검토 및 개선</li>
                                             <li><i class="fas fa-check text-success me-2"></i>문장 다듬기 및 문법 교정</li>
-                                            <li><i class="fas fa-check text-success me-2"></i>일관성 검증</li>
                                             <li><i class="fas fa-check text-success me-2"></i>전문적인 검토 의견 제공</li>
                                         </ul>
                                         <p class="text-muted small">처리 시간: 2-3분</p>

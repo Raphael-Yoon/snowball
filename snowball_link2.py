@@ -7,6 +7,287 @@ from openai import OpenAI
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
+# ================================
+# AI 문장 다듬기 설정 (수기 조정 가능)
+# ================================
+
+# ===========================================
+# 📝 AI 문장 다듬기 규칙 설정 (여기서 수정하세요!)
+# ===========================================
+
+# AI 프롬프트 템플릿 (토큰 절약을 위해 간소화)
+AI_REFINEMENT_PROMPT = """문법교정만 하세요. 내용변경금지.
+
+{answer_text}
+
+오타수정, 문체통일, "답변:" 등 제거"""
+
+# OpenAI 모델 설정
+AI_MODEL_CONFIG = {
+    'model': 'gpt-4o-mini',  # 사용할 모델 (gpt-4o-mini는 저렴)
+    'max_tokens': 800,       # 최대 토큰 수
+    'temperature': 0.3       # 창의성 수준 (0.0-1.0, 낮을수록 일관적)
+}
+
+# 텍스트 길이 제한 (토큰 절약)
+TEXT_LENGTH_LIMITS = {
+    'min_length': 50,        # 이보다 짧으면 AI 다듬기 건너뜀
+    'max_length': 2000,      # 이보다 길면 AI 다듬기 건너뜀
+}
+
+# 제거할 접두사 목록 (AI 응답에서 자동 제거)
+PREFIXES_TO_REMOVE = [
+    '답변:', '결과:', '개선된 답변:', '수정된 답변:', '다듬어진 답변:', '교정된 답변:',
+    '중요한 규칙:', '지침:', '교정된 텍스트:', '수정된 내용:', '개선 결과:'
+]
+
+# 제거할 불필요한 문구 목록 (AI 응답 중간에 나타날 수 있는 메타 정보)
+UNWANTED_PHRASES = [
+    '중요한 규칙:', '지침:', '다음은 교정된 내용입니다:', 
+    '교정된 텍스트는 다음과 같습니다:', '개선된 버전:'
+]
+
+# 자동 문단 나누기 설정
+AUTO_PARAGRAPH_BREAK = {
+    'enable_sentence_break': True,   # 마침표 뒤 자동 줄바꿈 (예: "있습니다. 새로운" → "있습니다.\n\n새로운")
+    'enable_phrase_break': True,     # "아래와 같습니다" 뒤 자동 줄바꿈
+}
+
+# 추가 텍스트 처리 규칙
+TEXT_PROCESSING_RULES = {
+    'remove_double_spaces': True,    # 이중 공백 제거
+    'unify_punctuation': True,       # 문장부호 통일 (예: "。" → ".")
+    'normalize_line_breaks': True,   # 줄바꿈 정규화
+}
+
+# ITGC 통제 정의 (반복 코드 제거를 위한 데이터 구조)
+ITGC_CONTROLS = {
+    'APD01': {
+        'title': '사용자 신규 권한 승인',
+        'template': '사용자 권한 부여 이력이 시스템에 {history_status}\n\n{procedure_text}',
+        'history_idx': 12,
+        'procedure_idx': 14,
+        'textarea_idx': 14,
+        'history_yes': '기록되고 있어 모집단 확보가 가능합니다.',
+        'history_no': '기록되지 않아 모집단 확보가 불가합니다.',
+        'procedure_prefix': '새로운 권한 요청 시, 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다.',
+        'procedure_no': '새로운 권한 요청 시 승인 절차가 없습니다.',
+        'default_msg': '권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD02': {
+        'title': '부서이동자 권한 회수',
+        'template': '사용자 권한 회수 이력이 시스템에 {history_status}\n\n{procedure_text}',
+        'history_idx': 13,
+        'procedure_idx': 15,
+        'textarea_idx': 15,
+        'history_yes': '기록되고 있습니다.',
+        'history_no': '기록되지 않습니다.',
+        'procedure_prefix': '부서 이동 시 기존 권한을 회수하는 절차가 있으며 그 절차는 아래와 같습니다.',
+        'procedure_no': '부서 이동 시 기존 권한 회수 절차가 없습니다.',
+        'default_msg': '부서 이동 시 권한 회수 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD03': {
+        'title': '퇴사자 접근권한 회수',
+        'type': 'simple_procedure',
+        'procedure_idx': 16,
+        'textarea_idx': 16,
+        'procedure_prefix': '퇴사자 발생 시 접근권한을 차단하는 절차가 있으며 그 절차는 아래와 같습니다.',
+        'procedure_no': '퇴사자 발생 시 접근권한을 차단 절차가 없습니다.',
+        'default_msg': '퇴사자 접근권한 차단 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD04': {
+        'title': 'Application 관리자 권한 제한',
+        'type': 'simple_list',
+        'template': 'Application 관리자 권한을 보유한 인원은 아래와 같습니다.\n\n{content}',
+        'answer_idx': 17,
+        'default_msg': 'Application 관리자 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD05': {
+        'title': '사용자 권한 Monitoring',
+        'type': 'simple_status',
+        'template': '전체 사용자가 보유한 권한에 대한 적절성을 {status}',
+        'answer_idx': 18,
+        'status_yes': '모니터링하는 절차가 있습니다.',
+        'status_no': '모니터링 절차가 존재하지 않습니다.'
+    },
+    'APD06': {
+        'title': 'Application 패스워드',
+        'type': 'simple_list',
+        'template': '패스워드 설정 사항은 아래와 같습니다.\n\n{content}',
+        'answer_idx': 19,
+        'default_msg': '패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD07': {
+        'title': '데이터 직접 변경',
+        'template': '데이터 변경 이력이 시스템에 {history_status}\n\n{procedure_text}',
+        'history_idx': 20,
+        'procedure_idx': 21,
+        'textarea_idx': 21,
+        'history_yes': '기록되고 있어 모집단 확보가 가능합니다.',
+        'history_no': '기록되지 않아 모집단 확보가 불가합니다.',
+        'procedure_prefix': '데이터 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다.',
+        'procedure_no': '데이터 변경 시 승인 절차가 없습니다.',
+        'default_msg': '데이터 변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD08': {
+        'title': '데이터 변경 권한 제한',
+        'type': 'simple_list',
+        'template': '데이터 변경 권한을 보유한 인원은 아래와 같습니다.\n\n{content}',
+        'answer_idx': 22,
+        'default_msg': '데이터 변경 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD09': {
+        'title': 'DB 접근권한 승인',
+        'type': 'complex_db',
+        'db_type_idx': 9,
+        'db_tool_idx': 10,
+        'history_idx': 23,
+        'procedure_idx': 24,
+        'textarea_idx': 24,
+        'history_yes': '기록되고 있어 모집단 확보가 가능합니다.',
+        'history_no': '기록되지 않아 모집단 확보가 불가합니다.',
+        'procedure_prefix': 'DB 접근권한이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다.',
+        'procedure_no': 'DB 접근권한 요청 시 승인 절차가 없습니다.',
+        'default_msg': 'DB 접근권한 승인 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD10': {
+        'title': 'DB 관리자 권한 제한',
+        'type': 'simple_list',
+        'template': 'DB 관리자 권한을 보유한 인원은 아래와 같습니다.\n\n{content}',
+        'answer_idx': 25,
+        'default_msg': 'DB 관리자 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD11': {
+        'title': 'DB 패스워드',
+        'type': 'simple_list',
+        'template': 'DB 패스워드 설정사항은 아래와 같습니다.\n\n{content}',
+        'answer_idx': 26,
+        'default_msg': 'DB 패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD12': {
+        'title': 'OS 접근권한 승인',
+        'type': 'complex_os',
+        'os_type_idx': 7,
+        'os_tool_idx': 8,
+        'history_idx': 27,
+        'procedure_idx': 28,
+        'textarea_idx': 28,
+        'history_yes': '기록되고 있어 모집단 확보가 가능합니다.',
+        'history_no': '기록되지 않아 모집단 확보가 불가합니다.',
+        'procedure_prefix': 'OS 접근권한이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다.',
+        'procedure_no': 'OS 접근권한 요청 시 승인 절차가 없습니다.',
+        'default_msg': 'OS 접근권한 승인 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD13': {
+        'title': 'OS 관리자 권한 제한',
+        'type': 'simple_list',
+        'template': 'OS 관리자 권한을 보유한 인원은 아래와 같습니다.\n\n{content}',
+        'answer_idx': 29,
+        'default_msg': 'OS 관리자 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'APD14': {
+        'title': 'OS 패스워드',
+        'type': 'simple_list',
+        'template': 'OS 패스워드 설정사항은 아래와 같습니다.\n\n{content}',
+        'answer_idx': 30,
+        'default_msg': 'OS 패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'PC01': {
+        'title': '프로그램 변경 승인',
+        'template': '프로그램 변경 이력이 시스템에 {history_status}\n\n{procedure_text}',
+        'history_idx': 31,
+        'procedure_idx': 32,
+        'textarea_idx': 32,
+        'history_yes': '기록되고 있어 모집단 확보가 가능합니다.',
+        'history_no': '기록되지 않아 모집단 확보가 불가합니다.',
+        'procedure_prefix': '프로그램 변경 시 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다.',
+        'procedure_no': '프로그램 변경 시 승인 절차가 없습니다.',
+        'default_msg': '프로그램 변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'PC02': {
+        'title': '프로그램 변경 사용자 테스트',
+        'type': 'simple_procedure',
+        'procedure_idx': 33,
+        'textarea_idx': 33,
+        'procedure_prefix': '프로그램 변경 시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있으며 그 절차는 아래와 같습니다.',
+        'procedure_no': '프로그램 변경 시 사용자 테스트를 수행하지 않습니다.',
+        'default_msg': '프로그램 변경 사용자 테스트 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'PC03': {
+        'title': '프로그램 변경 이관 승인',
+        'type': 'simple_procedure',
+        'procedure_idx': 34,
+        'textarea_idx': 34,
+        'procedure_prefix': '프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다.',
+        'procedure_no': '프로그램 변경 완료 후 이관(배포) 절차가 없습니다.',
+        'default_msg': '프로그램 변경 이관 승인 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'PC04': {
+        'title': '이관(배포) 권한 제한',
+        'type': 'simple_list',
+        'template': '이관(배포) 권한을 보유한 인원은 아래와 같습니다.\n\n{content}',
+        'answer_idx': 35,
+        'default_msg': '이관(배포) 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'PC05': {
+        'title': '개발/운영 환경 분리',
+        'type': 'simple_status',
+        'template': '운영서버 외 별도의 개발 또는 테스트 서버를 {status}',
+        'answer_idx': 36,
+        'status_yes': '운용하고 있습니다.',
+        'status_no': '운용하지 않습니다.'
+    },
+    'CO01': {
+        'title': '배치 스케줄 등록/변경 승인',
+        'template': '배치 스케줄 등록/변경 이력이 시스템에 {history_status}\n\n{procedure_text}',
+        'history_idx': 37,
+        'procedure_idx': 38,
+        'textarea_idx': 38,
+        'history_yes': '기록되고 있어 모집단 확보가 가능합니다.',
+        'history_no': '기록되지 않아 모집단 확보가 불가합니다.',
+        'procedure_prefix': '배치 스케줄 등록/변경 시 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다.',
+        'procedure_no': '배치 스케줄 등록/변경 시 승인 절차가 없습니다.',
+        'default_msg': '배치 스케줄 등록/변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'CO02': {
+        'title': '배치 스케줄 등록/변경 권한 제한',
+        'type': 'simple_list',
+        'template': '배치 스케줄 등록/변경 권한을 보유한 인원은 아래와 같습니다.\n\n{content}',
+        'answer_idx': 39,
+        'default_msg': '배치 스케줄 등록/변경 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'CO03': {
+        'title': '배치 실행 모니터링',
+        'type': 'simple_list',
+        'template': '배치 실행 오류 등에 대한 모니터링은 아래와 같이 수행되고 있습니다.\n\n{content}',
+        'answer_idx': 40,
+        'default_msg': '배치 실행 오류 등에 대한 모니터링 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'CO04': {
+        'title': '장애 대응 절차',
+        'type': 'simple_list',
+        'template': '장애 발생시 이에 대응하고 조치하는 절차는 아래와 같습니다.\n\n{content}',
+        'answer_idx': 41,
+        'default_msg': '장애 발생시 이에 대응하고 조치하는 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'CO05': {
+        'title': '백업 및 모니터링',
+        'type': 'simple_list',
+        'template': '백업 수행 및 모니터링 절차는 아래와 같습니다.\n\n{content}',
+        'answer_idx': 42,
+        'default_msg': '백업 수행 및 모니터링 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    },
+    'CO06': {
+        'title': '서버실 출입 절차',
+        'type': 'simple_list',
+        'template': '서버실 출입 절차는 아래와 같습니다.\n\n{content}',
+        'answer_idx': 43,
+        'default_msg': '서버실 출입 절차에 대한 상세 기술이 제공되지 않았습니다.'
+    }
+}
+
+# ================================
+
 # 인터뷰 질문 리스트 (생략 없이 전체 복사)
 s_questions = [
     {"index": 0, "text": "산출물을 전달받을 e-Mail 주소를 입력해주세요.", "category": "Complete", "help": "", "answer_type": "2", "text_help": ""},
@@ -60,23 +341,27 @@ question_count = len(s_questions)
 # --- 통제별 검토 기준 정의 (토큰 절약을 위해 간소화) ---
 CONTROL_SPECIFIC_CRITERIA = {
     'APD01': [
-        "권한 부여 이력이 시스템에 기록되는지 확인"
+        "권한 부여 이력이 시스템에 기록되는지 확인",
+        "권한 요청에 대해 부서장의 승인 유무"
     ],
     'APD02': [
         "부서이동 시 자동 또는 수동 권한 회수 절차가 있는지 확인",
         "부서이동자가 직접 요청항 회수하는 경우는 인정 안됨"
     ],
     'APD03': [
-        "퇴사자 발생 시 자동 또는 수동 권한 회수 절차가 있는지 확인"
+        "퇴사자 발생 시 자동 또는 수동 권한 회수 절차가 있는지 확인",
+        "퇴사자가 직접 요청 가능"
     ],
     'APD04': [
         "Application 관리자 권한 보유 인원이 명확히 식별되는지 확인",
-        "관리자 권한 보유자의 부서, 직급, 직무가 구체적으로 기술되어 있는지 확인",
-        "권한 보유자가 1명인 것은 이슈가 아님"
+        "관리자 권한 보유자의 부서, 직급, 직무에 대해 관리자 업무와 적합한지 확인"
     ],
     'APD05': [
         "사용자 권한 모니터링 절차가 정기적으로 수행되는지 확인",
-        "모니터링 결과에 따른 조치 절차가 있는지 확인",
+        "전체 권한을 대상으로 하고 있는지 확인",
+        "일부 권한만 검토할 경우 타당한 이유가 있는지 확인"
+        "이슈에 대한 조치 결과가 모니터링 문서에 포함되었는지 확인",
+        "모니터링 문서의 승인 여부",
         "권한 검토 주기는 판단하지 않음"
     ],
     'APD06': [
@@ -84,19 +369,20 @@ CONTROL_SPECIFIC_CRITERIA = {
         "Application 패스워드 복잡성(영문/숫자/특수문자) 요구사항이 있는지 확인"
     ],
     'APD07': [
-        "데이터 변경 이력이 시스템에 기록되는지 확인"
+        "데이터 변경 이력이 시스템에 기록되는지 확인",
+        "데이터 변경에 대한 승인권자의 승인 여부"
     ],
     'APD08': [
         "데이터 변경 권한 보유 인원이 명확히 식별되는지 확인",
-        "권한 보유자가 1명인 것은 이슈가 아님"
+        "데이터 변경 권한 보유자의 부서, 직급, 직무가 구체적으로 기술되어 있는지 확인"
     ],
     'APD09': [
-        "DB 접근권한 부여 이력이 시스템에 기록되는지 확인"
+        "DB 접근권한 부여 이력이 시스템에 기록되는지 확인",
+        "DB 접근 필요시 승인권자의 승인 여부"
     ],
     'APD10': [
         "DB 관리자 권한 보유 인원이 명확히 식별되는지 확인",
-        "권한 보유자가 1명인 것은 이슈가 아님",
-        "DB 관리자의 자격 요건이 적절한지 확인"
+        "DB 관리자 권한 보유자의 부서, 직급, 직무에 대해 DB 관리자 업무와 적합한지 확인"
     ],
     'APD11': [
         "DB 패스워드 최소 길이가 8자 이상인지 확인",
@@ -104,18 +390,19 @@ CONTROL_SPECIFIC_CRITERIA = {
     ],
     'APD12': [
         "OS 접근권한 부여 이력이 시스템에 기록되는지 확인"
+        "OS 접근 필요시 승인권자의 승인 여부"
     ],
     'APD13': [
         "OS 관리자 권한 보유 인원이 명확히 식별되는지 확인",
-        "권한 보유자가 1명인 것은 이슈가 아님",
-        "OS 관리자의 자격 요건이 적절한지 확인"
+        "OS 관리자 권한 보유자의 부서, 직급, 직무에 대해 OS 관리자 업무와 적합한지 확인"
     ],
     'APD14': [
         "OS 패스워드 최소 길이가 8자 이상인지 확인",
         "OS 패스워드 복잡성(영문/숫자/특수문자) 요구사항이 있는지 확인"
     ],
     'PC01': [
-        "프로그램 변경 이력이 시스템에 기록되는지 확인"
+        "프로그램 변경 이력이 시스템에 기록되는지 확인",
+        "프로그램 변경시 승인권자의 승인 여부"
     ],
     'PC02': [
         "프로그램 변경 시 사용자 테스트 수행 절차가 있는지 확인",
@@ -127,17 +414,18 @@ CONTROL_SPECIFIC_CRITERIA = {
     ],
     'PC04': [
         "이관(배포) 권한 보유 인원이 명확히 식별되는지 확인",
-        "권한 보유자가 1명인 것은 이슈가 아님"
+        "이관권한 보유자의 부서, 직급, 직무에 대해 이관 업무와 적합한지 확인"
     ],
     'PC05': [
         "운영환경과 개발/테스트 환경이 물리적 또는 논리적으로 분리되어 있는지 확인"
     ],
     'CO01': [
-        "배치 스케줄 등록/변경 이력이 시스템에 기록되는지 확인"
+        "배치 스케줄 등록/변경 이력이 시스템에 기록되는지 확인",
+        "배치 스케줄 등록/변경시 승인권자의 승인 여부"
     ],
     'CO02': [
         "배치 스케줄 등록/변경 권한 보유 인원이 명확히 식별되는지 확인",
-        "권한 보유자가 1명인 것은 이슈가 아님"
+        "배치 스케줄 등록 권한 보유자의 부서, 직급, 직무에 대해 배치 스케줄 등록 업무와 적합한지 확인"
     ],
     'CO03': [
         "배치 실행 결과 모니터링 절차가 있는지 확인",
@@ -145,7 +433,6 @@ CONTROL_SPECIFIC_CRITERIA = {
     ],
     'CO04': [
         "장애 발생 시 대응 절차가 명확하게 정의되어 있는지 확인",
-        "장애 대응 담당자가 명확히 지정되어 있는지 확인",
         "장애 처리 결과 문서화 및 사후 분석 절차가 있는지 확인"
     ],
     'CO05': [
@@ -192,33 +479,65 @@ def ai_improve_interview_answer(question_text, answer_text):
         
         client = OpenAI(api_key=api_key)
         
-        prompt = f"""다음은 ITGC(IT General Controls) 인터뷰 질문과 답변입니다. 답변을 문법적으로만 다듬어주세요.
+        prompt = AI_REFINEMENT_PROMPT.format(answer_text=answer_text)
 
-질문: {question_text}
-답변: {answer_text}
-
-중요한 규칙:
-1. 원본 답변의 내용과 의미를 절대 변경하지 마세요
-2. 인터뷰에서 언급되지 않은 새로운 내용을 절대 추가하지 마세요
-3. "안쓰임", "모름", "해당없음" 등은 그대로 유지하세요
-4. 단순히 문법 교정과 맞춤법만 수정하세요
-5. 내용 추가, 삭제, 변경 금지
-
-문법만 교정된 답변을 제공해주세요."""
-
-        model_name = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
+        # AI 모델 설정 사용
+        model_name = os.getenv('OPENAI_MODEL', AI_MODEL_CONFIG['model'])
         
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": "한국어 문서 교정 및 개선 전문가. ITGC 분야에 대한 전문 지식을 보유하고 있습니다."},
+                {"role": "system", "content": "한국어 문서 교정 전문가"},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=800,
-            temperature=0.3
+            max_tokens=AI_MODEL_CONFIG['max_tokens'],
+            temperature=AI_MODEL_CONFIG['temperature']
         )
         
         result = response.choices[0].message.content.strip()
+        
+        # 불필요한 접두사 및 문구 제거
+        for prefix in PREFIXES_TO_REMOVE:
+            if result.startswith(prefix):
+                result = result[len(prefix):].strip()
+                break
+        
+        # 중간에 나타날 수 있는 불필요한 문구들 제거
+        for phrase in UNWANTED_PHRASES:
+            if phrase in result:
+                # 해당 문구가 포함된 줄을 제거
+                lines = result.split('\n')
+                result = '\n'.join([line for line in lines if phrase not in line])
+        
+        # 텍스트 형식 개선 (설정에 따라 적용)
+        import re
+        
+        if AUTO_PARAGRAPH_BREAK['enable_phrase_break']:
+            # "다음과 같습니다" 뒤에 엔터값 추가
+            result = re.sub(r'다음과 같습니다(?!\n\n)', '다음과 같습니다\n\n', result)
+            result = re.sub(r'아래와 같습니다(?!\n\n)', '아래와 같습니다\n\n', result)
+        
+        if AUTO_PARAGRAPH_BREAK['enable_sentence_break']:
+            # 서술형 마침표(.) 뒤에 엔터값 추가 (단, 이미 엔터가 있거나 문서 끝인 경우 제외)
+            # 마침표 뒤에 공백이 있고 다음 문장이 바로 이어지는 경우에만 적용
+            result = re.sub(r'\.(\s+)([가-힣])', r'.\n\n\2', result)
+            
+            # 마침표 뒤에 바로 한글이 오는 경우 (공백 없이)
+            result = re.sub(r'\.([가-힣])', r'.\n\n\1', result)
+        
+        # 추가 텍스트 처리 규칙 적용
+        if TEXT_PROCESSING_RULES['remove_double_spaces']:
+            # 이중 공백 제거
+            result = re.sub(r'\s{2,}', ' ', result)
+        
+        if TEXT_PROCESSING_RULES['unify_punctuation']:
+            # 문장부호 통일
+            result = result.replace('。', '.')
+            result = result.replace('、', ',')
+        
+        if TEXT_PROCESSING_RULES['normalize_line_breaks']:
+            # 줄바꿈 정규화 (3개 이상의 연속 줄바꿈을 2개로)
+            result = re.sub(r'\n{3,}', '\n\n', result)
         
         return {
             'improved_answer': result or answer_text,
@@ -368,7 +687,7 @@ def get_ai_review(content, control_number=None):
             criteria_text = "기본기준: 담당자1명 허용, 절차/이력 부재시 미비점"
         
         # 공통 기준은 프롬프트에 간단히 포함
-        common_note = "공통기준: 보완통제 유무는 검토대상 아님, 부서장승인 필요"
+        common_note = "공통기준: 보완통제 유무는 검토대상 아님"
 
         prompt = f"""ITGC {control_number} 검토:
 {content}
@@ -440,13 +759,21 @@ def fill_sheet(ws, text_data, answers):
         ws['C7'] = text_data['A1']
     if 'B1' in text_data:
         ws['C8'] = text_data['B1']
-    if 'B2' in text_data:
-        # AI로 다듬어진 답변을 C12에 저장
-        improved_answer = ai_improve_interview_answer("ITGC 인터뷰 답변", text_data['B2'])
-        ws['C12'] = improved_answer.get('improved_answer', text_data['B2'])
+    
+    # C12: AI로 다듬어진 내용 또는 원본 내용
+    if 'C2' in text_data:
+        ws['C12'] = text_data['C2']  # AI로 다듬어진 내용
+        # 행 높이 조정 (AI 다듬어진 내용 기준)
+        value = str(text_data['C2'])
+        num_lines = value.count('\n') + 1
+        approx_lines = num_lines + (len(value) // 50)
+        ws.row_dimensions[12].height = 15 * approx_lines
         
-        # 행 높이 조정 (개선된 답변 기준)
-        value = str(improved_answer.get('improved_answer', text_data['B2']))
+    # C2가 없는 경우 (AI 비활성화 상태)
+    elif 'B2' in text_data:
+        ws['C12'] = text_data['B2']
+        # 행 높이 조정
+        value = str(text_data['B2'])
         num_lines = value.count('\n') + 1
         approx_lines = num_lines + (len(value) // 50)
         ws.row_dimensions[12].height = 15 * approx_lines
@@ -458,179 +785,135 @@ def fill_sheet(ws, text_data, answers):
         ws['B3'] = company_name
         ws['B5'] = user_name
 
+# 텍스트 길이 체크 (토큰 사용량 최적화)
+def should_apply_ai_refinement(text):
+    """AI 다듬기를 적용할지 결정 (설정 기반)"""
+    text_len = len(text)
+    return TEXT_LENGTH_LIMITS['min_length'] <= text_len <= TEXT_LENGTH_LIMITS['max_length']
+
+# 공통 템플릿 처리 함수
+def build_control_text(control_config, answers, textarea_answers):
+    """ITGC 통제 텍스트를 공통 로직으로 생성"""
+    control_type = control_config.get('type', 'history_procedure')
+    
+    if control_type == 'complex_db':
+        # APD09 방식 (DB 복합)
+        db_info = f"DB 종류와 버전: {answers[control_config['db_type_idx']]}"
+        db_tool = f"DB 접근제어 Tool 사용 여부: {'사용' if answers[control_config['db_tool_idx']] == 'Y' else '미사용'}"
+        
+        history_status = (control_config['history_yes'] if answers[control_config['history_idx']] == 'Y' 
+                         else control_config['history_no'])
+        
+        if answers[control_config['procedure_idx']] == 'Y':
+            textarea_content = textarea_answers[control_config['textarea_idx']] if textarea_answers[control_config['textarea_idx']] else control_config['default_msg']
+            procedure_text = f"{control_config['procedure_prefix']}\n\n{textarea_content}"
+        else:
+            procedure_text = control_config['procedure_no']
+            
+        return f"{db_info}\n\n{db_tool}\n\nDB 접근권한 부여 이력이 시스템에 {history_status}\n\n{procedure_text}"
+    
+    elif control_type == 'complex_os':
+        # APD12 방식 (OS 복합)
+        os_info = f"OS 종류와 버전: {answers[control_config['os_type_idx']]}"
+        os_tool = f"OS 접근제어 Tool 사용 여부: {'사용' if answers[control_config['os_tool_idx']] == 'Y' else '미사용'}"
+        
+        history_status = (control_config['history_yes'] if answers[control_config['history_idx']] == 'Y' 
+                         else control_config['history_no'])
+        
+        if answers[control_config['procedure_idx']] == 'Y':
+            textarea_content = textarea_answers[control_config['textarea_idx']] if textarea_answers[control_config['textarea_idx']] else control_config['default_msg']
+            procedure_text = f"{control_config['procedure_prefix']}\n\n{textarea_content}"
+        else:
+            procedure_text = control_config['procedure_no']
+            
+        return f"{os_info}\n\n{os_tool}\n\nOS 접근권한 부여 이력이 시스템에 {history_status}\n\n{procedure_text}"
+    
+    elif control_type == 'history_procedure' or 'history_idx' in control_config:
+        # 기존 APD01, APD02 방식 (이력 + 절차)
+        history_status = (control_config['history_yes'] if answers[control_config['history_idx']] == 'Y' 
+                         else control_config['history_no'])
+        
+        if 'procedure_idx' in control_config:
+            if answers[control_config['procedure_idx']] == 'Y':
+                textarea_content = textarea_answers[control_config['textarea_idx']] if textarea_answers[control_config['textarea_idx']] else control_config['default_msg']
+                procedure_text = f"{control_config['procedure_prefix']}\n\n{textarea_content}"
+            else:
+                procedure_text = control_config['procedure_no']
+        else:
+            procedure_text = ""
+            
+        return control_config['template'].format(
+            history_status=history_status,
+            procedure_text=procedure_text
+        )
+    
+    elif control_type == 'simple_procedure':
+        # APD03 방식 (단순 절차)
+        if answers[control_config['procedure_idx']] == 'Y':
+            textarea_content = textarea_answers[control_config['textarea_idx']] if textarea_answers[control_config['textarea_idx']] else control_config['default_msg']
+            return f"{control_config['procedure_prefix']}\n\n{textarea_content}"
+        else:
+            return control_config['procedure_no']
+    
+    elif control_type == 'simple_list':
+        # APD04, APD06 방식 (단순 리스트)
+        content = answers[control_config['answer_idx']] if answers[control_config['answer_idx']] else control_config['default_msg']
+        return control_config['template'].format(content=content)
+    
+    elif control_type == 'simple_status':
+        # APD05, PC05 방식 (단순 상태)
+        status = (control_config['status_yes'] if answers[control_config['answer_idx']] == 'Y' 
+                 else control_config['status_no'])
+        return control_config['template'].format(status=status)
+    
+    
+    return control_config.get('default_msg', '상세 기술이 제공되지 않았습니다.')
+
 def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_review=False):
     result = {}
     if textarea_answers is None:
         textarea_answers = [''] * len(answers)
 
-    if control_number == 'APD01':
-        result['A1'] = "APD01"
-        result['B1'] = "사용자 신규 권한 승인"
-        result['B2'] = "사용자 권한 부여 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[12] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
-            "새로운 권한 요청 시, 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
-                f"\n{textarea_answers[14]}" if textarea_answers[14] else "\n\n권한 부여 절차에 대한 상세 기술이 제공되지 않았습니다."
-            ) if answers[14] == 'Y' else "새로운 권한 요청 시 승인 절차가 없습니다.")
+    # 공통 로직으로 처리
+    result['A1'] = control_number
+    
+    if control_number in ITGC_CONTROLS:
+        config = ITGC_CONTROLS[control_number]
+        result['B1'] = config['title']
+        result['B2'] = build_control_text(config, answers, textarea_answers)
 
-    elif control_number == 'APD02':
-        result['A1'] = "APD02"
-        result['B1'] = "부서이동자 권한 회수"
-        result['B2'] = "사용자 권한 회수 이력이 시스템에 " + ("기록되고 있습니다." if answers[13] == 'Y' else "기록되지 않습니다.") + "\n\n" + (
-            "부서 이동 시 기존 권한을 회수하는 절차가 있으며 그 절차는 아래와 같습니다." + (
-                f"\n{textarea_answers[15]}" if textarea_answers[15] else "\n\n부서 이동 시 권한 회수 절차에 대한 상세 기술이 제공되지 않았습니다."
-            ) if answers[15] == 'Y' else "부서 이동 시 기존 권한 회수 절차가 없습니다.")
-
-    elif control_number == 'APD03':
-        result['A1'] = "APD03"
-        result['B1'] = "퇴사자 접근권한 회수"
-        result['B2'] = "퇴사자 발생 시 접근권한을 " + ("차단하는 절차가 있으며 그 절차는 아래와 같습니다." if answers[16] == 'Y' else "차단 절차가 없습니다.") + (
-            f"\n{textarea_answers[16]}" if textarea_answers[16] else "\n퇴사자 접근권한 차단 절차에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'APD04':
-        result['A1'] = "APD04"
-        result['B1'] = "Application 관리자 권한 제한"
-        result['B2'] = "Application 관리자 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[17] if answers[17] else "Application 관리자 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'APD05':
-        result['A1'] = "APD05"
-        result['B1'] = "사용자 권한 Monitoring"
-        result['B2'] = "전체 사용자가 보유한 권한에 대한 적절성을 " + ("모니터링하는 절차가 있습니다." if answers[18] == 'Y' else "모니터링 절차가 존재하지 않습니다.")
-
-    elif control_number == 'APD06':
-        result['A1'] = "APD06"
-        result['B1'] = "Application 패스워드"
-        result['B2'] = "패스워드 설정 사항은 아래와 같습니다 \n\n" + (answers[19] if answers[19] else "패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'APD07':
-        result['A1'] = "APD07"
-        result['B1'] = "데이터 직접 변경"
-        result['B2'] = "데이터 변경 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[20] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
-            "데이터 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
-                f"\n{textarea_answers[21]}" if textarea_answers[21] else "데이터 변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
-            ) if answers[21] == 'Y' else "데이터 변경 시 승인 절차가 없습니다.")
-
-    elif control_number == 'APD08':
-            result['A1'] = "APD08"
-            result['B1'] = "데이터 변경 권한 제한"
-            result['B2'] = "데이터 변경 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[22] if answers[22] else "데이터 변경 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'APD09':
-        result['A1'] = "APD09"
-        result['B1'] = "DB 접근권한 승인"
-        result['B2'] = f"DB 종류와 버전: {answers[9]}" + f"\n\nDB 접근제어 Tool 사용 여부: {'사용' if answers[10] == 'Y' else '미사용'}" + "\n\n" + (
-            "DB 접근권한 부여 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[23] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
-                "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
-                    f"\n{textarea_answers[24]}" if textarea_answers[24] else "DB 접근권한 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
-                ) if answers[24] == 'Y' else "DB 접근권한 요청 시 승인 절차가 없습니다."
-            )
-        )
-
-    elif control_number == 'APD10':
-        result['A1'] = "APD10"
-        result['B1'] = "DB 관리자 권한 제한"
-        result['B2'] = "DB 관리자 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[25] if answers[25] else "DB 관리자 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'APD11':
-        result['A1'] = "APD11"
-        result['B1'] = "DB 패스워드"
-        result['B2'] = "DB 패스워드 설정사항은 아래와 같습니다.\n" + (answers[26] if answers[26] else "DB 패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'APD12':
-        result['A1'] = "APD12"
-        result['B1'] = "OS 접근권한 승인"
-        result['B2'] = f"OS 종류와 버전: {answers[7]}" + f"\n\nOS 접근제어 Tool 사용 여부: {'사용' if answers[8] == 'Y' else '미사용'}" + "\n\n" + (
-            "OS 접근권한 부여 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[27] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
-                "OS 접근권한이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
-                    f"\n{textarea_answers[28]}" if textarea_answers[28] else "OS 접근권한 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
-                ) if answers[28] == 'Y' else "OS 접근권한 요청 시 승인 절차가 없습니다."
-            )
-        )
-
-    elif control_number == 'APD13':
-        result['A1'] = "APD13"
-        result['B1'] = "OS 관리자 권한 제한"
-        result['B2'] = "OS 관리자 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[29] if answers[29] else "OS 관리자 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'APD14':
-        result['A1'] = "APD14"
-        result['B1'] = "OS 패스워드"
-        result['B2'] = "OS 패스워드 설정사항은 아래와 같습니다.\n" + (answers[30] if answers[30] else "OS 패스워드 설정 사항에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'PC01':
-        result['A1'] = "PC01"
-        result['B1'] = "프로그램 변경 승인"
-        result['B2'] = "프로그램 변경 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[31] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
-            "프로그램 변경 시 요청서를 작성하고 부서장의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
-                f"\n{textarea_answers[32]}" if textarea_answers[32] else "\n프로그램 변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
-            ) if answers[32] == 'Y' else "프로그램 변경 시 승인 절차가 없습니다.")
-
-    elif control_number == 'PC02':
-        result['A1'] = "PC02"
-        result['B1'] = "프로그램 변경 사용자 테스트"
-        result['B2'] = "프로그램 변경 시 사용자 테스트를 " + ("수행하고 그 결과를 문서화하는 절차가 있으며 그 절차는 아래와 같습니다." if answers[33] == 'Y' else "수행하지 않습니다.") + (
-            f"\n{textarea_answers[33]}" if textarea_answers[33] else "\n프로그램 변경 사용자 테스트 절차에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'PC03':
-        result['A1'] = "PC03"
-        result['B1'] = "프로그램 변경 이관 승인"
-        result['B2'] = "프로그램 변경 완료 후 이관(배포)을 위해 " + ("부서장 등의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." if answers[34] == 'Y' else "이관(배포) 절차가 없습니다.") + (
-            f"\n{textarea_answers[34]}" if textarea_answers[34] else "\n프로그램 변경 이관 승인 절차에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'PC04':
-        result['A1'] = "PC04"
-        result['B1'] = "이관(배포) 권한 제한"
-        result['B2'] = "이관(배포) 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[35] if answers[35] else "이관(배포) 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'PC05':
-        result['A1'] = "PC05"
-        result['B1'] = "개발/운영 환경 분리"
-        result['B2'] = "운영서버 외 별도의 개발 또는 테스트 서버를 " + ("운용하고 있습니다." if answers[36] == 'Y' else "운용하지 않습니다.")
-
-    elif control_number == 'CO01':
-        result['A1'] = "CO01"
-        result['B1'] = "배치 스케줄 등록/변경 승인"
-        result['B2'] = "배치 스케줄 등록/변경 이력이 시스템에 " + ("기록되고 있어 모집단 확보가 가능합니다." if answers[37] == 'Y' else "기록되지 않아 모집단 확보가 불가합니다.") + "\n\n" + (
-            "배치 스케줄 등록/변경 시 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있으며 그 절차는 아래와 같습니다." + (
-                f"\n{textarea_answers[38]}" if textarea_answers[38] else "\n배치 스케줄 등록/변경 승인 절차에 대한 상세 기술이 제공되지 않았습니다."
-            ) if answers[38] == 'Y' else "배치 스케줄 등록/변경 시 승인 절차가 없습니다.")
-
-    elif control_number == 'CO02':
-        result['A1'] = "CO02"
-        result['B1'] = "배치 스케줄 등록/변경 권한 제한"
-        result['B2'] = "배치 스케줄 등록/변경 권한을 보유한 인원은 아래와 같습니다.\n" + (answers[39] if answers[39] else "배치 스케줄 등록/변경 권한을 보유한 인원에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'CO03':
-        result['A1'] = "CO03"
-        result['B1'] = "배치 실행 모니터링"
-        result['B2'] = "배치 실행 오류 등에 대한 모니터링은 아래와 같이 수행되고 있습니다\n" + (answers[40] if answers[40] else "배치 실행 오류 등에 대한 모니터링 절차에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'CO04':
-        result['A1'] = "CO04"
-        result['B1'] = "장애 대응 절차"
-        result['B2'] = "장애 발생시 이에 대응하고 조치하는 절차는 아래와 같습니다\n" + (answers[41] if answers[41] else "장애 발생시 이에 대응하고 조치하는 절차에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'CO05':
-        result['A1'] = "CO05"
-        result['B1'] = "백업 및 모니터링"
-        result['B2'] = "백업 수행 및 모니터링 절차는 아래와 같습니다.\n" + (answers[42] if answers[42] else "백업 수행 및 모니터링 절차에 대한 상세 기술이 제공되지 않았습니다.")
-
-    elif control_number == 'CO06':
-        result['A1'] = "CO06"
-        result['B1'] = "서버실 출입 절차"
-        result['B2'] = "서버실 출입 절차는 아래와 같습니다.\n" + (answers[43] if answers[43] else "서버실 출입 절차에 대한 상세 기술이 제공되지 않았습니다.")
-
+    # APD03-CO06은 이제 모두 ITGC_CONTROLS에서 처리됨
+    
     else:
+        # 알 수 없는 통제 번호 처리
         result['A1'] = f"Unknown control number: {control_number}"
         result['B1'] = ""
         result['B2'] = "알 수 없는 통제 번호입니다."
 
-    # AI 검토 기능이 활성화되어 있고 B2 값이 있는 경우 AI 검토 수행
+    # AI 기능 적용 (토큰 사용량 최적화)
     if enable_ai_review and 'B2' in result and result['B2']:
-        print(f"🤖 AI 검토 시작: {control_number}")
-        ai_review = get_ai_review(result['B2'], control_number)
-        result['AI_Review'] = ai_review
-        # Summary 시트용 AI 검토 결과도 저장
-        result['AI_Summary'] = ai_review
-        print(f"✅ AI 검토 완료: {control_number}")
+        # 텍스트 길이 체크로 불필요한 API 호출 방지
+        if should_apply_ai_refinement(result['B2']):
+            print(f"🤖 AI 다듬기 시작: {control_number}")
+            
+            improved_text = ai_improve_interview_answer("", result['B2'])  # 질문 텍스트 제거로 토큰 절약
+            if improved_text and improved_text.get('improved_answer'):
+                result['C2'] = improved_text['improved_answer']
+                print(f"📝 AI 다듬기 완료: {control_number}")
+            else:
+                result['C2'] = result['B2']
+            
+            # AI 검토 수행
+            print(f"🔍 AI 검토 시작: {control_number}")
+            ai_review = get_ai_review(result['C2'], control_number)
+            result['AI_Review'] = ai_review
+            result['AI_Summary'] = ai_review
+            print(f"✅ AI 검토 완료: {control_number}")
+        else:
+            print(f"⏭️ AI 다듬기 건너뜀 (길이): {control_number}")
+            result['C2'] = result['B2']
+    else:
+        result['C2'] = result['B2']
 
     return result
 

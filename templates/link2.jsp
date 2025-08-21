@@ -26,7 +26,7 @@
         </div>
 
         <!-- 섹션 제목 -->
-        <div class="text-center">
+        <div class="text-center mt-3">
             <h1 class="section-title">
                 {% if 0 <= current_index <= 11 %}
                     <i class="fas fa-server"></i> 공통사항
