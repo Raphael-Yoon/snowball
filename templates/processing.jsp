@@ -51,73 +51,35 @@
     <script>
         let progressInterval;
         
-        // 진행률 업데이트 함수 (브라우저 호환성 개선)
+        // 진행률 업데이트 함수
         function updateProgress() {
-            // XMLHttpRequest를 사용하여 브라우저 호환성 개선
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/get_progress', true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            var data = JSON.parse(xhr.responseText);
-                            console.log('Progress data received:', data); // 디버깅용 로그 추가
-                            
-                            var progressBar = document.getElementById('progressBar');
-                            var progressText = document.getElementById('progressText');
-                            var currentTask = document.getElementById('currentTask');
-                            
-                            // 진행률 업데이트 (강제로 보이도록)
-                            if (progressBar) {
-                                progressBar.style.width = data.percentage + '%';
-                                progressBar.setAttribute('aria-valuenow', data.percentage);
-                                // 진행률이 변경되면 색상도 변경
-                                if (data.percentage > 0) {
-                                    progressBar.style.backgroundColor = '#007bff';
-                                }
-                                console.log('Updated progress bar to:', data.percentage + '%');
-                            }
-                            if (progressText) {
-                                progressText.textContent = data.percentage + '%';
-                                console.log('Updated progress text to:', data.percentage + '%');
-                            }
-                            if (currentTask) {
-                                currentTask.textContent = data.current_task;
-                                // 작업이 변경되면 배경색 잠깐 변경
-                                currentTask.style.backgroundColor = '#f8f9fa';
-                                setTimeout(function() {
-                                    currentTask.style.backgroundColor = '';
-                                }, 200);
-                                console.log('Updated current task to:', data.current_task);
-                            }
-                            
-                            // 브라우저 제목에도 진행률 표시
-                            document.title = `작업 진행 중 (${data.percentage}%) - ${data.current_task.substring(0, 20)}...`;
-                            
-                            // 처리 완료 또는 처리 중이 아닐 때 폴링 중단
-                            if (!data.is_processing || data.percentage >= 100) {
-                                console.log('Stopping progress polling:', data); // 디버깅용 로그 추가
-                                clearInterval(progressInterval);
-                            }
-                        } catch (e) {
-                            console.error('Progress parsing error:', e);
-                        }
-                    } else {
-                        console.error('Progress request failed:', xhr.status);
+            fetch('/get_progress')
+                .then(response => response.json())
+                .then(data => {
+                    const progressBar = document.getElementById('progressBar');
+                    const progressText = document.getElementById('progressText');
+                    const currentTask = document.getElementById('currentTask');
+                    
+                    // 진행률 업데이트
+                    progressBar.style.width = data.percentage + '%';
+                    progressBar.setAttribute('aria-valuenow', data.percentage);
+                    progressText.textContent = data.percentage + '%';
+                    currentTask.textContent = data.current_task;
+                    
+                    // 처리 완료 또는 처리 중이 아닐 때 폴링 중단
+                    if (!data.is_processing || data.percentage >= 100) {
+                        clearInterval(progressInterval);
                     }
-                }
-            };
-            xhr.send();
+                })
+                .catch(error => {
+                    console.error('Progress update error:', error);
+                });
         }
         
         // 페이지 로드 후 자동으로 작업 시작
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, starting progress polling...');
-            // 진행률 폴링 시작 (0.5초마다로 빠르게)
-            progressInterval = setInterval(updateProgress, 500);
-            
-            // 즉시 한번 호출
-            updateProgress();
+            // 진행률 폴링 시작 (1초마다)
+            progressInterval = setInterval(updateProgress, 1000);
             
             // 실제 작업을 시작하는 AJAX 요청 (브라우저 호환성 개선)
             console.log('Starting process_interview request...'); // 디버깅용 로그 추가
