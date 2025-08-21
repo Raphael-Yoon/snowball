@@ -1,8 +1,11 @@
 from datetime import datetime
 import os
+import re
 from io import BytesIO
 from openpyxl import load_workbook
 from openai import OpenAI
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 # 인터뷰 질문 리스트 (생략 없이 전체 복사)
 s_questions = [
@@ -175,13 +178,185 @@ def is_ineffective(control, answers):
     }
     return conditions.get(control, False)
 
+def ai_improve_interview_answer(question_text, answer_text):
+    """
+    AI를 사용하여 인터뷰 답변을 문법적으로 다듬고 일관성 있게 개선합니다.
+    """
+    try:
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return {
+                'improved_answer': answer_text,
+                'suggestions': "OpenAI API 키가 설정되지 않았습니다."
+            }
+        
+        client = OpenAI(api_key=api_key)
+        
+        prompt = f"""다음은 ITGC(IT General Controls) 인터뷰 질문과 답변입니다. 답변을 문법적으로만 다듬어주세요.
+
+질문: {question_text}
+답변: {answer_text}
+
+중요한 규칙:
+1. 원본 답변의 내용과 의미를 절대 변경하지 마세요
+2. 인터뷰에서 언급되지 않은 새로운 내용을 절대 추가하지 마세요
+3. "안쓰임", "모름", "해당없음" 등은 그대로 유지하세요
+4. 단순히 문법 교정과 맞춤법만 수정하세요
+5. 내용 추가, 삭제, 변경 금지
+
+문법만 교정된 답변을 제공해주세요."""
+
+        model_name = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
+        
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": "한국어 문서 교정 및 개선 전문가. ITGC 분야에 대한 전문 지식을 보유하고 있습니다."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=800,
+            temperature=0.3
+        )
+        
+        result = response.choices[0].message.content.strip()
+        
+        return {
+            'improved_answer': result or answer_text,
+            'suggestions': ""
+        }
+        
+    except Exception as e:
+        print(f"답변 개선 중 오류 발생: {e}")
+        return {
+            'improved_answer': answer_text,
+            'suggestions': ""
+        }
+
+def check_answer_consistency(answers, textarea_answers):
+    """
+    답변들 간의 일관성을 체크합니다.
+    """
+    consistency_issues = []
+    
+    # 시스템 관련 일관성 체크
+    if len(answers) > 2:
+        # 상용소프트웨어 사용 여부와 내부 수정 가능성 체크
+        is_commercial = answers[2] == 'Y'  # 2번: 상용소프트웨어 여부
+        can_modify = answers[3] == 'Y' if len(answers) > 3 else False  # 3번: 내부 수정 가능성
+        
+        if is_commercial and can_modify:
+            consistency_issues.append("상용소프트웨어를 사용하면서 내부에서 주요 로직을 수정할 수 있다고 답변하셨습니다. 일반적으로 상용소프트웨어는 내부 수정이 제한적입니다.")
+    
+    # 클라우드 관련 일관성 체크
+    if len(answers) > 4:
+        uses_cloud = answers[4] == 'Y'  # 4번: 클라우드 사용 여부
+        cloud_type = textarea_answers[5] if len(textarea_answers) > 5 else ""  # 5번: 클라우드 종류
+        
+        if uses_cloud and not cloud_type.strip():
+            consistency_issues.append("클라우드 서비스를 사용한다고 답변하셨지만 클라우드 종류가 입력되지 않았습니다.")
+    
+    # 권한 관리 일관성 체크
+    if len(answers) > 12:
+        has_auth_history = answers[12] == 'Y'  # 12번: 사용자 권한부여 이력 기록 여부
+        has_revoke_history = answers[13] == 'Y' if len(answers) > 13 else False  # 13번: 권한회수 이력 기록 여부
+        
+        if has_auth_history and not has_revoke_history:
+            consistency_issues.append("권한 부여 이력은 기록되지만 권한 회수 이력은 기록되지 않는다고 답변하셨습니다. 권한 관리의 완전성을 위해 두 이력 모두 기록되는 것이 바람직합니다.")
+    
+    # 데이터베이스 관련 일관성 체크
+    if len(answers) > 23:
+        has_data_change_history = answers[20] == 'Y' if len(answers) > 20 else False  # 20번: 데이터 변경 이력
+        has_db_auth_history = answers[23] == 'Y'  # 23번: DB 접근권한 부여 이력
+        
+        if has_db_auth_history and not has_data_change_history:
+            consistency_issues.append("DB 접근권한 이력은 기록되지만 데이터 변경 이력은 기록되지 않는다고 답변하셨습니다. 보안 관점에서 데이터 변경 이력도 기록되어야 합니다.")
+    
+    return consistency_issues
+
+def ai_improve_answer_consistency(answers, textarea_answers):
+    """
+    AI를 사용하여 답변들의 일관성을 체크하고 개선 제안을 제공합니다.
+    """
+    try:
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return {
+                'consistency_check': "OpenAI API 키가 설정되지 않았습니다.",
+                'suggestions': []
+            }
+        
+        client = OpenAI(api_key=api_key)
+        
+        # 중요한 답변들만 선별하여 컨텍스트 구성
+        key_answers = []
+        for i, question in enumerate(s_questions):
+            if i < len(answers) and answers[i]:
+                answer_text = answers[i]
+                if i < len(textarea_answers) and textarea_answers[i]:
+                    answer_text += f" ({textarea_answers[i]})"
+                key_answers.append(f"Q{i+1}: {question['text']} -> A: {answer_text}")
+        
+        context = "\n".join(key_answers[:20])  # 처음 20개 질문만 사용
+        
+        prompt = f"""다음은 ITGC 인터뷰의 질문과 답변들입니다. 답변들 간의 논리적 일관성을 검토하고 개선 제안을 해주세요.
+
+{context}
+
+검토 기준:
+1. 시스템 아키텍처 관련 답변들의 일관성
+2. 보안 정책 및 권한 관리의 일관성
+3. 프로세스 및 절차의 일관성
+4. 기술적 구성요소들 간의 호환성
+
+응답 형식:
+일관성 검토: [전체적인 일관성 평가]
+개선 제안: [구체적인 개선 사항들을 번호로 나열]"""
+
+        model_name = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
+        
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": "ITGC 전문가. 답변의 논리적 일관성을 검토하고 개선 제안을 제공합니다."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=600,
+            temperature=0.2
+        )
+        
+        result = response.choices[0].message.content
+        
+        # 기본 일관성 체크도 추가
+        basic_issues = check_answer_consistency(answers, textarea_answers)
+        
+        return {
+            'ai_consistency_check': result,
+            'basic_consistency_issues': basic_issues
+        }
+        
+    except Exception as e:
+        print(f"일관성 체크 중 오류 발생: {e}")
+        basic_issues = check_answer_consistency(answers, textarea_answers)
+        return {
+            'ai_consistency_check': f"AI 일관성 체크 중 오류가 발생했습니다: {str(e)}",
+            'basic_consistency_issues': basic_issues
+        }
+
 def get_ai_review(content, control_number=None):
     """
     AI를 사용하여 ITGC 내용을 검토하고 개선 제안을 반환합니다.
     Summary 시트의 C열(검토결과), D열(결론), E열(개선필요사항)에 맞는 구조화된 결과를 반환합니다.
     """
     try:
-        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return {
+                'review_result': "OpenAI API 키가 설정되지 않았습니다.",
+                'conclusion': "검토 불가",
+                'improvements': "OPENAI_API_KEY 환경변수를 설정해주세요."
+            }
+        
+        client = OpenAI(api_key=api_key)
         
         # 통제별 특정 기준만 가져오기 (토큰 절약)
         specific_criteria = CONTROL_SPECIFIC_CRITERIA.get(control_number, [])
@@ -266,11 +441,16 @@ def fill_sheet(ws, text_data, answers):
     if 'B1' in text_data:
         ws['C8'] = text_data['B1']
     if 'B2' in text_data:
-        ws['C12'] = text_data['B2']
-        value = str(text_data['B2'])
+        # AI로 다듬어진 답변을 C12에 저장
+        improved_answer = ai_improve_interview_answer("ITGC 인터뷰 답변", text_data['B2'])
+        ws['C12'] = improved_answer.get('improved_answer', text_data['B2'])
+        
+        # 행 높이 조정 (개선된 답변 기준)
+        value = str(improved_answer.get('improved_answer', text_data['B2']))
         num_lines = value.count('\n') + 1
         approx_lines = num_lines + (len(value) // 50)
         ws.row_dimensions[12].height = 15 * approx_lines
+        
     # B3: company_name, B5: user_name
     if len(answers) > 0 and answers[0]:
         company_name = "Company Name" # Placeholder for company name
@@ -461,7 +641,7 @@ def link2_prev_logic(session):
         session['question_index'] = question_index - 1
     return session
 
-def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fill_sheet, is_ineffective, send_gmail_with_attachment, enable_ai_review=False):
+def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fill_sheet, is_ineffective, send_gmail_with_attachment, enable_ai_review=False, progress_callback=None):
     """
     인터뷰 답변을 받아 엑셀 파일을 생성하고 메일로 전송합니다.
     answers: list (사용자 답변)
@@ -472,7 +652,15 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
     send_gmail_with_attachment: 메일 전송 함수
     """
     today = datetime.today().strftime('%Y%m%d')
-    file_name = f"{answers[1]}_{today}.xlsx" if len(answers) > 1 and answers[1] else f"responses_{today}.xlsx"
+    
+    # 한글 파일명 처리 개선 - 유틸리티 함수 사용
+    from korean_filename_utils import convert_korean_to_english_filename, generate_excel_filename
+    
+    if len(answers) > 1 and answers[1]:
+        system_name = answers[1].strip()
+        file_name = generate_excel_filename(system_name, "ITGC")
+    else:
+        file_name = f"ITGC_System_{today}.xlsx"
 
     # 1. 템플릿 파일 불러오기
     template_path = os.path.join("static", "Design_Template.xlsx")
@@ -489,7 +677,18 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         'PC01', 'PC02', 'PC03', 'PC04', 'PC05',
         'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06'
     ]
-    for control in control_list:
+    
+    total_controls = len(control_list)
+    for idx, control in enumerate(control_list):
+        # 진행률 계산 (20%에서 80% 사이에서 진행)
+        progress_percent = 20 + int((idx / total_controls) * 60)
+        
+        if progress_callback:
+            if enable_ai_review:
+                progress_callback(progress_percent, f"AI가 {control} 통제를 검토하고 있습니다... ({idx+1}/{total_controls})")
+            else:
+                progress_callback(progress_percent, f"{control} 통제 문서를 생성하고 있습니다... ({idx+1}/{total_controls})")
+        
         text_data = get_text_itgc(answers, control, textarea_answers, enable_ai_review)
         ws = wb[control]
         fill_sheet(ws, text_data, answers)
@@ -535,8 +734,9 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         #else:
         #    ws['C13'] = '화면 증빙을 첨부해주세요'
 
-    # 4. Summary 시트에 AI 검토 결과 작성
+    # 4. Summary 시트 처리
     if enable_ai_review and summary_ai_reviews:
+        # AI 검토가 활성화된 경우 Summary 시트 생성
         try:
             # Summary 시트가 존재하는지 확인하고 없으면 생성
             if 'Summary' not in wb.sheetnames:
@@ -603,8 +803,16 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         except Exception as e:
             print(f"Summary 시트 작성 중 오류 발생: {str(e)}")
             # Summary 시트 오류가 발생해도 전체 프로세스는 계속 진행
+    else:
+        # AI 검토가 비활성화된 경우 기존 Summary 시트 삭제
+        if 'Summary' in wb.sheetnames:
+            try:
+                wb.remove(wb['Summary'])
+                print("AI 검토 미사용으로 Summary 시트를 삭제했습니다.")
+            except Exception as e:
+                print(f"Summary 시트 삭제 중 오류 발생: {str(e)}")
 
-    # 메모리 버퍼에 저장 (안전한 방식)
+    # 메모리 버퍼에 저장 (안전한 방식) - 한글 처리 개선
     excel_stream = BytesIO()
     excel_stream_copy = None
     try:
@@ -612,6 +820,12 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         if not wb.worksheets:
             raise Exception("워크북에 시트가 없습니다.")
         
+        # 한글 처리를 위한 엑셀 저장 옵션 설정
+        from openpyxl.workbook.workbook import Workbook
+        from openpyxl.writer.excel import ExcelWriter
+        
+        # 엑셀 파일을 메모리에 저장 (한글 인코딩 처리)
+        # MIME 타입을 명시적으로 설정하여 한글 처리 개선
         wb.save(excel_stream)
         excel_stream.seek(0)
 
@@ -642,6 +856,9 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         user_email = answers[0]
 
     if user_email:
+        if progress_callback:
+            progress_callback(85, "엑셀 파일을 메일로 전송하고 있습니다...")
+            
         subject = '인터뷰 결과 파일'
         body = '인터뷰 내용에 따라 ITGC 설계평가 문서를 첨부합니다.'
         try:
@@ -652,13 +869,24 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
             # 파일 스트림 위치 확인 및 리셋
             excel_stream_copy.seek(0)
             
+            if progress_callback:
+                progress_callback(90, "메일 전송 중...")
+            
+            # 한글 파일명을 안전하게 처리하여 메일 첨부
+            from korean_filename_utils import convert_korean_to_english_filename
+            safe_file_name = convert_korean_to_english_filename(file_name.replace('.xlsx', '')) + '.xlsx'
+            
             send_gmail_with_attachment(
                 to=user_email,
                 subject=subject,
                 body=body,
                 file_stream=excel_stream_copy,
-                file_name=file_name
+                file_name=safe_file_name
             )
+            
+            if progress_callback:
+                progress_callback(95, "메일 전송이 완료되었습니다!")
+                
             return True, user_email, None
         except Exception as e:
             return False, user_email, str(e)

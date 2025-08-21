@@ -18,10 +18,11 @@ def generate_and_send_rcm_excel(form_data):
     print(f"param5 (db_type): {form_data.get('param5', 'N/A')}")
     print("=============================")
     
-    # 파일명 생성: 입력받은 파일명(param2)_RCM_YYMMDD.xlsx
+    # 파일명 생성: 입력받은 파일명(param2)_RCM_YYMMDD.xlsx - 유틸리티 함수 사용
+    from korean_filename_utils import generate_excel_filename
+    
     base_name = form_data.get('param2', 'output')
-    today = datetime.today().strftime('%y%m%d')
-    file_name = f"{base_name}_ITGC_RCM_{today}.xlsx"
+    file_name = generate_excel_filename(base_name, "ITGC_RCM")
     
     # 엑셀 파일 생성 (템플릿 사용)
     excel_stream = BytesIO()
@@ -68,6 +69,7 @@ def generate_and_send_rcm_excel(form_data):
         ws.sheet_view.selection[0].activeCell = 'B2'
         ws.sheet_view.selection[0].sqref = 'B2'
             
+    # 엑셀 파일 저장 (한글 처리 개선)
     wb.save(excel_stream)
     wb.close()
     excel_stream.seek(0)

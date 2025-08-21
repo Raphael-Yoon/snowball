@@ -14,7 +14,7 @@ from email import encoders
 from io import BytesIO
 from openpyxl import load_workbook
 from snowball_link1 import generate_and_send_rcm_excel
-from snowball_link2 import export_interview_excel_and_send, s_questions, question_count, is_ineffective, fill_sheet, link2_prev_logic, get_text_itgc
+from snowball_link2 import export_interview_excel_and_send, s_questions, question_count, is_ineffective, fill_sheet, link2_prev_logic, get_text_itgc, ai_improve_answer_consistency
 from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
@@ -23,6 +23,13 @@ from snowball_link6 import bp_link6
 app = Flask(__name__)
 app.secret_key = '150606'
 
+# 전역 진행률 상태 관리
+progress_status = {
+    'percentage': 0,
+    'current_task': 'AI 검토를 준비하고 있습니다...',
+    'is_processing': False
+}
+
 # 시작할 질문 번호 설정 (1부터 시작)
 if __name__ == '__main__':
     START_QUESTION = 0
@@ -30,6 +37,20 @@ else:
     START_QUESTION = 0
 
 load_dotenv()
+
+def update_progress(percentage, task_description):
+    """진행률 업데이트 함수"""
+    global progress_status
+    progress_status['percentage'] = percentage
+    progress_status['current_task'] = task_description
+    print(f"Progress: {percentage}% - {task_description}")
+
+def reset_progress():
+    """진행률 초기화 함수"""
+    global progress_status
+    progress_status['percentage'] = 0
+    progress_status['current_task'] = 'AI 검토를 준비하고 있습니다...'
+    progress_status['is_processing'] = False
 
 @app.route('/')
 def index():
@@ -111,9 +132,9 @@ def link2():
         }
         next_question.update(conditional_routes)
 
-        # 마지막 질문 제출 시 processing 페이지로 이동
+        # 마지막 질문 제출 시 AI 검토 선택 페이지로 이동
         if question_index == question_count - 1:
-            print('interview completed - redirecting to processing page')
+            print('interview completed - redirecting to AI review selection page')
             print('--- 모든 답변(answers) ---')
             for idx, ans in enumerate(session.get('answer', [])):
                 print(f"a{idx}: {ans}")
@@ -121,8 +142,8 @@ def link2():
             for idx, ans in enumerate(session.get('textarea_answer', [])):
                 print(f"a{idx}_1: {ans}")
 
-            # processing 페이지로 리디렉션
-            return redirect(url_for('processing'))
+            # AI 검토 선택 페이지로 리디렉션
+            return redirect(url_for('ai_review_selection'))
 
         session['question_index'] = next_question.get(question_index, question_index)
         print(f"goto {session['question_index']}")
@@ -168,7 +189,8 @@ def save_to_excel():
         fill_sheet,
         is_ineffective,
         send_gmail_with_attachment,
-        enable_ai_review
+        enable_ai_review,
+        None  # progress_callback
     )
     if success:
         return '<h3>인터뷰 내용에 따른 ITGC 설계평가 문서가 입력하신 메일로 전송되었습니다.<br>메일함을 확인해 주세요.</h3>\n<a href="/" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#1976d2;color:#fff;text-decoration:none;border-radius:5px;">처음으로</a>'
@@ -293,31 +315,69 @@ def get_content_link3():
     # 모든 type에 대해 공통 step-card 템플릿 반환
     return render_template('link3_detail.jsp')
 
+@app.route('/ai_review_selection')
+def ai_review_selection():
+    """AI 검토 옵션 선택 화면"""
+    user_email = session.get('answer', [''])[0] if session.get('answer') else ''
+    if not user_email:
+        return redirect(url_for('link2', reset=1))  # 세션이 없으면 인터뷰 처음으로
+    return render_template('link2_ai_review.jsp', user_email=user_email)
+
+@app.route('/process_with_ai_option', methods=['POST'])
+def process_with_ai_option():
+    """AI 검토 옵션에 따라 처리 페이지로 이동"""
+    enable_ai_review = request.form.get('enable_ai_review', 'false').lower() == 'true'
+    
+    # 세션에 AI 검토 옵션 저장
+    session['enable_ai_review'] = enable_ai_review
+    
+    print(f"User selected AI review: {enable_ai_review}")
+    
+    # processing 페이지로 리디렉션
+    return redirect(url_for('processing'))
+
 @app.route('/processing')
 def processing():
     """인터뷰 완료 후 처리 중 화면"""
     user_email = session.get('answer', [''])[0] if session.get('answer') else ''
-    return render_template('processing.jsp', user_email=user_email)
+    enable_ai_review = session.get('enable_ai_review', False)
+    reset_progress()  # 진행률 초기화
+    return render_template('processing.jsp', user_email=user_email, enable_ai_review=enable_ai_review)
+
+@app.route('/get_progress')
+def get_progress():
+    """진행률 상태 조회 엔드포인트"""
+    global progress_status
+    return jsonify(progress_status)
 
 @app.route('/process_interview', methods=['POST'])
 def process_interview():
     """실제 인터뷰 처리 및 메일 발송"""
+    global progress_status
     try:
+        progress_status['is_processing'] = True
+        update_progress(5, "인터뷰 데이터를 확인하고 있습니다...")
+        
         # 세션에서 답변 데이터 가져오기
         answers = session.get('answer', [])
         textarea_answers = session.get('textarea_answer', [])
         
         if not answers:
+            reset_progress()
             return jsonify({'success': False, 'error': '인터뷰 데이터가 없습니다.'})
         
         user_email = answers[0] if answers else ''
         if not user_email:
+            reset_progress()
             return jsonify({'success': False, 'error': '메일 주소가 입력되지 않았습니다.'})
         
-        # AI 검토 기능 활성화 (환경변수로 제어 가능)
-        enable_ai_review = os.getenv('ENABLE_AI_REVIEW', 'false').lower() == 'true'
+        update_progress(10, "AI 검토 설정을 확인하고 있습니다...")
+        
+        # 사용자가 선택한 AI 검토 옵션 사용
+        enable_ai_review = session.get('enable_ai_review', False)
         
         print(f"Processing interview for {user_email}")
+        update_progress(15, "ITGC 설계평가 문서 생성을 시작합니다...")
         
         # 메일 발송 처리
         success, returned_email, error = export_interview_excel_and_send(
@@ -327,17 +387,22 @@ def process_interview():
             fill_sheet,
             is_ineffective,
             send_gmail_with_attachment,
-            enable_ai_review
+            enable_ai_review,
+            update_progress  # 진행률 업데이트 함수 전달
         )
         
         if success:
+            update_progress(100, "처리가 완료되었습니다!")
+            progress_status['is_processing'] = False
             print(f"Mail sent successfully to {returned_email}")
             return jsonify({'success': True, 'email': returned_email})
         else:
+            reset_progress()
             print(f"Mail send failed: {error}")
             return jsonify({'success': False, 'error': error})
             
     except Exception as e:
+        reset_progress()
         print(f"Error in process_interview: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
@@ -365,6 +430,25 @@ def contact():
             return render_template('contact.jsp', success=False, error=str(e), remote_addr=request.remote_addr)
     print("[0] Contact 폼 GET 요청")
     return render_template('contact.jsp', remote_addr=request.remote_addr)
+
+
+@app.route('/check_consistency', methods=['POST'])
+def check_consistency():
+    """답변들의 일관성을 체크합니다."""
+    try:
+        data = request.get_json()
+        answers = data.get('answers', [])
+        textarea_answers = data.get('textarea_answers', [])
+        
+        result = ai_improve_answer_consistency(answers, textarea_answers)
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"일관성 체크 API 오류: {e}")
+        return jsonify({
+            'ai_consistency_check': f'일관성 체크 중 오류가 발생했습니다: {str(e)}',
+            'basic_consistency_issues': []
+        })
 
 app.register_blueprint(bp_link5)
 app.register_blueprint(bp_link6)
