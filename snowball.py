@@ -23,19 +23,39 @@ from snowball_link6 import bp_link6
 app = Flask(__name__)
 app.secret_key = '150606'
 
-# 전역 진행률 상태 관리 (세션 기반으로 변경)
-# 서버 환경에서 다중 프로세스 문제 해결을 위해 세션에 저장
+# 전역 진행률 상태 관리 (파일 기반으로 변경)
+# 세션 문제 해결을 위해 임시 파일에 저장
+import json
+import tempfile
+
+PROGRESS_FILE = os.path.join(tempfile.gettempdir(), f'snowball_progress_{os.getpid()}.json')
+
 def get_progress_status():
-    if 'progress_status' not in session:
-        session['progress_status'] = {
-            'percentage': 0,
-            'current_task': 'AI 검토를 준비하고 있습니다...',
-            'is_processing': False
-        }
-    return session['progress_status']
+    try:
+        if os.path.exists(PROGRESS_FILE):
+            with open(PROGRESS_FILE, 'r', encoding='utf-8') as f:
+                status = json.load(f)
+                print(f"[DEBUG] Loaded progress from file: {status}")
+                return status
+    except Exception as e:
+        print(f"[DEBUG] Error loading progress file: {e}")
+    
+    # 기본값 반환
+    default_status = {
+        'percentage': 0,
+        'current_task': 'AI 검토를 준비하고 있습니다...',
+        'is_processing': False
+    }
+    print(f"[DEBUG] Using default progress status: {default_status}")
+    return default_status
 
 def set_progress_status(status):
-    session['progress_status'] = status
+    try:
+        with open(PROGRESS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(status, f, ensure_ascii=False)
+        print(f"[DEBUG] Saved progress to file: {status}")
+    except Exception as e:
+        print(f"[DEBUG] Error saving progress file: {e}")
 
 # 시작할 질문 번호 설정 (1부터 시작)
 if __name__ == '__main__':
@@ -52,7 +72,7 @@ def update_progress(percentage, task_description):
     progress_status['current_task'] = task_description
     progress_status['is_processing'] = True
     set_progress_status(progress_status)
-    print(f"Progress: {percentage}% - {task_description}")
+    print(f"[DEBUG] Progress updated: {percentage}% - {task_description}")
 
 def reset_progress():
     """진행률 초기화 함수"""
@@ -62,6 +82,7 @@ def reset_progress():
         'is_processing': False
     }
     set_progress_status(progress_status)
+    print(f"[DEBUG] Progress reset: {progress_status}")
 
 @app.route('/')
 def index():
@@ -359,13 +380,15 @@ def processing():
 def get_progress():
     """진행률 상태 조회 엔드포인트"""
     progress_status = get_progress_status()
+    print(f"[DEBUG] get_progress called - returning: {progress_status}")
     return jsonify(progress_status)
 
 @app.route('/process_interview', methods=['POST'])
 def process_interview():
     """실제 인터뷰 처리 및 메일 발송"""
     try:
-        # 세션 기반 진행률 관리로 변경
+        # 파일 기반 진행률 관리로 변경
+        print(f"[DEBUG] process_interview started")
         progress_status = get_progress_status()
         progress_status['is_processing'] = True
         set_progress_status(progress_status)
@@ -470,3 +493,4 @@ app.register_blueprint(bp_link6)
 
 if __name__ == '__main__':
     main()
+# 강제수정1

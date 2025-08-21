@@ -644,12 +644,14 @@ def link2_prev_logic(session):
 def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fill_sheet, is_ineffective, send_gmail_with_attachment, enable_ai_review=False, progress_callback=None):
     """
     인터뷰 답변을 받아 엑셀 파일을 생성하고 메일로 전송합니다.
+    진행률 처리 개선 및 서버 환경 호환성 강화
     answers: list (사용자 답변)
     textarea_answers: list (텍스트에어리어 답변)
     get_text_itgc: 텍스트 생성 함수
     fill_sheet: 시트 채우기 함수
     is_ineffective: 비효과적 통제 체크 함수
     send_gmail_with_attachment: 메일 전송 함수
+    progress_callback: 진행률 업데이트 콜백 함수
     """
     today = datetime.today().strftime('%Y%m%d')
     
@@ -946,3 +948,4 @@ def test_ai_review_feature():
 
 if __name__ == "__main__":
     test_ai_review_feature()
+    # 강제 수정1
