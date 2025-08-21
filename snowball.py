@@ -19,46 +19,60 @@ from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
+import uuid
+import json
 
 app = Flask(__name__)
 app.secret_key = '150606'
 
-# 진행률 상태 관리 - 하이브리드 방식 (세션 + 전역 변수)
-progress_status = {
-    'percentage': 0,
-    'current_task': 'AI 검토를 준비하고 있습니다...',
-    'is_processing': False
-}
+# --- File-based Progress Tracking ---
+PROGRESS_DIR = '/tmp/snowball_progress'
+if not os.path.exists(PROGRESS_DIR):
+    os.makedirs(PROGRESS_DIR)
 
-def get_progress_status():
-    """진행률 상태 조회 - 전역 변수 우선, 세션은 백업용"""
-    global progress_status
-    
-    # 전역 변수가 처리 중이면 전역 변수 사용
-    if progress_status.get('is_processing', False):
-        print(f"[DEBUG] Using global progress (processing): {progress_status}")
-        return progress_status
-    
-    # 세션에 있고 처리 중이면 세션 사용
-    if 'progress_status' in session and session['progress_status'].get('is_processing', False):
-        print(f"[DEBUG] Using session progress (processing): {session['progress_status']}")
-        return session['progress_status']
-    
-    # 둘 다 처리 중이 아니면 전역 변수 사용
-    print(f"[DEBUG] Using global progress (default): {progress_status}")
-    return progress_status
+def get_progress_status(task_id):
+    """파일에서 진행률 상태 읽기"""
+    progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
+    if os.path.exists(progress_file):
+        try:
+            with open(progress_file, 'r') as f:
+                return json.load(f)
+        except (IOError, json.JSONDecodeError) as e:
+            print(f"Error reading progress file: {e}")
+    return {
+        'percentage': 0,
+        'current_task': 'AI 검토를 준비하고 있습니다...',
+        'is_processing': True # 클라이언트가 폴링을 계속하도록 설정
+    }
 
-def set_progress_status(status):
-    """진행률 상태 저장 - 세션과 전역 변수 모두 업데이트"""
-    global progress_status
-    
-    # 전역 변수 업데이트
-    progress_status = status
-    
-    # 세션 업데이트
-    session['progress_status'] = status
-    
-    print(f"[DEBUG] Updated progress in both session and global: {status}")
+def set_progress_status(task_id, status):
+    """파일에 진행률 상태 저장"""
+    progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
+    try:
+        with open(progress_file, 'w') as f:
+            json.dump(status, f)
+    except IOError as e:
+        print(f"Error writing progress file: {e}")
+
+def update_progress(task_id, percentage, task_description):
+    """진행률 업데이트 함수 (파일 기반)"""
+    status = {
+        'percentage': percentage,
+        'current_task': task_description,
+        'is_processing': True
+    }
+    set_progress_status(task_id, status)
+    print(f"Progress (Task {task_id}): {percentage}% - {task_description}")
+
+def reset_progress(task_id):
+    """진행률 파일 삭제 함수"""
+    progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
+    if os.path.exists(progress_file):
+        try:
+            os.remove(progress_file)
+            print(f"Progress file for task {task_id} removed.")
+        except OSError as e:
+            print(f"Error removing progress file: {e}")
 
 # 시작할 질문 번호 설정 (1부터 시작)
 if __name__ == '__main__':
@@ -67,25 +81,6 @@ else:
     START_QUESTION = 0
 
 load_dotenv()
-
-def update_progress(percentage, task_description):
-    """진행률 업데이트 함수"""
-    status = {
-        'percentage': percentage,
-        'current_task': task_description,
-        'is_processing': True
-    }
-    set_progress_status(status)
-    print(f"Progress: {percentage}% - {task_description}")
-
-def reset_progress():
-    """진행률 초기화 함수"""
-    status = {
-        'percentage': 0,
-        'current_task': 'AI 검토를 준비하고 있습니다...',
-        'is_processing': False
-    }
-    set_progress_status(status)
 
 @app.route('/')
 def index():
@@ -376,43 +371,65 @@ def processing():
     """인터뷰 완료 후 처리 중 화면"""
     user_email = session.get('answer', [''])[0] if session.get('answer') else ''
     enable_ai_review = session.get('enable_ai_review', False)
-    reset_progress()  # 진행률 초기화
-    return render_template('processing.jsp', user_email=user_email, enable_ai_review=enable_ai_review)
+    
+    # 고유한 작업 ID 생성 및 세션에 저장
+    task_id = str(uuid.uuid4())
+    session['processing_task_id'] = task_id
+    
+    # 초기 진행률 상태 파일 생성
+    reset_progress(task_id) # 기존 파일이 있다면 삭제
+    initial_status = {
+        'percentage': 0,
+        'current_task': 'AI 검토를 준비하고 있습니다...',
+        'is_processing': True
+    }
+    set_progress_status(task_id, initial_status)
+    
+    return render_template('processing.jsp', user_email=user_email, enable_ai_review=enable_ai_review, task_id=task_id)
 
 @app.route('/get_progress')
 def get_progress():
     """진행률 상태 조회 엔드포인트"""
-    status = get_progress_status()
+    task_id = request.args.get('task_id')
+    if not task_id:
+        return jsonify({'error': 'No task_id provided'}), 400
+    status = get_progress_status(task_id)
     return jsonify(status)
 
 @app.route('/process_interview', methods=['POST'])
 def process_interview():
     """실제 인터뷰 처리 및 메일 발송"""
+    data = request.get_json() or {}
+    task_id = data.get('task_id')
+
+    if not task_id:
+        return jsonify({'success': False, 'error': 'No task_id provided'})
+
     try:
-        update_progress(5, "인터뷰 데이터를 확인하고 있습니다...")
+        # task_id를 포함하는 콜백 함수 생성
+        progress_callback = lambda p, t: update_progress(task_id, p, t)
         
-        # 세션에서 답변 데이터 가져오기
+        progress_callback(5, "인터뷰 데이터를 확인하고 있습니다...")
+        
         answers = session.get('answer', [])
         textarea_answers = session.get('textarea_answer', [])
         
         if not answers:
-            reset_progress()
+            reset_progress(task_id)
             return jsonify({'success': False, 'error': '인터뷰 데이터가 없습니다.'})
         
         user_email = answers[0] if answers else ''
         if not user_email:
-            reset_progress()
+            reset_progress(task_id)
             return jsonify({'success': False, 'error': '메일 주소가 입력되지 않았습니다.'})
         
-        update_progress(10, "AI 검토 설정을 확인하고 있습니다...")
+        progress_callback(10, "AI 검토 설정을 확인하고 있습니다...")
         
-        # 사용자가 선택한 AI 검토 옵션 사용
         enable_ai_review = session.get('enable_ai_review', False)
         
-        print(f"Processing interview for {user_email}")
-        update_progress(15, "ITGC 설계평가 문서 생성을 시작합니다...")
+        print(f"Processing interview for {user_email} (Task ID: {task_id})")
+        progress_callback(15, "ITGC 설계평가 문서 생성을 시작합니다...")
         
-        # 메일 발송 처리
         success, returned_email, error = export_interview_excel_and_send(
             answers,
             textarea_answers,
@@ -421,25 +438,26 @@ def process_interview():
             is_ineffective,
             send_gmail_with_attachment,
             enable_ai_review,
-            update_progress  # 진행률 업데이트 함수 전달
+            progress_callback
         )
         
         if success:
-            # 처리 완료
-            status = get_progress_status()
+            status = get_progress_status(task_id)
             status['percentage'] = 100
             status['current_task'] = "처리가 완료되었습니다!"
             status['is_processing'] = False
-            set_progress_status(status)
+            set_progress_status(task_id, status)
             print(f"Mail sent successfully to {returned_email}")
+            # 성공 시에도 파일은 유지하여 클라이언트가 100%를 확인할 시간을 줌
+            # reset_progress(task_id) # -> 클라이언트가 완료를 확인한 후 삭제하는 것이 더 나을 수 있음
             return jsonify({'success': True, 'email': returned_email})
         else:
-            reset_progress()
+            reset_progress(task_id)
             print(f"Mail send failed: {error}")
             return jsonify({'success': False, 'error': error})
             
     except Exception as e:
-        reset_progress()
+        reset_progress(task_id)
         print(f"Error in process_interview: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
