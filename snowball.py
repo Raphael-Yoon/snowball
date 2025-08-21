@@ -31,16 +31,21 @@ progress_status = {
 }
 
 def get_progress_status():
-    """진행률 상태 조회 - 세션 우선, 없으면 전역 변수"""
+    """진행률 상태 조회 - 전역 변수 우선, 세션은 백업용"""
     global progress_status
     
-    # 세션에 있으면 세션 사용
-    if 'progress_status' in session:
-        print(f"[DEBUG] Using session progress: {session['progress_status']}")
+    # 전역 변수가 처리 중이면 전역 변수 사용
+    if progress_status.get('is_processing', False):
+        print(f"[DEBUG] Using global progress (processing): {progress_status}")
+        return progress_status
+    
+    # 세션에 있고 처리 중이면 세션 사용
+    if 'progress_status' in session and session['progress_status'].get('is_processing', False):
+        print(f"[DEBUG] Using session progress (processing): {session['progress_status']}")
         return session['progress_status']
     
-    # 없으면 전역 변수 사용
-    print(f"[DEBUG] Using global progress: {progress_status}")
+    # 둘 다 처리 중이 아니면 전역 변수 사용
+    print(f"[DEBUG] Using global progress (default): {progress_status}")
     return progress_status
 
 def set_progress_status(status):
