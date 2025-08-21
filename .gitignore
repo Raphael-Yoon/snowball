@@ -2,7 +2,7 @@
 *.db
 *.env
 *.pickle
-*.json
+credentials.json
 *.pyc
 downloads/
 uploads/
