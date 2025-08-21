@@ -31,11 +31,7 @@ AI_MODEL_CONFIG = {
 
 # 텍스트 길이 제한 (토큰 절약)
 TEXT_LENGTH_LIMITS = {
-<<<<<<< HEAD
     'min_length': 20,        # 이보다 짧으면 AI 다듬기 건너뜀 (Summary 시트 포함을 위해 낮춤)
-=======
-    'min_length': 50,        # 이보다 짧으면 AI 다듬기 건너뜀
->>>>>>> b1971d66179e3dd63bae9198d43959fd84232190
     'max_length': 2000,      # 이보다 길면 AI 다듬기 건너뜀
 }
 
