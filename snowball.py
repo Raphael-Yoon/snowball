@@ -23,47 +23,37 @@ from snowball_link6 import bp_link6
 app = Flask(__name__)
 app.secret_key = '150606'
 
-# 진행률 상태 관리 (서버 환경용 - 파일 기반)
-import json
-import os
-import fcntl  # 파일 락킹용
-
-PROGRESS_FILE = '/tmp/snowball_progress.json'
+# 진행률 상태 관리 - 하이브리드 방식 (세션 + 전역 변수)
+progress_status = {
+    'percentage': 0,
+    'current_task': 'AI 검토를 준비하고 있습니다...',
+    'is_processing': False
+}
 
 def get_progress_status():
-    """진행률 상태 조회 (파일에서 읽기)"""
-    try:
-        if os.path.exists(PROGRESS_FILE):
-            with open(PROGRESS_FILE, 'r', encoding='utf-8') as f:
-                fcntl.flock(f.fileno(), fcntl.LOCK_SH)  # 공유 락
-                data = json.load(f)
-                return data
-    except (FileNotFoundError, json.JSONDecodeError, PermissionError):
-        pass
+    """진행률 상태 조회 - 세션 우선, 없으면 전역 변수"""
+    global progress_status
     
-    # 기본값 반환
-    return {
-        'percentage': 0,
-        'current_task': 'AI 검토를 준비하고 있습니다...',
-        'is_processing': False
-    }
+    # 세션에 있으면 세션 사용
+    if 'progress_status' in session:
+        print(f"[DEBUG] Using session progress: {session['progress_status']}")
+        return session['progress_status']
+    
+    # 없으면 전역 변수 사용
+    print(f"[DEBUG] Using global progress: {progress_status}")
+    return progress_status
 
 def set_progress_status(status):
-    """진행률 상태 저장 (파일에 쓰기)"""
-    try:
-        # 원자적 쓰기를 위해 임시 파일 사용
-        temp_file = PROGRESS_FILE + '.tmp'
-        with open(temp_file, 'w', encoding='utf-8') as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)  # 독점 락
-            json.dump(status, f, ensure_ascii=False, indent=2)
-        
-        # 원자적으로 파일 교체
-        os.rename(temp_file, PROGRESS_FILE)
-    except Exception as e:
-        print(f"Error saving progress: {e}")
-
-# 로컬 환경에서는 전역 변수도 유지 (백워드 호환성)
-progress_status = get_progress_status()
+    """진행률 상태 저장 - 세션과 전역 변수 모두 업데이트"""
+    global progress_status
+    
+    # 전역 변수 업데이트
+    progress_status = status
+    
+    # 세션 업데이트
+    session['progress_status'] = status
+    
+    print(f"[DEBUG] Updated progress in both session and global: {status}")
 
 # 시작할 질문 번호 설정 (1부터 시작)
 if __name__ == '__main__':
