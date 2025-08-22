@@ -65,15 +65,44 @@ def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=No
     else:
         raise ValueError('첨부할 파일이 없습니다.')
     encoders.encode_base64(part)
-    # 파일명 인코딩 처리 (한글 지원)
-    import urllib.parse
+    # 파일명 인코딩 처리 (한글 지원) - Gmail API 최적화
+    import re
+    from email.header import Header
+    
     try:
-        encoded_filename = urllib.parse.quote(file_name.encode('utf-8'))
-        part.add_header('Content-Disposition', f'attachment; filename="{file_name}"; filename*=UTF-8\'\'{encoded_filename}')
+        # 파일명이 None인 경우 기본값 설정
+        if file_name is None:
+            file_name = "ITGC_System.xlsx"
+        
+        # 파일명에서 위험한 문자만 제거 (한글은 유지)
+        safe_filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', file_name)
+        safe_filename = re.sub(r'\s+', '_', safe_filename)
+        safe_filename = re.sub(r'_+', '_', safe_filename)
+        
+        # Gmail API에서 한글 파일명 처리 - RFC 2047 인코딩 사용
+        try:
+            # 한글이 포함된 경우 RFC 2047 형식으로 인코딩
+            if re.search(r'[가-힣]', safe_filename):
+                # RFC 2047 형식으로 한글 파일명 인코딩
+                encoded_filename = Header(safe_filename, 'utf-8').encode()
+                part.add_header('Content-Disposition', f'attachment; filename={encoded_filename}')
+            else:
+                part.add_header('Content-Disposition', f'attachment; filename="{safe_filename}"')
+        except Exception as inner_e:
+            # 인코딩 실패 시 기본 파일명 사용
+            print(f"한글 파일명 인코딩 실패: {inner_e}")
+            part.add_header('Content-Disposition', f'attachment; filename="ITGC_System.xlsx"')
+        
+        # Content-Type 헤더 설정
+        part.add_header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        
     except Exception as e:
         # 인코딩 실패 시 안전한 파일명 사용
-        safe_filename = file_name.encode('ascii', 'ignore').decode('ascii')
+        print(f"파일명 인코딩 오류: {e}")
+        safe_filename = "ITGC_System.xlsx"
         part.add_header('Content-Disposition', f'attachment; filename="{safe_filename}"')
+        part.add_header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    
     message.attach(part)
 
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()

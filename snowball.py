@@ -19,9 +19,92 @@ from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
+import uuid
+import json
 
 app = Flask(__name__)
 app.secret_key = '150606'
+
+# --- File-based Progress Tracking ---
+# WSGI 환경에서 안전한 경로 사용
+PROGRESS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'progress_data')
+if not os.path.exists(PROGRESS_DIR):
+    try:
+        os.makedirs(PROGRESS_DIR, exist_ok=True)
+        print(f"Created progress directory: {PROGRESS_DIR}")
+    except Exception as e:
+        print(f"Error creating progress directory {PROGRESS_DIR}: {e}")
+        # 시스템 임시 디렉토리를 대안으로 사용
+        import tempfile
+        PROGRESS_DIR = os.path.join(tempfile.gettempdir(), 'snowball_progress')
+        os.makedirs(PROGRESS_DIR, exist_ok=True)
+        print(f"Using fallback progress directory: {PROGRESS_DIR}")
+
+def get_progress_status(task_id):
+    """파일에서 진행률 상태 읽기"""
+    progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
+    if os.path.exists(progress_file):
+        try:
+            with open(progress_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                print(f"Progress read for task {task_id}: {data}")  # 디버그 로그
+                return data
+        except (IOError, json.JSONDecodeError) as e:
+            print(f"Error reading progress file for task {task_id}: {e}")
+    print(f"Progress file not found for task {task_id}, returning default")
+    return {
+        'percentage': 0,
+        'current_task': 'AI 검토를 준비하고 있습니다...',
+        'is_processing': True # 클라이언트가 폴링을 계속하도록 설정
+    }
+
+def set_progress_status(task_id, status):
+    """파일에 진행률 상태 저장"""
+    progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
+    try:
+        # 임시 파일에 먼저 쓰고 원자적으로 이동 (WSGI 환경에서 안전)
+        temp_file = progress_file + '.tmp'
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            json.dump(status, f, ensure_ascii=False, indent=2)
+            f.flush()  # 버퍼를 즉시 플러시
+            os.fsync(f.fileno())  # 디스크에 강제로 쓰기
+        
+        # 원자적으로 파일 이동
+        os.replace(temp_file, progress_file)
+        print(f"Progress written for task {task_id}: {status}")  # 디버그 로그
+    except IOError as e:
+        print(f"Error writing progress file for task {task_id}: {e}")
+        # 임시 파일이 남아있으면 삭제
+        try:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+        except:
+            pass
+
+def update_progress(task_id, percentage, task_description):
+    """진행률 업데이트 함수 (파일 기반)"""
+    if task_id is None:
+        print(f"Warning: task_id is None, cannot update progress")
+        return
+        
+    status = {
+        'percentage': int(percentage),  # 정수로 변환
+        'current_task': str(task_description),  # 문자열로 변환
+        'is_processing': percentage < 100,  # 100%가 되면 처리 완료
+        'timestamp': datetime.now().isoformat()  # 타임스탬프 추가
+    }
+    set_progress_status(task_id, status)
+    print(f"Progress Update (Task {task_id}): {percentage}% - {task_description}")
+
+def reset_progress(task_id):
+    """진행률 파일 삭제 함수"""
+    progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
+    if os.path.exists(progress_file):
+        try:
+            os.remove(progress_file)
+            print(f"Progress file for task {task_id} removed.")
+        except OSError as e:
+            print(f"Error removing progress file: {e}")
 
 # 시작할 질문 번호 설정 (1부터 시작)
 if __name__ == '__main__':
@@ -111,9 +194,9 @@ def link2():
         }
         next_question.update(conditional_routes)
 
-        # 마지막 질문 제출 시 processing 페이지로 이동
+        # 마지막 질문 제출 시 AI 검토 선택 페이지로 이동
         if question_index == question_count - 1:
-            print('interview completed - redirecting to processing page')
+            print('interview completed - redirecting to AI review selection page')
             print('--- 모든 답변(answers) ---')
             for idx, ans in enumerate(session.get('answer', [])):
                 print(f"a{idx}: {ans}")
@@ -121,8 +204,8 @@ def link2():
             for idx, ans in enumerate(session.get('textarea_answer', [])):
                 print(f"a{idx}_1: {ans}")
 
-            # processing 페이지로 리디렉션
-            return redirect(url_for('processing'))
+            # AI 검토 선택 페이지로 리디렉션
+            return redirect(url_for('ai_review_selection'))
 
         session['question_index'] = next_question.get(question_index, question_index)
         print(f"goto {session['question_index']}")
@@ -168,7 +251,8 @@ def save_to_excel():
         fill_sheet,
         is_ineffective,
         send_gmail_with_attachment,
-        enable_ai_review
+        enable_ai_review,
+        None  # progress_callback
     )
     if success:
         return '<h3>인터뷰 내용에 따른 ITGC 설계평가 문서가 입력하신 메일로 전송되었습니다.<br>메일함을 확인해 주세요.</h3>\n<a href="/" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#1976d2;color:#fff;text-decoration:none;border-radius:5px;">처음으로</a>'
@@ -293,33 +377,95 @@ def get_content_link3():
     # 모든 type에 대해 공통 step-card 템플릿 반환
     return render_template('link3_detail.jsp')
 
+@app.route('/ai_review_selection')
+def ai_review_selection():
+    """AI 검토 옵션 선택 화면"""
+    user_email = session.get('answer', [''])[0] if session.get('answer') else ''
+    if not user_email:
+        return redirect(url_for('link2', reset=1))  # 세션이 없으면 인터뷰 처음으로
+    return render_template('link2_ai_review.jsp', user_email=user_email)
+
+@app.route('/process_with_ai_option', methods=['POST'])
+def process_with_ai_option():
+    """AI 검토 옵션에 따라 처리 페이지로 이동"""
+    enable_ai_review = request.form.get('enable_ai_review', 'false').lower() == 'true'
+    
+    # 세션에 AI 검토 옵션 저장
+    session['enable_ai_review'] = enable_ai_review
+    
+    print(f"User selected AI review: {enable_ai_review}")
+    
+    # processing 페이지로 리디렉션
+    return redirect(url_for('processing'))
+
 @app.route('/processing')
 def processing():
     """인터뷰 완료 후 처리 중 화면"""
     user_email = session.get('answer', [''])[0] if session.get('answer') else ''
-    return render_template('processing.jsp', user_email=user_email)
+    enable_ai_review = session.get('enable_ai_review', False)
+    
+    # 고유한 작업 ID 생성 및 세션에 저장
+    task_id = str(uuid.uuid4())
+    session['processing_task_id'] = task_id
+    
+    # 초기 진행률 상태 파일 생성
+    reset_progress(task_id) # 기존 파일이 있다면 삭제
+    initial_status = {
+        'percentage': 0,
+        'current_task': 'AI 검토를 준비하고 있습니다...',
+        'is_processing': True
+    }
+    set_progress_status(task_id, initial_status)
+    
+    return render_template('processing.jsp', user_email=user_email, enable_ai_review=enable_ai_review, task_id=task_id)
+
+@app.route('/get_progress')
+def get_progress():
+    """진행률 상태 조회 엔드포인트"""
+    task_id = request.args.get('task_id')
+    if not task_id:
+        print("Error: No task_id provided in get_progress")
+        return jsonify({'error': 'No task_id provided'}), 400
+    
+    print(f"GET /get_progress called for task_id: {task_id}")
+    status = get_progress_status(task_id)
+    print(f"Returning status for task {task_id}: {status}")
+    return jsonify(status)
 
 @app.route('/process_interview', methods=['POST'])
 def process_interview():
     """실제 인터뷰 처리 및 메일 발송"""
+    data = request.get_json() or {}
+    task_id = data.get('task_id')
+
+    if not task_id:
+        return jsonify({'success': False, 'error': 'No task_id provided'})
+
     try:
-        # 세션에서 답변 데이터 가져오기
+        # task_id를 포함하는 콜백 함수 생성
+        progress_callback = lambda p, t: update_progress(task_id, p, t)
+        
+        progress_callback(5, "인터뷰 데이터를 확인하고 있습니다...")
+        
         answers = session.get('answer', [])
         textarea_answers = session.get('textarea_answer', [])
         
         if not answers:
+            reset_progress(task_id)
             return jsonify({'success': False, 'error': '인터뷰 데이터가 없습니다.'})
         
         user_email = answers[0] if answers else ''
         if not user_email:
+            reset_progress(task_id)
             return jsonify({'success': False, 'error': '메일 주소가 입력되지 않았습니다.'})
         
-        # AI 검토 기능 활성화 (환경변수로 제어 가능)
-        enable_ai_review = os.getenv('ENABLE_AI_REVIEW', 'false').lower() == 'true'
+        progress_callback(10, "AI 검토 설정을 확인하고 있습니다...")
         
-        print(f"Processing interview for {user_email}")
+        enable_ai_review = session.get('enable_ai_review', False)
         
-        # 메일 발송 처리
+        print(f"Processing interview for {user_email} (Task ID: {task_id})")
+        progress_callback(15, "ITGC 설계평가 문서 생성을 시작합니다...")
+        
         success, returned_email, error = export_interview_excel_and_send(
             answers,
             textarea_answers,
@@ -327,17 +473,27 @@ def process_interview():
             fill_sheet,
             is_ineffective,
             send_gmail_with_attachment,
-            enable_ai_review
+            enable_ai_review,
+            progress_callback
         )
         
         if success:
+            status = get_progress_status(task_id)
+            status['percentage'] = 100
+            status['current_task'] = "처리가 완료되었습니다!"
+            status['is_processing'] = False
+            set_progress_status(task_id, status)
             print(f"Mail sent successfully to {returned_email}")
+            # 성공 시에도 파일은 유지하여 클라이언트가 100%를 확인할 시간을 줌
+            # reset_progress(task_id) # -> 클라이언트가 완료를 확인한 후 삭제하는 것이 더 나을 수 있음
             return jsonify({'success': True, 'email': returned_email})
         else:
+            reset_progress(task_id)
             print(f"Mail send failed: {error}")
             return jsonify({'success': False, 'error': error})
             
     except Exception as e:
+        reset_progress(task_id)
         print(f"Error in process_interview: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
@@ -366,8 +522,11 @@ def contact():
     print("[0] Contact 폼 GET 요청")
     return render_template('contact.jsp', remote_addr=request.remote_addr)
 
+
+
 app.register_blueprint(bp_link5)
 app.register_blueprint(bp_link6)
 
 if __name__ == '__main__':
     main()
+# 강제수정1

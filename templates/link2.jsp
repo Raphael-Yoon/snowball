@@ -8,7 +8,8 @@
     <!-- CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
+    		<link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
+		<link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
 </head>
 <body>
     {% include 'navi.jsp' %}
@@ -25,7 +26,7 @@
         </div>
 
         <!-- 섹션 제목 -->
-        <div class="text-center">
+        <div class="text-center mt-3">
             <h1 class="section-title">
                 {% if 0 <= current_index <= 11 %}
                     <i class="fas fa-server"></i> 공통사항
