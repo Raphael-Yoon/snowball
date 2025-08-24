@@ -18,53 +18,54 @@
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a href="/link1" class="nav-link">
+                            <i class="fas fa-clipboard-list me-1"></i>RCM
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/link2?reset=1" class="nav-link">
+                            <i class="fas fa-user-tie me-1"></i>Interview
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/link3" class="nav-link">
+                            <i class="fas fa-cogs me-1"></i>Operation
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/link4" class="nav-link">
+                            <i class="fas fa-film me-1"></i>Video
+                        </a>
+                    </li>
+                </ul>
+                
                 <ul class="navbar-nav">
+                    {% if is_logged_in %}
                     <li class="nav-item">
-                        <form action="/link1" method="POST" class="d-inline">
-                            <a href="/link1" class="nav-link">
-                                <i class="fas fa-clipboard-list me-1"></i>RCM
-                            </a>
-                        </form>
-                    </li>
-                    <li class="nav-item">
-                        <form action="/link2" method="POST" class="d-inline">
-                            <a href="/link2?reset=1" class="nav-link">
-                                <i class="fas fa-user-tie me-1"></i>Interview
-                            </a>
-                        </form>
-                    </li>
-                    <li class="nav-item">
-                        <form action="/link3" method="POST" class="d-inline">
-                            <a href="/link3" class="nav-link">
-                                <i class="fas fa-cogs me-1"></i>Operation
-                            </a>
-                        </form>
-                    </li>
-                    <li class="nav-item">
-                        <form action="/link4" method="POST" class="d-inline">
-                            <a href="/link4" class="nav-link">
-                                <i class="fas fa-film me-1"></i>Video
-                            </a>
-                        </form>
-                    </li>
-                    {% if remote_addr == '127.0.0.1' or request.host == 'snowball.pythonanywhere.com' %}
-                    <li class="nav-item">
-                        <a href="/link5" class="nav-link">
-                            <i class="fas fa-robot me-1"></i>AI
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/link6" class="nav-link">
-                            <i class="fas fa-robot me-1"></i>AI+
-                        </a>
-                    </li>
-                    {% endif %}
-                    <li class="nav-item" style="display: none;">
                         <a href="/contact" class="nav-link">
                             <i class="fas fa-envelope me-1"></i>Contact Us
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <span class="navbar-text company-info">
+                            <i class="fas fa-building me-1"></i>{{ user_info.company_name if user_info.company_name else '회사명 미등록' }}
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/logout" class="nav-link logout-link">
+                            <i class="fas fa-sign-out-alt me-1"></i>로그아웃
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a href="/login" class="nav-link login-nav-button">
+                            <i class="fas fa-sign-in-alt me-1"></i>로그인
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
