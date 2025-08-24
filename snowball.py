@@ -421,7 +421,7 @@ def link2():
         next_question = {i: i + 1 for i in range(43)}
         conditional_routes = {
             4: 5 if session['answer'][question_index] == 'Y' else 7,
-            3: 4 if session['answer'][question_index] == 'Y' else 6
+            3: 4 if session['answer'][question_index] == 'Y' else 4
         }
         next_question.update(conditional_routes)
 
