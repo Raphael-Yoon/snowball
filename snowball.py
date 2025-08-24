@@ -1,6 +1,6 @@
-from flask import Flask, render_template, request, send_file, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, send_file, redirect, url_for, session, jsonify, flash
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -19,11 +19,22 @@ from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
+from auth import init_db, send_otp, verify_otp, login_required, get_current_user
 import uuid
 import json
 
 app = Flask(__name__)
 app.secret_key = '150606'
+
+# 세션 만료 시간 설정 (10분)
+app.permanent_session_lifetime = timedelta(minutes=10)
+
+# 세션 보안 설정
+app.config.update(
+    SESSION_COOKIE_SECURE=False,  # HTTPS 환경에서는 True로 설정
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+)
 
 # --- File-based Progress Tracking ---
 # WSGI 환경에서 안전한 경로 사용
@@ -114,10 +125,214 @@ else:
 
 load_dotenv()
 
+# 데이터베이스 초기화
+with app.app_context():
+    init_db()
+
+@app.before_request
+def before_request():
+    """모든 요청 전에 실행되는 함수 - 세션 유지 처리 및 타임아웃 체크"""
+    # 로그인한 사용자의 세션을 자동으로 갱신
+    if 'user_id' in session:
+        # 마지막 활동 시간 체크 (10분 초과 시 자동 로그아웃)
+        if 'last_activity' in session:
+            last_activity = datetime.fromisoformat(session['last_activity'])
+            if datetime.now() - last_activity > timedelta(minutes=10):
+                print(f"세션 타임아웃: 10분 비활성으로 자동 로그아웃")
+                session.clear()
+                return redirect(url_for('login'))
+        
+        session.permanent = True
+        # 세션 갱신 시간을 업데이트
+        session['last_activity'] = datetime.now().isoformat()
+
+def is_logged_in():
+    """로그인 상태 확인 함수"""
+    return 'user_id' in session and get_current_user() is not None
+
+def get_user_info():
+    """현재 로그인한 사용자 정보 반환 (없으면 None)"""
+    if is_logged_in():
+        # 세션에 저장된 user_info를 우선 사용
+        if 'user_info' in session:
+            return session['user_info']
+        # 없으면 데이터베이스에서 조회
+        return get_current_user()
+    return None
+
+def require_login_for_feature(feature_name="이 기능"):
+    """특정 기능에 로그인이 필요할 때 사용하는 함수"""
+    if not is_logged_in():
+        return {
+            'error': True,
+            'message': f'{feature_name}을 사용하려면 로그인이 필요합니다.',
+            'login_url': url_for('login')
+        }
+    return {'error': False}
+
+def reset_interview_session():
+    """인터뷰 관련 세션만 초기화 (로그인 세션은 보존)"""
+    # 인터뷰 관련 키만 제거
+    interview_keys = ['question_index', 'answer', 'textarea_answer', 'System', 'Cloud', 'OS_Tool', 'DB_Tool', 'Batch_Tool']
+    for key in interview_keys:
+        session.pop(key, None)
+    
+    # 인터뷰 세션 재초기화
+    user_info = get_user_info()
+    if user_info and user_info.get('user_email'):
+        # 로그인된 사용자: 첫 번째 질문에 이메일 자동 입력하고 두 번째 질문부터 시작
+        session['question_index'] = 1
+        session['answer'] = [''] * question_count
+        session['textarea_answer'] = [''] * question_count
+        session['answer'][0] = user_info['user_email']  # 첫 번째 답변에 이메일 설정
+    else:
+        # 비로그인 사용자: 첫 번째 질문부터 시작
+        session['question_index'] = START_QUESTION - 1 if 1 <= START_QUESTION <= question_count else 0
+        session['answer'] = [''] * question_count
+        session['textarea_answer'] = [''] * question_count
+    
+    print("인터뷰 세션이 초기화되었습니다 (로그인 세션 보존)")
+
+def log_session_info(route_name):
+    """세션 정보를 콘솔에 출력하는 디버깅 함수"""
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    print(f"\n=== [{timestamp}] {route_name} 접근 ===")
+    print(f"IP: {request.remote_addr}")
+    print(f"User-Agent: {request.headers.get('User-Agent', 'Unknown')[:50]}...")
+    
+    if 'user_id' in session:
+        current_user = get_current_user()
+        if current_user:
+            print(f"로그인 상태: ✓")
+            print(f"사용자 ID: {session['user_id']}")
+            print(f"사용자 이름: {current_user['user_name']}")
+            print(f"이메일: {current_user['user_email']}")
+            print(f"세션 로그인 시간: {session.get('login_time', 'N/A')}")
+            print(f"세션 마지막 활동: {session.get('last_activity', 'N/A')}")
+            print(f"DB 마지막 로그인: {current_user.get('last_login_date', 'N/A')}")
+            print(f"세션 영구 설정: {session.permanent}")
+        else:
+            print(f"로그인 상태: ✗ (세션은 있으나 사용자 정보 없음)")
+    else:
+        print(f"로그인 상태: ✗ (세션 없음)")
+    
+    print(f"세션 키: {list(session.keys())}")
+    print("=" * 50)
+
 @app.route('/')
 def index():
-    result = "User List" # Placeholder for user list
-    return render_template('index.jsp', user_name=result, return_code=0, remote_addr=request.remote_addr)
+    log_session_info("메인 페이지")
+    user_info = get_user_info()
+    user_name = user_info['user_name'] if user_info else "Guest"
+    return render_template('index.jsp', 
+                         user_name=user_name, 
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         return_code=0, 
+                         remote_addr=request.remote_addr)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    log_session_info("로그인 페이지")
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'send_otp':
+            # OTP 발송 요청
+            email = request.form.get('email')
+            method = request.form.get('method', 'email')
+            
+            if not email:
+                return render_template('login.jsp', error="이메일을 입력해주세요.", remote_addr=request.remote_addr)
+            
+            success, message = send_otp(email, method)
+            if success:
+                session['login_email'] = email
+                return render_template('login.jsp', step='verify', email=email, message=message, remote_addr=request.remote_addr)
+            else:
+                return render_template('login.jsp', error=message, remote_addr=request.remote_addr)
+        
+        elif action == 'verify_otp':
+            # OTP 검증
+            email = session.get('login_email')
+            otp_code = request.form.get('otp_code')
+            
+            if not email or not otp_code:
+                return render_template('login.jsp', error="인증 코드를 입력해주세요.", remote_addr=request.remote_addr)
+            
+            success, result = verify_otp(email, otp_code)
+            if success:
+                # 로그인 성공
+                user = result
+                session.permanent = True  # 영구 세션 설정
+                session['user_id'] = user['user_id']
+                session['user_name'] = user['user_name']
+                session['user_info'] = {
+                    'user_id': user['user_id'],
+                    'user_name': user['user_name'],
+                    'user_email': user['user_email'],
+                    'company_name': user.get('company_name', ''),
+                    'phone_number': user.get('phone_number', '')
+                }
+                session['login_time'] = datetime.now().isoformat()
+                session.pop('login_email', None)  # 임시 이메일 정보 삭제
+                print(f"로그인 성공: {user['user_name']} ({user['user_email']})")
+                return redirect(url_for('index'))
+            else:
+                return render_template('login.jsp', step='verify', email=email, error=result, remote_addr=request.remote_addr)
+    
+    return render_template('login.jsp', remote_addr=request.remote_addr)
+
+
+@app.route('/logout')
+def logout():
+    log_session_info("로그아웃")
+    session.clear()
+    return redirect(url_for('index'))
+
+@app.route('/extend_session', methods=['POST'])
+def extend_session():
+    """세션 연장 엔드포인트"""
+    if 'user_id' in session:
+        session['last_activity'] = datetime.now().isoformat()
+        session.permanent = True
+        print(f"세션 연장: {session.get('user_name', 'Unknown')}")
+        return jsonify({'success': True, 'message': '세션이 연장되었습니다.'})
+    return jsonify({'success': False, 'message': '로그인이 필요합니다.'})
+
+@app.route('/clear_session', methods=['POST'])
+def clear_session():
+    """브라우저 종료 시 세션 해제 엔드포인트"""
+    if 'user_id' in session:
+        user_name = session.get('user_name', 'Unknown')
+        session.clear()
+        print(f"브라우저 종료로 세션 해제: {user_name}")
+    return '', 204
+
+@app.route('/sms_test_log')
+def sms_test_log():
+    """SMS 테스트 로그 확인 (개발용)"""
+    try:
+        with open('sms_test_log.txt', 'r', encoding='utf-8') as f:
+            logs = f.readlines()
+        
+        log_html = "<h3>SMS OTP 테스트 로그</h3>"
+        log_html += "<div style='font-family: monospace; background: #f5f5f5; padding: 15px; border-radius: 5px;'>"
+        
+        if logs:
+            for log in logs[-10:]:  # 최근 10개만 표시
+                log_html += f"{log}<br>"
+        else:
+            log_html += "SMS 테스트 로그가 없습니다."
+        
+        log_html += "</div>"
+        log_html += "<br><a href='/login'>로그인 페이지로 돌아가기</a>"
+        
+        return log_html
+    except FileNotFoundError:
+        return "<h3>SMS 테스트 로그 파일이 없습니다.</h3><a href='/login'>로그인 페이지로 돌아가기</a>"
 
 
 def main():
@@ -131,41 +346,57 @@ def link0():
 
 @app.route('/link1')
 def link1():
+    log_session_info("RCM 페이지")
     print("RCM Function")
-    users = "User List" # Placeholder for user list
-    return render_template('link1.jsp', return_code=0, users=users, remote_addr=request.remote_addr)
+    user_info = get_user_info()
+    users = user_info['user_name'] if user_info else "Guest"
+    # 로그인된 사용자의 이메일 주소 자동 입력
+    user_email = user_info.get('user_email', '') if user_info else ''
+    return render_template('link1.jsp', 
+                         return_code=0, 
+                         users=users, 
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         user_email=user_email,
+                         remote_addr=request.remote_addr)
 
 # Answer Type: 0: 리스트박스, 1: Y/N, 2: Textbox, 3: Y/N-Textbox, 4: Y/N-Textarea, 5: Textarea
 # 기존 s_questions, question_count 정의 부분은 삭제
 
 @app.route('/link2', methods=['GET', 'POST'])
 def link2():
+    log_session_info("Interview 페이지")
     print("Interview Function")
 
     if request.method == 'GET':
-        # 쿼리 파라미터로 reset이 있을 때만 세션 초기화
+        # 쿼리 파라미터로 reset이 있을 때만 인터뷰 세션 초기화 (로그인 세션은 보존)
         if request.args.get('reset') == '1':
-            session.clear()
-            # START_QUESTION이 유효한 범위인지 확인
-            if 1 <= START_QUESTION <= question_count:
-                session['question_index'] = START_QUESTION - 1  # 1-based를 0-based로 변환
-            else:
-                session['question_index'] = 0
-            session['answer'] = [''] * question_count  # 필요한 만큼 동적으로 조절 가능
-            session['textarea_answer'] = [''] * question_count  # textarea 값 저장용
+            reset_interview_session()
         # 세션에 값이 없으면(최초 진입)만 초기화
         elif 'question_index' not in session:
-            session['question_index'] = 0
-            session['answer'] = [''] * question_count
-            session['textarea_answer'] = [''] * question_count
+            user_info = get_user_info()
+            if user_info and user_info.get('user_email'):
+                # 로그인된 사용자: 첫 번째 질문에 이메일 자동 입력하고 두 번째 질문부터 시작
+                session['question_index'] = 1
+                session['answer'] = [''] * question_count
+                session['textarea_answer'] = [''] * question_count
+                session['answer'][0] = user_info['user_email']  # 첫 번째 답변에 이메일 설정
+            else:
+                # 비로그인 사용자: 첫 번째 질문부터 시작
+                session['question_index'] = 0
+                session['answer'] = [''] * question_count
+                session['textarea_answer'] = [''] * question_count
 
-        users = "User List" # Placeholder for user list
+        user_info = get_user_info()
+        users = user_info['user_name'] if user_info else "Guest"
         return render_template('link2.jsp',
                              question=s_questions[session['question_index']],
                              question_count=question_count,
                              current_index=session['question_index'],
                              remote_addr=request.remote_addr,
                              users=users,
+                             is_logged_in=is_logged_in(),
+                             user_info=user_info,
                              answer=session['answer'],
                              textarea_answer=session['textarea_answer'])
 
@@ -219,13 +450,17 @@ def link2():
 
     # 현재 질문을 렌더링
     question = s_questions[session['question_index']]
+    user_info = get_user_info()
+    users = user_info['user_name'] if user_info else "User List"
     return render_template(
         'link2.jsp',
         question=question,
         question_count=question_count,
         current_index=session['question_index'],
         remote_addr=request.remote_addr,
-        users="User List", # Placeholder for user list
+        users=users,
+        is_logged_in=is_logged_in(),
+        user_info=user_info,
         answer=session['answer'],
         textarea_answer=session['textarea_answer']
     )
@@ -261,26 +496,46 @@ def save_to_excel():
 
 @app.route('/link3')
 def link3():
+    log_session_info("Operation Test 페이지")
     print("Paper Function")
-    return render_template('link3.jsp', remote_addr=request.remote_addr)
+    return render_template('link3.jsp', 
+                         is_logged_in=is_logged_in(),
+                         user_info=get_user_info(),
+                         remote_addr=request.remote_addr)
 
 @app.route('/link4')
 def link4():
+    log_session_info("영상자료 페이지")
     print("Video Function")
-    return render_template('link4.jsp', remote_addr=request.remote_addr)
+    return render_template('link4.jsp', 
+                         is_logged_in=is_logged_in(),
+                         user_info=get_user_info(),
+                         remote_addr=request.remote_addr)
 
 @app.route('/link5', methods=['GET'])
 def link5():
-    return render_template('link5.jsp', remote_addr=request.remote_addr)
+    log_session_info("AI 페이지")
+    return render_template('link5.jsp', 
+                         is_logged_in=is_logged_in(),
+                         user_info=get_user_info(),
+                         remote_addr=request.remote_addr)
 
 @app.route('/link6', methods=['GET'])
 def link6():
-    return render_template('link6.jsp', remote_addr=request.remote_addr)
+    log_session_info("AI Interview 페이지")
+    return render_template('link6.jsp', 
+                         is_logged_in=is_logged_in(),
+                         user_info=get_user_info(),
+                         remote_addr=request.remote_addr)
 
 @app.route('/link9')
 def link9():
+    log_session_info("기타 기능 페이지")
     print("ETC Function")
-    return render_template('link9.jsp', remote_addr=request.remote_addr)
+    return render_template('link9.jsp', 
+                         is_logged_in=is_logged_in(),
+                         user_info=get_user_info(),
+                         remote_addr=request.remote_addr)
 
 @app.route('/rcm_generate', methods=['POST'])
 def rcm_generate():
@@ -312,7 +567,12 @@ def paper_request():
     # output_path = link2_design.paper_request(form_data) # Removed link2_design
     # Placeholder for paper_request logic
     print("Paper Request form data:", form_data)
-    return render_template('link2.jsp', return_code = 2)
+    user_info = get_user_info()
+    return render_template('link2.jsp', 
+                         return_code=2,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
 
 @app.route('/design_generate', methods=['POST'])
 def design_generate():
@@ -383,7 +643,12 @@ def ai_review_selection():
     user_email = session.get('answer', [''])[0] if session.get('answer') else ''
     if not user_email:
         return redirect(url_for('link2', reset=1))  # 세션이 없으면 인터뷰 처음으로
-    return render_template('link2_ai_review.jsp', user_email=user_email)
+    user_info = get_user_info()
+    return render_template('link2_ai_review.jsp', 
+                         user_email=user_email,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
 
 @app.route('/process_with_ai_option', methods=['POST'])
 def process_with_ai_option():
@@ -499,6 +764,10 @@ def process_interview():
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
+    # 로그인 상태 확인
+    is_logged_in = 'user_id' in session
+    user_info = session.get('user_info', {})
+    
     if request.method == 'POST':
         print("[1] Contact 폼 제출됨")
         name = request.form.get('name')
@@ -515,12 +784,50 @@ def contact():
                 body=body
             )
             print("[6] 메일 전송 성공")
-            return render_template('contact.jsp', success=True, remote_addr=request.remote_addr)
+            return render_template('contact.jsp', success=True, remote_addr=request.remote_addr,
+                                 is_logged_in=is_logged_in, user_info=user_info)
         except Exception as e:
             print(f"[!] 문의 메일 전송 실패: {e}")
-            return render_template('contact.jsp', success=False, error=str(e), remote_addr=request.remote_addr)
+            return render_template('contact.jsp', success=False, error=str(e), remote_addr=request.remote_addr,
+                                 is_logged_in=is_logged_in, user_info=user_info)
     print("[0] Contact 폼 GET 요청")
-    return render_template('contact.jsp', remote_addr=request.remote_addr)
+    return render_template('contact.jsp', remote_addr=request.remote_addr,
+                         is_logged_in=is_logged_in, user_info=user_info)
+
+@app.route('/service_inquiry', methods=['POST'])
+def service_inquiry():
+    try:
+        company_name = request.form.get('company_name')
+        contact_name = request.form.get('contact_name')
+        contact_email = request.form.get('contact_email')
+        
+        print(f"[서비스 문의] 회사명: {company_name}, 담당자: {contact_name}, 이메일: {contact_email}")
+        
+        subject = f'SnowBall 서비스 가입 문의: {company_name}'
+        body = f'''SnowBall 서비스 가입 문의가 접수되었습니다.
+
+회사명: {company_name}
+담당자명: {contact_name}
+이메일: {contact_email}
+
+내부통제 평가 및 ITGC 관련 서비스에 관심을 보여주셔서 감사합니다.
+빠른 시일 내에 담당자가 연락드리겠습니다.'''
+        
+        send_gmail(
+            to='snowball1566@gmail.com',
+            subject=subject,
+            body=body
+        )
+        
+        # 성공 메시지를 포함하여 로그인 페이지로 리다이렉트
+        return render_template('login.jsp', 
+                             service_inquiry_success=True,
+                             remote_addr=request.remote_addr)
+    except Exception as e:
+        print(f"[!] 서비스 문의 메일 전송 실패: {e}")
+        return render_template('login.jsp', 
+                             service_inquiry_error=str(e),
+                             remote_addr=request.remote_addr)
 
 
 

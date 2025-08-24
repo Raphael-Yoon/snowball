@@ -14,7 +14,7 @@
 <body>
     {% include 'navi.jsp' %}
 
-    <div class="container">
+    <div class="container mt-4">
         <!-- 진행률 표시 -->
         <div class="progress">
             <div class="progress-bar" role="progressbar" 
