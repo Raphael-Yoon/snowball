@@ -64,7 +64,9 @@
                 </div>
                 <div class="button-group">
                     <button type="submit" class="btn-primary">로그인</button>
-                    <a href="{{ url_for('login') }}" class="btn-secondary">다시 시작</a>
+                    <a href="{{ url_for('login') }}" class="btn-outline">
+                        <i class="fas fa-undo me-1"></i>다시 시작
+                    </a>
                 </div>
             </form>
             {% endif %}

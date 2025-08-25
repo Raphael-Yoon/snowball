@@ -67,10 +67,31 @@
                                 {# {% for i in range(0, users|length, 3) %}
                                     <option value="{{ users[i+2] }}" {% if answer[0] == users[i+2] %}selected{% endif %}>{{ users[i] }} - {{ users[i+1] }}</option>
                                 {% endfor %} #}
-                                <input type="text" class="form-control" name="a0_text" placeholder="e-Mail 주소를 입력하세요" value="{{ answer[0] }}" />
                             </select>
+                            <!-- 첫 번째 질문(이메일 입력) -->
+                            {% if current_index == 0 %}
+                            <div class="mt-2">
+                                <input type="text" class="form-control{% if is_logged_in %} bg-light{% endif %}" name="a0_text" placeholder="e-Mail 주소를 입력하세요" value="{{ answer[0] }}" {% if is_logged_in %}readonly{% endif %} />
+                                {% if is_logged_in %}
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-lock me-1"></i>로그인된 계정의 이메일이 자동으로 사용됩니다.
+                                </small>
+                                {% endif %}
+                            </div>
+                            {% endif %}
                         {% elif question.answer_type == '2' %}
-                            <input type="text" class="form-control" name="a{{ current_index }}" required placeholder="{{ question.text_help if question.text_help else '' }}" value="{{ answer[current_index] }}">
+                            {% if current_index == 0 %}
+                                <!-- 첫 번째 질문(이메일 입력) -->
+                                <input type="text" class="form-control{% if is_logged_in %} bg-light{% endif %}" name="a{{ current_index }}" required placeholder="{{ question.text_help if question.text_help else 'e-Mail 주소를 입력하세요' }}" value="{{ answer[current_index] }}" {% if is_logged_in %}readonly{% endif %}>
+                                {% if is_logged_in %}
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-lock me-1"></i>로그인된 계정의 이메일이 자동으로 사용됩니다.
+                                </small>
+                                {% endif %}
+                            {% else %}
+                                <!-- 일반 텍스트 입력 -->
+                                <input type="text" class="form-control" name="a{{ current_index }}" required placeholder="{{ question.text_help if question.text_help else '' }}" value="{{ answer[current_index] }}">
+                            {% endif %}
                         {% elif question.answer_type == '3' %}
                             <label class="form-check">
                                 <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" id="yes_{{ current_index }}" required {% if answer[current_index] == 'Y' %}checked{% endif %}>
