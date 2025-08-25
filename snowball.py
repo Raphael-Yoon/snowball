@@ -19,7 +19,7 @@ from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
-from auth import init_db, send_otp, verify_otp, login_required, get_current_user
+from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count
 import uuid
 import json
 
@@ -170,6 +170,19 @@ def require_login_for_feature(feature_name="이 기능"):
         }
     return {'error': False}
 
+def require_admin():
+    """관리자 권한 확인 함수"""
+    if not is_logged_in():
+        flash('로그인이 필요합니다.')
+        return redirect(url_for('login'))
+    
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        flash('관리자 권한이 필요합니다.')
+        return redirect(url_for('index'))
+    
+    return None
+
 def reset_interview_session():
     """인터뷰 관련 세션만 초기화 (로그인 세션은 보존)"""
     # 인터뷰 관련 키만 제거
@@ -226,6 +239,12 @@ def index():
     log_session_info("메인 페이지")
     user_info = get_user_info()
     user_name = user_info['user_name'] if user_info else "Guest"
+    
+    # 로그인한 사용자만 활동 로그 기록
+    if is_logged_in():
+        log_user_activity(user_info, 'PAGE_ACCESS', '메인 페이지', '/', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+    
     return render_template('index.jsp', 
                          user_name=user_name, 
                          is_logged_in=is_logged_in(),
@@ -353,6 +372,12 @@ def link1():
     users = user_info['user_name'] if user_info else "Guest"
     # 로그인된 사용자의 이메일 주소 자동 입력
     user_email = user_info.get('user_email', '') if user_info else ''
+    
+    # 로그인한 사용자만 활동 로그 기록
+    if is_logged_in():
+        log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 페이지', '/link1', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+    
     return render_template('link1.jsp', 
                          return_code=0, 
                          users=users, 
@@ -368,6 +393,17 @@ def link1():
 def link2():
     log_session_info("Interview 페이지")
     print("Interview Function")
+    
+    user_info = get_user_info()
+    # 로그인한 사용자만 활동 로그 기록
+    if is_logged_in():
+        if request.method == 'GET':
+            log_user_activity(user_info, 'PAGE_ACCESS', 'Interview 페이지', '/link2', 
+                             request.remote_addr, request.headers.get('User-Agent'))
+        else:
+            log_user_activity(user_info, 'FORM_SUBMIT', 'Interview 답변 제출', '/link2', 
+                             request.remote_addr, request.headers.get('User-Agent'), 
+                             f"Question {session.get('question_index', 0)}")
 
     if request.method == 'GET':
         # 쿼리 파라미터로 reset이 있을 때만 인터뷰 세션 초기화 (로그인 세션은 보존)
@@ -500,18 +536,32 @@ def save_to_excel():
 def link3():
     log_session_info("Operation Test 페이지")
     print("Paper Function")
+    user_info = get_user_info()
+    
+    # 로그인한 사용자만 활동 로그 기록
+    if is_logged_in():
+        log_user_activity(user_info, 'PAGE_ACCESS', 'Operation Test 페이지', '/link3', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+    
     return render_template('link3.jsp', 
                          is_logged_in=is_logged_in(),
-                         user_info=get_user_info(),
+                         user_info=user_info,
                          remote_addr=request.remote_addr)
 
 @app.route('/link4')
 def link4():
     log_session_info("영상자료 페이지")
     print("Video Function")
+    user_info = get_user_info()
+    
+    # 로그인한 사용자만 활동 로그 기록
+    if is_logged_in():
+        log_user_activity(user_info, 'PAGE_ACCESS', '영상자료 페이지', '/link4', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+    
     return render_template('link4.jsp', 
                          is_logged_in=is_logged_in(),
-                         user_info=get_user_info(),
+                         user_info=user_info,
                          remote_addr=request.remote_addr)
 
 @app.route('/link5', methods=['GET'])
@@ -830,6 +880,211 @@ def service_inquiry():
         return render_template('login.jsp', 
                              service_inquiry_error=str(e),
                              remote_addr=request.remote_addr)
+
+# === 관리자 페이지 ===
+@app.route('/admin')
+def admin():
+    """관리자 메인 페이지"""
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    
+    log_session_info("관리자 페이지")
+    user_info = get_user_info()
+    
+    # 관리자 페이지 접근 로그
+    log_user_activity(user_info, 'PAGE_ACCESS', '관리자 대시보드', '/admin', 
+                     request.remote_addr, request.headers.get('User-Agent'))
+    
+    return render_template('admin.jsp',
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/admin/users')
+def admin_users():
+    """사용자 관리 페이지"""
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    
+    with get_db() as conn:
+        users = conn.execute('''
+            SELECT user_id, company_name, user_name, user_email, phone_number, 
+                   admin_flag, effective_start_date, effective_end_date, 
+                   creation_date, last_login_date
+            FROM sb_user 
+            ORDER BY creation_date DESC
+        ''').fetchall()
+        
+        users_list = [dict(user) for user in users]
+    
+    return render_template('admin_users.jsp',
+                         users=users_list,
+                         is_logged_in=is_logged_in(),
+                         user_info=get_user_info(),
+                         remote_addr=request.remote_addr)
+
+@app.route('/admin/users/add', methods=['POST'])
+def admin_add_user():
+    """사용자 추가"""
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    
+    try:
+        company_name = request.form.get('company_name')
+        user_name = request.form.get('user_name')
+        user_email = request.form.get('user_email')
+        phone_number = request.form.get('phone_number')
+        admin_flag = request.form.get('admin_flag', 'N')
+        effective_start_date = request.form.get('effective_start_date')
+        effective_end_date = request.form.get('effective_end_date')
+        
+        # effective_end_date가 빈 문자열이면 NULL로 처리
+        if not effective_end_date:
+            effective_end_date = None
+        
+        with get_db() as conn:
+            conn.execute('''
+                INSERT INTO sb_user (company_name, user_name, user_email, phone_number, 
+                                   admin_flag, effective_start_date, effective_end_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (company_name, user_name, user_email, phone_number, 
+                 admin_flag, effective_start_date, effective_end_date))
+            conn.commit()
+        
+        flash('사용자가 성공적으로 추가되었습니다.')
+    except Exception as e:
+        flash(f'사용자 추가 중 오류가 발생했습니다: {str(e)}')
+    
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/edit/<int:user_id>', methods=['POST'])
+def admin_edit_user(user_id):
+    """사용자 정보 수정"""
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    
+    try:
+        company_name = request.form.get('company_name')
+        user_name = request.form.get('user_name')
+        user_email = request.form.get('user_email')
+        phone_number = request.form.get('phone_number')
+        admin_flag = request.form.get('admin_flag', 'N')
+        effective_start_date = request.form.get('effective_start_date')
+        effective_end_date = request.form.get('effective_end_date')
+        
+        # effective_end_date가 빈 문자열이면 NULL로 처리
+        if not effective_end_date:
+            effective_end_date = None
+        
+        with get_db() as conn:
+            conn.execute('''
+                UPDATE sb_user 
+                SET company_name = ?, user_name = ?, user_email = ?, phone_number = ?, 
+                    admin_flag = ?, effective_start_date = ?, effective_end_date = ?
+                WHERE user_id = ?
+            ''', (company_name, user_name, user_email, phone_number, 
+                 admin_flag, effective_start_date, effective_end_date, user_id))
+            conn.commit()
+        
+        flash('사용자 정보가 성공적으로 수정되었습니다.')
+    except Exception as e:
+        flash(f'사용자 정보 수정 중 오류가 발생했습니다: {str(e)}')
+    
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/delete/<int:user_id>', methods=['POST'])
+def admin_delete_user(user_id):
+    """사용자 삭제"""
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    
+    try:
+        with get_db() as conn:
+            conn.execute('DELETE FROM sb_user WHERE user_id = ?', (user_id,))
+            conn.commit()
+        
+        flash('사용자가 성공적으로 삭제되었습니다.')
+    except Exception as e:
+        flash(f'사용자 삭제 중 오류가 발생했습니다: {str(e)}')
+    
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/extend/<int:user_id>', methods=['POST'])
+def admin_extend_user(user_id):
+    """사용자 1년 연장"""
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    
+    try:
+        from datetime import date, timedelta
+        today = date.today().strftime('%Y-%m-%d')
+        next_year = (date.today() + timedelta(days=365)).strftime('%Y-%m-%d')
+        
+        with get_db() as conn:
+            conn.execute('''
+                UPDATE sb_user 
+                SET effective_start_date = ?, effective_end_date = ?
+                WHERE user_id = ?
+            ''', (today, next_year, user_id))
+            conn.commit()
+        
+        flash('사용자의 사용 기간이 1년 연장되었습니다.')
+    except Exception as e:
+        flash(f'사용자 기간 연장 중 오류가 발생했습니다: {str(e)}')
+    
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/logs')
+def admin_logs():
+    """사용자 활동 로그 조회 페이지"""
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    
+    user_info = get_user_info()
+    # 로그 조회 페이지는 로그 기록하지 않음 (무한 루프 방지)
+    
+    page = int(request.args.get('page', 1))
+    per_page = 10  # 10개씩 표시
+    offset = (page - 1) * per_page
+    
+    # 필터링 옵션
+    user_filter = request.args.get('user_id')
+    action_filter = request.args.get('action_type')
+    
+    # 로그 조회
+    if user_filter:
+        logs = get_user_activity_logs(limit=per_page, offset=offset, user_id=user_filter)
+        total_count = get_activity_log_count(user_id=user_filter)
+    else:
+        logs = get_user_activity_logs(limit=per_page, offset=offset)
+        total_count = get_activity_log_count()
+    
+    # 페이지네이션 계산
+    total_pages = (total_count + per_page - 1) // per_page
+    
+    # 사용자 목록 (필터용)
+    with get_db() as conn:
+        users = conn.execute('SELECT user_id, user_name, user_email FROM sb_user ORDER BY user_name').fetchall()
+        users_list = [dict(user) for user in users]
+    
+    return render_template('admin_logs.jsp',
+                         logs=logs,
+                         users=users_list,
+                         current_page=page,
+                         total_pages=total_pages,
+                         total_count=total_count,
+                         user_filter=user_filter,
+                         action_filter=action_filter,
+                         is_logged_in=is_logged_in(),
+                         user_info=get_user_info(),
+                         remote_addr=request.remote_addr)
 
 
 

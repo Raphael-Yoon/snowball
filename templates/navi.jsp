@@ -46,6 +46,13 @@
                             <i class="fas fa-envelope me-1"></i>Contact Us
                         </a>
                     </li>
+                    {% if user_info and user_info.get('admin_flag') == 'Y' %}
+                    <li class="nav-item">
+                        <a href="/admin" class="nav-link">
+                            <i class="fas fa-user-shield me-1"></i>Admin
+                        </a>
+                    </li>
+                    {% endif %}
                     {% endif %}
                 </ul>
                 
