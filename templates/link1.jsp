@@ -21,7 +21,12 @@
 					<form action="/rcm_generate" method="POST">
 						<div class="mb-4">
 							<label class="form-label">e-Mail 주소</label>
-							<input type="email" class="form-control" id="param1" name="param1" required placeholder="e-Mail 주소를 입력하세요" value="{{ user_email }}">
+							<input type="email" class="form-control{% if is_logged_in %} bg-light{% endif %}" id="param1" name="param1" required placeholder="e-Mail 주소를 입력하세요" value="{{ user_email }}" {% if is_logged_in %}readonly{% endif %}>
+							{% if is_logged_in %}
+							<small class="form-text text-muted">
+								<i class="fas fa-lock me-1"></i>로그인된 계정의 이메일이 자동으로 사용됩니다.
+							</small>
+							{% endif %}
 						</div>
 						{#
 						<div class="mb-4">
