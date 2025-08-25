@@ -174,6 +174,15 @@
             const showInquiryBtn = document.getElementById('showInquiryBtn');
             const inquiryContainer = document.getElementById('inquiryContainer');
             
+            // 서비스 문의 성공/실패 메시지가 있으면 자동으로 폼 열기
+            {% if service_inquiry_success or service_inquiry_error %}
+            inquiryContainer.style.display = 'block';
+            inquiryContainer.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'nearest' 
+            });
+            {% endif %}
+            
             showInquiryBtn.addEventListener('click', function() {
                 if (inquiryContainer.style.display === 'none') {
                     inquiryContainer.style.display = 'block';

@@ -25,6 +25,11 @@
                         <div class="mb-4">
                             <h5 class="mb-3"><i class="fas fa-robot"></i> AI 검토 옵션</h5>
                             <p class="text-muted">AI가 답변을 분석하여 더 정확하고 완성도 높은 문서를 생성할 수 있습니다.</p>
+                            {% if ai_review_count is defined %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> AI 검토 사용 현황: <strong>{{ ai_review_count }}</strong>회 사용
+                            </div>
+                            {% endif %}
                         </div>
                         
                         <div class="row g-3">

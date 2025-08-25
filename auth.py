@@ -32,7 +32,9 @@ def init_db():
                 otp_code TEXT,
                 otp_expires_at TIMESTAMP,
                 otp_attempts INTEGER DEFAULT 0,
-                otp_method TEXT DEFAULT 'email'
+                otp_method TEXT DEFAULT 'email',
+                ai_review_count INTEGER DEFAULT 0,
+                ai_review_limit INTEGER DEFAULT 3
             )
         ''')
         
@@ -70,13 +72,15 @@ def init_db():
             effective_start_col = 'effective_start_date' if 'effective_start_date' in columns else 'CURRENT_TIMESTAMP'
             effective_end_col = 'effective_end_date' if 'effective_end_date' in columns else 'NULL'
             otp_method_col = 'otp_method' if 'otp_method' in columns else "'email'"
+            ai_review_count_col = 'ai_review_count' if 'ai_review_count' in columns else '0'
+            ai_review_limit_col = 'ai_review_limit' if 'ai_review_limit' in columns else '3'
             
             conn.execute(f'''
                 INSERT INTO sb_user_new (
                     user_id, company_name, user_name, user_email, phone_number,
                     admin_flag, effective_start_date, effective_end_date,
                     creation_date, last_login_date, otp_code, otp_expires_at,
-                    otp_attempts, otp_method
+                    otp_attempts, otp_method, ai_review_count, ai_review_limit
                 )
                 SELECT 
                     user_id, company_name, user_name, user_email, phone_number,
@@ -84,7 +88,7 @@ def init_db():
                     {effective_start_col},
                     {effective_end_col},
                     creation_date, last_login_date, otp_code, otp_expires_at,
-                    COALESCE(otp_attempts, 0), {otp_method_col}
+                    COALESCE(otp_attempts, 0), {otp_method_col}, {ai_review_count_col}, {ai_review_limit_col}
                 FROM sb_user
             ''')
             
@@ -332,3 +336,41 @@ def get_activity_log_count(user_id=None):
         else:
             count = conn.execute('SELECT COUNT(*) FROM sb_user_activity_log').fetchone()[0]
         return count
+
+def check_ai_review_limit(user_email):
+    """AI 검토 횟수 제한 확인"""
+    with get_db() as conn:
+        user = conn.execute(
+            'SELECT ai_review_count, ai_review_limit FROM sb_user WHERE user_email = ?',
+            (user_email,)
+        ).fetchone()
+        
+        if not user:
+            return False, 0, 0
+        
+        ai_review_count = user['ai_review_count'] or 0
+        ai_review_limit = user['ai_review_limit'] or 3
+        
+        return ai_review_count < ai_review_limit, ai_review_count, ai_review_limit
+
+def increment_ai_review_count(user_email):
+    """AI 검토 횟수 증가"""
+    with get_db() as conn:
+        conn.execute(
+            'UPDATE sb_user SET ai_review_count = COALESCE(ai_review_count, 0) + 1 WHERE user_email = ?',
+            (user_email,)
+        )
+        conn.commit()
+        
+def get_ai_review_status(user_email):
+    """AI 검토 현황 조회"""
+    with get_db() as conn:
+        user = conn.execute(
+            'SELECT ai_review_count, ai_review_limit FROM sb_user WHERE user_email = ?',
+            (user_email,)
+        ).fetchone()
+        
+        if not user:
+            return 0, 3
+        
+        return user['ai_review_count'] or 0, user['ai_review_limit'] or 3
