@@ -395,15 +395,11 @@ def link2():
     print("Interview Function")
     
     user_info = get_user_info()
-    # 로그인한 사용자만 활동 로그 기록
-    if is_logged_in():
-        if request.method == 'GET':
-            log_user_activity(user_info, 'PAGE_ACCESS', 'Interview 페이지', '/link2', 
+    # Interview 기능 시작 시에만 로그 기록 (GET 요청이고 reset=1 파라미터가 있거나 최초 진입 시)
+    if is_logged_in() and request.method == 'GET':
+        if request.args.get('reset') == '1' or 'question_index' not in session:
+            log_user_activity(user_info, 'FEATURE_START', 'Interview 기능 시작', '/link2', 
                              request.remote_addr, request.headers.get('User-Agent'))
-        else:
-            log_user_activity(user_info, 'FORM_SUBMIT', 'Interview 답변 제출', '/link2', 
-                             request.remote_addr, request.headers.get('User-Agent'), 
-                             f"Question {session.get('question_index', 0)}")
 
     if request.method == 'GET':
         # 쿼리 파라미터로 reset이 있을 때만 인터뷰 세션 초기화 (로그인 세션은 보존)
