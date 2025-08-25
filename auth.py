@@ -14,7 +14,7 @@ def get_db():
     return conn
 
 def init_db():
-    """사용자 테이블 초기화"""
+    """사용자 테이블 및 로그 테이블 초기화"""
     with get_db() as conn:
         # 새로운 스키마 (enabled_flag 제거됨)
         conn.execute('''
@@ -33,6 +33,24 @@ def init_db():
                 otp_expires_at TIMESTAMP,
                 otp_attempts INTEGER DEFAULT 0,
                 otp_method TEXT DEFAULT 'email'
+            )
+        ''')
+        
+        # 사용자 활동 로그 테이블 생성
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_user_activity_log (
+                log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                user_email TEXT,
+                user_name TEXT,
+                action_type TEXT NOT NULL,
+                page_name TEXT,
+                url_path TEXT,
+                ip_address TEXT,
+                user_agent TEXT,
+                access_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                additional_info TEXT,
+                FOREIGN KEY (user_id) REFERENCES sb_user (user_id)
             )
         ''')
         
@@ -258,3 +276,59 @@ def is_user_active(user_email):
     """사용자 활성 상태 확인"""
     user = find_user_by_email(user_email)
     return user is not None
+
+def log_user_activity(user_info, action_type, page_name, url_path, ip_address, user_agent, additional_info=None):
+    """사용자 활동 로그 기록"""
+    if not user_info:
+        return
+    
+    try:
+        with get_db() as conn:
+            conn.execute('''
+                INSERT INTO sb_user_activity_log 
+                (user_id, user_email, user_name, action_type, page_name, url_path, 
+                 ip_address, user_agent, additional_info)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                user_info.get('user_id'),
+                user_info.get('user_email'),
+                user_info.get('user_name'),
+                action_type,
+                page_name,
+                url_path,
+                ip_address,
+                user_agent[:500] if user_agent else None,  # User-Agent는 길 수 있으므로 제한
+                additional_info
+            ))
+            conn.commit()
+    except Exception as e:
+        print(f"로그 기록 중 오류 발생: {e}")
+
+def get_user_activity_logs(limit=100, offset=0, user_id=None):
+    """사용자 활동 로그 조회"""
+    with get_db() as conn:
+        query = '''
+            SELECT log_id, user_id, user_email, user_name, action_type, page_name, 
+                   url_path, ip_address, access_time, additional_info
+            FROM sb_user_activity_log
+        '''
+        params = []
+        
+        if user_id:
+            query += ' WHERE user_id = ?'
+            params.append(user_id)
+        
+        query += ' ORDER BY access_time DESC LIMIT ? OFFSET ?'
+        params.extend([limit, offset])
+        
+        logs = conn.execute(query, params).fetchall()
+        return [dict(log) for log in logs]
+
+def get_activity_log_count(user_id=None):
+    """활동 로그 총 개수 조회"""
+    with get_db() as conn:
+        if user_id:
+            count = conn.execute('SELECT COUNT(*) FROM sb_user_activity_log WHERE user_id = ?', (user_id,)).fetchone()[0]
+        else:
+            count = conn.execute('SELECT COUNT(*) FROM sb_user_activity_log').fetchone()[0]
+        return count
