@@ -48,11 +48,6 @@
                 <i class="fas fa-magic"></i> 샘플입력
             </button>
             {% endif %}
-            
-            <!-- 디버그용: admin_flag 확인 버튼 -->
-            <button type="button" class="btn btn-outline-info btn-sm" onclick="debugAdminFlag()">
-                <i class="fas fa-bug"></i> 디버그
-            </button>
         </div>
 
         <!-- 질문 폼 -->
@@ -352,31 +347,6 @@
 
         // 마지막 질문 제출 시 서버에서 AI 검토 선택 페이지로 리디렉션됨
         // JavaScript 인터셉트 제거하여 정상적인 서버 처리 허용
-        
-        // 디버그용 함수
-        function debugAdminFlag() {
-            const userInfo = {{ user_info | tojson if user_info else 'null' }};
-            const remoteAddr = '{{ remote_addr }}';
-            const isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
-            
-            let debugMsg = '=== 디버그 정보 ===\n';
-            debugMsg += `로그인 상태: ${isLoggedIn}\n`;
-            debugMsg += `접속 IP: ${remoteAddr}\n`;
-            
-            if (userInfo) {
-                debugMsg += `사용자 이름: ${userInfo.user_name}\n`;
-                debugMsg += `이메일: ${userInfo.user_email}\n`;
-                debugMsg += `관리자 플래그: ${userInfo.admin_flag}\n`;
-                debugMsg += `회사명: ${userInfo.company_name || '없음'}\n`;
-                
-                const showSample = (remoteAddr === '127.0.0.1') || (userInfo.admin_flag === 'Y');
-                debugMsg += `샘플 버튼 표시 조건: ${showSample}`;
-            } else {
-                debugMsg += '사용자 정보: 없음';
-            }
-            
-            alert(debugMsg);
-        }
     </script>
 </body>
 </html>
