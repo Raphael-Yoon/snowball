@@ -274,7 +274,8 @@ def login():
                     'user_name': user['user_name'],
                     'user_email': user['user_email'],
                     'company_name': user.get('company_name', ''),
-                    'phone_number': user.get('phone_number', '')
+                    'phone_number': user.get('phone_number', ''),
+                    'admin_flag': user.get('admin_flag', 'N')
                 }
                 session['login_time'] = datetime.now().isoformat()
                 session.pop('login_email', None)  # 임시 이메일 정보 삭제
@@ -428,6 +429,7 @@ def link2():
         # 마지막 질문 제출 시 AI 검토 선택 페이지로 이동
         if question_index == question_count - 1:
             print('interview completed - redirecting to AI review selection page')
+            print(f'Current question_index: {question_index}, question_count: {question_count}')
             print('--- 모든 답변(answers) ---')
             for idx, ans in enumerate(session.get('answer', [])):
                 print(f"a{idx}: {ans}")
