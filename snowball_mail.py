@@ -29,16 +29,24 @@ def get_gmail_credentials():
 
 # 텍스트 메일 전송
 
-def send_gmail(to, subject, body):
+def send_gmail(to, subject, body, bcc=None):
     creds = get_gmail_credentials()
     service = build('gmail', 'v1', credentials=creds)
-    message = MIMEText(body)
+    
+    # MIMEMultipart를 사용하여 BCC 처리
+    message = MIMEMultipart()
     message['to'] = to
     message['subject'] = subject
-    message['Bcc'] = 'snowball2727@naver.com'
+    if bcc:
+        message['Bcc'] = bcc
+    else:
+        message['Bcc'] = 'snowball2727@naver.com'  # 기본 BCC
+    
+    # 본문 추가
+    message.attach(MIMEText(body, 'plain'))
+    
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-    message = {'raw': raw}
-    send_message = service.users().messages().send(userId="me", body=message).execute()
+    send_message = service.users().messages().send(userId="me", body={'raw': raw}).execute()
     return send_message
 
 # 첨부파일 포함 메일 전송

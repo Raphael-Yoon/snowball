@@ -19,7 +19,7 @@ from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
-from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count
+from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status
 import uuid
 import json
 
@@ -691,17 +691,30 @@ def ai_review_selection():
     user_email = session.get('answer', [''])[0] if session.get('answer') else ''
     if not user_email:
         return redirect(url_for('link2', reset=1))  # 세션이 없으면 인터뷰 처음으로
+    
     user_info = get_user_info()
+    
+    # 로그인한 사용자만 AI 검토 현황 표시
+    current_count = 0
+    if is_logged_in():
+        current_count, _ = get_ai_review_status(user_email)
+    
     return render_template('link2_ai_review.jsp', 
                          user_email=user_email,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
+                         ai_review_count=current_count if is_logged_in() else None,
                          remote_addr=request.remote_addr)
 
 @app.route('/process_with_ai_option', methods=['POST'])
 def process_with_ai_option():
     """AI 검토 옵션에 따라 처리 페이지로 이동"""
     enable_ai_review = request.form.get('enable_ai_review', 'false').lower() == 'true'
+    user_email = session.get('answer', [''])[0] if session.get('answer') else ''
+    
+    if enable_ai_review and is_logged_in():
+        # 로그인한 사용자만 AI 검토 횟수 기록
+        increment_ai_review_count(user_email)
     
     # 세션에 AI 검토 옵션 저장
     session['enable_ai_review'] = enable_ai_review
@@ -862,9 +875,10 @@ def service_inquiry():
 빠른 시일 내에 담당자가 연락드리겠습니다.'''
         
         send_gmail(
-            to='snowball1566@gmail.com',
+            to=contact_email,
             subject=subject,
-            body=body
+            body=body,
+            bcc='snowball1566@gmail.com'
         )
         
         # 성공 메시지를 포함하여 로그인 페이지로 리다이렉트
