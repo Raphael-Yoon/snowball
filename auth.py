@@ -16,14 +16,17 @@ def get_db():
 def init_db():
     """사용자 테이블 초기화"""
     with get_db() as conn:
+        # 새로운 스키마 (enabled_flag 제거됨)
         conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_user (
+            CREATE TABLE IF NOT EXISTS sb_user_new (
                 user_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company_name TEXT,
                 user_name TEXT NOT NULL,
                 user_email TEXT UNIQUE NOT NULL,
                 phone_number TEXT,
-                enabled_flag INTEGER DEFAULT 1,
+                admin_flag TEXT DEFAULT 'N',
+                effective_start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                effective_end_date TIMESTAMP DEFAULT NULL,
                 creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login_date TIMESTAMP,
                 otp_code TEXT,
@@ -32,6 +35,50 @@ def init_db():
                 otp_method TEXT DEFAULT 'email'
             )
         ''')
+        
+        # 기존 테이블이 있는지 확인하고 데이터 마이그레이션
+        existing_table = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='sb_user'"
+        ).fetchone()
+        
+        if existing_table:
+            print("기존 sb_user 테이블을 발견했습니다. 데이터 마이그레이션을 수행합니다.")
+            
+            # 기존 테이블의 컬럼 정보 확인
+            columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_user)').fetchall()]
+            
+            # 기존 데이터를 새 테이블로 복사 (enabled_flag 제외, 없는 컬럼은 기본값 사용)
+            admin_flag_col = 'admin_flag' if 'admin_flag' in columns else "'N'"
+            effective_start_col = 'effective_start_date' if 'effective_start_date' in columns else 'CURRENT_TIMESTAMP'
+            effective_end_col = 'effective_end_date' if 'effective_end_date' in columns else 'NULL'
+            otp_method_col = 'otp_method' if 'otp_method' in columns else "'email'"
+            
+            conn.execute(f'''
+                INSERT INTO sb_user_new (
+                    user_id, company_name, user_name, user_email, phone_number,
+                    admin_flag, effective_start_date, effective_end_date,
+                    creation_date, last_login_date, otp_code, otp_expires_at,
+                    otp_attempts, otp_method
+                )
+                SELECT 
+                    user_id, company_name, user_name, user_email, phone_number,
+                    {admin_flag_col},
+                    {effective_start_col},
+                    {effective_end_col},
+                    creation_date, last_login_date, otp_code, otp_expires_at,
+                    COALESCE(otp_attempts, 0), {otp_method_col}
+                FROM sb_user
+            ''')
+            
+            # 기존 테이블 삭제하고 새 테이블 이름 변경
+            conn.execute('DROP TABLE sb_user')
+            conn.execute('ALTER TABLE sb_user_new RENAME TO sb_user')
+            print("데이터 마이그레이션이 완료되었습니다. enabled_flag 컬럼이 제거되었습니다.")
+        else:
+            # 기존 테이블이 없으면 새 테이블을 sb_user로 이름 변경
+            conn.execute('ALTER TABLE sb_user_new RENAME TO sb_user')
+            print("새로운 sb_user 테이블이 생성되었습니다.")
+        
         conn.commit()
 
 def generate_otp():
@@ -39,12 +86,15 @@ def generate_otp():
     return ''.join(random.choices(string.digits, k=6))
 
 def find_user_by_email(email):
-    """이메일로 사용자 찾기"""
+    """이메일로 사용자 찾기 (날짜 기반 활성화 체크)"""
     with get_db() as conn:
-        user = conn.execute(
-            'SELECT * FROM sb_user WHERE user_email = ? AND enabled_flag = "Y"', 
-            (email,)
-        ).fetchone()
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        user = conn.execute('''
+            SELECT * FROM sb_user 
+            WHERE user_email = ? 
+            AND effective_start_date <= ? 
+            AND (effective_end_date IS NULL OR effective_end_date >= ?)
+        ''', (email, current_time, current_time)).fetchone()
         return dict(user) if user else None
 
 def send_otp(user_email, method='email'):
@@ -113,15 +163,18 @@ def send_otp_sms(phone_number, otp_code):
     return True, f"인증 코드가 {phone_number}로 발송되었습니다. (테스트 모드: 콘솔 확인)"
 
 def verify_otp(email, otp_code):
-    """OTP 코드 검증"""
+    """OTP 코드 검증 (날짜 기반 활성화 체크)"""
     with get_db() as conn:
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         user = conn.execute('''
             SELECT * FROM sb_user 
-            WHERE user_email = ? AND enabled_flag = "Y"
-        ''', (email,)).fetchone()
+            WHERE user_email = ? 
+            AND effective_start_date <= ? 
+            AND (effective_end_date IS NULL OR effective_end_date >= ?)
+        ''', (email, current_time, current_time)).fetchone()
         
         if not user:
-            return False, "사용자를 찾을 수 없습니다."
+            return False, "사용자를 찾을 수 없거나 활성화 기간이 아닙니다."
         
         # OTP 만료 확인
         if not user['otp_expires_at'] or datetime.now() > datetime.fromisoformat(user['otp_expires_at']):
@@ -172,3 +225,36 @@ def get_current_user():
             'SELECT * FROM sb_user WHERE user_id = ?', (session['user_id'],)
         ).fetchone()
         return dict(user) if user else None
+
+def set_user_effective_period(user_email, start_date, end_date):
+    """사용자 활성화 기간 설정"""
+    with get_db() as conn:
+        conn.execute('''
+            UPDATE sb_user 
+            SET effective_start_date = ?, effective_end_date = ?
+            WHERE user_email = ?
+        ''', (start_date, end_date, user_email))
+        conn.commit()
+        print(f"사용자 {user_email}의 활성화 기간이 {start_date} ~ {end_date}로 설정되었습니다.")
+
+def disable_user_temporarily(user_email, disable_until_date):
+    """사용자 임시 비활성화 (특정 날짜까지)"""
+    tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+    set_user_effective_period(user_email, tomorrow, disable_until_date)
+
+def enable_user_permanently(user_email):
+    """사용자 영구 활성화 (종료일을 NULL로 설정)"""
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with get_db() as conn:
+        conn.execute('''
+            UPDATE sb_user 
+            SET effective_start_date = ?, effective_end_date = NULL
+            WHERE user_email = ?
+        ''', (current_time, user_email))
+        conn.commit()
+        print(f"사용자 {user_email}이 영구 활성화되었습니다.")
+
+def is_user_active(user_email):
+    """사용자 활성 상태 확인"""
+    user = find_user_by_email(user_email)
+    return user is not None

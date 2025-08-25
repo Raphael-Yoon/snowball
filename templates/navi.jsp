@@ -40,15 +40,17 @@
                             <i class="fas fa-film me-1"></i>Video
                         </a>
                     </li>
-                </ul>
-                
-                <ul class="navbar-nav">
                     {% if is_logged_in %}
                     <li class="nav-item">
                         <a href="/contact" class="nav-link">
                             <i class="fas fa-envelope me-1"></i>Contact Us
                         </a>
                     </li>
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav">
+                    {% if is_logged_in %}
                     <li class="nav-item">
                         <span class="navbar-text company-info">
                             <i class="fas fa-building me-1"></i>{{ user_info.company_name if user_info.company_name else '회사명 미등록' }}

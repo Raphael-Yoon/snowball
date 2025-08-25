@@ -38,7 +38,7 @@
                             <input type="radio" name="method" value="email" checked>
                             이메일로 받기
                         </label>
-                        {% if remote_addr == '127.0.0.1' or request.host == 'snowball.pythonanywhere.com' %}
+                        {% if remote_addr == '127.0.0.1' or (user_info and user_info.get('admin_flag') == 'Y') %}
                         <label class="radio-label">
                             <input type="radio" name="method" value="sms">
                             SMS로 받기 (테스트용: <a href="/sms_test_log" target="_blank">로그 확인</a>)

@@ -43,7 +43,7 @@
         </div>
 
         <div class="text-center mt-4">
-            {% if remote_addr == '127.0.0.1' or request.host == 'snowball.pythonanywhere.com' %}
+            {% if remote_addr == '127.0.0.1' or (user_info and user_info.get('admin_flag') == 'Y') %}
             <button type="button" class="btn btn-outline-secondary me-2" onclick="fillSample({{ current_index }})">
                 <i class="fas fa-magic"></i> 샘플입력
             </button>
@@ -345,19 +345,8 @@
             }
         });
 
-        // 마지막 질문 제출 시 alert + 메인 이동
-        document.addEventListener('DOMContentLoaded', function() {
-            var form = document.querySelector('form[action="/link2"]');
-            var currentIndex = {{ current_index|int }};
-            var questionCount = {{ question_count|int }};
-            if (form && (currentIndex + 1 === questionCount)) {
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    alert('곧 메일이 전송됩니다.');
-                    window.location.href = '/';
-                });
-            }
-        });
+        // 마지막 질문 제출 시 서버에서 AI 검토 선택 페이지로 리디렉션됨
+        // JavaScript 인터셉트 제거하여 정상적인 서버 처리 허용
     </script>
 </body>
 </html>
