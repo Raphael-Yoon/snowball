@@ -875,10 +875,9 @@ def service_inquiry():
 빠른 시일 내에 담당자가 연락드리겠습니다.'''
         
         send_gmail(
-            to=contact_email,
+            to=f'{contact_email}, snowball1566@gmail.com',
             subject=subject,
-            body=body,
-            bcc='snowball1566@gmail.com'
+            body=body
         )
         
         # 성공 메시지를 포함하여 로그인 페이지로 리다이렉트
