@@ -27,6 +27,20 @@
                     {% if user_name != 'Guest' %}
                         <div class="auth-info">
                             <span class="user-welcome">환영합니다, {{ user_name }}님!</span>
+                            {% if session.get('original_admin_id') %}
+                                <div class="mt-1">
+                                    <small class="text-warning">
+                                        <i class="fas fa-user-secret me-1"></i>관리자가 {{ user_name }} 사용자로 스위치 중
+                                    </small>
+                                </div>
+                                <a href="/admin/switch_back" class="btn btn-sm btn-danger ms-2" title="관리자로 돌아가기">
+                                    <i class="fas fa-undo me-1"></i>관리자로 돌아가기
+                                </a>
+                            {% elif user_info and user_info.admin_flag == 'Y' %}
+                                <a href="/admin" class="btn btn-sm btn-warning ms-2" title="관리자 메뉴">
+                                    <i class="fas fa-user-shield me-1"></i>관리자
+                                </a>
+                            {% endif %}
                             <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-secondary ms-2">로그아웃</a>
                         </div>
                     {% else %}
@@ -65,7 +79,7 @@
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/interview.jpg')}}" class="feature-img" alt="Interview">
                         <div class="card-body p-4">
-                            <h5 class="feature-title text-center">Interview/Design Test</h5>
+                            <h5 class="feature-title text-center">Interview</h5>
                             <p class="feature-description">전문가와의 인터뷰를 통해 시스템의 현재 상태와 개선점을 파악합니다.</p>
                             <div class="text-center">
                                 <a href="/link2?reset=1" class="feature-link">자세히 보기</a>

@@ -58,6 +58,13 @@
                 
                 <ul class="navbar-nav">
                     {% if is_logged_in %}
+                    {% if session.get('original_admin_id') %}
+                    <li class="nav-item">
+                        <a href="/admin/switch_back" class="nav-link text-danger" title="관리자로 돌아가기">
+                            <i class="fas fa-undo me-1"></i>관리자로 돌아가기
+                        </a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item">
                         <span class="navbar-text company-info">
                             <i class="fas fa-building me-1"></i>{{ user_info.company_name if user_info.company_name else '회사명 미등록' }}
