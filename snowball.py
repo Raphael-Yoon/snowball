@@ -19,7 +19,7 @@ from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
-from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms
+from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations
 import uuid
 import json
 import re
@@ -328,30 +328,40 @@ def log_session_info(route_name):
 def index():
     log_session_info("메인 페이지")
     
-    # 자동 로그인 기능 해제 (프로덕션 환경)
-    # if not is_logged_in():
-    #     with get_db() as conn:
-    #         user = conn.execute(
-    #             'SELECT * FROM sb_user WHERE user_email = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
-    #             ('snowball2727@naver.com',)
-    #         ).fetchone()
-    #         
-    #         if user:
-    #             session['user_id'] = user['user_id']
-    #             session['user_email'] = user['user_email']
-    #             session['user_info'] = {
-    #                 'user_id': user['user_id'],
-    #                 'user_name': user['user_name'],
-    #                 'user_email': user['user_email'],
-    #                 'company_name': user.get('company_name', ''),
-    #                 'phone_number': user.get('phone_number', ''),
-    #                 'admin_flag': user.get('admin_flag', 'N')
-    #             }
-    #             from datetime import datetime
-    #             session['last_activity'] = datetime.now().isoformat()
-    #             print(f"개발용 자동 로그인 성공: {user['user_email']} (admin_flag: {user.get('admin_flag', 'N')})")
-    #         else:
-    #             print("개발용 자동 로그인 실패: snowball2727@naver.com 계정을 찾을 수 없습니다.")
+    # 개발 단계: 127.0.0.1:5001 접속시 자동 로그인
+    if not is_logged_in():
+        # 클라이언트 IP가 127.0.0.1이고 포트가 5001인 경우에만 자동 로그인
+        client_ip = request.environ.get('REMOTE_ADDR', '')
+        server_port = request.environ.get('SERVER_PORT', '')
+        
+        if client_ip == '127.0.0.1' and server_port == '5001':
+            with get_db() as conn:
+                user = conn.execute(
+                    'SELECT * FROM sb_user WHERE user_email = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
+                    ('snowball2727@naver.com',)
+                ).fetchone()
+                
+                if user:
+                    # SQLite Row 객체를 딕셔너리로 변환
+                    user_dict = dict(user)
+                    
+                    session['user_id'] = user_dict['user_id']
+                    session['user_email'] = user_dict['user_email']
+                    session['user_info'] = {
+                        'user_id': user_dict['user_id'],
+                        'user_name': user_dict['user_name'],
+                        'user_email': user_dict['user_email'],
+                        'company_name': user_dict.get('company_name', ''),
+                        'phone_number': user_dict.get('phone_number', ''),
+                        'admin_flag': user_dict.get('admin_flag', 'N')
+                    }
+                    from datetime import datetime
+                    session['last_activity'] = datetime.now().isoformat()
+                    print(f"127.0.0.1:5001 자동 로그인 성공: {user_dict['user_email']} (admin_flag: {user_dict.get('admin_flag', 'N')})")
+                else:
+                    print("자동 로그인 실패: snowball2727@naver.com 계정을 찾을 수 없습니다.")
+        else:
+            print(f"자동 로그인 조건 불만족 - IP: {client_ip}, Port: {server_port}")
     
     user_info = get_user_info()
     user_name = user_info['user_name'] if user_info else "Guest"
@@ -1875,6 +1885,356 @@ def admin_switch_back():
         session.clear()  # 오류 시 세션 초기화
         flash('오류가 발생하여 로그아웃됩니다.')
         return redirect(url_for('login'))
+
+# === 사용자 전용 페이지 ===
+@app.route('/user/rcm')
+@login_required
+def user_rcm():
+    """사용자 RCM 조회 페이지"""
+    user_info = get_user_info()
+    
+    # 사용자가 접근 권한을 가진 RCM 목록 조회
+    user_rcms = get_user_rcms(user_info['user_id'])
+    
+    log_user_activity(user_info, 'PAGE_ACCESS', '사용자 RCM 조회', '/user/rcm', 
+                     request.remote_addr, request.headers.get('User-Agent'))
+    
+    return render_template('user_rcm.jsp',
+                         user_rcms=user_rcms,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/user/rcm/<int:rcm_id>/view')
+@login_required
+def user_rcm_view(rcm_id):
+    """사용자 RCM 상세 보기"""
+    user_info = get_user_info()
+    
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+    with get_db() as conn:
+        access_check = conn.execute('''
+            SELECT ur.permission_type 
+            FROM sb_user_rcm ur
+            WHERE ur.user_id = ? AND ur.rcm_id = ? AND ur.is_active = 'Y'
+        ''', (user_info['user_id'], rcm_id)).fetchone()
+        
+        if not access_check:
+            flash('해당 RCM에 대한 접근 권한이 없습니다.')
+            return redirect(url_for('user_rcm'))
+        
+        # RCM 기본 정보 조회
+        rcm_info = conn.execute('''
+            SELECT r.*, u.user_name as upload_user_name, u.company_name
+            FROM sb_rcm r
+            LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+            WHERE r.rcm_id = ? AND r.is_active = 'Y'
+        ''', (rcm_id,)).fetchone()
+        
+        if not rcm_info:
+            flash('RCM을 찾을 수 없습니다.')
+            return redirect(url_for('user_rcm'))
+    
+    # RCM 상세 데이터 조회
+    rcm_details = get_rcm_details(rcm_id)
+    
+    return render_template('user_rcm_view.jsp',
+                         rcm_info=dict(rcm_info),
+                         rcm_details=rcm_details,
+                         permission_type=access_check['permission_type'],
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/user/design-evaluation')
+@login_required
+def user_design_evaluation():
+    """설계평가 페이지"""
+    user_info = get_user_info()
+    
+    log_user_activity(user_info, 'PAGE_ACCESS', '설계평가', '/user/design-evaluation', 
+                     request.remote_addr, request.headers.get('User-Agent'))
+    
+    return render_template('user_design_evaluation.jsp',
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/user/design-evaluation/rcm/<int:rcm_id>')
+@login_required
+def user_design_evaluation_rcm(rcm_id):
+    """RCM 기반 설계평가 페이지"""
+    user_info = get_user_info()
+    
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+    with get_db() as conn:
+        access_check = conn.execute('''
+            SELECT ur.permission_type, r.rcm_name, r.description, u.company_name
+            FROM sb_user_rcm ur
+            JOIN sb_rcm r ON ur.rcm_id = r.rcm_id
+            JOIN sb_user u ON r.upload_user_id = u.user_id
+            WHERE ur.user_id = ? AND ur.rcm_id = ? AND ur.is_active = 'Y'
+        ''', (user_info['user_id'], rcm_id)).fetchone()
+        
+        if not access_check:
+            flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
+            return redirect(url_for('user_design_evaluation'))
+        
+        # RCM 세부 데이터 조회
+        rcm_details = conn.execute('''
+            SELECT * FROM sb_rcm_detail 
+            WHERE rcm_id = ? 
+            ORDER BY control_code
+        ''', (rcm_id,)).fetchall()
+    
+    # 딕셔너리로 변환
+    access_info = dict(access_check)
+    rcm_details_list = [dict(row) for row in rcm_details]
+    
+    log_user_activity(user_info, 'PAGE_ACCESS', f'RCM 설계평가 - {access_info["rcm_name"]}', 
+                     f'/user/design-evaluation/rcm/{rcm_id}', 
+                     request.remote_addr, request.headers.get('User-Agent'))
+    
+    return render_template('user_design_evaluation_rcm.jsp',
+                         rcm_id=rcm_id,
+                         rcm_info=access_info,
+                         rcm_details=rcm_details_list,
+                         permission_type=access_info['permission_type'],
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/api/design-evaluation/save', methods=['POST'])
+@login_required
+def save_design_evaluation_api():
+    """설계평가 결과 저장 API"""
+    user_info = get_user_info()
+    data = request.get_json()
+    
+    rcm_id = data.get('rcm_id')
+    control_code = data.get('control_code')
+    evaluation_data = data.get('evaluation_data')
+    
+    if not all([rcm_id, control_code, evaluation_data]):
+        return jsonify({
+            'success': False,
+            'message': '필수 데이터가 누락되었습니다.'
+        })
+    
+    try:
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+        with get_db() as conn:
+            access_check = conn.execute('''
+                SELECT permission_type FROM sb_user_rcm
+                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+            ''', (user_info['user_id'], rcm_id)).fetchone()
+            
+            if not access_check:
+                return jsonify({
+                    'success': False,
+                    'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                })
+        
+        # 설계평가 결과 저장
+        save_design_evaluation(rcm_id, control_code, user_info['user_id'], evaluation_data)
+        
+        # 활동 로그 기록
+        log_user_activity(user_info, 'DESIGN_EVALUATION', f'설계평가 저장 - {control_code}', 
+                         f'/api/design-evaluation/save', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({
+            'success': True,
+            'message': '설계평가 결과가 저장되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"설계평가 저장 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': '저장 중 오류가 발생했습니다.'
+        })
+
+@app.route('/api/design-evaluation/load/<int:rcm_id>')
+@login_required
+def load_design_evaluations_api(rcm_id):
+    """설계평가 결과 불러오기 API"""
+    user_info = get_user_info()
+    
+    try:
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+        with get_db() as conn:
+            access_check = conn.execute('''
+                SELECT permission_type FROM sb_user_rcm
+                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+            ''', (user_info['user_id'], rcm_id)).fetchone()
+            
+            if not access_check:
+                return jsonify({
+                    'success': False,
+                    'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                })
+        
+        # 설계평가 결과 조회
+        evaluations = get_design_evaluations(rcm_id, user_info['user_id'])
+        
+        # 컨트롤 코드를 키로 하는 딕셔너리로 변환
+        evaluation_dict = {}
+        for eval_data in evaluations:
+            evaluation_dict[eval_data['control_code']] = {
+                'adequacy': eval_data['description_adequacy'],
+                'improvement': eval_data['improvement_suggestion'],
+                'effectiveness': eval_data['overall_effectiveness'],
+                'rationale': eval_data['evaluation_rationale'],
+                'actions': eval_data['recommended_actions'],
+                'last_updated': eval_data['last_updated']
+            }
+        
+        return jsonify({
+            'success': True,
+            'evaluations': evaluation_dict
+        })
+        
+    except Exception as e:
+        print(f"설계평가 불러오기 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': '불러오기 중 오류가 발생했습니다.'
+        })
+
+@app.route('/api/design-evaluation/reset', methods=['POST'])
+@login_required
+def reset_design_evaluations_api():
+    """설계평가 결과 초기화 API"""
+    user_info = get_user_info()
+    data = request.get_json()
+    
+    rcm_id = data.get('rcm_id')
+    
+    if not rcm_id:
+        return jsonify({
+            'success': False,
+            'message': 'RCM ID가 누락되었습니다.'
+        })
+    
+    try:
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+        with get_db() as conn:
+            access_check = conn.execute('''
+                SELECT permission_type FROM sb_user_rcm
+                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+            ''', (user_info['user_id'], rcm_id)).fetchone()
+            
+            if not access_check:
+                return jsonify({
+                    'success': False,
+                    'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                })
+            
+            # 해당 사용자의 모든 설계평가 결과 삭제
+            deleted_count = conn.execute('''
+                DELETE FROM sb_design_evaluation
+                WHERE rcm_id = ? AND user_id = ?
+            ''', (rcm_id, user_info['user_id'])).rowcount
+            
+            conn.commit()
+        
+        # 활동 로그 기록
+        log_user_activity(user_info, 'DESIGN_EVALUATION_RESET', f'설계평가 초기화 - RCM ID: {rcm_id}', 
+                         f'/api/design-evaluation/reset', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({
+            'success': True,
+            'message': f'{deleted_count}개의 설계평가 결과가 초기화되었습니다.',
+            'deleted_count': deleted_count
+        })
+        
+    except Exception as e:
+        print(f"설계평가 초기화 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': '초기화 중 오류가 발생했습니다.'
+        })
+
+@app.route('/user/operation-evaluation')
+@login_required
+def user_operation_evaluation():
+    """운영평가 페이지"""
+    user_info = get_user_info()
+    
+    log_user_activity(user_info, 'PAGE_ACCESS', '운영평가', '/user/operation-evaluation', 
+                     request.remote_addr, request.headers.get('User-Agent'))
+    
+    return render_template('user_operation_evaluation.jsp',
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+# === API 엔드포인트 ===
+@app.route('/api/user/rcm-status')
+@login_required
+def api_user_rcm_status():
+    """사용자 RCM 현황 조회 API"""
+    user_info = get_user_info()
+    
+    try:
+        with get_db() as conn:
+            # 총 접근 가능한 RCM 수
+            total_count = conn.execute('''
+                SELECT COUNT(*) as count
+                FROM sb_user_rcm ur
+                INNER JOIN sb_rcm r ON ur.rcm_id = r.rcm_id
+                WHERE ur.user_id = ? AND ur.is_active = 'Y' AND r.is_active = 'Y'
+            ''', (user_info['user_id'],)).fetchone()['count']
+            
+            # 관리자 권한을 가진 RCM 수
+            admin_count = conn.execute('''
+                SELECT COUNT(*) as count
+                FROM sb_user_rcm ur
+                INNER JOIN sb_rcm r ON ur.rcm_id = r.rcm_id
+                WHERE ur.user_id = ? AND ur.is_active = 'Y' AND r.is_active = 'Y' 
+                AND ur.permission_type = 'admin'
+            ''', (user_info['user_id'],)).fetchone()['count']
+        
+        return jsonify({
+            'success': True,
+            'total_count': total_count,
+            'admin_count': admin_count,
+            'read_count': total_count - admin_count
+        })
+        
+    except Exception as e:
+        print(f"RCM 현황 조회 오류: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/user/rcm-list')
+@login_required
+def api_user_rcm_list():
+    """사용자 RCM 목록 조회 API (빠른 접근용)"""
+    user_info = get_user_info()
+    
+    try:
+        user_rcms = get_user_rcms(user_info['user_id'])
+        
+        # 빠른 접근용으로 필요한 정보만 추출
+        rcm_list = []
+        for rcm in user_rcms:
+            rcm_list.append({
+                'rcm_id': rcm['rcm_id'],
+                'rcm_name': rcm['rcm_name'],
+                'company_name': rcm['company_name'],
+                'permission_type': rcm['permission_type']
+            })
+        
+        return jsonify({
+            'success': True,
+            'rcms': rcm_list
+        })
+        
+    except Exception as e:
+        print(f"RCM 목록 조회 오류: {e}")
+        return jsonify({'success': False, 'message': str(e)})
 
 
 
