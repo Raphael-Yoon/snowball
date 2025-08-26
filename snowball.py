@@ -19,9 +19,99 @@ from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
-from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status
+from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms
 import uuid
 import json
+import re
+
+def perform_auto_mapping(headers):
+    """컬럼명 기반 자동 매핑"""
+    # 시스템 필드와 가능한 컬럼명 패턴 정의
+    field_patterns = {
+        'control_code': [
+            '통제코드', '통제 코드', 'control_code', 'control code', 
+            '코드', 'code', '번호', 'no', 'id'
+        ],
+        'control_name': [
+            '통제명', '통제 명', '통제이름', '통제 이름', 'control_name', 'control name',
+            '통제활동명', '명칭', 'name', 'title', '제목'
+        ],
+        'control_description': [
+            '통제활동설명', '통제 활동 설명', '설명', '상세설명', 'description', 'detail',
+            '내용', 'content', '통제활동', '활동설명'
+        ],
+        'key_control': [
+            '핵심통제여부', '핵심통제', '핵심 통제', 'key_control', 'key control',
+            '중요통제', 'key', '핵심', '중요'
+        ],
+        'control_frequency': [
+            '통제주기', '통제 주기', '주기', 'frequency', 'cycle',
+            '빈도', '실행주기', '수행주기'
+        ],
+        'control_type': [
+            '통제유형', '통제 유형', '유형', 'type', 'control_type',
+            '예방적발', '예방/적발', '통제타입'
+        ],
+        'control_nature': [
+            '통제구분', '통제 구분', '구분', 'nature', 'control_nature',
+            '자동수동', '자동/수동', '수행방식'
+        ],
+        'population': [
+            '모집단', '대상', 'population', '범위', 'scope',
+            '테스트대상', '검토대상'
+        ],
+        'population_completeness_check': [
+            '모집단완전성확인', '모집단 완전성 확인', '완전성확인', '완전성 확인',
+            'completeness', '완전성', 'population_completeness'
+        ],
+        'population_count': [
+            '모집단갯수', '모집단 갯수', '갯수', '건수', 'count',
+            '수량', '개수', 'population_count'
+        ],
+        'test_procedure': [
+            '테스트절차', '테스트 절차', '절차', 'procedure', 'test_procedure',
+            '검토절차', '확인절차', '감사절차'
+        ]
+    }
+    
+    auto_mapping = {}
+    
+    for header_index, header in enumerate(headers):
+        if not header or not isinstance(header, str):
+            continue
+            
+        header_lower = header.strip().lower()
+        
+        # 각 시스템 필드별로 매칭 점수 계산
+        best_match = None
+        best_score = 0
+        
+        for field_key, patterns in field_patterns.items():
+            for pattern in patterns:
+                pattern_lower = pattern.lower()
+                
+                # 정확히 일치하는 경우
+                if header_lower == pattern_lower:
+                    score = 100
+                # 포함하는 경우
+                elif pattern_lower in header_lower or header_lower in pattern_lower:
+                    score = 80
+                # 유사한 경우 (공통 단어가 있는 경우)
+                elif any(word in header_lower for word in pattern_lower.split()):
+                    score = 60
+                else:
+                    score = 0
+                
+                if score > best_score:
+                    best_score = score
+                    best_match = field_key
+        
+        # 일정 점수 이상일 때만 자동 매핑
+        if best_match and best_score >= 60:
+            auto_mapping[best_match] = header_index
+    
+    print(f"자동 매핑 결과: {auto_mapping}")
+    return auto_mapping
 
 app = Flask(__name__)
 app.secret_key = '150606'
@@ -237,6 +327,32 @@ def log_session_info(route_name):
 @app.route('/')
 def index():
     log_session_info("메인 페이지")
+    
+    # 자동 로그인 기능 해제 (프로덕션 환경)
+    # if not is_logged_in():
+    #     with get_db() as conn:
+    #         user = conn.execute(
+    #             'SELECT * FROM sb_user WHERE user_email = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
+    #             ('snowball2727@naver.com',)
+    #         ).fetchone()
+    #         
+    #         if user:
+    #             session['user_id'] = user['user_id']
+    #             session['user_email'] = user['user_email']
+    #             session['user_info'] = {
+    #                 'user_id': user['user_id'],
+    #                 'user_name': user['user_name'],
+    #                 'user_email': user['user_email'],
+    #                 'company_name': user.get('company_name', ''),
+    #                 'phone_number': user.get('phone_number', ''),
+    #                 'admin_flag': user.get('admin_flag', 'N')
+    #             }
+    #             from datetime import datetime
+    #             session['last_activity'] = datetime.now().isoformat()
+    #             print(f"개발용 자동 로그인 성공: {user['user_email']} (admin_flag: {user.get('admin_flag', 'N')})")
+    #         else:
+    #             print("개발용 자동 로그인 실패: snowball2727@naver.com 계정을 찾을 수 없습니다.")
+    
     user_info = get_user_info()
     user_name = user_info['user_name'] if user_info else "Guest"
     
@@ -1094,6 +1210,671 @@ def admin_logs():
                          is_logged_in=is_logged_in(),
                          user_info=get_user_info(),
                          remote_addr=request.remote_addr)
+
+# RCM 관리 라우트들
+@app.route('/admin/rcm')
+@login_required
+def admin_rcm():
+    """RCM 관리 메인 페이지"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        flash('관리자 권한이 필요합니다.')
+        return redirect(url_for('home'))
+    
+    # 모든 RCM 목록 조회
+    rcms = get_all_rcms()
+    
+    return render_template('admin_rcm.jsp',
+                         rcms=rcms,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/admin/rcm/upload')
+@login_required
+def admin_rcm_upload():
+    """RCM 업로드 페이지"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        flash('관리자 권한이 필요합니다.')
+        return redirect(url_for('home'))
+    
+    # 모든 사용자 목록 조회 (회사별 RCM 업로드용)
+    with get_db() as conn:
+        users = conn.execute('''
+            SELECT user_id, user_name, user_email, company_name 
+            FROM sb_user 
+            WHERE effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP
+            ORDER BY company_name, user_name
+        ''').fetchall()
+        users_list = [dict(user) for user in users]
+    
+    return render_template('admin_rcm_upload.jsp',
+                         users=users_list,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/admin/rcm/process_upload', methods=['POST'])
+@login_required
+def admin_rcm_process_upload():
+    """Excel 파일 업로드 처리"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
+    
+    try:
+        rcm_name = request.form.get('rcm_name', '').strip()
+        description = request.form.get('description', '').strip()
+        target_user_id = request.form.get('target_user_id', '').strip()
+        
+        if not rcm_name:
+            return jsonify({'success': False, 'message': 'RCM명은 필수입니다.'})
+        
+        if not target_user_id:
+            return jsonify({'success': False, 'message': '대상 사용자를 선택해주세요.'})
+        
+        target_user_id = int(target_user_id)
+        
+        if 'excel_file' not in request.files:
+            return jsonify({'success': False, 'message': 'Excel 파일을 선택해주세요.'})
+        
+        file = request.files['excel_file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'Excel 파일을 선택해주세요.'})
+        
+        if not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'message': 'Excel 파일(.xlsx, .xls)만 업로드 가능합니다.'})
+        
+        # RCM 생성 (선택된 사용자를 소유자로 설정)
+        rcm_id = create_rcm(rcm_name, description, target_user_id)
+        
+        # Excel 파일 읽기
+        from openpyxl import load_workbook
+        import tempfile
+        import os
+        
+        # 임시 파일로 저장
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+        file.save(temp_file.name)
+        temp_file.close()
+        
+        try:
+            # Excel 파일 읽기
+            workbook = load_workbook(temp_file.name)
+            sheet = workbook.active
+            
+            # 헤더 추출 (첫 번째 행)
+            headers = []
+            for cell in sheet[1]:
+                headers.append(cell.value if cell.value else '')
+            
+            # 샘플 데이터 추출 (최대 3행)
+            sample_data = []
+            for row_num in range(2, min(5, sheet.max_row + 1)):  # 2행부터 최대 4행까지
+                row_data = []
+                for col_num in range(1, len(headers) + 1):
+                    cell_value = sheet.cell(row=row_num, column=col_num).value
+                    row_data.append(str(cell_value) if cell_value is not None else '')
+                sample_data.append(row_data)
+            
+            # 자동 매핑 수행
+            auto_mapping = perform_auto_mapping(headers)
+            
+            # 세션에 업로드 정보 저장
+            session[f'rcm_upload_{rcm_id}'] = {
+                'headers': headers,
+                'sample_data': sample_data,
+                'file_path': temp_file.name,
+                'total_rows': sheet.max_row - 1,  # 헤더 제외
+                'auto_mapping': auto_mapping
+            }
+            
+            return jsonify({
+                'success': True, 
+                'rcm_id': rcm_id,
+                'headers': headers,
+                'sample_data': sample_data
+            })
+            
+        finally:
+            # Excel 파일은 매핑 완료 후 삭제하므로 여기서는 삭제하지 않음
+            pass
+            
+    except Exception as e:
+        print(f"Excel 업로드 오류: {e}")
+        return jsonify({'success': False, 'message': f'파일 처리 중 오류가 발생했습니다: {str(e)}'})
+
+@app.route('/admin/rcm/mapping/<int:rcm_id>')
+@login_required
+def admin_rcm_mapping(rcm_id):
+    """컬럼 매핑 페이지"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        flash('관리자 권한이 필요합니다.')
+        return redirect(url_for('home'))
+    
+    # 세션에서 업로드 정보 가져오기
+    upload_key = f'rcm_upload_{rcm_id}'
+    if upload_key not in session:
+        flash('업로드 정보를 찾을 수 없습니다. 다시 업로드해주세요.')
+        return redirect(url_for('admin_rcm_upload'))
+    
+    upload_info = session[upload_key]
+    
+    # RCM 정보 조회
+    with get_db() as conn:
+        rcm_info = conn.execute(
+            'SELECT * FROM sb_rcm WHERE rcm_id = ?', (rcm_id,)
+        ).fetchone()
+        
+        if not rcm_info:
+            flash('RCM 정보를 찾을 수 없습니다.')
+            return redirect(url_for('admin_rcm'))
+    
+    # 시스템 필드 정의
+    system_fields = [
+        {'key': 'control_code', 'name': '통제코드', 'required': True},
+        {'key': 'control_name', 'name': '통제명', 'required': True},
+        {'key': 'control_description', 'name': '통제활동설명', 'required': False},
+        {'key': 'key_control', 'name': '핵심통제여부', 'required': False},
+        {'key': 'control_frequency', 'name': '통제주기', 'required': False},
+        {'key': 'control_type', 'name': '통제유형', 'required': False},
+        {'key': 'control_nature', 'name': '통제구분', 'required': False},
+        {'key': 'population', 'name': '모집단', 'required': False},
+        {'key': 'population_completeness_check', 'name': '모집단완전성확인', 'required': False},
+        {'key': 'population_count', 'name': '모집단갯수', 'required': False},
+        {'key': 'test_procedure', 'name': '테스트절차', 'required': False}
+    ]
+    
+    return render_template('admin_rcm_mapping.jsp',
+                         rcm_info=dict(rcm_info),
+                         headers=upload_info['headers'],
+                         sample_data=upload_info['sample_data'],
+                         system_fields=system_fields,
+                         total_rows=upload_info['total_rows'],
+                         auto_mapping=upload_info.get('auto_mapping', {}),
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/admin/rcm/save_mapping', methods=['POST'])
+@login_required
+def admin_rcm_save_mapping():
+    """매핑된 RCM 데이터 저장"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
+    
+    try:
+        rcm_id = request.form.get('rcm_id')
+        if not rcm_id:
+            return jsonify({'success': False, 'message': 'RCM ID가 필요합니다.'})
+        
+        rcm_id = int(rcm_id)
+        
+        # 세션에서 업로드 정보 가져오기
+        upload_key = f'rcm_upload_{rcm_id}'
+        if upload_key not in session:
+            return jsonify({'success': False, 'message': '업로드 정보를 찾을 수 없습니다.'})
+        
+        upload_info = session[upload_key]
+        file_path = upload_info['file_path']
+        headers = upload_info['headers']
+        
+        # 매핑 정보 수집
+        field_mapping = {}
+        for key in request.form:
+            if key.startswith('mapping_'):
+                field_name = key.replace('mapping_', '')
+                column_index = request.form.get(key)
+                if column_index:
+                    field_mapping[field_name] = int(column_index)
+        
+        
+        # Excel 파일 다시 읽기
+        from openpyxl import load_workbook
+        import os
+        
+        if not os.path.exists(file_path):
+            return jsonify({'success': False, 'message': 'Excel 파일을 찾을 수 없습니다.'})
+        
+        workbook = load_workbook(file_path)
+        sheet = workbook.active
+        
+        # 데이터 처리
+        rcm_data = []
+        for row_num in range(2, sheet.max_row + 1):  # 헤더 제외
+            row_data = {}
+            
+            # 각 필드별로 매핑된 컬럼에서 데이터 추출
+            for field_name, column_index in field_mapping.items():
+                cell_value = sheet.cell(row=row_num, column=column_index + 1).value  # Excel은 1부터 시작
+                row_data[field_name] = str(cell_value) if cell_value is not None else ''
+            
+            # 빈 행 건너뛰기 (통제코드가 없는 경우)
+            if not row_data.get('control_code', '').strip():
+                continue
+                
+            rcm_data.append(row_data)
+        
+        if not rcm_data:
+            return jsonify({'success': False, 'message': '저장할 데이터가 없습니다. 통제코드가 매핑되었는지 확인해주세요.'})
+        
+        # 데이터베이스에 저장
+        save_rcm_details(rcm_id, rcm_data)
+        
+        # RCM 소유자에게 자동으로 접근 권한 부여
+        with get_db() as conn:
+            rcm_owner = conn.execute(
+                'SELECT upload_user_id FROM sb_rcm WHERE rcm_id = ?', (rcm_id,)
+            ).fetchone()
+            
+            if rcm_owner:
+                grant_rcm_access(rcm_owner['upload_user_id'], rcm_id, 'admin', user_info['user_id'])
+        
+        # 업로더(관리자)에게도 권한 부여 (소유자와 다른 경우)
+        if rcm_owner and rcm_owner['upload_user_id'] != user_info['user_id']:
+            grant_rcm_access(user_info['user_id'], rcm_id, 'admin', user_info['user_id'])
+        
+        # 임시 파일 삭제
+        try:
+            os.remove(file_path)
+        except:
+            pass
+        
+        # 세션에서 업로드 정보 삭제
+        del session[upload_key]
+        
+        print(f"RCM 저장 완료: {len(rcm_data)}개 항목")
+        
+        return jsonify({
+            'success': True, 
+            'message': f'{len(rcm_data)}개의 RCM 항목이 성공적으로 저장되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"RCM 저장 오류: {e}")
+        return jsonify({'success': False, 'message': f'저장 중 오류가 발생했습니다: {str(e)}'})
+
+@app.route('/admin/rcm/<int:rcm_id>/view')
+@login_required
+def admin_rcm_view(rcm_id):
+    """RCM 상세 보기"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        flash('관리자 권한이 필요합니다.')
+        return redirect(url_for('home'))
+    
+    # RCM 기본 정보 조회
+    with get_db() as conn:
+        rcm_info = conn.execute('''
+            SELECT r.*, u.user_name as upload_user_name, u.company_name
+            FROM sb_rcm r
+            LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+            WHERE r.rcm_id = ? AND r.is_active = 'Y'
+        ''', (rcm_id,)).fetchone()
+        
+        if not rcm_info:
+            flash('RCM을 찾을 수 없습니다.')
+            return redirect(url_for('admin_rcm'))
+    
+    # RCM 상세 데이터 조회
+    rcm_details = get_rcm_details(rcm_id)
+    
+    return render_template('admin_rcm_view.jsp',
+                         rcm_info=dict(rcm_info),
+                         rcm_details=rcm_details,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/admin/rcm/<int:rcm_id>/users')
+@login_required
+def admin_rcm_users(rcm_id):
+    """RCM 사용자 관리"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        flash('관리자 권한이 필요합니다.')
+        return redirect(url_for('home'))
+    
+    # RCM 기본 정보 조회
+    with get_db() as conn:
+        rcm_info = conn.execute('''
+            SELECT r.*, u.user_name as upload_user_name, u.company_name
+            FROM sb_rcm r
+            LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+            WHERE r.rcm_id = ? AND r.is_active = 'Y'
+        ''', (rcm_id,)).fetchone()
+        
+        if not rcm_info:
+            flash('RCM을 찾을 수 없습니다.')
+            return redirect(url_for('admin_rcm'))
+        
+        # RCM 접근 권한이 있는 사용자 목록
+        rcm_users = conn.execute('''
+            SELECT ur.*, u.user_name, u.user_email, u.company_name,
+                   gb.user_name as granted_by_name
+            FROM sb_user_rcm ur
+            INNER JOIN sb_user u ON ur.user_id = u.user_id
+            LEFT JOIN sb_user gb ON ur.granted_by = gb.user_id
+            WHERE ur.rcm_id = ? AND ur.is_active = 'Y'
+            ORDER BY ur.granted_date DESC
+        ''', (rcm_id,)).fetchall()
+        
+        # 전체 사용자 목록 (권한 부여용)
+        all_users = conn.execute('''
+            SELECT user_id, user_name, user_email, company_name
+            FROM sb_user
+            WHERE effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP
+            ORDER BY company_name, user_name
+        ''').fetchall()
+    
+    return render_template('admin_rcm_users.jsp',
+                         rcm_info=dict(rcm_info),
+                         rcm_users=[dict(user) for user in rcm_users],
+                         all_users=[dict(user) for user in all_users],
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/admin/rcm/grant_access', methods=['POST'])
+@login_required
+def admin_rcm_grant_access():
+    """사용자에게 RCM 접근 권한 부여"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
+    
+    try:
+        rcm_id = request.form.get('rcm_id')
+        user_id = request.form.get('user_id')
+        permission_type = request.form.get('permission_type')
+        
+        if not all([rcm_id, user_id, permission_type]):
+            return jsonify({'success': False, 'message': '필수 정보가 누락되었습니다.'})
+        
+        rcm_id = int(rcm_id)
+        user_id = int(user_id)
+        
+        if permission_type not in ['read', 'admin']:
+            return jsonify({'success': False, 'message': '잘못된 권한 유형입니다.'})
+        
+        # 이미 권한이 있는지 확인
+        with get_db() as conn:
+            existing = conn.execute('''
+                SELECT * FROM sb_user_rcm 
+                WHERE rcm_id = ? AND user_id = ? AND is_active = 'Y'
+            ''', (rcm_id, user_id)).fetchone()
+            
+            if existing:
+                return jsonify({'success': False, 'message': '이미 해당 사용자에게 권한이 부여되어 있습니다.'})
+            
+            # 사용자 정보 조회
+            target_user = conn.execute(
+                'SELECT user_name FROM sb_user WHERE user_id = ?', (user_id,)
+            ).fetchone()
+            
+            if not target_user:
+                return jsonify({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+        
+        # 권한 부여
+        grant_rcm_access(user_id, rcm_id, permission_type, user_info['user_id'])
+        
+        permission_text = '관리자' if permission_type == 'admin' else '읽기'
+        return jsonify({
+            'success': True, 
+            'message': f'{target_user["user_name"]} 사용자에게 {permission_text} 권한을 부여했습니다.'
+        })
+        
+    except Exception as e:
+        print(f"권한 부여 오류: {e}")
+        return jsonify({'success': False, 'message': f'권한 부여 중 오류가 발생했습니다: {str(e)}'})
+
+@app.route('/admin/rcm/change_permission', methods=['POST'])
+@login_required
+def admin_rcm_change_permission():
+    """사용자의 RCM 접근 권한 변경"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
+    
+    try:
+        rcm_id = request.form.get('rcm_id')
+        user_id = request.form.get('user_id')
+        permission_type = request.form.get('permission_type')
+        
+        if not all([rcm_id, user_id, permission_type]):
+            return jsonify({'success': False, 'message': '필수 정보가 누락되었습니다.'})
+        
+        rcm_id = int(rcm_id)
+        user_id = int(user_id)
+        
+        if permission_type not in ['read', 'admin']:
+            return jsonify({'success': False, 'message': '잘못된 권한 유형입니다.'})
+        
+        with get_db() as conn:
+            # 기존 권한 확인
+            existing = conn.execute('''
+                SELECT * FROM sb_user_rcm 
+                WHERE rcm_id = ? AND user_id = ? AND is_active = 'Y'
+            ''', (rcm_id, user_id)).fetchone()
+            
+            if not existing:
+                return jsonify({'success': False, 'message': '해당 사용자의 권한을 찾을 수 없습니다.'})
+            
+            # 사용자 정보 조회
+            target_user = conn.execute(
+                'SELECT user_name FROM sb_user WHERE user_id = ?', (user_id,)
+            ).fetchone()
+            
+            if not target_user:
+                return jsonify({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+            
+            # 권한 변경
+            conn.execute('''
+                UPDATE sb_user_rcm 
+                SET permission_type = ?, granted_by = ?, granted_date = CURRENT_TIMESTAMP
+                WHERE rcm_id = ? AND user_id = ? AND is_active = 'Y'
+            ''', (permission_type, user_info['user_id'], rcm_id, user_id))
+            conn.commit()
+        
+        permission_text = '관리자' if permission_type == 'admin' else '읽기'
+        return jsonify({
+            'success': True, 
+            'message': f'{target_user["user_name"]} 사용자의 권한을 {permission_text} 권한으로 변경했습니다.'
+        })
+        
+    except Exception as e:
+        print(f"권한 변경 오류: {e}")
+        return jsonify({'success': False, 'message': f'권한 변경 중 오류가 발생했습니다: {str(e)}'})
+
+@app.route('/admin/rcm/revoke_access', methods=['POST'])
+@login_required
+def admin_rcm_revoke_access():
+    """사용자의 RCM 접근 권한 제거"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
+    
+    try:
+        rcm_id = request.form.get('rcm_id')
+        user_id = request.form.get('user_id')
+        
+        if not all([rcm_id, user_id]):
+            return jsonify({'success': False, 'message': '필수 정보가 누락되었습니다.'})
+        
+        rcm_id = int(rcm_id)
+        user_id = int(user_id)
+        
+        with get_db() as conn:
+            # 기존 권한 확인
+            existing = conn.execute('''
+                SELECT * FROM sb_user_rcm 
+                WHERE rcm_id = ? AND user_id = ? AND is_active = 'Y'
+            ''', (rcm_id, user_id)).fetchone()
+            
+            if not existing:
+                return jsonify({'success': False, 'message': '해당 사용자의 권한을 찾을 수 없습니다.'})
+            
+            # 사용자 정보 조회
+            target_user = conn.execute(
+                'SELECT user_name FROM sb_user WHERE user_id = ?', (user_id,)
+            ).fetchone()
+            
+            if not target_user:
+                return jsonify({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
+            
+            # 권한 제거 (is_active를 N으로 변경)
+            conn.execute('''
+                UPDATE sb_user_rcm 
+                SET is_active = 'N', granted_by = ?, granted_date = CURRENT_TIMESTAMP
+                WHERE rcm_id = ? AND user_id = ? AND is_active = 'Y'
+            ''', (user_info['user_id'], rcm_id, user_id))
+            conn.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'{target_user["user_name"]} 사용자의 RCM 접근 권한을 제거했습니다.'
+        })
+        
+    except Exception as e:
+        print(f"권한 제거 오류: {e}")
+        return jsonify({'success': False, 'message': f'권한 제거 중 오류가 발생했습니다: {str(e)}'})
+
+@app.route('/admin/rcm/delete', methods=['POST'])
+@login_required
+def admin_rcm_delete():
+    """RCM 삭제 (소프트 삭제)"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
+    
+    try:
+        rcm_id = request.form.get('rcm_id')
+        
+        if not rcm_id:
+            return jsonify({'success': False, 'message': 'RCM ID가 필요합니다.'})
+        
+        rcm_id = int(rcm_id)
+        
+        with get_db() as conn:
+            # RCM 정보 조회
+            rcm_info = conn.execute(
+                'SELECT rcm_name FROM sb_rcm WHERE rcm_id = ? AND is_active = "Y"', (rcm_id,)
+            ).fetchone()
+            
+            if not rcm_info:
+                return jsonify({'success': False, 'message': 'RCM을 찾을 수 없습니다.'})
+            
+            # 소프트 삭제 (is_active를 N으로 변경)
+            conn.execute(
+                'UPDATE sb_rcm SET is_active = "N" WHERE rcm_id = ?', (rcm_id,)
+            )
+            
+            # 관련 사용자 권한도 비활성화
+            conn.execute(
+                'UPDATE sb_user_rcm SET is_active = "N" WHERE rcm_id = ?', (rcm_id,)
+            )
+            
+            conn.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'"{rcm_info["rcm_name"]}" RCM이 성공적으로 삭제되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"RCM 삭제 오류: {e}")
+        return jsonify({'success': False, 'message': f'RCM 삭제 중 오류가 발생했습니다: {str(e)}'})
+
+@app.route('/admin/switch_user', methods=['POST'])
+@login_required
+def admin_switch_user():
+    """관리자가 다른 사용자로 스위치"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
+    
+    try:
+        target_user_id = request.form.get('target_user_id')
+        
+        if not target_user_id:
+            return jsonify({'success': False, 'message': '대상 사용자 ID가 필요합니다.'})
+        
+        target_user_id = int(target_user_id)
+        
+        # 대상 사용자 정보 조회
+        with get_db() as conn:
+            target_user = conn.execute(
+                'SELECT * FROM sb_user WHERE user_id = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
+                (target_user_id,)
+            ).fetchone()
+            
+            if not target_user:
+                return jsonify({'success': False, 'message': '대상 사용자를 찾을 수 없거나 비활성화된 사용자입니다.'})
+        
+        # 현재 관리자 정보를 original_admin_id로 백업
+        session['original_admin_id'] = user_info['user_id']
+        session['original_admin_info'] = user_info
+        
+        # SQLite Row 객체를 딕셔너리로 변환
+        target_user_dict = dict(target_user)
+        
+        # 대상 사용자로 세션 변경
+        session['user_id'] = target_user_dict['user_id']
+        session['user_email'] = target_user_dict['user_email']
+        session['user_info'] = {
+            'user_id': target_user_dict['user_id'],
+            'user_name': target_user_dict['user_name'],
+            'user_email': target_user_dict['user_email'],
+            'company_name': target_user_dict.get('company_name', ''),
+            'phone_number': target_user_dict.get('phone_number', ''),
+            'admin_flag': target_user_dict.get('admin_flag', 'N')
+        }
+        session['last_activity'] = datetime.now().isoformat()
+        
+        print(f"관리자 스위치: {user_info['user_email']} -> {target_user_dict['user_email']}")
+        
+        return jsonify({
+            'success': True, 
+            'message': f'{target_user_dict["user_name"]} 사용자로 스위치되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"사용자 스위치 오류: {e}")
+        return jsonify({'success': False, 'message': f'사용자 스위치 중 오류가 발생했습니다: {str(e)}'})
+
+@app.route('/admin/switch_back')
+@login_required
+def admin_switch_back():
+    """관리자 계정으로 돌아가기"""
+    if 'original_admin_id' not in session:
+        flash('스위치 상태가 아닙니다.')
+        return redirect(url_for('index'))
+    
+    try:
+        # 원래 관리자 정보로 복구
+        original_admin_info = session['original_admin_info']
+        
+        session['user_id'] = original_admin_info['user_id']
+        session['user_email'] = original_admin_info['user_email']
+        session['user_info'] = original_admin_info
+        session['last_activity'] = datetime.now().isoformat()
+        
+        # 스위치 관련 세션 정보 삭제
+        session.pop('original_admin_id', None)
+        session.pop('original_admin_info', None)
+        
+        print(f"관리자 복귀: {original_admin_info['user_email']}")
+        flash('관리자 계정으로 돌아왔습니다.')
+        return redirect(url_for('admin_users'))
+        
+    except Exception as e:
+        print(f"관리자 복귀 오류: {e}")
+        session.clear()  # 오류 시 세션 초기화
+        flash('오류가 발생하여 로그아웃됩니다.')
+        return redirect(url_for('login'))
 
 
 

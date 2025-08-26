@@ -77,6 +77,11 @@
                                     <small>{{ user.last_login_date[:16] if user.last_login_date else '없음' }}</small>
                                 </td>
                                 <td>
+                                    <button type="button" class="btn btn-sm btn-outline-warning" 
+                                            onclick="switchUser({{ user.user_id }}, '{{ user.user_name }}')" 
+                                            title="이 사용자로 스위치">
+                                        <i class="fas fa-user-secret"></i>
+                                    </button>
                                     <button type="button" class="btn btn-sm btn-outline-primary" 
                                             onclick="editUser({{ user.user_id }}, '{{ user.company_name or '' }}', '{{ user.user_name }}', '{{ user.user_email }}', '{{ user.phone_number or '' }}', '{{ user.admin_flag }}', '{{ user.effective_start_date[:10] if user.effective_start_date else '' }}', '{{ user.effective_end_date[:10] if user.effective_end_date else '' }}')" 
                                             data-bs-toggle="modal" data-bs-target="#editUserModal">
@@ -280,6 +285,33 @@
         function deleteUser(userId, userName) {
             document.getElementById('deleteUserName').textContent = userName;
             document.getElementById('deleteUserForm').action = '/admin/users/delete/' + userId;
+        }
+
+        function switchUser(userId, userName) {
+            if (!confirm(`${userName} 사용자로 스위치하시겠습니까?\n\n스위치 후에는 해당 사용자의 권한으로 시스템을 이용하게 됩니다.\n관리자 권한으로 돌아오려면 우측 상단의 "관리자로 돌아가기" 버튼을 클릭하세요.`)) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('target_user_id', userId);
+            
+            fetch('/admin/switch_user', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`${userName} 사용자로 스위치되었습니다.`);
+                    window.location.href = '/';  // 메인 페이지로 이동
+                } else {
+                    alert('스위치 실패: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('사용자 스위치 중 오류가 발생했습니다.');
+            });
         }
 
         // 오늘 날짜를 기본값으로 설정

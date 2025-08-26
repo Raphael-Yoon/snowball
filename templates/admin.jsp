@@ -36,21 +36,6 @@
             <div class="col-md-6 mb-4">
                 <div class="card h-100">
                     <div class="card-body text-center">
-                        <i class="fas fa-cogs fa-3x text-secondary mb-3"></i>
-                        <h5 class="card-title">시스템 설정</h5>
-                        <p class="card-text">시스템 전반적인 설정을 관리합니다.</p>
-                        <button class="btn btn-secondary" disabled>
-                            <i class="fas fa-wrench me-1"></i>준비중
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-md-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-body text-center">
                         <i class="fas fa-chart-bar fa-3x text-success mb-3"></i>
                         <h5 class="card-title">활동 로그</h5>
                         <p class="card-text">사용자 활동 로그를 조회합니다.</p>
@@ -60,16 +45,18 @@
                     </div>
                 </div>
             </div>
+        </div>
 
+        <div class="row">
             <div class="col-md-6 mb-4">
                 <div class="card h-100">
                     <div class="card-body text-center">
-                        <i class="fas fa-database fa-3x text-warning mb-3"></i>
-                        <h5 class="card-title">데이터베이스 관리</h5>
-                        <p class="card-text">데이터베이스 백업 및 유지보수를 수행합니다.</p>
-                        <button class="btn btn-warning" disabled>
-                            <i class="fas fa-database me-1"></i>준비중
-                        </button>
+                        <i class="fas fa-file-excel fa-3x text-info mb-3"></i>
+                        <h5 class="card-title">RCM 관리</h5>
+                        <p class="card-text">회사별 RCM 업로드 및 관리를 수행합니다.</p>
+                        <a href="/admin/rcm" class="btn btn-info">
+                            <i class="fas fa-upload me-1"></i>RCM 관리
+                        </a>
                     </div>
                 </div>
             </div>

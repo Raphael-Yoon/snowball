@@ -56,6 +56,57 @@ def init_db():
             )
         ''')
         
+        # RCM 마스터 테이블 생성 (기존 테이블이 있으면 유지)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_rcm (
+                rcm_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rcm_name TEXT NOT NULL,
+                description TEXT,
+                upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                upload_user_id INTEGER NOT NULL,
+                is_active TEXT DEFAULT 'Y',
+                FOREIGN KEY (upload_user_id) REFERENCES sb_user (user_id)
+            )
+        ''')
+        
+        # RCM 상세 데이터 테이블 생성
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_rcm_detail (
+                detail_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rcm_id INTEGER NOT NULL,
+                control_code TEXT NOT NULL,
+                control_name TEXT NOT NULL,
+                control_description TEXT,
+                key_control TEXT,
+                control_frequency TEXT,
+                control_type TEXT,
+                control_nature TEXT,
+                population TEXT,
+                population_completeness_check TEXT,
+                population_count TEXT,
+                test_procedure TEXT,
+                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
+                UNIQUE(rcm_id, control_code)
+            )
+        ''')
+        
+        # 사용자-RCM 매핑 테이블 생성 (N:M 관계)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_user_rcm (
+                mapping_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                rcm_id INTEGER NOT NULL,
+                permission_type TEXT DEFAULT 'READ',
+                granted_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                granted_by INTEGER,
+                is_active TEXT DEFAULT 'Y',
+                FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
+                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
+                FOREIGN KEY (granted_by) REFERENCES sb_user (user_id),
+                UNIQUE(user_id, rcm_id)
+            )
+        ''')
+        
         # 기존 테이블이 있는지 확인하고 데이터 마이그레이션
         existing_table = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='sb_user'"
@@ -374,3 +425,87 @@ def get_ai_review_status(user_email):
             return 0, 3
         
         return user['ai_review_count'] or 0, user['ai_review_limit'] or 3
+
+# RCM 관리 함수들
+
+def create_rcm(rcm_name, description, upload_user_id):
+    """RCM 생성"""
+    with get_db() as conn:
+        cursor = conn.execute('''
+            INSERT INTO sb_rcm (rcm_name, description, upload_user_id)
+            VALUES (?, ?, ?)
+        ''', (rcm_name, description, upload_user_id))
+        conn.commit()
+        return cursor.lastrowid
+
+def get_user_rcms(user_id):
+    """사용자가 접근 가능한 RCM 목록 조회"""
+    with get_db() as conn:
+        rcms = conn.execute('''
+            SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, 
+                   ur.permission_type, u.company_name
+            FROM sb_rcm r
+            INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
+            INNER JOIN sb_user u ON r.upload_user_id = u.user_id
+            WHERE ur.user_id = ? AND ur.is_active = 'Y' AND r.is_active = 'Y'
+            ORDER BY r.upload_date DESC
+        ''', (user_id,)).fetchall()
+        return [dict(rcm) for rcm in rcms]
+
+def get_rcm_details(rcm_id):
+    """RCM 상세 데이터 조회"""
+    with get_db() as conn:
+        details = conn.execute('''
+            SELECT * FROM sb_rcm_detail
+            WHERE rcm_id = ?
+            ORDER BY control_code
+        ''', (rcm_id,)).fetchall()
+        return [dict(detail) for detail in details]
+
+def save_rcm_details(rcm_id, rcm_data):
+    """RCM 상세 데이터 저장 (추가 방식)"""
+    with get_db() as conn:
+        # 새 데이터 삽입 (기존 데이터 삭제하지 않음)
+        for data in rcm_data:
+            conn.execute('''
+                INSERT OR REPLACE INTO sb_rcm_detail (
+                    rcm_id, control_code, control_name, control_description,
+                    key_control, control_frequency, control_type, control_nature,
+                    population, population_completeness_check, population_count, test_procedure
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                rcm_id,
+                data.get('control_code', ''),
+                data.get('control_name', ''),
+                data.get('control_description', ''),
+                data.get('key_control', ''),
+                data.get('control_frequency', ''),
+                data.get('control_type', ''),
+                data.get('control_nature', ''),
+                data.get('population', ''),
+                data.get('population_completeness_check', ''),
+                data.get('population_count', ''),
+                data.get('test_procedure', '')
+            ))
+        conn.commit()
+
+def grant_rcm_access(user_id, rcm_id, permission_type, granted_by):
+    """사용자에게 RCM 접근 권한 부여"""
+    with get_db() as conn:
+        conn.execute('''
+            INSERT OR REPLACE INTO sb_user_rcm (user_id, rcm_id, permission_type, granted_by)
+            VALUES (?, ?, ?, ?)
+        ''', (user_id, rcm_id, permission_type, granted_by))
+        conn.commit()
+
+def get_all_rcms():
+    """모든 RCM 조회 (관리자용)"""
+    with get_db() as conn:
+        rcms = conn.execute('''
+            SELECT r.*, u.user_name as upload_user_name, u.company_name
+            FROM sb_rcm r
+            LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+            WHERE r.is_active = 'Y'
+            ORDER BY r.upload_date DESC
+        ''').fetchall()
+        return [dict(rcm) for rcm in rcms]
