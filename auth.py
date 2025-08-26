@@ -107,46 +107,92 @@ def init_db():
             )
         ''')
         
+        # 설계평가 진행상황 저장 테이블
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_design_evaluation (
+                evaluation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rcm_id INTEGER NOT NULL,
+                control_code TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                description_adequacy TEXT,
+                improvement_suggestion TEXT,
+                overall_effectiveness TEXT,
+                evaluation_rationale TEXT,
+                recommended_actions TEXT,
+                evaluation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
+                FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
+                UNIQUE(rcm_id, control_code, user_id)
+            )
+        ''')
+        
+        # 운영평가 진행상황 저장 테이블
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_operation_evaluation (
+                evaluation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rcm_id INTEGER NOT NULL,
+                control_code TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                test_method TEXT,
+                sample_size INTEGER,
+                exceptions_found INTEGER,
+                test_results TEXT,
+                conclusion TEXT,
+                evaluation_notes TEXT,
+                evaluation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
+                FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
+                UNIQUE(rcm_id, control_code, user_id)
+            )
+        ''')
+        
         # 기존 테이블이 있는지 확인하고 데이터 마이그레이션
         existing_table = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='sb_user'"
         ).fetchone()
         
         if existing_table:
-            print("기존 sb_user 테이블을 발견했습니다. 데이터 마이그레이션을 수행합니다.")
-            
             # 기존 테이블의 컬럼 정보 확인
             columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_user)').fetchall()]
             
-            # 기존 데이터를 새 테이블로 복사 (enabled_flag 제외, 없는 컬럼은 기본값 사용)
-            admin_flag_col = 'admin_flag' if 'admin_flag' in columns else "'N'"
-            effective_start_col = 'effective_start_date' if 'effective_start_date' in columns else 'CURRENT_TIMESTAMP'
-            effective_end_col = 'effective_end_date' if 'effective_end_date' in columns else 'NULL'
-            otp_method_col = 'otp_method' if 'otp_method' in columns else "'email'"
-            ai_review_count_col = 'ai_review_count' if 'ai_review_count' in columns else '0'
-            ai_review_limit_col = 'ai_review_limit' if 'ai_review_limit' in columns else '3'
-            
-            conn.execute(f'''
-                INSERT INTO sb_user_new (
-                    user_id, company_name, user_name, user_email, phone_number,
-                    admin_flag, effective_start_date, effective_end_date,
-                    creation_date, last_login_date, otp_code, otp_expires_at,
-                    otp_attempts, otp_method, ai_review_count, ai_review_limit
-                )
-                SELECT 
-                    user_id, company_name, user_name, user_email, phone_number,
-                    {admin_flag_col},
-                    {effective_start_col},
-                    {effective_end_col},
-                    creation_date, last_login_date, otp_code, otp_expires_at,
-                    COALESCE(otp_attempts, 0), {otp_method_col}, {ai_review_count_col}, {ai_review_limit_col}
-                FROM sb_user
-            ''')
-            
-            # 기존 테이블 삭제하고 새 테이블 이름 변경
-            conn.execute('DROP TABLE sb_user')
-            conn.execute('ALTER TABLE sb_user_new RENAME TO sb_user')
-            print("데이터 마이그레이션이 완료되었습니다. enabled_flag 컬럼이 제거되었습니다.")
+            # enabled_flag가 여전히 존재하는지 확인 (마이그레이션이 필요한지 체크)
+            if 'enabled_flag' in columns:
+                print("기존 sb_user 테이블을 발견했습니다. 데이터 마이그레이션을 수행합니다.")
+                
+                # 기존 데이터를 새 테이블로 복사 (enabled_flag 제외, 없는 컬럼은 기본값 사용)
+                admin_flag_col = 'admin_flag' if 'admin_flag' in columns else "'N'"
+                effective_start_col = 'effective_start_date' if 'effective_start_date' in columns else 'CURRENT_TIMESTAMP'
+                effective_end_col = 'effective_end_date' if 'effective_end_date' in columns else 'NULL'
+                otp_method_col = 'otp_method' if 'otp_method' in columns else "'email'"
+                ai_review_count_col = 'ai_review_count' if 'ai_review_count' in columns else '0'
+                ai_review_limit_col = 'ai_review_limit' if 'ai_review_limit' in columns else '3'
+                
+                conn.execute(f'''
+                    INSERT INTO sb_user_new (
+                        user_id, company_name, user_name, user_email, phone_number,
+                        admin_flag, effective_start_date, effective_end_date,
+                        creation_date, last_login_date, otp_code, otp_expires_at,
+                        otp_attempts, otp_method, ai_review_count, ai_review_limit
+                    )
+                    SELECT 
+                        user_id, company_name, user_name, user_email, phone_number,
+                        {admin_flag_col},
+                        {effective_start_col},
+                        {effective_end_col},
+                        creation_date, last_login_date, otp_code, otp_expires_at,
+                        COALESCE(otp_attempts, 0), {otp_method_col}, {ai_review_count_col}, {ai_review_limit_col}
+                    FROM sb_user
+                ''')
+                
+                # 기존 테이블 삭제하고 새 테이블 이름 변경
+                conn.execute('DROP TABLE sb_user')
+                conn.execute('ALTER TABLE sb_user_new RENAME TO sb_user')
+                print("데이터 마이그레이션이 완료되었습니다. enabled_flag 컬럼이 제거되었습니다.")
+            else:
+                # 이미 마이그레이션된 테이블인 경우 임시 테이블 삭제
+                conn.execute('DROP TABLE sb_user_new')
         else:
             # 기존 테이블이 없으면 새 테이블을 sb_user로 이름 변경
             conn.execute('ALTER TABLE sb_user_new RENAME TO sb_user')
@@ -509,3 +555,62 @@ def get_all_rcms():
             ORDER BY r.upload_date DESC
         ''').fetchall()
         return [dict(rcm) for rcm in rcms]
+
+def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data):
+    """설계평가 결과 저장"""
+    with get_db() as conn:
+        conn.execute('''
+            INSERT OR REPLACE INTO sb_design_evaluation (
+                rcm_id, control_code, user_id, description_adequacy, 
+                improvement_suggestion, overall_effectiveness, 
+                evaluation_rationale, recommended_actions, last_updated
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (
+            rcm_id, control_code, user_id,
+            evaluation_data.get('adequacy'),
+            evaluation_data.get('improvement'),
+            evaluation_data.get('effectiveness'),
+            evaluation_data.get('rationale'),
+            evaluation_data.get('actions')
+        ))
+        conn.commit()
+
+def get_design_evaluations(rcm_id, user_id):
+    """특정 RCM의 사용자별 설계평가 결과 조회"""
+    with get_db() as conn:
+        evaluations = conn.execute('''
+            SELECT * FROM sb_design_evaluation
+            WHERE rcm_id = ? AND user_id = ?
+            ORDER BY control_code
+        ''', (rcm_id, user_id)).fetchall()
+        return [dict(eval) for eval in evaluations]
+
+def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_data):
+    """운영평가 결과 저장"""
+    with get_db() as conn:
+        conn.execute('''
+            INSERT OR REPLACE INTO sb_operation_evaluation (
+                rcm_id, control_code, user_id, test_method, 
+                sample_size, exceptions_found, test_results, 
+                conclusion, evaluation_notes, last_updated
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (
+            rcm_id, control_code, user_id,
+            evaluation_data.get('method'),
+            evaluation_data.get('sample_size'),
+            evaluation_data.get('exceptions'),
+            evaluation_data.get('results'),
+            evaluation_data.get('conclusion'),
+            evaluation_data.get('notes')
+        ))
+        conn.commit()
+
+def get_operation_evaluations(rcm_id, user_id):
+    """특정 RCM의 사용자별 운영평가 결과 조회"""
+    with get_db() as conn:
+        evaluations = conn.execute('''
+            SELECT * FROM sb_operation_evaluation
+            WHERE rcm_id = ? AND user_id = ?
+            ORDER BY control_code
+        ''', (rcm_id, user_id)).fetchall()
+        return [dict(eval) for eval in evaluations]

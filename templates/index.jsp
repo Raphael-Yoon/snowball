@@ -113,6 +113,84 @@
                 </div>
             </div>
             
+            <!-- 프리미엄 서비스 -->
+            {% if is_logged_in %}
+            <div class="row g-4 mt-3">
+                <div class="col-12">
+                    <h3 class="text-center mb-4" style="color: #2c3e50;">
+                        <i class="fas fa-crown me-2"></i>프리미엄 서비스
+                    </h3>
+                </div>
+                
+                <!-- RCM 조회 -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card border-primary">
+                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM 조회" 
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4">
+                            <h5 class="feature-title text-center">RCM 조회</h5>
+                            <p class="feature-description">귀하에게 할당된 RCM 데이터를 조회하고 분석할 수 있습니다.</p>
+                            
+                            <div class="bg-light rounded p-2 mb-3 text-center">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="text-primary">
+                                            <strong id="userRcmCount">
+                                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                                            </strong>
+                                            <small class="d-block">접근 가능</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-success">
+                                            <strong id="userAdminRcmCount">
+                                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                                            </strong>
+                                            <small class="d-block">관리 권한</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center">
+                                <a href="/user/rcm" class="feature-link">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 설계평가 -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card border-success">
+                        <img src="{{ url_for('static', filename='img/design_review.jpg')}}" class="feature-img" alt="설계평가" 
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4">
+                            <h5 class="feature-title text-center">설계평가</h5>
+                            <p class="feature-description">통제가 이론적으로 효과적으로 설계되었는지를 평가하는 과정입니다.</p>
+                            <div class="text-center">
+                                <a href="/user/design-evaluation" class="feature-link">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 운영평가 -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card border-warning">
+                        <img src="{{ url_for('static', filename='img/operational_review.jpg')}}" class="feature-img" alt="운영평가" 
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4">
+                            <h5 class="feature-title text-center">운영평가</h5>
+                            <p class="feature-description">통제가 실제로 의도된 대로 작동하고 있는지를 평가하는 과정입니다.</p>
+                            <div class="text-center">
+                                <a href="/user/operation-evaluation" class="feature-link">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
         </div>
     </section>
 
@@ -128,9 +206,111 @@
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- 세션 관리 -->
+    <!-- 세션 관리 및 RCM 기능 -->
     <script>
         window.isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
+        
+        // RCM 현황 로드
+        function loadUserRcmStatus() {
+            if (window.isLoggedIn) {
+                fetch('/api/user/rcm-status')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('userRcmCount').textContent = data.total_count || 0;
+                            document.getElementById('userAdminRcmCount').textContent = data.admin_count || 0;
+                        } else {
+                            document.getElementById('userRcmCount').textContent = '0';
+                            document.getElementById('userAdminRcmCount').textContent = '0';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('RCM 현황 로드 오류:', error);
+                        document.getElementById('userRcmCount').textContent = '-';
+                        document.getElementById('userAdminRcmCount').textContent = '-';
+                    });
+            }
+        }
+        
+        // 빠른 접근 모달 표시
+        function showQuickAccess() {
+            if (window.isLoggedIn) {
+                fetch('/api/user/rcm-list')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.rcms.length > 0) {
+                            showQuickAccessModal(data.rcms);
+                        } else {
+                            alert('접근 가능한 RCM이 없습니다.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('RCM 목록 로드 오류:', error);
+                        alert('RCM 목록을 불러오는 중 오류가 발생했습니다.');
+                    });
+            } else {
+                alert('로그인이 필요합니다.');
+            }
+        }
+        
+        // 빠른 접근 모달 생성 및 표시
+        function showQuickAccessModal(rcms) {
+            // 기존 모달이 있다면 제거
+            const existingModal = document.getElementById('quickAccessModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // 모달 HTML 생성
+            const modalHtml = `
+                <div class="modal fade" id="quickAccessModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-bolt me-2"></i>RCM 빠른 접근
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row g-3">
+                                    ${rcms.map(rcm => `
+                                        <div class="col-md-6">
+                                            <div class="card border-primary">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">${rcm.rcm_name}</h6>
+                                                    <p class="card-text small">${rcm.company_name}</p>
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="badge bg-${rcm.permission_type === 'admin' ? 'danger' : 'success'}">
+                                                            ${rcm.permission_type === 'admin' ? '관리자' : '읽기'}
+                                                        </span>
+                                                        <a href="/user/rcm/${rcm.rcm_id}/view" class="btn btn-sm btn-primary">
+                                                            <i class="fas fa-eye me-1"></i>보기
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 모달을 body에 추가
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // 모달 표시
+            const modal = new bootstrap.Modal(document.getElementById('quickAccessModal'));
+            modal.show();
+        }
+        
+        // 페이지 로드 시 RCM 현황 로드
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserRcmStatus();
+        });
     </script>
     <script src="{{ url_for('static', filename='js/session-manager.js') }}"></script>
     
