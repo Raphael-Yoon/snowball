@@ -60,7 +60,7 @@
     <!-- 기능 섹션 -->
     <section id="features" class="py-4">
         <div class="container">
-            <h2 class="section-title">주요 기능</h2>
+            <h2 class="section-title">주요 기능1</h2>
             <div class="row g-4">
                 <!-- 기본 4개 카드 -->
                 <div class="col-lg-3 col-md-6">
@@ -115,7 +115,7 @@
             
             <!-- 프리미엄 서비스 -->
             {% if is_logged_in %}
-            <div class="row g-4 mt-3">
+            <div class="row g-4 mt-3" id="premium-services">
                 <div class="col-12">
                     <h3 class="text-center mb-4" style="color: #2c3e50;">
                         <i class="fas fa-crown me-2"></i>프리미엄 서비스
@@ -130,27 +130,6 @@
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center">RCM 조회</h5>
                             <p class="feature-description">귀하에게 할당된 RCM 데이터를 조회하고 분석할 수 있습니다.</p>
-                            
-                            <div class="bg-light rounded p-2 mb-3 text-center">
-                                <div class="row">
-                                    <div class="col-6">
-                                        <div class="text-primary">
-                                            <strong id="userRcmCount">
-                                                <span class="spinner-border spinner-border-sm" role="status"></span>
-                                            </strong>
-                                            <small class="d-block">접근 가능</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="text-success">
-                                            <strong id="userAdminRcmCount">
-                                                <span class="spinner-border spinner-border-sm" role="status"></span>
-                                            </strong>
-                                            <small class="d-block">관리 권한</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                             
                             <div class="text-center mt-auto">
                                 <a href="/user/rcm" class="feature-link">자세히 보기</a>
@@ -225,27 +204,6 @@
     <script>
         window.isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
         
-        // RCM 현황 로드
-        function loadUserRcmStatus() {
-            if (window.isLoggedIn) {
-                fetch('/api/user/rcm-status')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            document.getElementById('userRcmCount').textContent = data.total_count || 0;
-                            document.getElementById('userAdminRcmCount').textContent = data.admin_count || 0;
-                        } else {
-                            document.getElementById('userRcmCount').textContent = '0';
-                            document.getElementById('userAdminRcmCount').textContent = '0';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('RCM 현황 로드 오류:', error);
-                        document.getElementById('userRcmCount').textContent = '-';
-                        document.getElementById('userAdminRcmCount').textContent = '-';
-                    });
-            }
-        }
         
         // 빠른 접근 모달 표시
         function showQuickAccess() {
@@ -322,10 +280,6 @@
             modal.show();
         }
         
-        // 페이지 로드 시 RCM 현황 로드
-        document.addEventListener('DOMContentLoaded', function() {
-            loadUserRcmStatus();
-        });
     </script>
     <script src="{{ url_for('static', filename='js/session-manager.js') }}"></script>
     

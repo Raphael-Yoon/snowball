@@ -41,15 +41,25 @@
                         </a>
                     </li>
                     {% if is_logged_in %}
-                    <li class="nav-item">
-                        <a href="/user/rcm" class="nav-link">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="premiumServicesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-crown me-1"></i>프리미엄 서비스
                         </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/contact" class="nav-link">
-                            <i class="fas fa-envelope me-1"></i>Contact Us
-                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="premiumServicesDropdown">
+                            <li><a class="dropdown-item" href="/user/rcm">
+                                <i class="fas fa-database me-2"></i>RCM 조회
+                            </a></li>
+                            <li><a class="dropdown-item" href="/user/design-evaluation">
+                                <i class="fas fa-clipboard-check me-2"></i>설계평가
+                            </a></li>
+                            <li><a class="dropdown-item" href="/user/operation-evaluation">
+                                <i class="fas fa-cogs me-2"></i>운영평가
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/contact">
+                                <i class="fas fa-envelope me-2"></i>Contact Us
+                            </a></li>
+                        </ul>
                     </li>
                     {% if user_info and user_info.get('admin_flag') == 'Y' %}
                     <li class="nav-item">
@@ -93,5 +103,6 @@
     </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
 </body>
 </html>
