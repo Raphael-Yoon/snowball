@@ -123,11 +123,11 @@
                 </div>
                 
                 <!-- RCM 조회 -->
-                <div class="col-lg-4 col-md-6">
-                    <div class="feature-card border-primary">
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-primary h-100">
                         <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM 조회" 
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
-                        <div class="card-body p-4">
+                        <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center">RCM 조회</h5>
                             <p class="feature-description">귀하에게 할당된 RCM 데이터를 조회하고 분석할 수 있습니다.</p>
                             
@@ -152,7 +152,7 @@
                                 </div>
                             </div>
                             
-                            <div class="text-center">
+                            <div class="text-center mt-auto">
                                 <a href="/user/rcm" class="feature-link">자세히 보기</a>
                             </div>
                         </div>
@@ -160,14 +160,14 @@
                 </div>
                 
                 <!-- 설계평가 -->
-                <div class="col-lg-4 col-md-6">
-                    <div class="feature-card border-success">
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-success h-100">
                         <img src="{{ url_for('static', filename='img/design_review.jpg')}}" class="feature-img" alt="설계평가" 
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
-                        <div class="card-body p-4">
+                        <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center">설계평가</h5>
                             <p class="feature-description">통제가 이론적으로 효과적으로 설계되었는지를 평가하는 과정입니다.</p>
-                            <div class="text-center">
+                            <div class="text-center mt-auto">
                                 <a href="/user/design-evaluation" class="feature-link">자세히 보기</a>
                             </div>
                         </div>
@@ -175,15 +175,30 @@
                 </div>
                 
                 <!-- 운영평가 -->
-                <div class="col-lg-4 col-md-6">
-                    <div class="feature-card border-warning">
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-warning h-100">
                         <img src="{{ url_for('static', filename='img/operational_review.jpg')}}" class="feature-img" alt="운영평가" 
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
-                        <div class="card-body p-4">
+                        <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center">운영평가</h5>
                             <p class="feature-description">통제가 실제로 의도된 대로 작동하고 있는지를 평가하는 과정입니다.</p>
-                            <div class="text-center">
+                            <div class="text-center mt-auto">
                                 <a href="/user/operation-evaluation" class="feature-link">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Contact Us -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-info h-100">
+                        <img src="{{ url_for('static', filename='img/contact_us.jpg')}}" class="feature-img" alt="Contact Us" 
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center">Contact Us</h5>
+                            <p class="feature-description">문의사항이나 지원이 필요하시면 언제든지 연락주세요.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/contact" class="feature-link">자세히 보기</a>
                             </div>
                         </div>
                     </div>

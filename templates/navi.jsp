@@ -42,6 +42,11 @@
                     </li>
                     {% if is_logged_in %}
                     <li class="nav-item">
+                        <a href="/user/rcm" class="nav-link">
+                            <i class="fas fa-crown me-1"></i>프리미엄 서비스
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="/contact" class="nav-link">
                             <i class="fas fa-envelope me-1"></i>Contact Us
                         </a>
