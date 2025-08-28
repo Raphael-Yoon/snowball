@@ -14,7 +14,7 @@ from email import encoders
 from io import BytesIO
 from openpyxl import load_workbook
 from snowball_link1 import generate_and_send_rcm_excel
-from snowball_link2 import export_interview_excel_and_send, s_questions, question_count, is_ineffective, fill_sheet, link2_prev_logic, get_text_itgc
+from snowball_link2 import export_interview_excel_and_send, s_questions, question_count, is_ineffective, fill_sheet, link2_prev_logic, get_text_itgc, get_conditional_questions
 from snowball_link4 import get_link4_content
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
@@ -116,14 +116,16 @@ def perform_auto_mapping(headers):
 app = Flask(__name__)
 app.secret_key = '150606'
 
-# 세션 만료 시간 설정 (10분)
-app.permanent_session_lifetime = timedelta(minutes=10)
+# 세션 만료 시간 설정 (24시간으로 연장)
+app.permanent_session_lifetime = timedelta(hours=24)
 
 # 세션 보안 설정
 app.config.update(
     SESSION_COOKIE_SECURE=False,  # HTTPS 환경에서는 True로 설정
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
+    # 브라우저 종료 후에도 세션 유지되도록 설정
+    SESSION_COOKIE_MAX_AGE=timedelta(hours=24).total_seconds(),  # 24시간
 )
 
 # --- File-based Progress Tracking ---
@@ -548,9 +550,19 @@ def link2():
 
         user_info = get_user_info()
         users = user_info['user_name'] if user_info else "Guest"
+        # 현재 답변을 기반으로 필터링된 질문 목록 가져오기
+        filtered_questions = get_conditional_questions(session.get('answer', []))
+        current_question_index = session['question_index']
+        
+        # 현재 인덱스에 해당하는 질문이 필터링된 목록에 있는지 확인
+        if current_question_index < len(filtered_questions):
+            current_question = filtered_questions[current_question_index]
+        else:
+            current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
+        
         return render_template('link2.jsp',
-                             question=s_questions[session['question_index']],
-                             question_count=question_count,
+                             question=current_question,
+                             question_count=len(filtered_questions),
                              current_index=session['question_index'],
                              remote_addr=request.remote_addr,
                              users=users,
@@ -576,16 +588,25 @@ def link2():
         if form_data.get('a8_1'):
             session['Batch_Tool'] = form_data.get('a8_1')
 
-        # 다음 질문 인덱스를 결정하는 매핑
-        next_question = {i: i + 1 for i in range(43)}
-        conditional_routes = {
-            4: 5 if session['answer'][question_index] == 'Y' else 7,
-            3: 4 if session['answer'][question_index] == 'Y' else 4
-        }
-        next_question.update(conditional_routes)
+        # 현재 답변을 기반으로 필터링된 질문 목록 가져오기
+        filtered_questions = get_conditional_questions(session.get('answer', []))
+        
+        # 다음 질문 인덱스를 결정하는 로직 (필터링된 질문 기준)
+        current_filtered_index = 0
+        for i, q in enumerate(filtered_questions):
+            if q['index'] == question_index:
+                current_filtered_index = i
+                break
+        
+        # 다음 필터링된 질문으로 이동
+        next_filtered_index = current_filtered_index + 1
+        if next_filtered_index < len(filtered_questions):
+            next_question_index = filtered_questions[next_filtered_index]['index']
+        else:
+            next_question_index = question_count  # 마지막 질문 이후
 
         # 마지막 질문 제출 시 AI 검토 선택 페이지로 이동
-        if question_index == question_count - 1:
+        if next_filtered_index >= len(filtered_questions):
             print('interview completed - redirecting to AI review selection page')
             print(f'Current question_index: {question_index}, question_count: {question_count}')
             print('--- 모든 답변(answers) ---')
@@ -598,13 +619,13 @@ def link2():
             # AI 검토 선택 페이지로 리디렉션
             return redirect(url_for('ai_review_selection'))
 
-        session['question_index'] = next_question.get(question_index, question_index)
+        session['question_index'] = next_question_index
         print(f"goto {session['question_index']}")
         print("Answers:", ", ".join(f"{i}: {ans}" for i, ans in enumerate(session['answer'])))
         print(f"입력받은 값(a{question_index}): {session['answer'][question_index]}")
         print(f"textarea 값(a{question_index}_1): {session['textarea_answer'][question_index]}")
 
-        if session['question_index'] >= question_count:
+        if next_question_index >= question_count:
             # 마지막 질문 이후에는 save_to_excel 호출하지 않음
             return redirect(url_for('index'))
 
