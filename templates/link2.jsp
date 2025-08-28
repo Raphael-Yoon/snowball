@@ -107,9 +107,9 @@
                                 <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required onchange="toggleTextarea({{ current_index }})" {% if answer[current_index] == 'Y' %}checked{% endif %}>
                                 <span class="form-check-label">예</span>
                             </label>
-                            <textarea class="form-control mt-2" name="a{{ current_index }}_1" id="textarea_{{ current_index }}" placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5" {% if answer[current_index] != 'Y' %}readonly{% endif %} onclick="selectYesAndEnableTextarea({{ current_index }})" style="cursor: pointer;">{{ textarea_answer[current_index] }}</textarea>
+                            <textarea class="form-control mt-2" name="a{{ current_index }}_1" id="textarea_{{ current_index }}" placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5" {% if answer[current_index] != 'Y' %}readonly{% endif %} {% if answer[current_index] == 'Y' %}required{% endif %} onclick="selectYesAndEnableTextarea({{ current_index }})" style="cursor: pointer;">{{ textarea_answer[current_index] }}</textarea>
                             <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" onchange="toggleTextarea({{ current_index }})" {% if answer[current_index] == 'N' %}checked{% endif %}>
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" required onchange="toggleTextarea({{ current_index }})" {% if answer[current_index] == 'N' %}checked{% endif %}>
                                 <span class="form-check-label">아니요</span>
                             </label>
                         {% elif question.answer_type == '5' %}
@@ -123,6 +123,13 @@
                                 <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" {% if answer[current_index] == 'N' %}checked{% endif %}>
                                 <span class="form-check-label">아니요</span>
                             </label>
+                        {% elif question.answer_type == '6' %}
+                            {% for option in question.text_help.split('|') %}
+                            <label class="form-check">
+                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="{{ option }}" required {% if answer[current_index] == option %}checked{% endif %}>
+                                <span class="form-check-label">{{ option }}</span>
+                            </label>
+                            {% endfor %}
                         {% else %}
                             <input type="text" class="form-control" name="a{{ current_index }}" value="{{ answer[current_index] }}">
                         {% endif %}
@@ -235,11 +242,13 @@
             if (yesRadio.checked) {
                 textarea.removeAttribute('readonly');
                 textarea.required = true;
+                textarea.style.cursor = 'text';
                 console.log('Textarea enabled and required');
             } else if (noRadio.checked) {
                 textarea.setAttribute('readonly', true);
                 textarea.value = '';
                 textarea.required = false;
+                textarea.style.cursor = 'not-allowed';
                 console.log('Textarea disabled and cleared');
             }
         }
@@ -272,49 +281,52 @@
             // 질문별 샘플값 정의
             const samples = {
                 0: { type: 'text', value: 'snowball2727@naver.com' }, // 산출물을 전달받을 e-Mail 주소를 입력해주세요.
-                1: { type: 'text', value: 'Amidas' }, // 시스템 이름을 적어주세요.
-                2: { type: 'radio_text', radio: 'Y', text: 'SAP ERP' }, // 사용하고 있는 시스템은 상용소프트웨어입니까?
-                3: { type: 'radio', value: 'Y' }, // 주요 로직을 회사내부에서 수정하여 사용할 수 있습니까?
-                4: { type: 'radio', value: 'N' }, // Cloud 서비스를 사용하고 있습니까?
-                5: { type: 'radio', value: 'Y' }, // 어떤 종류의 Cloud입니까?
-                6: { type: 'radio', value: 'Y' }, // Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?
-                7: { type: 'text', value: 'Linux Redhat 8' }, // OS 종류와 버전을 작성해 주세요.
-                8: { type: 'radio_text', radio: 'Y', text: 'Hiware' }, // OS 접근제어 Tool을 사용하고 있습니까?
-                9: { type: 'text', value: 'Oracle 19c' }, // DB 종류와 버전을 작성해 주세요.
-                10: { type: 'radio_text', radio: 'Y', text: 'DB Safer' }, // DB 접근제어 Tool을 사용하고 있습니까?
-                11: { type: 'radio_text', radio: 'N', text: '' }, // 별도의 Batch Schedule Tool을 사용하고 있습니까?
-                12: { type: 'radio', value: 'Y' }, // 사용자 권한부여 이력이 시스템에 기록되고 있습니까?
-                13: { type: 'radio', value: 'Y' }, // 사용자 권한회수 이력이 시스템에 기록되고 있습니까?
-                14: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM로 요청서 작성하고 부서장의 승인을 득함' }, // 사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                15: { type: 'radio_textarea', radio: 'N', textarea: ' ' }, // 부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?
-                16: { type: 'radio_textarea', radio: 'Y', textarea: '시스템에서 자동 권한 회수' }, // 퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?
-                17: { type: 'textarea', value: 'IT운영팀 조윤진 책임' }, // Application 관리자(Superuser) 권한을 보유한 인원에 대해 기술해 주세요.
-                18: { type: 'radio_textarea', radio: 'Y', textarea: '분기별로 전체 사용자 권한에 대해 검토함' }, // 전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?
-                19: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // 패스워드 설정사항을 기술해 주세요.
-                20: { type: 'radio', value: 'Y' }, // 데이터 변경 이력이 시스템에 기록되고 있습니까?
-                21: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성하고 부서장의 승인을 득함' }, // 데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                22: { type: 'textarea', value: 'IT운영팀 윤소영 책임' }, // 데이터 변경 권한을 보유한 인원에 대해 기술해 주세요.
-                23: { type: 'radio', value: 'Y' }, // DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?
-                24: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성하고 부서장의 승인을 득함' }, // DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                25: { type: 'textarea', value: '인프라관리팀 심범석 차장' }, // DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.
-                26: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // DB 패스워드 설정사항을 기술해 주세요.
+                1: { type: 'text', value: 'SAP ERP' }, // 시스템 이름을 적어주세요.
+                2: { type: 'radio_text', radio: 'Y', text: 'SAP S/4HANA' }, // 사용하고 있는 시스템은 상용소프트웨어입니까?
+                3: { type: 'radio', value: 'Y' }, // Cloud 서비스를 사용하고 있습니까?
+                4: { type: 'radio', value: 'SaaS' }, // 어떤 종류의 Cloud입니까?
+                5: { type: 'radio', value: 'Y' }, // Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?
+                6: { type: 'radio', value: 'N' }, // 사용자 권한부여 이력이 시스템에 기록되고 있습니까? - 미비점 유발
+                7: { type: 'radio', value: 'Y' }, // 사용자 권한회수 이력이 시스템에 기록되고 있습니까?
+                8: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM을 통해 요청서 작성 후 팀장 승인을 받아 IT팀에서 권한 부여' }, // 사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                9: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까? - 미비점 유발
+                10: { type: 'radio_textarea', radio: 'Y', textarea: '인사팀 인사명령 전달 시 IT팀에서 즉시 접근권한 차단' }, // 퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?
+                11: { type: 'textarea', value: 'IT운영팀 김○○ 책임, 시스템 관리자' }, // Application 관리자(Superuser) 권한을 보유한 인원에 대해 기술해 주세요.
+                12: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까? - 미비점 유발
+                13: { type: 'textarea', value: '최소 8자, 영문/숫자/특수문자 조합, 90일마다 변경' }, // 패스워드 설정사항을 기술해 주세요.
+                14: { type: 'radio', value: 'Y' }, // 데이터 변경 이력이 시스템에 기록되고 있습니까?
+                15: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까? - 미비점 유발
+                16: { type: 'textarea', value: 'IT운영팀 최○○ 책임, DBA' }, // 데이터 변경 권한을 보유한 인원에 대해 기술해 주세요.
+                17: { type: 'radio', value: 'Y' }, // 회사에서 DB에 접속하여 필요한 작업을 수행하는 것이 가능하십니까?
+                18: { type: 'text', value: 'Oracle Database 19c' }, // DB 종류와 버전을 작성해 주세요.
+                19: { type: 'radio_text', radio: 'Y', text: 'DBSafer' }, // DB 접근제어 Tool을 사용하고 있습니까?
+                20: { type: 'radio', value: 'Y' }, // DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?
+                21: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 후 서버 책임자 승인을 받아 DB 권한 부여' }, // DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                22: { type: 'textarea', value: '' }, // DB 관리자 권한을 보유한 인원에 대해 기술해 주세요. - 미비점 유발 (빈 값)
+                23: { type: 'textarea', value: '최소 10자, 영문/숫자/특수문자 조합, 180일마다 변경' }, // DB 패스워드 설정사항을 기술해 주세요.
+                24: { type: 'radio', value: 'Y' }, // 회사에서 OS서버에 접속하여 필요한 작업을 수행하는 것이 가능하십니까?
+                25: { type: 'text', value: 'Windows Server 2019' }, // OS 종류와 버전을 작성해 주세요.
+                26: { type: 'radio_text', radio: 'Y', text: 'CyberArk' }, // OS 접근제어 Tool을 사용하고 있습니까?
                 27: { type: 'radio', value: 'Y' }, // OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?
-                28: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성하고 부서장의 승인을 득함' }, // OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                29: { type: 'textarea', value: '인프라관리팀 손현호 차장' }, // OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.
-                30: { type: 'textarea', value: '최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일' }, // OS 패스워드 설정사항을 기술해 주세요.
-                31: { type: 'radio', value: 'N' }, // 프로그램 변경 이력이 시스템에 기록되고 있습니까?
-                32: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성하고 부서장의 승인을 득함' }, // 프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?
-                33: { type: 'radio_textarea', radio: 'Y', textarea: '요청자에 의해 사용자 테스트 완료 하고 결과를 문서화함' }, // 프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?
-                34: { type: 'radio_textarea', radio: 'Y', textarea: '이관 요청서 작성 후 부서장의 승인을 득함' }, // 프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?
-                35: { type: 'textarea', value: '인프라관리팀 윤대호 차장' }, // 이관(배포)권한을 보유한 인원에 대해 기술해 주세요.
-                36: { type: 'radio', value: 'Y' }, // 운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?
-                37: { type: 'radio', value: 'Y' }, // 배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?
-                38: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 후 부서장의 승인을 득함' }, // 배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                39: { type: 'textarea', value: '시스템 운영팀 신혁수 과장' }, // 배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.
-                40: { type: 'textarea', value: '매일 아침 배치수행결과 확인 및 문서화' }, // 배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.
-                41: { type: 'textarea', value: '적당히 알아서 함' }, // 장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.
-                42: { type: 'textarea', value: '내가 알아서 함' }, // 백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.
-                43: { type: 'textarea', value: '못들어가게 막음' } // 서버실 출입시의 절차에 대해 기술해 주세요.
+                28: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 후 서버 책임자 승인을 받아 OS 권한 부여' }, // OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                29: { type: 'textarea', value: '인프라관리팀 이○○ 책임, 서버 관리자' }, // OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.
+                30: { type: 'textarea', value: '최소 12자, 영문/숫자/특수문자 조합, 90일마다 변경' }, // OS 패스워드 설정사항을 기술해 주세요.
+                31: { type: 'radio', value: 'Y' }, // 주요 로직을 회사내부에서 수정하여 사용할 수 있습니까?
+                32: { type: 'radio', value: 'Y' }, // 프로그램 변경 이력이 시스템에 기록되고 있습니까?
+                33: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 후 부서장 승인을 받아 개발팀에서 프로그램 변경' }, // 프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?
+                34: { type: 'radio_textarea', radio: 'Y', textarea: '변경 완료 후 요청자가 사용자 테스트 수행하고 결과 문서화' }, // 프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?
+                35: { type: 'radio_textarea', radio: 'Y', textarea: '테스트 완료 후 이관 요청서 작성하고 부서장 승인을 받아 배포' }, // 프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?
+                36: { type: 'textarea', value: '인프라관리팀 박○○ 수석, 배포 담당자' }, // 이관(배포)권한을 보유한 인원에 대해 기술해 주세요.
+                37: { type: 'radio', value: 'N' }, // 운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까? - 미비점 유발
+                38: { type: 'radio', value: 'Y' }, // 현재 실행중인 배치 스케줄이 있습니까?
+                39: { type: 'radio_text', radio: 'Y', text: 'JobScheduler' }, // 별도의 Batch Schedule Tool을 사용하고 있습니까?
+                40: { type: 'radio', value: 'Y' }, // 배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?
+                41: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 후 승인권자 승인을 받아 담당자가 스케줄 등록' }, // 배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
+                42: { type: 'textarea', value: '' }, // 배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요. - 미비점 유발 (빈 값)
+                43: { type: 'textarea', value: '매일 아침 배치수행결과 확인 및 문서화, 오류 발생시 원인파악 및 조치현황 기록' }, // 배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.
+                44: { type: 'textarea', value: '장애 발생시 즉시 담당자에게 알림 후 원인 분석 및 복구 작업 수행, 조치내역 문서화' }, // 장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.
+                45: { type: 'textarea', value: '매일 자동 백업 수행, 백업 성공/실패 여부 모니터링 및 주간 백업 상태 점검' }, // 백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.
+                46: { type: 'textarea', value: '출입 카드 인증 후 출입대장 작성, 동반 출입시 사전 승인 필요' } // 서버실 출입시의 절차에 대해 기술해 주세요.
             };
             const sample = samples[questionNumber];
             if (!sample) return;
@@ -341,9 +353,19 @@
                 if (radio) radio.checked = true;
                 const textarea = document.getElementById(`textarea_${questionNumber}`);
                 if (textarea) {
-                    textarea.removeAttribute('readonly');
-                    textarea.value = sample.textarea;
-                    textarea.required = true;
+                    if (sample.radio === 'Y') {
+                        // "예" 선택시: textarea 활성화하고 값 입력
+                        textarea.removeAttribute('readonly');
+                        textarea.value = sample.textarea;
+                        textarea.required = true;
+                        textarea.style.cursor = 'text';
+                    } else {
+                        // "아니요" 선택시: textarea 비활성화
+                        textarea.setAttribute('readonly', true);
+                        textarea.value = '';
+                        textarea.required = false;
+                        textarea.style.cursor = 'not-allowed';
+                    }
                 }
             }
             // textarea만
