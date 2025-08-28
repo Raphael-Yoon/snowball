@@ -28,13 +28,13 @@
         <!-- 섹션 제목 -->
         <div class="text-center mt-3">
             <h1 class="section-title">
-                {% if 0 <= current_index <= 11 %}
+                {% if 0 <= current_index <= 5 %}
                     <i class="fas fa-server"></i> 공통사항
-                {% elif 12 <= current_index <= 30 %}
+                {% elif 5 <= current_index <= 30 %}
                     <i class="fas fa-lock"></i> APD(Access to Program & Data)
-                {% elif 31 <= current_index <= 36 %}
+                {% elif 31 <= current_index <= 37 %}
                     <i class="fas fa-laptop-code"></i> PC(Program Change)
-                {% elif 37 <= current_index <= 43 %}
+                {% elif 38 <= current_index <= 46 %}
                     <i class="fas fa-cogs"></i> CO(Computer Operation)
                 {% else %}
                     <i class="fas fa-check-circle"></i> 모든 질문이 완료되었습니다.
