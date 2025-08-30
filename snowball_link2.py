@@ -268,14 +268,14 @@ ITGC_CONTROLS = {
         'title': '장애 대응 절차',
         'type': 'simple_list',
         'template': '장애 발생시 이에 대응하고 조치하는 절차는 아래와 같습니다.\n\n{content}',
-        'answer_idx': 45,
+        'answer_idx': 44,
         'default_msg': '장애 발생시 이에 대응하고 조치하는 절차에 대한 상세 기술이 제공되지 않았습니다.'
     },
     'CO05': {
         'title': '백업 및 모니터링',
         'type': 'simple_list',
         'template': '백업 수행 및 모니터링 절차는 아래와 같습니다.\n\n{content}',
-        'answer_idx': 46,
+        'answer_idx': 45,
         'default_msg': '백업 수행 및 모니터링 절차에 대한 상세 기술이 제공되지 않았습니다.'
     },
     'CO06': {
@@ -334,7 +334,8 @@ s_questions = [
     {"index": 43, "text": "배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.", "category": "CO", "help": "예1) 매일 아침 배치수행결과를 확인하며 문서화하며 오류 발생시 원인파악 및 조치현황 등을 함께 기록함<br>예2) 오류 발생시에만 점검결과를 작성하며 오류 발생 기록은 삭제하지 않고 유지됨", "answer_type": "5", "text_help": ""},
     {"index": 44, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO", "help": "시스템에 문제가 생겼을 때 어떻게 대처하고 해결하는지에 대한 절차를 설명해 주세요.<br>예:<br>- 시스템 중단 시 연락체계 및 복구 절차<br>- 데이터 오류 발견 시 수정 및 보고 절차<br>- 외부 공격이나 보안 사고 대응 방법", "answer_type": "5", "text_help": ""},
     {"index": 45, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.", "category": "CO", "help": "시스템의 데이터를 안전하게 복사해서 보조하는 방법과 이것이 제대로 되고 있는지 확인하는 방법을 설명해 주세요.<br>예:<br>- 매일 밤에 전체 데이터 복사 후 외부 저장장치에 저장<br>- 백업 완료 시 알림 메일 발송<br>- 주기적으로 백업 데이터 복구 테스트 수행", "answer_type": "5", "text_help": ""},
-    {"index": 46, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO", "help": "서버나 주요 IT 장비가 있는 방에 들어갈 때의 보안 절차를 설명해 주세요.<br>예:<br>- 신분증 확인 및 출입자 명부 작성<br>- 보안카드나 비밀번호로 출입문 통과<br>- 출입 시간 기록 및 CCTV 모니터링<br>- 외부 인원의 경우 동반자 필요 여부", "answer_type": "5", "text_help": ""}
+    {"index": 46, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO", "help": "서버나 주요 IT 장비가 있는 방에 들어갈 때의 보안 절차를 설명해 주세요.<br>예:<br>- 신분증 확인 및 출입자 명부 작성<br>- 보안카드나 비밀번호로 출입문 통과<br>- 출입 시간 기록 및 CCTV 모니터링<br>- 외부 인원의 경우 동반자 필요 여부", "answer_type": "5", "text_help": ""},
+    {"index": 47, "text": "SOC1 Report를 검토/승인하는 절차 및 통제가 존재합니까?", "category": "IT PwC", "help": "클라우드 서비스 제공업체에서 발행하는 SOC1 보고서를 회사에서 검토하고 승인하는 공식적인 절차가 있는지 확인하는 질문입니다.<br>예:<br>- 연간 또는 정기적으로 SOC1 보고서 수령 및 검토<br>- IT 보안팀 또는 감사팀의 검토 및 승인 절차<br>- SOC1 보고서상의 예외사항 또는 개선권고사항에 대한 대응 계획 수립<br>- 검토 결과의 문서화 및 보고", "answer_type": "1", "text_help": ""}
 ]
 
 question_count = len(s_questions)
@@ -352,10 +353,11 @@ def get_conditional_questions(answers):
     
     skip_ranges = []
     
-    # 3번 답변이 N이면 4~5번 질문 생략
+    # 3번 답변이 N이면 4~5번, 47번 질문 생략 (Cloud 미사용시 SOC1 Report 질문도 스킵)
     if len(answers) > 3 and answers[3] and str(answers[3]).upper() == 'N':
         skip_ranges.append((4, 5))
-        print(f"[SKIP DEBUG] 3번 답변 'N' -> 4~5번 스킵")
+        skip_ranges.append((47, 47))
+        print(f"[SKIP DEBUG] 3번 답변 'N' (Cloud 미사용) -> 4~5번, 47번 스킵")
     
     # 4번 답변 디버깅 정보 출력
     if len(answers) > 4:
@@ -938,7 +940,7 @@ def get_ai_review(content, control_number=None, answers=None):
             for keyword in population_unavailable_keywords:
                 if keyword in content:
                     return {
-                        'review_result': f"모집단 확보가 불가능한 상황입니다. {control_number} 통제의 경우 모집단이 확보되지 않으면 통제 효과성을 평가할 수 없습니다.",
+                        'review_result': f"모집단 확보가 불가능한 상황입니다. {control_number} 통제의 경우 모집단이 확보되지 않으면 통제 효과성을 평가할 수 없으므로 미비점으로 판정됩니다.",
                         'conclusion': "Ineffective",
                         'improvements': f"모집단 확보를 위한 시스템 구축 또는 절차 수립이 필요합니다. {control_number} 통제가 효과적으로 운영되기 위해서는 관련 데이터의 완전성과 정확성이 보장되어야 합니다."
                     }
@@ -1039,14 +1041,15 @@ def get_ai_review(content, control_number=None, answers=None):
 - 적절한 통제가 운영되고 있다면 Effective 판정
 
 응답형식 (정확히 이 형식으로만 답변):
-검토결과: [전문적 감사 관점에서 엄격하게 분석]
+검토결과: [전문적 감사 관점에서 엄격하게 분석하되 정확한 서술형으로 작성]
 결론: Effective (또는 결론: Ineffective - 반드시 이 두 단어 중 하나만 단독으로 사용)
-개선필요사항: [Ineffective시 구체적이고 실행가능한 개선방안 제시, Effective시 빈칸]
+개선필요사항: [Ineffective시 구체적이고 실행가능한 개선방안을 서술형으로 제시, Effective시 빈칸]
 
-중요: 
+중요 작성 지침: 
 1. 결론 부분에는 반드시 'Effective' 또는 'Ineffective' 단어만 사용할 것
 2. 시스템이 자동으로 생성한 문구는 평가에서 제외하고, 실제 사용자 답변 내용만 분석할 것
-3. 예시: "ITSM을 통해 요청서 작성 후 팀장 승인을 받아 권한 부여" → 사용자가 직접 작성한 절차 설명이므로 평가 대상
+3. 검토결과와 개선필요사항은 음슴체가 아닌 정확한 서술형으로 작성할 것 (예: "~입니다", "~되어야 합니다", "~것으로 판단됩니다")
+4. 예시: "ITSM을 통해 요청서 작성 후 팀장 승인을 받아 권한 부여" → 사용자가 직접 작성한 절차 설명이므로 평가 대상
 """
 
         model_name = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')  # 기본값으로 gpt-4o-mini 사용
@@ -1054,7 +1057,7 @@ def get_ai_review(content, control_number=None, answers=None):
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": "전문적이고 균형잡힌 ITGC 감사 전문가. 명백한 미비점은 정확히 식별하되, 적절히 운영되는 통제는 Effective로 인정하는 합리적 판단을 수행."},
+                {"role": "system", "content": "전문적이고 균형잡힌 ITGC 감사 전문가입니다. 명백한 미비점은 정확히 식별하되, 적절히 운영되는 통제는 Effective로 인정하는 합리적 판단을 수행합니다. 모든 검토 의견은 정확한 서술형으로 작성하며, 음슴체는 사용하지 않습니다."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=400,
@@ -1226,6 +1229,33 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
 
     # 조건부 질문 생략 로직 적용
     if answers and len(answers) >= 8:
+        # Cloud 환경에 따른 스킵 처리 추가
+        cloud_type = answers[4] if len(answers) > 4 else None
+        has_soc1_report = len(answers) > 5 and answers[5] and str(answers[5]).upper() == 'Y'
+        
+        # Cloud 스킵 조건 확인
+        if cloud_type and has_soc1_report:
+            cloud_skip_message = ""
+            if cloud_type == 'SaaS':
+                if control_number in ['APD04', 'APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 
+                                    'APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 
+                                    'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06']:
+                    cloud_skip_message = f"SaaS 환경에서는 서비스 제공업체가 담당합니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
+            elif cloud_type == 'PaaS':
+                if control_number in ['APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 
+                                    'APD12', 'APD13', 'APD14', 'CO04', 'CO05', 'CO06']:
+                    cloud_skip_message = f"PaaS 환경에서는 플랫폼 제공업체가 담당합니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
+            elif cloud_type == 'IaaS':
+                if control_number in ['APD11', 'APD13', 'CO04', 'CO05', 'CO06']:
+                    cloud_skip_message = f"IaaS 환경에서는 인프라 제공업체가 담당합니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
+            
+            if cloud_skip_message:
+                result['A1'] = control_number
+                result['B1'] = ITGC_CONTROLS.get(control_number, {}).get('title', control_number)
+                result['B2'] = cloud_skip_message
+                result['C2'] = result['B2']
+                return result
+        
         # 조건부 N/A 처리
         # 31번 질문: "주요 로직을 회사내부에서 수정하여 사용할 수 있습니까?"
         if control_number.startswith('PC') and answers[31] == 'N':
@@ -1530,6 +1560,9 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06'
     ]
     
+    # 스킵된 통제 목록 미리 가져오기
+    skipped_controls = get_skipped_controls(answers)
+    
     total_controls = len(control_list)
     processed_controls = []
     failed_controls = []
@@ -1548,6 +1581,12 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
             text_data = get_text_itgc(answers, control, textarea_answers, enable_ai_review)
             ws = wb[control]
             fill_sheet(ws, text_data, answers)
+            
+            # 스킵된 통제인 경우 C12셀을 공란으로 처리
+            if control in skipped_controls:
+                ws['C12'] = ''
+                print(f"🔄 {control} 스킵된 통제이므로 C12셀을 공란으로 처리")
+            
             processed_controls.append(control)
             print(f"✓ {control} 처리 완료")
         except Exception as e:
@@ -1631,39 +1670,112 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
             # 스킵된 통제 목록 가져오기
             skipped_controls = get_skipped_controls(answers)
             
-            # 기존 Summary 시트에서 통제번호를 찾아서 C, D, E열만 업데이트
-            # A열에서 통제번호를 찾아서 해당 행에 AI 검토 결과 작성
-            for control, ai_review in summary_ai_reviews.items():
-                if isinstance(ai_review, dict):
-                    # Summary 시트에서 해당 통제번호가 있는 행 찾기
-                    found_row = None
-                    for row in range(1, summary_ws.max_row + 1):
-                        cell_value = summary_ws[f'A{row}'].value
-                        if cell_value and str(cell_value).strip() == control:
-                            found_row = row
-                            break
+            # 전체 통제 목록 정의
+            all_controls = [
+                'APD01', 'APD02', 'APD03', 'APD04', 'APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 
+                'APD11', 'APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05',
+                'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06'
+            ]
+            
+            # 스킵 사유별 메시지를 동적으로 생성하는 함수
+            def get_skip_reason_message(control, answers):
+                """통제별로 스킵 사유에 맞는 메시지를 반환"""
+                
+                # Cloud 환경 체크
+                cloud_type = answers[4] if len(answers) > 4 and answers[4] else None
+                has_soc1_report = len(answers) > 5 and answers[5] and str(answers[5]).upper() == 'Y'
+                
+                if cloud_type and has_soc1_report:
+                    if cloud_type == 'SaaS' and control in ['APD04', 'APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06']:
+                        return 'SaaS 환경에서는 서비스 제공업체가 해당 영역을 담당하므로 이 통제는 적용되지 않습니다.'
+                    elif cloud_type == 'PaaS' and control in ['APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14', 'CO04', 'CO05', 'CO06']:
+                        return 'PaaS 환경에서는 플랫폼 제공업체가 해당 영역을 담당하므로 이 통제는 적용되지 않습니다.'
+                    elif cloud_type == 'IaaS' and control in ['APD11', 'APD13', 'CO04', 'CO05', 'CO06']:
+                        return 'IaaS 환경에서는 인프라 제공업체가 해당 영역을 담당하므로 이 통제는 적용되지 않습니다.'
+                
+                # Package S/W 체크
+                if control.startswith('PC') and len(answers) > 31 and answers[31] == 'N':
+                    return '상용소프트웨어 환경에서는 프로그램 변경이 제한되므로 이 통제는 적용되지 않습니다.'
+                
+                # DB 접근 불가 체크 (14번 답변 N -> 15~23번 스킵)
+                if control in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11'] and len(answers) > 14 and answers[14] == 'N':
+                    return 'DB 직접 접근이 불가능한 환경이므로 이 통제는 적용되지 않습니다.'
+                
+                # OS 접근 불가 체크
+                if control in ['APD12', 'APD13', 'APD14'] and len(answers) > 24 and answers[24] == 'N':
+                    return 'OS 서버 직접 접근이 불가능한 환경이므로 이 통제는 적용되지 않습니다.'
+                
+                # 배치 스케줄 없음 체크
+                if control in ['CO01', 'CO02', 'CO03'] and len(answers) > 38 and answers[38] == 'N':
+                    return '배치 스케줄이 존재하지 않으므로 이 통제는 적용되지 않습니다.'
+                
+                # 기본 메시지
+                return '현재 시스템 환경에서는 이 통제가 적용되지 않습니다.'
+            
+            # 전체 통제에 대해 Summary 시트 업데이트
+            for control in all_controls:
+                # Summary 시트에서 해당 통제번호가 있는 행 찾기
+                found_row = None
+                for row in range(1, summary_ws.max_row + 1):
+                    cell_value = summary_ws[f'A{row}'].value
+                    if cell_value and str(cell_value).strip() == control:
+                        found_row = row
+                        break
+                
+                if not found_row:
+                    print(f"⚠️ Summary 시트에서 {control} 통제를 찾을 수 없습니다.")
+                    continue
+                
+                if control in summary_ai_reviews and isinstance(summary_ai_reviews[control], dict):
+                    # AI 검토를 받은 통제: 검토 결과 작성
+                    ai_review = summary_ai_reviews[control]
+                    print(f"📝 Summary 시트 {found_row}행에서 {control} 통제 AI 검토결과 업데이트")
                     
-                    if found_row:
-                        print(f"📝 Summary 시트 {found_row}행에서 {control} 통제 검토결과 업데이트")
-                        
-                        # C열: 검토결과만 업데이트 (A, B열은 건드리지 않음)
-                        review_result = ai_review.get('review_result', '')
-                        if len(review_result) > 32767:  # 엑셀 셀 최대 문자 수 제한
-                            review_result = review_result[:32760] + "..."
-                        summary_ws[f'C{found_row}'] = review_result
-                        
-                        # D열: 결론
-                        summary_ws[f'D{found_row}'] = ai_review.get('conclusion', '')
-                        
-                        # E열: 개선필요사항
-                        improvements = ai_review.get('improvements', '')
-                        if len(improvements) > 32767:  # 엑셀 셀 최대 문자 수 제한
-                            improvements = improvements[:32760] + "..."
-                        summary_ws[f'E{found_row}'] = improvements
-                        
-                        print(f"✅ {control} 통제 AI 검토 결과 Summary 시트에 업데이트 완료")
+                    # C열: 검토결과
+                    review_result = ai_review.get('review_result', '')
+                    if len(review_result) > 32767:  # 엑셀 셀 최대 문자 수 제한
+                        review_result = review_result[:32760] + "..."
+                    summary_ws[f'C{found_row}'] = review_result
+                    
+                    # D열: 결론
+                    summary_ws[f'D{found_row}'] = ai_review.get('conclusion', '')
+                    
+                    # E열: 개선필요사항
+                    improvements = ai_review.get('improvements', '')
+                    if len(improvements) > 32767:  # 엑셀 셀 최대 문자 수 제한
+                        improvements = improvements[:32760] + "..."
+                    summary_ws[f'E{found_row}'] = improvements
+                    
+                    print(f"✅ {control} 통제 AI 검토 결과 Summary 시트에 업데이트 완료")
+                
+                elif control in skipped_controls:
+                    # 스킵된 통제: 스킵 사유에 맞는 메시지 작성
+                    print(f"📝 Summary 시트 {found_row}행에서 {control} 통제 스킵 메시지 작성")
+                    
+                    # 스킵 사유에 맞는 메시지 동적 생성
+                    skip_message = get_skip_reason_message(control, answers)
+                    
+                    # C열: 스킵 사유
+                    summary_ws[f'C{found_row}'] = skip_message
+                    
+                    # D열: N/A
+                    summary_ws[f'D{found_row}'] = 'N/A'
+                    
+                    # E열: Cloud 스킵된 통제 + 47번 N인 경우 개선사항 작성
+                    cloud_type = answers[4] if len(answers) > 4 and answers[4] else None
+                    has_soc1_report = len(answers) > 5 and answers[5] and str(answers[5]).upper() == 'Y'
+                    soc1_review_answer = answers[47] if len(answers) > 47 else None
+                    
+                    # Cloud로 인해 스킵된 통제인지 확인 (스킵 메시지에 Cloud 관련 키워드 포함)
+                    is_cloud_skipped = any(keyword in skip_message for keyword in ['SaaS', 'PaaS', 'IaaS', '서비스 제공업체', '플랫폼 제공업체', '인프라 제공업체'])
+                    
+                    # Cloud 스킵된 통제이고 47번 답변이 N인 경우
+                    if (is_cloud_skipped and soc1_review_answer and str(soc1_review_answer).upper() == 'N'):
+                        summary_ws[f'E{found_row}'] = 'SOC1 Report를 검토 및 승인하는 절차와 통제가 필요합니다.'
                     else:
-                        print(f"⚠️ Summary 시트에서 {control} 통제를 찾을 수 없습니다.")
+                        summary_ws[f'E{found_row}'] = ''
+                    
+                    print(f"✅ {control} 통제 스킵 메시지 Summary 시트에 작성 완료")
         except Exception as e:
             print(f"Summary 시트 작성 중 오류 발생: {str(e)}")
             # Summary 시트 오류가 발생해도 전체 프로세스는 계속 진행
