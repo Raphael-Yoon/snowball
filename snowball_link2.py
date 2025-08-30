@@ -1575,14 +1575,14 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                     ws.sheet_properties.tabColor = "FF0000"
 
                 # 전체 AI 검토 결과를 C15 셀에 추가 (기존 기능 유지)
-                review_text = f"검토결과: {text_data['AI_Review'].get('review_result', '')}\n결론: {text_data['AI_Review'].get('conclusion', '')}\n개선필요사항: {text_data['AI_Review'].get('improvements', '')}"
-                ws['C15'] = f"=== AI 검토 결과 ===\n{review_text}"
-                # AI 검토 결과 셀의 높이 조정
-                ai_review_lines = review_text.count('\n') + 1
-                ws.row_dimensions[15].height = 15 * max(5, ai_review_lines // 3)
+                # review_text = f"검토결과: {text_data['AI_Review'].get('review_result', '')}\n결론: {text_data['AI_Review'].get('conclusion', '')}\n개선필요사항: {text_data['AI_Review'].get('improvements', '')}"
+                # ws['C15'] = f"=== AI 검토 결과 ===\n{review_text}"
+                # # AI 검토 결과 셀의 높이 조정
+                # ai_review_lines = review_text.count('\n') + 1
+                # ws.row_dimensions[15].height = 15 * max(5, ai_review_lines // 3)
             else:
                 # 기존 형식인 경우 그대로 C14에 기록
-                ws['C14'] = str(text_data['AI_Review'])
+                # ws['C14'] = str(text_data['AI_Review'])
                 ai_review_processed = True
 
                 # 기존 형식에서도 Ineffective 체크
