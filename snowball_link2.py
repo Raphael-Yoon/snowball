@@ -282,7 +282,7 @@ ITGC_CONTROLS = {
         'title': '서버실 출입 절차',
         'type': 'simple_list',
         'template': '서버실 출입 절차는 아래와 같습니다.\n\n{content}',
-        'answer_idx': 47,
+        'answer_idx': 46,
         'default_msg': '서버실 출입 절차에 대한 상세 기술이 제공되지 않았습니다.'
     }
 }
@@ -357,6 +357,32 @@ def get_conditional_questions(answers):
         skip_ranges.append((4, 5))
         print(f"[SKIP DEBUG] 3번 답변 'N' -> 4~5번 스킵")
     
+    # 4번 답변 디버깅 정보 출력
+    if len(answers) > 4:
+        print(f"[SKIP DEBUG] 4번 답변 확인: '{answers[4]}' (타입: {type(answers[4])})")
+    
+    # Cloud 스킵 조건: 4번 클라우드 타입 + 5번 SOC1 Report 발행 여부 (Y)
+    has_soc1_report = len(answers) > 5 and answers[5] and str(answers[5]).upper() == 'Y'
+    
+    # 4번 답변이 SaaS이고 5번 답변이 Y이면 11, 14~46번 질문 생략 (인터뷰 종료)
+    if len(answers) > 4 and answers[4] and str(answers[4]) == 'SaaS' and has_soc1_report:
+        skip_ranges.append((11, 11))  # 11번 질문만 생략
+        skip_ranges.append((14, 46))  # 14~46번 질문 생략 (마지막까지)
+        print(f"[SKIP DEBUG] 4번 답변 'SaaS' + 5번 답변 'Y' -> 11번, 14~46번 스킵 (인터뷰 종료)")
+    
+    # 4번 답변이 IaaS이고 5번 답변이 Y이면 22, 29, 44~46번 질문 생략
+    elif len(answers) > 4 and answers[4] and str(answers[4]) == 'IaaS' and has_soc1_report:
+        skip_ranges.append((22, 22))  # 22번 질문 생략
+        skip_ranges.append((29, 29))  # 29번 질문 생략
+        skip_ranges.append((44, 46))  # 44~46번 질문 생략
+        print(f"[SKIP DEBUG] 4번 답변 'IaaS' + 5번 답변 'Y' -> 22번, 29번, 44~46번 스킵")
+    
+    # 4번 답변이 PaaS이고 5번 답변이 Y이면 14~31, 44~46번 질문 생략
+    elif len(answers) > 4 and answers[4] and str(answers[4]) == 'PaaS' and has_soc1_report:
+        skip_ranges.append((14, 31))  # 14~31번 질문 생략
+        skip_ranges.append((44, 46))  # 44~46번 질문 생략
+        print(f"[SKIP DEBUG] 4번 답변 'PaaS' + 5번 답변 'Y' -> 14~31번, 44~46번 스킵")
+    
     # 14번 답변이 N이면 15~23번 질문 생략
     if len(answers) > 14 and answers[14] and str(answers[14]).upper() == 'N':
         skip_ranges.append((15, 23))
@@ -417,17 +443,47 @@ def get_skipped_controls(answers):
     if not answers or len(answers) < 4:
         return skipped_controls
     
-    # 3번 답변이 N이면 Cloud 관련 통제는 해당없음 (현재는 별도 통제가 없음)
+    # Cloud 서비스 관련 스킵 로직 추가
+    if len(answers) > 5:
+        cloud_type = answers[4] if len(answers) > 4 else None
+        has_soc1_report = len(answers) > 5 and answers[5] and str(answers[5]).upper() == 'Y'
+        
+        if cloud_type and has_soc1_report:
+            if cloud_type == 'SaaS':
+                # SaaS + SOC1 Report 발행이면 12, 11, 14~46번 질문 관련 통제 스킵
+                skipped_controls.update([
+                    'APD04',  # 12번 질문 (Application 관리자 권한)
+                    'APD05',  # 11번 질문
+                    'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11',  # 14~23번 (DB 관련)
+                    'APD12', 'APD13', 'APD14',  # 24~30번 (OS 관련)  
+                    'PC01', 'PC02', 'PC03', 'PC04', 'PC05',  # 31~37번 (PC 관련)
+                    'CO01', 'CO02', 'CO03',  # 39~43번 (배치 스케줄 관련)
+                    'CO04', 'CO05', 'CO06'  # 44~46번 (CO 관련)
+                ])
+            elif cloud_type == 'PaaS':
+                # PaaS + SOC1 Report 발행이면 14~31, 44~46번 질문 관련 통제 스킵
+                skipped_controls.update([
+                    'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11',  # 14~23번 (DB 관련)
+                    'APD12', 'APD13', 'APD14',  # 24~30번 (OS 관련)
+                    'CO04', 'CO05', 'CO06'  # 44~46번 (CO 관련)
+                ])
+            elif cloud_type == 'IaaS':
+                # IaaS + SOC1 Report 발행이면 22, 29, 44~46번 질문 관련 통제 스킵
+                skipped_controls.update([
+                    'APD11',  # 22번 질문
+                    'APD13',  # 29번 질문
+                    'CO04', 'CO05', 'CO06'  # 44~46번 (CO 관련)
+                ])
     
-    # 17번 답변이 N이면 DB 관련 통제는 해당없음
+    # 17번 답변이 N이면 DB 관련 통제는 해당없음 (Cloud 스킵과 중복될 수 있음)
     if len(answers) > 17 and answers[17] and str(answers[17]).upper() == 'N':
         skipped_controls.update(['APD09', 'APD10', 'APD11'])
     
-    # 24번 답변이 N이면 OS 관련 통제는 해당없음
+    # 24번 답변이 N이면 OS 관련 통제는 해당없음 (Cloud 스킵과 중복될 수 있음)
     if len(answers) > 24 and answers[24] and str(answers[24]).upper() == 'N':
         skipped_controls.update(['APD12', 'APD13', 'APD14'])
     
-    # 31번 답변이 N이면 PC 관련 통제는 해당없음
+    # 31번 답변이 N이면 PC 관련 통제는 해당없음 (Cloud 스킵과 중복될 수 있음)
     if len(answers) > 31 and answers[31] and str(answers[31]).upper() == 'N':
         skipped_controls.update(['PC01', 'PC02', 'PC03', 'PC04', 'PC05'])
     
@@ -435,6 +491,7 @@ def get_skipped_controls(answers):
     if len(answers) > 38 and answers[38] and str(answers[38]).upper() == 'N':
         skipped_controls.update(['CO01', 'CO02', 'CO03'])
     
+    print(f"[SKIP DEBUG] Cloud 타입: {answers[4] if len(answers) > 4 else 'None'}, SOC1 Report: {answers[5] if len(answers) > 5 else 'None'}")
     print(f"[SKIP DEBUG] 스킵된 통제 목록: {skipped_controls}")
     return skipped_controls
 
@@ -865,6 +922,27 @@ def get_ai_review(content, control_number=None, answers=None):
     answers: 인터뷰 답변 리스트 (Package S/W 상황 판단용)
     """
     try:
+        # 모집단 확보 불가 시 무조건 Ineffective 판정하는 통제 목록
+        mandatory_ineffective_controls = ['APD01', 'APD07', 'APD09', 'APD12', 'PC01', 'PC02', 'PC03', 'CO01']
+        
+        # 모집단 확보 불가 키워드 체크
+        population_unavailable_keywords = [
+            '모집단 확보가 불가', '모집단 확보 불가', '모집단이 없', '모집단 부족',
+            '이력이 없', '기록이 없', '데이터가 없', '자료가 없',
+            '수행하지 않', '운영하지 않', '절차가 없'
+        ]
+        
+        # 해당 통제이고 모집단 확보 불가 키워드가 포함된 경우 자동 Ineffective 판정
+        if control_number in mandatory_ineffective_controls:
+            content_lower = content.lower()
+            for keyword in population_unavailable_keywords:
+                if keyword in content:
+                    return {
+                        'review_result': f"모집단 확보가 불가능한 상황입니다. {control_number} 통제의 경우 모집단이 확보되지 않으면 통제 효과성을 평가할 수 없습니다.",
+                        'conclusion': "Ineffective",
+                        'improvements': f"모집단 확보를 위한 시스템 구축 또는 절차 수립이 필요합니다. {control_number} 통제가 효과적으로 운영되기 위해서는 관련 데이터의 완전성과 정확성이 보장되어야 합니다."
+                    }
+        
         api_key = os.getenv('OPENAI_API_KEY')
         if not api_key:
             return {
@@ -880,13 +958,48 @@ def get_ai_review(content, control_number=None, answers=None):
         
         # 특별 상황 확인 및 컨텍스트 생성
         special_context = ""
-        if answers and len(answers) > 3:
+        if answers and len(answers) > 4:
             is_package_sw = answers[2] == 'Y'  # 질문2: 상용소프트웨어 사용
-            cannot_modify = answers[31] == 'N'  # 질문31: 내부 수정 불가
+            cloud_type = answers[4] if len(answers) > 4 else None  # 질문4: Cloud 종류
+            cannot_modify = answers[31] == 'N' if len(answers) > 31 else False  # 질문31: 내부 수정 불가
             
+            # Cloud 서비스 관련 컨텍스트 - 실제 스킵된 통제들만 N/A 처리
+            has_soc1_report = len(answers) > 5 and answers[5] and str(answers[5]).upper() == 'Y'
+            
+            if cloud_type and has_soc1_report:
+                # 스킵된 통제 목록 확인
+                skipped_controls = get_skipped_controls(answers)
+                
+                # 실제로 스킵된 통제인 경우에만 N/A 컨텍스트 추가
+                if control_number in skipped_controls:
+                    if cloud_type == 'SaaS':
+                        if control_number in ['APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11']:
+                            special_context += "\n중요: SaaS 환경에서는 데이터베이스 관리가 서비스 제공업체에서 담당합니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
+                        elif control_number in ['APD12', 'APD13']:
+                            special_context += "\n중요: SaaS 환경에서는 운영체제 관리가 서비스 제공업체에서 담당합니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
+                        elif control_number and control_number.startswith('PC'):
+                            special_context += "\n중요: SaaS 환경에서는 프로그램 변경이 서비스 제공업체에서 담당합니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
+                        elif control_number and control_number.startswith('CO') and control_number in ['CO04', 'CO05', 'CO06']:
+                            special_context += "\n중요: SaaS 환경에서는 장애 대응 및 백업이 서비스 제공업체에서 담당합니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
+                    
+                    elif cloud_type == 'PaaS':
+                        if control_number in ['APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11']:
+                            special_context += "\n중요: PaaS 환경에서는 데이터베이스 관리가 플랫폼에서 담당됩니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
+                        elif control_number in ['APD12', 'APD13']:
+                            special_context += "\n중요: PaaS 환경에서는 운영체제 관리가 플랫폼에서 담당됩니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
+                        elif control_number and control_number.startswith('CO') and control_number in ['CO04', 'CO05', 'CO06']:
+                            special_context += "\n중요: PaaS 환경에서는 인프라 수준의 장애 대응 및 백업이 플랫폼에서 담당됩니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
+                    
+                    elif cloud_type == 'IaaS':
+                        if control_number in ['APD11', 'APD13']:
+                            special_context += "\n중요: IaaS 환경에서는 관리자 권한이 클라우드 제공업체에서 관리됩니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
+                        elif control_number and control_number.startswith('CO') and control_number in ['CO04', 'CO05', 'CO06']:
+                            special_context += "\n중요: IaaS 환경에서는 인프라 수준의 장애 대응 및 백업이 클라우드 제공업체에서 담당됩니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
+            
+            # Package S/W 관련 컨텍스트
             if is_package_sw and cannot_modify:
                 if control_number and control_number.startswith('PC'):
-                    special_context = "\n중요: 이 시스템은 Package S/W이며 회사내에서 수정이 불가능합니다. 프로그램 변경(PC) 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
+                    special_context += "\n중요: 이 시스템은 Package S/W이며 회사내에서 수정이 불가능합니다. 프로그램 변경(PC) 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
         
         # 배치 스케줄 상황 확인
         if answers and len(answers) > 6:
@@ -905,16 +1018,22 @@ def get_ai_review(content, control_number=None, answers=None):
         else:
             specific_criteria_text = "특정기준: 표준 ITGC 검토 기준 적용"
 
+        # Cloud 환경 정보 추가
+        cloud_info = ""
+        if cloud_type:
+            cloud_info = f"\n**시스템 환경: {cloud_type} Cloud 서비스**"
+        
         prompt = f"""ITGC {control_number} 검토:
 {content}
 
 {common_criteria_text}
-{specific_criteria_text}{special_context}
+{specific_criteria_text}{cloud_info}{special_context}
 
 **검토 기준: 전문적이고 균형잡힌 감사 접근**
 - 실제 사용자가 작성한 답변 내용을 기반으로 평가 (시스템 자동 생성 문구는 제외)
 - 통제의 설계와 운영 상태를 실질적으로 분석
 - 이력 기록 여부, 승인 절차 존재 여부, 권한 관리 적절성 등을 종합적으로 판단
+- Cloud 서비스 환경에서는 제공업체가 담당하는 영역은 N/A 처리하여 미비점으로 판정하지 않음
 - 소규모 조직의 현실적 제약을 고려하되 핵심 통제 요구사항은 충족되어야 함
 - 명확한 통제 미비점이 확인되는 경우에만 Ineffective 판정
 - 적절한 통제가 운영되고 있다면 Effective 판정
@@ -1164,27 +1283,47 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
 
     # AI 기능 적용 (토큰 사용량 최적화)
     if enable_ai_review and 'B2' in result and result['B2']:
-        # 텍스트 길이 체크로 불필요한 API 호출 방지
-        if should_apply_ai_refinement(result['B2']):
-            print(f"🤖 AI 다듬기 시작: {control_number}")
-            
-            improved_text = ai_improve_interview_answer("", result['B2'])  # 질문 텍스트 제거로 토큰 절약
-            if improved_text and improved_text.get('improved_answer'):
-                result['C2'] = improved_text['improved_answer']
-                print(f"📝 AI 다듬기 완료: {control_number}")
-            else:
-                result['C2'] = result['B2']
-            
-            # AI 검토 수행
-            print(f"🔍 AI 검토 시작: {control_number}")
-            ai_review = get_ai_review(result['C2'], control_number, answers)
-            result['AI_Review'] = ai_review
-            result['AI_Summary'] = ai_review
-            print(f"✅ AI 검토 완료: {control_number}")
-        else:
-            print(f"⏭️ AI 다듬기 건너뜀 (길이): {control_number}")
+        # 스킵된 통제인지 확인
+        skipped_controls = get_skipped_controls(answers)
+        is_skipped = control_number in skipped_controls
+        
+        if is_skipped:
+            print(f"⏭️ 스킵된 통제이므로 AI 검토 건너뜀: {control_number}")
             result['C2'] = result['B2']
+        else:
+            # 스킵되지 않은 통제만 AI 검토 수행
+            text_length = len(result['B2'])
+            should_apply_ai = should_apply_ai_refinement(result['B2'])
+            print(f"🔍 [DEBUG] {control_number} AI 검토 체크: 텍스트 길이={text_length}, should_apply_ai={should_apply_ai}, 스킵 여부={is_skipped}")
+            
+            if should_apply_ai:
+                print(f"🤖 AI 다듬기 시작: {control_number}")
+                
+                improved_text = ai_improve_interview_answer("", result['B2'])  # 질문 텍스트 제거로 토큰 절약
+                if improved_text and improved_text.get('improved_answer'):
+                    result['C2'] = improved_text['improved_answer']
+                    print(f"📝 AI 다듬기 완료: {control_number}")
+                else:
+                    result['C2'] = result['B2']
+                
+                # AI 검토 수행
+                print(f"🔍 AI 검토 시작: {control_number}")
+                ai_review = get_ai_review(result['C2'], control_number, answers)
+                result['AI_Review'] = ai_review
+                result['AI_Summary'] = ai_review
+                print(f"✅ AI 검토 완료: {control_number}")
+            else:
+                print(f"⏭️ AI 다듬기 건너뜀 (길이 {text_length}자, 범위: {TEXT_LENGTH_LIMITS['min_length']}~{TEXT_LENGTH_LIMITS['max_length']}자): {control_number}")
+                result['C2'] = result['B2']
+                
+                # 길이 제한 때문에 AI 다듬기는 건너뛰지만, 스킵되지 않은 통제는 Summary용 AI 검토 수행
+                print(f"🔍 Summary용 AI 검토 시작: {control_number}")
+                ai_review = get_ai_review(result['B2'], control_number, answers)
+                result['AI_Review'] = ai_review
+                result['AI_Summary'] = ai_review
+                print(f"✅ Summary용 AI 검토 완료: {control_number}")
     else:
+        print(f"⏭️ [DEBUG] AI 검토 건너뜀: enable_ai_review={enable_ai_review}, B2 존재={bool('B2' in result and result['B2'])}")
         result['C2'] = result['B2']
 
     return result
@@ -1233,10 +1372,21 @@ def link2_prev_logic(session):
                 session['question_index'] = 37
                 print(f"[PREV DEBUG] 37번으로 이동")
         elif question_index == 6:  # 6번 질문에서 이전으로 갈 때 (사용자 권한부여 이력)
-            # 3번 답변 확인 (Cloud 서비스 사용 여부)
+            # 4번, 5번 답변 확인 (Cloud 타입 + SOC1 Report)
+            answer_4 = session.get('answer', [])[4] if len(session.get('answer', [])) > 4 else ''
+            answer_5 = session.get('answer', [])[5] if len(session.get('answer', [])) > 5 else ''
             answer_3 = session.get('answer', [])[3] if len(session.get('answer', [])) > 3 else ''
-            print(f"[PREV DEBUG] 6번에서 이전, 3번 답변: {answer_3}")
-            if answer_3 == 'N':
+            print(f"[PREV DEBUG] 6번에서 이전, 3번 답변: {answer_3}, 4번 답변: {answer_4}, 5번 답변: {answer_5}")
+            
+            if answer_4 == 'SaaS' and answer_5 == 'Y':
+                # SaaS + SOC1 Report 발행이면 5번으로 이동 (6번 이후 대부분 스킵됨)
+                session['question_index'] = 5
+                print(f"[PREV DEBUG] SaaS + SOC1 Report 발행이므로 5번으로 이동")
+            elif answer_4 == 'PaaS' and answer_5 == 'Y':
+                # PaaS + SOC1 Report 발행이면 13번으로 이동 (14~31번 스킵)
+                session['question_index'] = 13
+                print(f"[PREV DEBUG] PaaS + SOC1 Report 발행이므로 13번으로 이동")
+            elif answer_3 == 'N':
                 # Cloud 서비스를 사용하지 않으면 3번으로 이동 (4~5번 스킵)
                 session['question_index'] = 3
                 print(f"[PREV DEBUG] 3번으로 이동 (4~5번 스킵)")
@@ -1249,14 +1399,53 @@ def link2_prev_logic(session):
             session['question_index'] = 3
             print(f"[PREV DEBUG] {question_index}번에서 3번으로 이동")
         elif question_index in [18, 19, 20, 21, 22, 23]:  # 18~23번 질문에서 이전으로 갈 때 (DB 관련)
-            # 모두 17번으로 이동 (DB 접속 가능 여부)
-            session['question_index'] = 17
-            print(f"[PREV DEBUG] {question_index}번에서 17번으로 이동")
+            # IaaS인 경우 22번은 스킵되므로 특별 처리
+            if question_index == 23:
+                answer_4 = session.get('answer', [])[4] if len(session.get('answer', [])) > 4 else ''
+                print(f"[PREV DEBUG] 23번에서 이전, 4번 답변: {answer_4}")
+                if answer_4 == 'IaaS':
+                    # IaaS이면 21번으로 이동 (22번 스킵)
+                    session['question_index'] = 21
+                    print(f"[PREV DEBUG] IaaS이므로 21번으로 이동 (22번 스킵)")
+                else:
+                    # 일반적으로 17번으로 이동
+                    session['question_index'] = 17
+                    print(f"[PREV DEBUG] 17번으로 이동")
+            else:
+                # 18~22번은 모두 17번으로 이동 (DB 접속 가능 여부)
+                session['question_index'] = 17
+                print(f"[PREV DEBUG] {question_index}번에서 17번으로 이동")
         elif question_index in [25, 26, 27, 28, 29, 30]:  # 25~30번 질문에서 이전으로 갈 때 (OS 관련)
-            # 모두 24번으로 이동 (OS서버 접속 가능 여부)
-            session['question_index'] = 24
-            print(f"[PREV DEBUG] {question_index}번에서 24번으로 이동")
-        elif question_index in [32, 33, 34, 35, 36, 37]:  # 32~37번 질문에서 이전으로 갈 때 (PC 관련)
+            # IaaS인 경우 29번은 스킵되므로 특별 처리
+            if question_index == 30:
+                answer_4 = session.get('answer', [])[4] if len(session.get('answer', [])) > 4 else ''
+                print(f"[PREV DEBUG] 30번에서 이전, 4번 답변: {answer_4}")
+                if answer_4 == 'IaaS':
+                    # IaaS이면 28번으로 이동 (29번 스킵)
+                    session['question_index'] = 28
+                    print(f"[PREV DEBUG] IaaS이므로 28번으로 이동 (29번 스킵)")
+                else:
+                    # 일반적으로 24번으로 이동
+                    session['question_index'] = 24
+                    print(f"[PREV DEBUG] 24번으로 이동")
+            else:
+                # 25~29번은 모두 24번으로 이동 (OS서버 접속 가능 여부)
+                session['question_index'] = 24
+                print(f"[PREV DEBUG] {question_index}번에서 24번으로 이동")
+        elif question_index == 32:  # 32번 질문에서 이전으로 갈 때 (프로그램 변경 이력)
+            # PaaS + SOC1 Report 여부 확인
+            answer_4 = session.get('answer', [])[4] if len(session.get('answer', [])) > 4 else ''
+            answer_5 = session.get('answer', [])[5] if len(session.get('answer', [])) > 5 else ''
+            print(f"[PREV DEBUG] 32번에서 이전, 4번 답변: {answer_4}, 5번 답변: {answer_5}")
+            if answer_4 == 'PaaS' and answer_5 == 'Y':
+                # PaaS + SOC1 Report 발행이면 13번으로 이동 (14~31번 스킵)
+                session['question_index'] = 13
+                print(f"[PREV DEBUG] PaaS + SOC1 Report 발행이므로 13번으로 이동 (14~31번 스킵)")
+            else:
+                # 일반적으로 31번으로 이동
+                session['question_index'] = 31
+                print(f"[PREV DEBUG] 31번으로 이동")
+        elif question_index in [33, 34, 35, 36, 37]:  # 33~37번 질문에서 이전으로 갈 때 (PC 관련)
             # 모두 31번으로 이동 (프로그램 수정 가능 여부)
             session['question_index'] = 31
             print(f"[PREV DEBUG] {question_index}번에서 31번으로 이동")
@@ -1265,10 +1454,25 @@ def link2_prev_logic(session):
             session['question_index'] = 38
             print(f"[PREV DEBUG] {question_index}번에서 38번으로 이동")
         elif question_index in [44, 45, 46]:  # 44~46번 질문에서 이전으로 갈 때 (CO04~06)
-            # 38번 배치 스케줄 답변 확인
+            # SaaS, PaaS, IaaS + SOC1 Report 여부 및 38번 배치 스케줄 답변 확인
+            answer_4 = session.get('answer', [])[4] if len(session.get('answer', [])) > 4 else ''
+            answer_5 = session.get('answer', [])[5] if len(session.get('answer', [])) > 5 else ''
             answer_38 = session.get('answer', [])[38] if len(session.get('answer', [])) > 38 else ''
-            print(f"[PREV DEBUG] {question_index}번에서 이전, 38번 답변: {answer_38}")
-            if answer_38 == 'N':
+            print(f"[PREV DEBUG] {question_index}번에서 이전, 4번 답변: {answer_4}, 5번 답변: {answer_5}, 38번 답변: {answer_38}")
+            
+            if answer_4 == 'SaaS' and answer_5 == 'Y':
+                # SaaS + SOC1 Report 발행이면 13번으로 이동 (14~46번 모두 스킵)
+                session['question_index'] = 13
+                print(f"[PREV DEBUG] SaaS + SOC1 Report 발행이므로 13번으로 이동 (14~46번 스킵)")
+            elif answer_4 == 'PaaS' and answer_5 == 'Y':
+                # PaaS + SOC1 Report 발행이면 43번으로 이동 (44~46번 스킵)
+                session['question_index'] = 43
+                print(f"[PREV DEBUG] PaaS + SOC1 Report 발행이므로 43번으로 이동 (44~46번 스킵)")
+            elif answer_4 == 'IaaS' and answer_5 == 'Y':
+                # IaaS + SOC1 Report 발행이면 43번으로 이동 (44~46번 스킵)
+                session['question_index'] = 43
+                print(f"[PREV DEBUG] IaaS + SOC1 Report 발행이므로 43번으로 이동 (44~46번 스킵)")
+            elif answer_38 == 'N':
                 # 배치 스케줄이 없으면 38번으로 이동 (39~43번 스킵)
                 session['question_index'] = 38
                 print(f"[PREV DEBUG] 38번으로 이동 (39~43번 스킵)")
@@ -1351,11 +1555,11 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
             print(f"✗ {control} 처리 실패: {str(e)}")
 
         # AI 검토 결과가 있는 경우 Summary 시트용 데이터 수집
-        if enable_ai_review and 'AI_Summary' in text_data and isinstance(text_data['AI_Summary'], dict):
-            summary_ai_reviews[control] = text_data['AI_Summary']
+        if enable_ai_review and 'AI_Review' in text_data and isinstance(text_data['AI_Review'], dict):
+            summary_ai_reviews[control] = text_data['AI_Review']
             print(f"📊 {control} AI 검토 결과 Summary 수집 완료")
         elif enable_ai_review:
-            print(f"⚠️ {control} AI_Summary 데이터 없음: keys={list(text_data.keys()) if hasattr(text_data, 'keys') else 'N/A'}")
+            print(f"⚠️ {control} AI_Review 데이터 없음: keys={list(text_data.keys()) if hasattr(text_data, 'keys') else 'N/A'}")
 
         # AI 검토 결과가 있는 경우와 없는 경우에 따라 C14 처리
         ai_review_processed = False
@@ -1408,81 +1612,58 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
     
     if enable_ai_review and summary_ai_reviews:
         # AI 검토가 활성화된 경우 Summary 시트 생성
+        # 시스템 환경 정보 미리 정의 (try 블록 외부에서)
+        cloud_type = answers[4] if len(answers) > 4 and answers[4] else '온프레미스'
+        system_name = answers[1] if len(answers) > 1 else '시스템'
+        
+        # 스타일링 관련 import (try 블록 외부에서)
+        from openpyxl.styles import Font, Alignment, PatternFill
+        
         try:
-            # Summary 시트가 존재하는지 확인하고 없으면 생성
+            # Summary 시트 확인 (템플릿에 이미 있어야 함)
             if 'Summary' not in wb.sheetnames:
-                summary_ws = wb.create_sheet('Summary')
-                # 헤더 추가
-                summary_ws['A1'] = '통제번호'
-                summary_ws['B1'] = '통제명'
-                summary_ws['C1'] = '검토결과'
-                summary_ws['D1'] = '결론'
-                summary_ws['E1'] = '개선필요사항'
-            else:
-                summary_ws = wb['Summary']
-
-            # 통제명 매핑 딕셔너리
-            control_names = {
-                'APD01': '사용자 신규 권한 승인',
-                'APD02': '부서이동자 권한 회수',
-                'APD03': '퇴사자 접근권한 회수',
-                'APD04': 'Application 관리자 권한 제한',
-                'APD05': '사용자 권한 Monitoring',
-                'APD06': 'Application 패스워드',
-                'APD07': '데이터 직접 변경',
-                'APD08': '데이터 변경 권한 제한',
-                'APD09': 'DB 접근권한 승인',
-                'APD10': 'DB 관리자 권한 제한',
-                'APD11': 'DB 패스워드',
-                'APD12': 'OS 접근권한 승인',
-                'APD13': 'OS 관리자 권한 제한',
-                'APD14': 'OS 패스워드',
-                'PC01': '프로그램 변경 승인',
-                'PC02': '프로그램 변경 사용자 테스트',
-                'PC03': '프로그램 변경 이관 승인',
-                'PC04': '이관(배포) 권한 제한',
-                'PC05': '개발/운영 환경 분리',
-                'CO01': '배치 스케줄 등록/변경 승인',
-                'CO02': '배치 스케줄 등록/변경 권한 제한',
-                'CO03': '배치 실행 모니터링',
-                'CO04': '장애 대응 절차',
-                'CO05': '백업 및 모니터링',
-                'CO06': '서버실 출입 절차'
-            }
-
-            row_index = 2  # 헤더 다음 행부터 시작
-
+                print("⚠️ 템플릿에 Summary 시트가 없습니다. Summary 기능을 건너뜁니다.")
+                return wb, processed_controls, failed_controls
+            
+            summary_ws = wb['Summary']
+            print(f"✅ 기존 Summary 시트를 사용합니다.")
+            
             # 스킵된 통제 목록 가져오기
             skipped_controls = get_skipped_controls(answers)
             
+            # 기존 Summary 시트에서 통제번호를 찾아서 C, D, E열만 업데이트
+            # A열에서 통제번호를 찾아서 해당 행에 AI 검토 결과 작성
             for control, ai_review in summary_ai_reviews.items():
                 if isinstance(ai_review, dict):
-                    # A열: 통제번호
-                    summary_ws[f'A{row_index}'] = control
-                    # B열: 통제명
-                    summary_ws[f'B{row_index}'] = control_names.get(control, '')
-                    # C열: 검토결과
-                    review_result = ai_review.get('review_result', '')
-                    if len(review_result) > 32767:  # 엑셀 셀 최대 문자 수 제한
-                        review_result = review_result[:32760] + "..."
-                    summary_ws[f'C{row_index}'] = review_result
-                    # D열: 결론
-                    summary_ws[f'D{row_index}'] = ai_review.get('conclusion', '')
-                    # E열: 개선필요사항
-                    improvements = ai_review.get('improvements', '')
-                    if len(improvements) > 32767:  # 엑셀 셀 최대 문자 수 제한
-                        improvements = improvements[:32760] + "..."
-                    summary_ws[f'E{row_index}'] = improvements
+                    # Summary 시트에서 해당 통제번호가 있는 행 찾기
+                    found_row = None
+                    for row in range(1, summary_ws.max_row + 1):
+                        cell_value = summary_ws[f'A{row}'].value
+                        if cell_value and str(cell_value).strip() == control:
+                            found_row = row
+                            break
                     
-                    # 스킵된 통제인 경우 행을 회색으로 표시
-                    if control in skipped_controls:
-                        from openpyxl.styles import PatternFill
-                        gray_fill = PatternFill(start_color='D3D3D3', end_color='D3D3D3', fill_type='solid')
-                        for col in ['A', 'B', 'C', 'D', 'E']:
-                            summary_ws[f'{col}{row_index}'].fill = gray_fill
-                        print(f"[SUMMARY] {control} 통제를 Summary 시트에서 회색으로 표시했습니다.")
-                    
-                    row_index += 1
+                    if found_row:
+                        print(f"📝 Summary 시트 {found_row}행에서 {control} 통제 검토결과 업데이트")
+                        
+                        # C열: 검토결과만 업데이트 (A, B열은 건드리지 않음)
+                        review_result = ai_review.get('review_result', '')
+                        if len(review_result) > 32767:  # 엑셀 셀 최대 문자 수 제한
+                            review_result = review_result[:32760] + "..."
+                        summary_ws[f'C{found_row}'] = review_result
+                        
+                        # D열: 결론
+                        summary_ws[f'D{found_row}'] = ai_review.get('conclusion', '')
+                        
+                        # E열: 개선필요사항
+                        improvements = ai_review.get('improvements', '')
+                        if len(improvements) > 32767:  # 엑셀 셀 최대 문자 수 제한
+                            improvements = improvements[:32760] + "..."
+                        summary_ws[f'E{found_row}'] = improvements
+                        
+                        print(f"✅ {control} 통제 AI 검토 결과 Summary 시트에 업데이트 완료")
+                    else:
+                        print(f"⚠️ Summary 시트에서 {control} 통제를 찾을 수 없습니다.")
         except Exception as e:
             print(f"Summary 시트 작성 중 오류 발생: {str(e)}")
             # Summary 시트 오류가 발생해도 전체 프로세스는 계속 진행
@@ -1607,9 +1788,24 @@ def test_conditional_questions():
             'expected_count': 41  # 34-39번 질문 6개 생략
         },
         {
-            'name': '4번 답변이 N (DB 관련 질문 생략)',
-            'answers': ['test@example.com', 'Test System', 'Y', 'Y', 'N', 'Y', 'Y', 'Y'] + ['N'] * 40,
-            'expected_count': 41  # 22-27번 질문 6개 생략
+            'name': '4번 SaaS + 5번 SOC1 Report 발행 (11, 14~46번 질문 생략)',
+            'answers': ['test@example.com', 'Test System', 'Y', 'Y', 'SaaS', 'Y', 'Y', 'Y'] + ['N'] * 40,
+            'expected_count': 13  # 11번 1개 + 14~46번 33개 = 총 34개 생략, 13개 질문만 표시
+        },
+        {
+            'name': '4번 IaaS + 5번 SOC1 Report 발행 (22, 29, 44~46번 질문 생략)',
+            'answers': ['test@example.com', 'Test System', 'Y', 'Y', 'IaaS', 'Y', 'Y', 'Y'] + ['N'] * 40,
+            'expected_count': 42  # 22번 1개 + 29번 1개 + 44~46번 3개 = 총 5개 생략
+        },
+        {
+            'name': '4번 PaaS + 5번 SOC1 Report 발행 (14~31, 44~46번 질문 생략)',
+            'answers': ['test@example.com', 'Test System', 'Y', 'Y', 'PaaS', 'Y', 'Y', 'Y'] + ['N'] * 40,
+            'expected_count': 26  # 14~31번 18개 + 44~46번 3개 = 총 21개 생략
+        },
+        {
+            'name': '4번 SaaS + 5번 SOC1 Report 미발행 (Cloud 스킵 없음)',
+            'answers': ['test@example.com', 'Test System', 'Y', 'Y', 'SaaS', 'N', 'Y', 'Y'] + ['N'] * 40,
+            'expected_count': 47  # 스킵 없음, 전체 질문 진행
         },
         {
             'name': '5번 답변이 N (OS 관련 질문 생략)',
@@ -1622,14 +1818,9 @@ def test_conditional_questions():
             'expected_count': 43  # 41-43번 질문 3개 생략
         },
         {
-            'name': '7번 답변이 N (Cloud 관련 질문 생략)',
-            'answers': ['test@example.com', 'Test System', 'Y', 'Y', 'Y', 'Y', 'Y', 'N'] + ['N'] * 40,
-            'expected_count': 45  # 8-9번 질문 2개 생략
-        },
-        {
             'name': '모든 조건부 질문 생략',
             'answers': ['test@example.com', 'Test System', 'Y', 'N', 'N', 'N', 'N', 'N'] + ['N'] * 40,
-            'expected_count': 23  # 35-40, 23-28, 29-34, 41-43, 8-9번 질문들 생략
+            'expected_count': 25  # 4-5, 15-23, 25-30, 32-37, 39-43번 질문들 생략
         }
     ]
     

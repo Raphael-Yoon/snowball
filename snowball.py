@@ -704,6 +704,21 @@ def link2():
     if current_question is None:
         current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
     
+    # 9번 질문 디버깅 추가
+    if current_question['index'] == 9:
+        print(f"[DEBUG] 9번 질문 표시됨")
+        print(f"[DEBUG] 현재 세션 답변[9]: '{session['answer'][9] if len(session['answer']) > 9 else '없음'}'")
+        print(f"[DEBUG] 전체 답변 개수: {len(session['answer'])}")
+        print(f"[DEBUG] 답변 내용 (0~15): {session['answer'][:16] if len(session['answer']) >= 16 else session['answer']}")
+    
+    # 13번 질문 디버깅 추가
+    if current_question['index'] == 13:
+        print(f"[DEBUG] 13번 질문 표시됨")
+        print(f"[DEBUG] 현재 세션 답변[13]: '{session['answer'][13] if len(session['answer']) > 13 else '없음'}'")
+        print(f"[DEBUG] 13번 질문 텍스트: {current_question['text']}")
+        print(f"[DEBUG] 전체 답변 개수: {len(session['answer'])}")
+        print(f"[DEBUG] 답변 내용 (10~20): {session['answer'][10:21] if len(session['answer']) >= 21 else session['answer'][10:]}")
+
     user_info = get_user_info()
     users = user_info['user_name'] if user_info else "User List"
     return render_template(
@@ -736,7 +751,23 @@ def save_to_excel():
     clear_skipped_answers(answers, textarea_answers)
     
     # AI 검토 기능 활성화 (환경변수로 제어 가능)
-    enable_ai_review = os.getenv('ENABLE_AI_REVIEW', 'false').lower() == 'true'
+    env_ai_review = os.getenv('ENABLE_AI_REVIEW', 'false').lower() == 'true'
+    session_ai_review = session.get('enable_ai_review', False)
+    enable_ai_review = env_ai_review or session_ai_review
+    
+    print(f"[DEBUG] AI 검토 설정 확인:")
+    print(f"  - 환경변수 ENABLE_AI_REVIEW: {os.getenv('ENABLE_AI_REVIEW', 'false')} -> {env_ai_review}")
+    print(f"  - 세션 enable_ai_review: {session_ai_review}")
+    print(f"  - 최종 enable_ai_review: {enable_ai_review}")
+    print(f"  - OPENAI_API_KEY 설정 여부: {'설정됨' if os.getenv('OPENAI_API_KEY') else '설정되지 않음'}")
+    
+    # 로그인한 사용자의 AI 검토 횟수 확인
+    if is_logged_in():
+        user_email = answers[0] if answers else ''
+        can_use_ai, current_count, limit_count = check_ai_review_limit(user_email)
+        print(f"  - AI 검토 횟수: {current_count}/{limit_count} (사용 가능: {can_use_ai})")
+    else:
+        print(f"  - 비로그인 사용자")
 
     success, user_email, error = export_interview_excel_and_send(
         answers,
