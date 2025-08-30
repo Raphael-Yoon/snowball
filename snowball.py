@@ -298,6 +298,45 @@ def reset_interview_session():
     
     print("인터뷰 세션이 초기화되었습니다 (로그인 세션 보존)")
 
+def clear_skipped_answers(answers, textarea_answers):
+    """조건부 질문 스킵 시 해당 범위의 답변을 공란으로 처리"""
+    if not answers or len(answers) < 4:
+        return
+    
+    skip_ranges = []
+    
+    # 3번 답변이 N이면 4~5번 질문 생략
+    if len(answers) > 3 and answers[3] and str(answers[3]).upper() == 'N':
+        skip_ranges.append((4, 5))
+    
+    # 14번 답변이 N이면 15~23번 질문 생략
+    if len(answers) > 14 and answers[14] and str(answers[14]).upper() == 'N':
+        skip_ranges.append((15, 23))
+    
+    # 24번 답변이 N이면 25~30번 질문 생략
+    if len(answers) > 24 and answers[24] and str(answers[24]).upper() == 'N':
+        skip_ranges.append((25, 30))
+    
+    # 31번 답변이 N이면 32~37번 질문 생략
+    if len(answers) > 31 and answers[31] and str(answers[31]).upper() == 'N':
+        skip_ranges.append((32, 37))
+    
+    # 38번 답변이 N이면 39~43번 질문 생략
+    if len(answers) > 38 and answers[38] and str(answers[38]).upper() == 'N':
+        skip_ranges.append((39, 43))
+    
+    # 스킵된 범위의 답변을 공란으로 설정
+    for start, end in skip_ranges:
+        for i in range(start, end + 1):
+            if i < len(answers):
+                answers[i] = ''
+            if i < len(textarea_answers):
+                textarea_answers[i] = ''
+    
+    print(f"[CLEAR DEBUG] 스킵된 질문 범위: {skip_ranges}")
+    for start, end in skip_ranges:
+        print(f"[CLEAR DEBUG] {start}~{end}번 답변 공란 처리 완료")
+
 def log_session_info(route_name):
     """세션 정보를 콘솔에 출력하는 디버깅 함수"""
     from datetime import datetime
@@ -554,16 +593,25 @@ def link2():
         filtered_questions = get_conditional_questions(session.get('answer', []))
         current_question_index = session['question_index']
         
-        # 현재 인덱스에 해당하는 질문이 필터링된 목록에 있는지 확인
-        if current_question_index < len(filtered_questions):
-            current_question = filtered_questions[current_question_index]
-        else:
+        # 현재 질문을 필터링된 목록에서 찾기
+        current_question = None
+        current_filtered_index = 0
+        
+        for idx, q in enumerate(filtered_questions):
+            if q['index'] == current_question_index:
+                current_question = q
+                current_filtered_index = idx
+                break
+                
+        if current_question is None:
+            # 필터링된 목록에 없으면 원본에서 가져오기 (혹시 모를 상황 대비)
             current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
         
         return render_template('link2.jsp',
                              question=current_question,
                              question_count=len(filtered_questions),
-                             current_index=session['question_index'],
+                             current_index=current_filtered_index,  # 필터링된 목록에서의 인덱스
+                             actual_question_number=current_question['index'] + 1,  # 실제 질문 번호
                              remote_addr=request.remote_addr,
                              users=users,
                              is_logged_in=is_logged_in(),
@@ -575,8 +623,18 @@ def link2():
 
     if request.method == 'POST':
         form_data = request.form
-        session['answer'][question_index] = form_data.get(f"a{question_index}", '')
-        session['textarea_answer'][question_index] = form_data.get(f"a{question_index}_1", '')
+        
+        # 현재 질문의 filtered index를 구하기
+        filtered_questions_before = get_conditional_questions(session.get('answer', []))
+        current_filtered_index = 0
+        for i, q in enumerate(filtered_questions_before):
+            if q['index'] == question_index:
+                current_filtered_index = i
+                break
+        
+        # form 데이터는 current_filtered_index 기반으로 저장됨
+        session['answer'][question_index] = form_data.get(f"a{current_filtered_index}", '')
+        session['textarea_answer'][question_index] = form_data.get(f"a{current_filtered_index}_1", '')
         if form_data.get('a1_1'):
             session['System'] = form_data.get('a1_1')
         if form_data.get('a4_1'):
@@ -630,14 +688,30 @@ def link2():
             return redirect(url_for('index'))
 
     # 현재 질문을 렌더링
-    question = s_questions[session['question_index']]
+    filtered_questions = get_conditional_questions(session.get('answer', []))
+    current_question_index = session['question_index']
+    
+    # 현재 질문을 필터링된 목록에서 찾기
+    current_question = None
+    current_filtered_index = 0
+    
+    for idx, q in enumerate(filtered_questions):
+        if q['index'] == current_question_index:
+            current_question = q
+            current_filtered_index = idx
+            break
+            
+    if current_question is None:
+        current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
+    
     user_info = get_user_info()
     users = user_info['user_name'] if user_info else "User List"
     return render_template(
         'link2.jsp',
-        question=question,
-        question_count=question_count,
-        current_index=session['question_index'],
+        question=current_question,
+        question_count=len(filtered_questions),
+        current_index=current_filtered_index,
+        actual_question_number=current_question['index'] + 1,
         remote_addr=request.remote_addr,
         users=users,
         is_logged_in=is_logged_in(),
@@ -657,6 +731,10 @@ def link2_prev():
 def save_to_excel():
     answers = session.get('answer', [])
     textarea_answers = session.get('textarea_answer', [])
+    
+    # 스킵된 질문들의 답변을 최종적으로 공란으로 처리
+    clear_skipped_answers(answers, textarea_answers)
+    
     # AI 검토 기능 활성화 (환경변수로 제어 가능)
     enable_ai_review = os.getenv('ENABLE_AI_REVIEW', 'false').lower() == 'true'
 
@@ -938,6 +1016,9 @@ def process_interview():
         
         print(f"Processing interview for {user_email} (Task ID: {task_id})")
         progress_callback(15, "ITGC 설계평가 문서 생성을 시작합니다...")
+        
+        # 스킵된 질문들의 답변을 최종적으로 공란으로 처리
+        clear_skipped_answers(answers, textarea_answers)
         
         success, returned_email, error = export_interview_excel_and_send(
             answers,

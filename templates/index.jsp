@@ -129,7 +129,7 @@
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center">RCM 조회</h5>
-                            <p class="feature-description">귀하에게 할당된 RCM 데이터를 조회하고 분석할 수 있습니다.</p>
+                            <p class="feature-description">귀하에게 할당된 RCM 데이터를 조회할 수 있습니다.</p>
                             
                             <div class="text-center mt-auto">
                                 <a href="/user/rcm" class="feature-link">자세히 보기</a>

@@ -3,6 +3,7 @@ import os
 import re
 from io import BytesIO
 from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
 from openai import OpenAI
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
@@ -287,10 +288,10 @@ ITGC_CONTROLS = {
 }
 # 인터뷰 질문 리스트 (생략 없이 전체 복사)
 s_questions = [
-    {"index": 0, "text": "산출물을 전달받을 e-Mail 주소를 입력해주세요.", "category": "Complete", "help": "", "answer_type": "2", "text_help": ""},
-    {"index": 1, "text": "시스템 이름을 적어주세요.", "category": "IT PwC", "help": "", "answer_type": "2", "text_help": ""},
+    {"index": 0, "text": "산출물을 전달받을 e-Mail 주소를 입력해주세요.", "category": "Complete", "help": "인터뷰 완료 후 최종 평가 결과 및 관련 산출물을 받을 이메일 주소를 입력하세요.<br>예: admin@company.com", "answer_type": "2", "text_help": ""},
+    {"index": 1, "text": "시스템 이름을 적어주세요.", "category": "IT PwC", "help": "평가 대상이 되는 정보시스템의 이름을 입력하세요.<br>예: SAP ERP, 인사관리시스템, 회계시스템, 고객관리시스템 등", "answer_type": "2", "text_help": ""},
     {"index": 2, "text": "사용하고 있는 시스템은 상용소프트웨어입니까?", "category": "IT PwC", "help": "", "answer_type": "3", "text_help": "SAP ERP, Oracle ERP, 더존ERP 등"},
-    {"index": 3, "text": "Cloud 서비스를 사용하고 있습니까?", "category": "IT PwC", "help": "", "answer_type": "1", "text_help": ""},
+    {"index": 3, "text": "Cloud 서비스를 사용하고 있습니까?", "category": "IT PwC", "help": "해당 시스템이 클라우드 환경에서 운영되고 있는지 확인하는 질문입니다.<br>- 예: AWS, Azure, GCP 등의 클라우드 서비스를 이용<br>- 아니오: 자체 데이터센터나 온프레미스 환경에서 운영", "answer_type": "1", "text_help": ""},
     {"index": 4, "text": "어떤 종류의 Cloud입니까?", "category": "IT PwC", "help": "SaaS (Software as a Service): 사용자가 직접 설치 및 관리할 필요 없이, 클라우드에서 제공되는 ERP 소프트웨어를 사용하는 방식.<br>예: SAP S/4HANA Cloud, Oracle NetSuite, Microsoft Dynamics 365<br><br>PaaS (Platform as a Service): 애플리케이션 개발 및 배포를 위한 플랫폼을 클라우드에서 제공하는 방식.<br>예: Microsoft Azure App Service, Google App Engine<br><br>IaaS (Infrastructure as a Service): 기업이 자체적으로 ERP 시스템을 구축하고 운영할 수 있도록 서버, 스토리지, 네트워크 등의 인프라를 제공하는 방식.<br>예: AWS EC2, Microsoft Azure Virtual Machines, Google Cloud Compute Engine", "answer_type": "6", "text_help": "SaaS|PaaS|IaaS"},
     {"index": 5, "text": "Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?", "category": "IT PwC", "help": "SOC 1 Report (Service Organization Control 1 보고서)는 재무 보고와 관련된 내부 통제 사항을 검증하는 보고서입니다.", "answer_type": "1", "text_help": ""},
     {"index": 6, "text": "사용자 권한부여 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "사용자A가 재무권한을 가지고 있었는데 당기에 구매권한을 추가로 받았을 경우 언제(날짜 등) 구매권한을 받았는지 시스템에서 관리되는 경우를 의미합니다.", "answer_type": "1", "text_help": ""},
@@ -299,41 +300,41 @@ s_questions = [
     {"index": 9, "text": "부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?", "category": "APD", "help": "예1) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 기존 권한을 회수함<br>예2) 인사팀에서 인사명령을 IT팀으로 전달하면 IT팀에서 해당 인원의 기존 권한을 회수함", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
     {"index": 10, "text": "퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?", "category": "APD", "help": "예1) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 접근권한을 차단함<br>예2) 인사팀에서 인사명령을 IT팀으로 전달하면 IT팀에서 해당 인원의 접근권한을 차단함", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
     {"index": 11, "text": "Application 관리자(Superuser) 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD", "help": "예1) IT운영팀 김xx 책임", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
-    {"index": 12, "text": "전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?", "category": "APD", "help": "", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
+    {"index": 12, "text": "전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?", "category": "APD", "help": "사용자에게 부여된 권한이 현재 업무에 적합한지를 주기적으로 검토하는 절차를 의미합니다.<br>예: 매분기 사용자 권한 적정성 검토 수행, 부서이동 시 기존 권한 회수 및 새로운 권한 부여 모니터링", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
     {"index": 13, "text": "패스워드 설정사항을 기술해 주세요.", "category": "APD", "help": "예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등", "answer_type": "5", "text_help": ""},
-    {"index": 14, "text": "데이터 변경 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "시스템의 기능을 이용하여 데이터를 변경한 것이 아닌 관리자 등이 DB에 접속하여 쿼리를 통해 데이터를 변경한 건이 대상이며 해당 변경건만 추출이 가능해야 합니다", "answer_type": "1", "text_help": ""},
-    {"index": 15, "text": "데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD", "help": "예) 데이터 변경 필요시 담당자는 ITSM을 통해 요성서를 작성하고 책임자의 승인을 받은 후 IT담당자가 데이터를 변경함", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
-    {"index": 16, "text": "데이터 변경 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD", "help": "예1) IT운영팀 최xx 책임", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
-    {"index": 17, "text": "회사에서 DB에 접속하여 필요한 작업을 수행하는 것이 가능하십니까?", "category": "APD", "help": "", "answer_type": "1", "text_help": ""},
+    {"index": 14, "text": "회사에서 DB에 접속하여 필요한 작업을 수행하는 것이 가능하십니까?", "category": "APD", "help": "회사에서 데이터가 저장된 곳에 직접 들어가서 데이터를 확인하거나 수정할 수 있는지를 묻는 질문입니다.<br><br>예시:<br>- 가능한 경우: IT 관리자가 데이터베이스에 직접 접속해서 고객 정보를 수정하거나 조회할 수 있음<br>- 불가능한 경우: 모든 데이터 작업은 시스템 화면을 통해서만 가능하고, 데이터베이스에 직접 들어갈 수 없음<br><br>이 질문에 '아니오'로 답하면, 데이터베이스 관련 검토 항목들은 해당되지 않는 것으로 처리됩니다.", "answer_type": "1", "text_help": ""},
+    {"index": 15, "text": "데이터 변경 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "시스템의 기능을 이용하여 데이터를 변경한 것이 아닌 관리자 등이 DB에 접속하여 쿼리를 통해 데이터를 변경한 건이 대상이며 해당 변경건만 추출이 가능해야 합니다", "answer_type": "1", "text_help": ""},
+    {"index": 16, "text": "데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD", "help": "예) 데이터 변경 필요시 담당자는 ITSM을 통해 요성서를 작성하고 책임자의 승인을 받은 후 IT담당자가 데이터를 변경함", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
+    {"index": 17, "text": "데이터 변경 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD", "help": "예1) IT운영팀 최xx 책임", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
     {"index": 18, "text": "DB 종류와 버전을 작성해 주세요.", "category": "IT PwC", "help": "예: Oracle R12, MS SQL Server 2008 등", "answer_type": "2", "text_help": ""},
     {"index": 19, "text": "DB 접근제어 Tool을 사용하고 있습니까?", "category": "IT PwC", "help": "예: DBi, DB Safer 등", "answer_type": "3", "text_help": "제품명을 입력하세요"},
-    {"index": 20, "text": "DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "", "answer_type": "1", "text_help": ""},
+    {"index": 20, "text": "DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "데이터베이스 접근 권한을 부여한 날짜, 사용자, 부여자, 권한 종류 등의 이력이 시스템에 기록되고 있는지 확인하는 질문입니다.<br>예: 권한 부여 시 로그 기록, DB 내장 관리 시스템에의 이력 저장", "answer_type": "1", "text_help": ""},
     {"index": 21, "text": "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD", "help": "예) DB 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
     {"index": 22, "text": "DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD", "help": "예) 인프라관리팀 김xx 과장, DBA", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
     {"index": 23, "text": "DB 패스워드 설정사항을 기술해 주세요.", "category": "APD", "help": "예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등", "answer_type": "5", "text_help": ""},
-    {"index": 24, "text": "회사에서 OS서버에 접속하여 필요한 작업을 수행하는 것이 가능하십니까?", "category": "APD", "help": "", "answer_type": "1", "text_help": ""},
+    {"index": 24, "text": "회사에서 OS서버에 접속하여 필요한 작업을 수행하는 것이 가능하십니까?", "category": "APD", "help": "운영체제(OS) 수준에서 서버에 직접 접속하여 시스템 관리, 파일 수정, 로그 확인 등의 작업을 수행할 수 있는지를 확인하는 질문입니다.<br>예: SSH, Telnet, RDP 등을 통한 서버 접속 가능 여부<br>이 질문의 답변이 '아니오'일 경우, OS 관련 통제(APD12, APD13, APD14)는 해당사항이 없는 것으로 처리됩니다.", "answer_type": "1", "text_help": ""},
     {"index": 25, "text": "OS 종류와 버전을 작성해 주세요.", "category": "IT PwC", "help": "예: 윈도우즈 서버 2012, Unix AIX, Linux Redhat 등", "answer_type": "2", "text_help": ""},
     {"index": 26, "text": "OS 접근제어 Tool을 사용하고 있습니까?", "category": "IT PwC", "help": "예: Hiware, CyberArk 등", "answer_type": "3", "text_help": "제품명을 입력하세요"},
-    {"index": 27, "text": "OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "", "answer_type": "1", "text_help": ""},
+    {"index": 27, "text": "OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "운영체제 수준의 접근 권한을 부여한 날짜, 사용자, 부여자, 권한 내용 등의 이력이 시스템에 기록되고 있는지 확인하는 질문입니다.<br>예: Active Directory 로그, 리눅스 audit 로그, 보안 관리 솔루션 내 이력 관리", "answer_type": "1", "text_help": ""},
     {"index": 28, "text": "OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD", "help": "예) OS 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
     {"index": 29, "text": "OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD", "help": "예) 인프라관리팀 이xx 책임, 보안관리자", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
     {"index": 30, "text": "OS 패스워드 설정사항을 기술해 주세요.", "category": "APD", "help": "예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등", "answer_type": "5", "text_help": ""},
-    {"index": 31, "text": "주요 로직을 회사내부에서 수정하여 사용할 수 있습니까?", "category": "IT PwC", "help": "", "answer_type": "1", "text_help": ""},
+    {"index": 31, "text": "주요 로직을 회사내부에서 수정하여 사용할 수 있습니까?", "category": "IT PwC", "help": "시스템의 핵심 기능을 회사에서 직접 변경할 수 있는지를 의미합니다.<br>예:<br>- 가능: 회사 개발팀이 계산 방식이나 업무 절차를 수정할 수 있음<br>- 불가능: 외부에서 만든 패키지 소프트웨어로 수정 불가", "answer_type": "1", "text_help": ""},
     {"index": 32, "text": "프로그램 변경 이력이 시스템에 기록되고 있습니까?", "category": "PC", "help": "변경에 대한 History가 시스템에 의해 기록되어야 합니다. A화면을 1, 3, 5월에 요청서를 받아 변경했다면 각각의 이관(배포)이력이 기록되어야 하며 자체기능, 배포툴, 형상관리툴 등을 사용할 수 있습니다.", "answer_type": "1", "text_help": ""},
     {"index": 33, "text": "프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?", "category": "PC", "help": "예) 프로그램 기능 변경 필요시 ITSM을 통해 요청서를 작성하고 부서장의 승인을 득함", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
     {"index": 34, "text": "프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?", "category": "PC", "help": "예) 프로그램 기능 변경 완료 후 요청자에 의해 사용자 테스트가 수행되고 그 결과가 문서화됨", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
     {"index": 35, "text": "프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "PC", "help": "예) 프로그램 기능 변경 및 사용자 테스트 완료 후 변경담당자로부터 이관 요청서가 작성되고 부서장의 승인을 득함", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
     {"index": 36, "text": "이관(배포)권한을 보유한 인원에 대해 기술해 주세요.", "category": "PC", "help": "예) 인프라관리팀 박xx 수석, 서버관리자", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
     {"index": 37, "text": "운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?", "category": "PC", "help": "JSP, ASP 등으로 개발된 웹시스템의 경우 localhost 또는 127.0.0.1을 개발서버로도 볼 수 있습니다", "answer_type": "1", "text_help": ""},
-    {"index": 38, "text": "현재 실행중인 배치 스케줄이 있습니까?", "category": "CO", "help": "", "answer_type": "1", "text_help": ""},
+    {"index": 38, "text": "현재 실행중인 배치 스케줄이 있습니까?", "category": "CO", "help": "시스템이 정해진 시간에 자동으로 수행하는 작업이 있는지 확인하는 질문입니다.<br>예:<br>- 매일 밤 12시에 주문 데이터 집계 작업<br>- 매월 말 월천결산 데이터 백업<br>- 매주 월요일 사용자 권한 점검", "answer_type": "1", "text_help": ""},
     {"index": 39, "text": "별도의 Batch Schedule Tool을 사용하고 있습니까?", "category": "IT PwC", "help": "예: Waggle, JobScheduler 등", "answer_type": "3", "text_help": "제품명을 입력하세요"},
     {"index": 40, "text": "배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?", "category": "CO", "help": "개발되어 등록된 배치 프로그램(Background Job)을 스케줄로 등록 또는 변경한 경우로 한정합니다. 배치 프로그램을 개발하여 운영서버에 반영하는 것은 이 경우에 포함되지 않습니다", "answer_type": "1", "text_help": ""},
     {"index": 41, "text": "배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "CO", "help": "예) 배치 스케줄이 필요한 경우 ITSM을 통해 요청서를 작성하고 승인권자의 승인을 득한 후 적절한 담당자에 의해 스케줄이 등록됨", "answer_type": "4", "text_help": "관련 절차를 입력하세요."},
     {"index": 42, "text": "배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.", "category": "CO", "help": "예) 시스템 운영팀 최xx 과장, 시스템운영자", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
     {"index": 43, "text": "배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.", "category": "CO", "help": "예1) 매일 아침 배치수행결과를 확인하며 문서화하며 오류 발생시 원인파악 및 조치현황 등을 함께 기록함<br>예2) 오류 발생시에만 점검결과를 작성하며 오류 발생 기록은 삭제하지 않고 유지됨", "answer_type": "5", "text_help": ""},
-    {"index": 44, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO", "help": "", "answer_type": "5", "text_help": ""},
-    {"index": 45, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.", "category": "CO", "help": "", "answer_type": "5", "text_help": ""},
-    {"index": 46, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO", "help": "", "answer_type": "5", "text_help": ""}
+    {"index": 44, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO", "help": "시스템에 문제가 생겼을 때 어떻게 대처하고 해결하는지에 대한 절차를 설명해 주세요.<br>예:<br>- 시스템 중단 시 연락체계 및 복구 절차<br>- 데이터 오류 발견 시 수정 및 보고 절차<br>- 외부 공격이나 보안 사고 대응 방법", "answer_type": "5", "text_help": ""},
+    {"index": 45, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.", "category": "CO", "help": "시스템의 데이터를 안전하게 복사해서 보조하는 방법과 이것이 제대로 되고 있는지 확인하는 방법을 설명해 주세요.<br>예:<br>- 매일 밤에 전체 데이터 복사 후 외부 저장장치에 저장<br>- 백업 완료 시 알림 메일 발송<br>- 주기적으로 백업 데이터 복구 테스트 수행", "answer_type": "5", "text_help": ""},
+    {"index": 46, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO", "help": "서버나 주요 IT 장비가 있는 방에 들어갈 때의 보안 절차를 설명해 주세요.<br>예:<br>- 신분증 확인 및 출입자 명부 작성<br>- 보안카드나 비밀번호로 출입문 통과<br>- 출입 시간 기록 및 CCTV 모니터링<br>- 외부 인원의 경우 동반자 필요 여부", "answer_type": "5", "text_help": ""}
 ]
 
 question_count = len(s_questions)
@@ -356,10 +357,10 @@ def get_conditional_questions(answers):
         skip_ranges.append((4, 5))
         print(f"[SKIP DEBUG] 3번 답변 'N' -> 4~5번 스킵")
     
-    # 17번 답변이 N이면 18~23번 질문 생략
-    if len(answers) > 17 and answers[17] and str(answers[17]).upper() == 'N':
-        skip_ranges.append((18, 23))
-        print(f"[SKIP DEBUG] 17번 답변 'N' -> 18~23번 스킵")
+    # 14번 답변이 N이면 15~23번 질문 생략
+    if len(answers) > 14 and answers[14] and str(answers[14]).upper() == 'N':
+        skip_ranges.append((15, 23))
+        print(f"[SKIP DEBUG] 14번 답변 'N' -> 15~23번 스킵")
     
     # 24번 답변이 N이면 25~30번 질문 생략
     if len(answers) > 24 and answers[24] and str(answers[24]).upper() == 'N':
@@ -406,6 +407,54 @@ def get_conditional_question_count(answers):
     """
     conditional_questions = get_conditional_questions(answers)
     return len(conditional_questions)
+
+def get_skipped_controls(answers):
+    """
+    스킵된 질문과 관련된 통제 목록을 반환
+    """
+    skipped_controls = set()
+    
+    if not answers or len(answers) < 4:
+        return skipped_controls
+    
+    # 3번 답변이 N이면 Cloud 관련 통제는 해당없음 (현재는 별도 통제가 없음)
+    
+    # 17번 답변이 N이면 DB 관련 통제는 해당없음
+    if len(answers) > 17 and answers[17] and str(answers[17]).upper() == 'N':
+        skipped_controls.update(['APD09', 'APD10', 'APD11'])
+    
+    # 24번 답변이 N이면 OS 관련 통제는 해당없음
+    if len(answers) > 24 and answers[24] and str(answers[24]).upper() == 'N':
+        skipped_controls.update(['APD12', 'APD13', 'APD14'])
+    
+    # 31번 답변이 N이면 PC 관련 통제는 해당없음
+    if len(answers) > 31 and answers[31] and str(answers[31]).upper() == 'N':
+        skipped_controls.update(['PC01', 'PC02', 'PC03', 'PC04', 'PC05'])
+    
+    # 38번 답변이 N이면 배치 관련 통제(CO01-03)는 해당없음
+    if len(answers) > 38 and answers[38] and str(answers[38]).upper() == 'N':
+        skipped_controls.update(['CO01', 'CO02', 'CO03'])
+    
+    print(f"[SKIP DEBUG] 스킵된 통제 목록: {skipped_controls}")
+    return skipped_controls
+
+def set_sheet_tab_color_for_skipped_controls(wb, answers):
+    """
+    스킵된 통제에 해당하는 시트 탭을 회색으로 설정
+    """
+    skipped_controls = get_skipped_controls(answers)
+    
+    for sheet_name in wb.sheetnames:
+        if sheet_name in skipped_controls:
+            try:
+                ws = wb[sheet_name]
+                # 시트 탭을 회색으로 설정 (RGB: 808080)
+                ws.sheet_properties.tabColor = "808080"
+                print(f"[SHEET COLOR] {sheet_name} 시트를 회색으로 설정했습니다.")
+            except Exception as e:
+                print(f"[SHEET COLOR] {sheet_name} 시트 색상 설정 실패: {e}")
+    
+    print(f"[SHEET COLOR] 총 {len(skipped_controls)}개 통제 시트를 회색으로 처리했습니다.")
 
 # --- 통제별 검토 기준 정의 (수기 수정 가능) ---
 # 공통 감사기준 (엄격한 전문 접근)
@@ -592,8 +641,8 @@ def is_ineffective(control, answers):
     if control in ['APD12', 'APD13', 'APD14'] and answers[24] == 'N':
         return False  # 24번 답변이 N이면 OS 관련 통제는 N/A
     
-    if control.startswith('CO') and answers[38] == 'N':
-        return False  # 6번 답변이 N이면 배치 스케줄 관련 통제는 N/A
+    if control in ['CO01', 'CO02', 'CO03'] and answers[38] == 'N':
+        return False  # 38번 답변이 N이면 배치 스케줄 관련 통제(CO01-03)는 N/A
     
     # 7번 답변이 N이면 8~9번 질문 관련 통제는 N/A
     if control in ['APD07', 'APD08'] and answers[7] == 'N':
@@ -844,7 +893,7 @@ def get_ai_review(content, control_number=None, answers=None):
             has_batch_schedule = answers[38] == 'Y'  # 질문38: 배치 스케줄 유무
             
             if not has_batch_schedule:
-                if control_number and control_number.startswith('CO') and control_number in ['CO01', 'CO02', 'CO03']:
+                if control_number and control_number in ['CO01', 'CO02', 'CO03']:
                     special_context += "\n중요: 현재 실행중인 배치 스케줄이 없습니다. 배치 관련 통제(CO01-CO03)는 적용되지 않으므로(N/A) 미비점이 아닙니다."
         
         # 공통 감사기준 포함
@@ -863,12 +912,12 @@ def get_ai_review(content, control_number=None, answers=None):
 {specific_criteria_text}{special_context}
 
 **검토 기준: 전문적이고 균형잡힌 감사 접근**
-- 텍스트에 '모집단 확보가 불가'라는 문구가 포함되어 있으면 반드시 Ineffective
-- 텍스트에 '기록되지 않아'라는 문구가 있으면 반드시 Ineffective  
-- 텍스트에 '절차가 없습니다'라는 문구가 있으면 반드시 Ineffective
-- 위 문구들이 없고 이력이 기록되며 절차가 존재하면 Effective
-- 통제가 적절히 설계되고 운영되고 있으면 Effective
-- 명백한 미비점 문구가 없는 경우는 Effective로 판정
+- 실제 사용자가 작성한 답변 내용을 기반으로 평가 (시스템 자동 생성 문구는 제외)
+- 통제의 설계와 운영 상태를 실질적으로 분석
+- 이력 기록 여부, 승인 절차 존재 여부, 권한 관리 적절성 등을 종합적으로 판단
+- 소규모 조직의 현실적 제약을 고려하되 핵심 통제 요구사항은 충족되어야 함
+- 명확한 통제 미비점이 확인되는 경우에만 Ineffective 판정
+- 적절한 통제가 운영되고 있다면 Effective 판정
 
 응답형식 (정확히 이 형식으로만 답변):
 검토결과: [전문적 감사 관점에서 엄격하게 분석]
@@ -877,11 +926,8 @@ def get_ai_review(content, control_number=None, answers=None):
 
 중요: 
 1. 결론 부분에는 반드시 'Effective' 또는 'Ineffective' 단어만 사용할 것
-2. 다음과 같은 문구가 텍스트에 있으면 무조건 Ineffective:
-   - "모집단 확보가 불가"
-   - "기록되지 않아"  
-   - "절차가 없습니다"
-3. 예시: "사용자 권한 부여 이력이 시스템에 기록되지 않아 모집단 확보가 불가합니다" → 반드시 Ineffective
+2. 시스템이 자동으로 생성한 문구는 평가에서 제외하고, 실제 사용자 답변 내용만 분석할 것
+3. 예시: "ITSM을 통해 요청서 작성 후 팀장 승인을 받아 권한 부여" → 사용자가 직접 작성한 절차 설명이므로 평가 대상
 """
 
         model_name = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')  # 기본값으로 gpt-4o-mini 사용
@@ -1086,7 +1132,7 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
             result['C2'] = result['B2']
             return result
         
-        if control_number.startswith('CO') and answers[38] == 'N':
+        if control_number in ['CO01', 'CO02', 'CO03'] and answers[38] == 'N':
             result['A1'] = control_number
             result['B1'] = ITGC_CONTROLS.get(control_number, {}).get('title', control_number)
             result['B2'] = f"현재 실행중인 배치 스케줄이 없습니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
@@ -1146,48 +1192,99 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
 # link2_prev의 핵심 로직만 분리 (세션 객체는 snowball.py에서 전달)
 def link2_prev_logic(session):
     question_index = session.get('question_index', 0)
+    print(f"[PREV DEBUG] 현재 question_index: {question_index}")
+    
     if question_index > 0:
         # 조건부 질문 생략 로직 (역방향)
-        if question_index == 28:  # 28번 질문에서 이전으로 갈 때 (DB접근)
-            # 23번 답변 확인
-            answer_23 = session.get('answer', [])[23] if len(session.get('answer', [])) > 23 else ''
-            if answer_23 == 'N':
-                # 23번 답변이 'N'이면 23번으로 이동
+        if question_index == 24:  # 24번 질문에서 이전으로 갈 때 (OS서버 접속)
+            # 17번 답변 확인 (DB 접속 가능 여부)
+            answer_17 = session.get('answer', [])[17] if len(session.get('answer', [])) > 17 else ''
+            print(f"[PREV DEBUG] 24번에서 이전, 17번 답변: {answer_17}")
+            if answer_17 == 'N':
+                # 17번 답변이 'N'이면 17번으로 이동 (18~23번 스킵)
+                session['question_index'] = 17
+                print(f"[PREV DEBUG] 17번으로 이동 (18~23번 스킵)")
+            else:
+                # 아니면 23번으로 이동
                 session['question_index'] = 23
+                print(f"[PREV DEBUG] 23번으로 이동")
+        elif question_index == 31: # 31번 질문에서 이전으로 갈 때 (프로그램 수정 가능 여부)
+            # 24번 답변 확인 (OS서버 접속 가능 여부)
+            answer_24 = session.get('answer', [])[24] if len(session.get('answer', [])) > 24 else ''
+            print(f"[PREV DEBUG] 31번에서 이전, 24번 답변: {answer_24}")
+            if answer_24 == 'N':
+                # 24번 답변이 'N'이면 24번으로 이동 (25~30번 스킵)
+                session['question_index'] = 24
+                print(f"[PREV DEBUG] 24번으로 이동 (25~30번 스킵)")
             else:
-                # 아니면 27번으로 이동
-                session['question_index'] = 27
-        elif question_index == 32: # 32번 질문에서 이전으로 갈 때 (OS접근)
-            # 28번 답변 확인
-            answer_28 = session.get('answer', [])[28] if len(session.get('answer', [])) > 28 else ''
-            if answer_28 == 'N':
-                # 28번 답변이 'N'이면 28번으로 이동
-                session['question_index'] = 28
-            else:
-                # 아니면 31번으로 이동
-                session['question_index'] = 31
-        elif question_index == 37:  # 37번(새로운 배치 질문)에서 이전으로 갈 때
-            # Package S/W 사용하고 수정 불가한 경우 31~36번 질문 생략
-            is_package_sw = len(session.get('answer', [])) > 2 and session['answer'][2] == 'Y'
-            cannot_modify = len(session.get('answer', [])) > 31 and session['answer'][31] == 'N'
-            
-            if is_package_sw and cannot_modify:
-                # 31~36번 질문을 생략하고 30번으로 이동
+                # 아니면 30번으로 이동
                 session['question_index'] = 30
+                print(f"[PREV DEBUG] 30번으로 이동")
+        elif question_index == 38:  # 38번 질문에서 이전으로 갈 때 (배치 스케줄 유무)
+            # 31번 답변 확인 (프로그램 수정 가능 여부)
+            answer_31 = session.get('answer', [])[31] if len(session.get('answer', [])) > 31 else ''
+            print(f"[PREV DEBUG] 38번에서 이전, 31번 답변: {answer_31}")
+            if answer_31 == 'N':
+                # 31번 답변이 'N'이면 31번으로 이동 (32~37번 스킵)
+                session['question_index'] = 31
+                print(f"[PREV DEBUG] 31번으로 이동 (32~37번 스킵)")
             else:
-                session['question_index'] = question_index - 1
-        elif question_index == 42:  # 42번에서 이전으로 갈 때
-            # 38번 배치 스케줄 답변 확인
-            has_batch_schedule = len(session.get('answer', [])) > 38 and session['answer'][38] == 'Y'
-            
-            if has_batch_schedule:
-                # 배치 스케줄이 있으면 41번으로 이동
-                session['question_index'] = 41
-            else:
-                # 배치 스케줄이 없으면 37번으로 이동
+                # 아니면 37번으로 이동
                 session['question_index'] = 37
+                print(f"[PREV DEBUG] 37번으로 이동")
+        elif question_index == 6:  # 6번 질문에서 이전으로 갈 때 (사용자 권한부여 이력)
+            # 3번 답변 확인 (Cloud 서비스 사용 여부)
+            answer_3 = session.get('answer', [])[3] if len(session.get('answer', [])) > 3 else ''
+            print(f"[PREV DEBUG] 6번에서 이전, 3번 답변: {answer_3}")
+            if answer_3 == 'N':
+                # Cloud 서비스를 사용하지 않으면 3번으로 이동 (4~5번 스킵)
+                session['question_index'] = 3
+                print(f"[PREV DEBUG] 3번으로 이동 (4~5번 스킵)")
+            else:
+                # Cloud 서비스를 사용하면 5번으로 이동
+                session['question_index'] = 5
+                print(f"[PREV DEBUG] 5번으로 이동")
+        elif question_index in [4, 5]:  # 4~5번 질문에서 이전으로 갈 때 (Cloud 관련)
+            # 모두 3번으로 이동 (Cloud 서비스 사용 여부)
+            session['question_index'] = 3
+            print(f"[PREV DEBUG] {question_index}번에서 3번으로 이동")
+        elif question_index in [18, 19, 20, 21, 22, 23]:  # 18~23번 질문에서 이전으로 갈 때 (DB 관련)
+            # 모두 17번으로 이동 (DB 접속 가능 여부)
+            session['question_index'] = 17
+            print(f"[PREV DEBUG] {question_index}번에서 17번으로 이동")
+        elif question_index in [25, 26, 27, 28, 29, 30]:  # 25~30번 질문에서 이전으로 갈 때 (OS 관련)
+            # 모두 24번으로 이동 (OS서버 접속 가능 여부)
+            session['question_index'] = 24
+            print(f"[PREV DEBUG] {question_index}번에서 24번으로 이동")
+        elif question_index in [32, 33, 34, 35, 36, 37]:  # 32~37번 질문에서 이전으로 갈 때 (PC 관련)
+            # 모두 31번으로 이동 (프로그램 수정 가능 여부)
+            session['question_index'] = 31
+            print(f"[PREV DEBUG] {question_index}번에서 31번으로 이동")
+        elif question_index in [39, 40, 41, 42, 43]:  # 39~43번 질문에서 이전으로 갈 때 (배치 관련)
+            # 모두 38번으로 이동 (배치 스케줄 유무)
+            session['question_index'] = 38
+            print(f"[PREV DEBUG] {question_index}번에서 38번으로 이동")
+        elif question_index in [44, 45, 46]:  # 44~46번 질문에서 이전으로 갈 때 (CO04~06)
+            # 38번 배치 스케줄 답변 확인
+            answer_38 = session.get('answer', [])[38] if len(session.get('answer', [])) > 38 else ''
+            print(f"[PREV DEBUG] {question_index}번에서 이전, 38번 답변: {answer_38}")
+            if answer_38 == 'N':
+                # 배치 스케줄이 없으면 38번으로 이동 (39~43번 스킵)
+                session['question_index'] = 38
+                print(f"[PREV DEBUG] 38번으로 이동 (39~43번 스킵)")
+            else:
+                # 배치 스케줄이 있으면 이전 질문으로 이동
+                if question_index == 44:
+                    session['question_index'] = 43
+                    print(f"[PREV DEBUG] 43번으로 이동")
+                else:
+                    session['question_index'] = question_index - 1
+                    print(f"[PREV DEBUG] {question_index - 1}번으로 이동")
         else:
             session['question_index'] = question_index - 1
+            print(f"[PREV DEBUG] 일반 이전: {question_index} -> {question_index - 1}")
+    
+    print(f"[PREV DEBUG] 최종 question_index: {session['question_index']}")
     return session
 
 def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fill_sheet, is_ineffective, send_gmail_with_attachment, enable_ai_review=False, progress_callback=None):
@@ -1355,6 +1452,9 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
 
             row_index = 2  # 헤더 다음 행부터 시작
 
+            # 스킵된 통제 목록 가져오기
+            skipped_controls = get_skipped_controls(answers)
+            
             for control, ai_review in summary_ai_reviews.items():
                 if isinstance(ai_review, dict):
                     # A열: 통제번호
@@ -1373,6 +1473,15 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                     if len(improvements) > 32767:  # 엑셀 셀 최대 문자 수 제한
                         improvements = improvements[:32760] + "..."
                     summary_ws[f'E{row_index}'] = improvements
+                    
+                    # 스킵된 통제인 경우 행을 회색으로 표시
+                    if control in skipped_controls:
+                        from openpyxl.styles import PatternFill
+                        gray_fill = PatternFill(start_color='D3D3D3', end_color='D3D3D3', fill_type='solid')
+                        for col in ['A', 'B', 'C', 'D', 'E']:
+                            summary_ws[f'{col}{row_index}'].fill = gray_fill
+                        print(f"[SUMMARY] {control} 통제를 Summary 시트에서 회색으로 표시했습니다.")
+                    
                     row_index += 1
         except Exception as e:
             print(f"Summary 시트 작성 중 오류 발생: {str(e)}")
@@ -1397,6 +1506,9 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         # 한글 처리를 위한 엑셀 저장 옵션 설정
         from openpyxl.workbook.workbook import Workbook
         from openpyxl.writer.excel import ExcelWriter
+        
+        # 스킵된 통제의 시트 탭을 회색으로 설정
+        set_sheet_tab_color_for_skipped_controls(wb, answers)
         
         # 엑셀 파일을 메모리에 저장 (한글 인코딩 처리)
         # MIME 타입을 명시적으로 설정하여 한글 처리 개선
