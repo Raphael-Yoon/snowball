@@ -42,11 +42,13 @@
                 <form method="post" action="/contact" class="mx-auto" style="max-width: 400px;">
                     <div class="mb-3">
                         <label for="name" class="form-label">이름</label>
-                        <input type="text" class="form-control" id="name" name="name" required>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ user_info.user_name if user_info.user_name else '' }}" readonly style="background-color: #f8f9fa;" required>
+                        <small class="text-muted">로그인된 계정의 사용자 이름이 자동으로 설정됩니다.</small>
                     </div>
                     <div class="mb-3">
                         <label for="email" class="form-label">이메일</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user_info.user_email if user_info.user_email else '' }}" readonly style="background-color: #f8f9fa;">
+                        <small class="text-muted">로그인된 계정의 이메일 주소가 자동으로 설정됩니다.</small>
                     </div>
                     <div class="mb-3">
                         <label for="message" class="form-label">문의 내용</label>
