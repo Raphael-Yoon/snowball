@@ -455,8 +455,8 @@ def get_skipped_controls(answers):
                 # SaaS + SOC1 Report 발행이면 12, 11, 14~46번 질문 관련 통제 스킵
                 skipped_controls.update([
                     'APD04',  # 12번 질문 (Application 관리자 권한)
-                    'APD05',  # 11번 질문
-                    'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11',  # 14~23번 (DB 관련)
+                    # APD05, APD06은 Cloud 환경과 무관하므로 제외하지 않음
+                    'APD07', 'APD08', 'APD09', 'APD10', 'APD11',  # 15~23번 (DB 관련)
                     'APD12', 'APD13', 'APD14',  # 24~30번 (OS 관련)  
                     'PC01', 'PC02', 'PC03', 'PC04', 'PC05',  # 31~37번 (PC 관련)
                     'CO01', 'CO02', 'CO03',  # 39~43번 (배치 스케줄 관련)
@@ -712,8 +712,8 @@ def is_ineffective(control, answers):
         'APD02': len(answers) > 15 and answers[15] == 'N',
         'APD03': len(answers) > 16 and answers[16] == 'N',
         'APD04': len(answers) > 17 and answers[17] == 'N',
-        'APD05': len(answers) > 18 and answers[18] == 'N',  # 사용자 권한 Monitoring
-        'APD06': len(answers) > 20 and (answers[19] == 'N' or answers[20] == 'N'),
+        'APD05': False,  # 항상 적용되는 통제 (미비점 여부와 무관)
+        'APD06': False,  # 항상 적용되는 통제 (미비점 여부와 무관)
         'APD07': len(answers) > 22 and answers[14] == 'Y' and (answers[21] == 'N' or answers[22] == 'N'),  # DB 접근 가능할 때만 체크
         'APD08': len(answers) > 22 and answers[14] == 'Y' and answers[22] == 'N',  # DB 접근 가능할 때만 체크
         'APD09': len(answers) > 26 and answers[14] == 'Y' and (answers[25] == 'N' or answers[26] == 'N'),  # DB 접근 가능할 때만 체크
@@ -975,7 +975,7 @@ def get_ai_review(content, control_number=None, answers=None):
                 # 실제로 스킵된 통제인 경우에만 N/A 컨텍스트 추가
                 if control_number in skipped_controls:
                     if cloud_type == 'SaaS':
-                        if control_number in ['APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11']:
+                        if control_number in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11']:
                             special_context += "\n중요: SaaS 환경에서는 데이터베이스 관리가 서비스 제공업체에서 담당합니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
                         elif control_number in ['APD12', 'APD13']:
                             special_context += "\n중요: SaaS 환경에서는 운영체제 관리가 서비스 제공업체에서 담당합니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
@@ -985,7 +985,7 @@ def get_ai_review(content, control_number=None, answers=None):
                             special_context += "\n중요: SaaS 환경에서는 장애 대응 및 백업이 서비스 제공업체에서 담당합니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
                     
                     elif cloud_type == 'PaaS':
-                        if control_number in ['APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11']:
+                        if control_number in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11']:
                             special_context += "\n중요: PaaS 환경에서는 데이터베이스 관리가 플랫폼에서 담당됩니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
                         elif control_number in ['APD12', 'APD13']:
                             special_context += "\n중요: PaaS 환경에서는 운영체제 관리가 플랫폼에서 담당됩니다. 이 통제는 질문이 스킵되어 적용되지 않으므로(N/A) 미비점이 아닙니다."
@@ -1237,12 +1237,12 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
         if cloud_type and has_soc1_report:
             cloud_skip_message = ""
             if cloud_type == 'SaaS':
-                if control_number in ['APD04', 'APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 
+                if control_number in ['APD04', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 
                                     'APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 
                                     'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06']:
                     cloud_skip_message = f"SaaS 환경에서는 서비스 제공업체가 담당합니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
             elif cloud_type == 'PaaS':
-                if control_number in ['APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 
+                if control_number in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11', 
                                     'APD12', 'APD13', 'APD14', 'CO04', 'CO05', 'CO06']:
                     cloud_skip_message = f"PaaS 환경에서는 플랫폼 제공업체가 담당합니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
             elif cloud_type == 'IaaS':
@@ -1680,9 +1680,9 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                 has_soc1_report = len(answers) > 5 and answers[5] and str(answers[5]).upper() == 'Y'
                 
                 if cloud_type and has_soc1_report:
-                    if cloud_type == 'SaaS' and control in ['APD04', 'APD05', 'APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06']:
+                    if cloud_type == 'SaaS' and control in ['APD04', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06']:
                         return 'SaaS 환경에서는 서비스 제공업체가 해당 영역을 담당하므로 이 통제는 적용되지 않습니다.'
-                    elif cloud_type == 'PaaS' and control in ['APD06', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14', 'CO04', 'CO05', 'CO06']:
+                    elif cloud_type == 'PaaS' and control in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14', 'CO04', 'CO05', 'CO06']:
                         return 'PaaS 환경에서는 플랫폼 제공업체가 해당 영역을 담당하므로 이 통제는 적용되지 않습니다.'
                     elif cloud_type == 'IaaS' and control in ['APD11', 'APD13', 'CO04', 'CO05', 'CO06']:
                         return 'IaaS 환경에서는 인프라 제공업체가 해당 영역을 담당하므로 이 통제는 적용되지 않습니다.'
