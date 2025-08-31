@@ -103,6 +103,27 @@
     </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 드롭다운 수동 구현
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropdownToggle = document.getElementById('premiumServicesDropdown');
+            const dropdownMenu = dropdownToggle ? dropdownToggle.nextElementSibling : null;
+            
+            if (dropdownToggle && dropdownMenu) {
+                dropdownToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    dropdownMenu.classList.toggle('show');
+                });
+                
+                // 다른 곳 클릭시 드롭다운 닫기
+                document.addEventListener('click', function(e) {
+                    if (!dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                        dropdownMenu.classList.remove('show');
+                    }
+                });
+            }
+        });
+    </script>
     
 </body>
 </html>

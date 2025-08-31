@@ -117,7 +117,7 @@ app = Flask(__name__)
 app.secret_key = '150606'
 
 # 세션 만료 시간 설정 (24시간으로 연장)
-app.permanent_session_lifetime = timedelta(hours=24)
+# 브라우저 종료시에만 세션 만료 (permanent session 사용하지 않음)
 
 # 세션 보안 설정
 app.config.update(
@@ -234,7 +234,7 @@ def before_request():
                 session.clear()
                 return redirect(url_for('login'))
         
-        session.permanent = True
+        # session.permanent = True  # 브라우저 종료시 세션 만료
         # 세션 갱신 시간을 업데이트
         session['last_activity'] = datetime.now().isoformat()
 
@@ -452,7 +452,7 @@ def login():
             if success:
                 # 로그인 성공
                 user = result
-                session.permanent = True  # 영구 세션 설정
+                # session.permanent = True  # 브라우저 종료시 세션 만료
                 session['user_id'] = user['user_id']
                 session['user_name'] = user['user_name']
                 session['user_info'] = {
@@ -484,7 +484,7 @@ def extend_session():
     """세션 연장 엔드포인트"""
     if 'user_id' in session:
         session['last_activity'] = datetime.now().isoformat()
-        session.permanent = True
+        # session.permanent = True  # 브라우저 종료시 세션 만료
         print(f"세션 연장: {session.get('user_name', 'Unknown')}")
         return jsonify({'success': True, 'message': '세션이 연장되었습니다.'})
     return jsonify({'success': False, 'message': '로그인이 필요합니다.'})
