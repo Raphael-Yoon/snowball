@@ -477,9 +477,9 @@ def get_skipped_controls(answers):
                     'CO04', 'CO05', 'CO06'  # 44~46번 (CO 관련)
                 ])
     
-    # 17번 답변이 N이면 DB 관련 통제는 해당없음 (Cloud 스킵과 중복될 수 있음)
-    if len(answers) > 17 and answers[17] and str(answers[17]).upper() == 'N':
-        skipped_controls.update(['APD09', 'APD10', 'APD11'])
+    # 14번 답변이 N이면 DB 관련 통제는 해당없음 (Cloud 스킵과 중복될 수 있음)
+    if len(answers) > 14 and answers[14] and str(answers[14]).upper() == 'N':
+        skipped_controls.update(['APD07', 'APD08', 'APD09', 'APD10', 'APD11'])
     
     # 24번 답변이 N이면 OS 관련 통제는 해당없음 (Cloud 스킵과 중복될 수 있음)
     if len(answers) > 24 and answers[24] and str(answers[24]).upper() == 'N':
@@ -694,8 +694,8 @@ def is_ineffective(control, answers):
     if control.startswith('PC') and answers[31] == 'N':
         return False  # 31번 답변이 N이면 프로그램 변경 관련 통제는 N/A
     
-    if control in ['APD09', 'APD10', 'APD11'] and answers[17] == 'N':
-        return False  # 17번 답변이 N이면 DB 관련 통제는 N/A
+    if control in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11'] and answers[14] == 'N':
+        return False  # 14번 답변이 N이면 DB 관련 통제는 N/A
     
     if control in ['APD12', 'APD13', 'APD14'] and answers[24] == 'N':
         return False  # 24번 답변이 N이면 OS 관련 통제는 N/A
@@ -714,10 +714,10 @@ def is_ineffective(control, answers):
         'APD04': len(answers) > 17 and answers[17] == 'N',
         'APD05': len(answers) > 18 and answers[18] == 'N',  # 사용자 권한 Monitoring
         'APD06': len(answers) > 20 and (answers[19] == 'N' or answers[20] == 'N'),
-        'APD07': len(answers) > 22 and answers[17] == 'Y' and (answers[21] == 'N' or answers[22] == 'N'),  # DB 접근 가능할 때만 체크
-        'APD08': len(answers) > 22 and answers[17] == 'Y' and answers[22] == 'N',  # DB 접근 가능할 때만 체크
-        'APD09': len(answers) > 26 and answers[17] == 'Y' and (answers[25] == 'N' or answers[26] == 'N'),  # DB 접근 가능할 때만 체크
-        'APD10': len(answers) > 28 and answers[17] == 'Y' and (answers[27] == 'N' or answers[28] == 'N'),  # DB 접근 가능할 때만 체크
+        'APD07': len(answers) > 22 and answers[14] == 'Y' and (answers[21] == 'N' or answers[22] == 'N'),  # DB 접근 가능할 때만 체크
+        'APD08': len(answers) > 22 and answers[14] == 'Y' and answers[22] == 'N',  # DB 접근 가능할 때만 체크
+        'APD09': len(answers) > 26 and answers[14] == 'Y' and (answers[25] == 'N' or answers[26] == 'N'),  # DB 접근 가능할 때만 체크
+        'APD10': len(answers) > 28 and answers[14] == 'Y' and (answers[27] == 'N' or answers[28] == 'N'),  # DB 접근 가능할 때만 체크
         'APD12': len(answers) > 32 and (answers[31] == 'N' or answers[32] == 'N'),  # OS 접근권한 부여 이력 + 승인절차
         'APD13': len(answers) > 33 and answers[33] == 'N',  # OS 관리자 권한 제한
         'PC01': (len(answers) > 36 and answers[24] == 'Y') and (answers[35] == 'N' or answers[36] == 'N'),
@@ -1265,8 +1265,8 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
             result['C2'] = result['B2']
             return result
         
-        # 17번 질문: "회사에서 DB에 접속하여 필요한 작업을 수행하는 것이 가능하십니까?"
-        if control_number in ['APD09', 'APD10', 'APD11'] and answers[17] == 'N':
+        # 14번 질문: "회사에서 DB에 접속하여 필요한 작업을 수행하는 것이 가능하십니까?"
+        if control_number in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11'] and answers[14] == 'N':
             result['A1'] = control_number
             result['B1'] = ITGC_CONTROLS.get(control_number, {}).get('title', control_number)
             result['B2'] = f"회사에서 DB에 접속하여 필요한 작업을 수행할 수 없습니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
@@ -1288,12 +1288,6 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
             result['C2'] = result['B2']
             return result
         
-        if control_number in ['APD07', 'APD08'] and answers[7] == 'N':
-            result['A1'] = control_number
-            result['B1'] = ITGC_CONTROLS.get(control_number, {}).get('title', control_number)
-            result['B2'] = f"회사에서 DB에 접속하여 필요한 작업을 수행할 수 없습니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
-            result['C2'] = result['B2']
-            return result
 
     # 공통 로직으로 처리
     result['A1'] = control_number
