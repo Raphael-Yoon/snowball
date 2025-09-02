@@ -46,17 +46,17 @@
                             <i class="fas fa-crown me-1"></i>프리미엄 서비스
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="premiumServicesDropdown">
-                            <li><a class="dropdown-item" href="/user/rcm">
+                            <li><a class="dropdown-item" href="{{ url_for('link5.user_rcm') }}">
                                 <i class="fas fa-database me-2"></i>RCM 조회
                             </a></li>
-                            <li><a class="dropdown-item" href="/user/design-evaluation">
+                            <li><a class="dropdown-item" href="{{ url_for('link6.user_design_evaluation') }}">
                                 <i class="fas fa-clipboard-check me-2"></i>설계평가
                             </a></li>
-                            <li><a class="dropdown-item" href="/user/operation-evaluation">
+                            <li><a class="dropdown-item" href="{{ url_for('link7.user_operation_evaluation') }}">
                                 <i class="fas fa-cogs me-2"></i>운영평가
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/contact">
+                            <li><a class="dropdown-item" href="{{ url_for('link8.contact') }}">
                                 <i class="fas fa-envelope me-2"></i>Contact Us
                             </a></li>
                         </ul>
