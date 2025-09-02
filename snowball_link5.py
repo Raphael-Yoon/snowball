@@ -1,36 +1,213 @@
-from flask import Blueprint, request, jsonify
-import requests
-from requests.exceptions import Timeout, ConnectionError
+from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_rcm_details, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations, log_user_activity
+
+def get_user_info():
+    """현재 로그인한 사용자 정보 반환 (세션 우선)"""
+    from snowball import is_logged_in
+    if is_logged_in():
+        # 세션에 저장된 user_info를 우선 사용
+        if 'user_info' in session:
+            return session['user_info']
+        # 없으면 데이터베이스에서 조회
+        return get_current_user()
+    return None
+
+def is_logged_in():
+    """로그인 상태 확인"""
+    from snowball import is_logged_in as main_is_logged_in
+    return main_is_logged_in()
 
 bp_link5 = Blueprint('link5', __name__)
 
-OLLAMA_URL = "http://itap.iptime.org:8080/api/generate"
-OLLAMA_MODEL = "gpt-oss:20b"  # 필요시 변경
+# RCM 관련 기능들
 
-@bp_link5.route('/link5_chat', methods=['POST'])
-def link5_chat():
-    data = request.get_json()
-    prompt = data.get('prompt', '')
-    if not prompt:
-        return jsonify({'error': '질문이 없습니다.'}), 400
-    # Ollama 서버 헬스체크
+@bp_link5.route('/rcm')
+@login_required
+def user_rcm():
+    """사용자 RCM 조회 페이지"""
+    user_info = get_user_info()
+    
+    # 사용자가 접근 권한을 가진 RCM 목록 조회
+    user_rcms = get_user_rcms(user_info['user_id'])
+    
+    log_user_activity(user_info, 'PAGE_ACCESS', '사용자 RCM 조회', '/user/rcm', 
+                     request.remote_addr, request.headers.get('User-Agent'),
+                     {'rcm_count': len(user_rcms)})
+    
+    return render_template('user_rcm.jsp', 
+                         user_rcms=user_rcms,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@bp_link5.route('/rcm/<int:rcm_id>/view')
+@login_required
+def user_rcm_view(rcm_id):
+    """사용자 RCM 상세 조회 페이지"""
+    user_info = get_user_info()
+    
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+    user_rcms = get_user_rcms(user_info['user_id'])
+    rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+    
+    if rcm_id not in rcm_ids:
+        flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
+        return redirect(url_for('link5.user_rcm'))
+    
+    # RCM 기본 정보 조회
+    rcm_info = None
+    for rcm in user_rcms:
+        if rcm['rcm_id'] == rcm_id:
+            rcm_info = rcm
+            break
+    
+    # RCM 상세 데이터 조회
+    rcm_details = get_rcm_details(rcm_id)
+    
+    return render_template('user_rcm_view.jsp',
+                         rcm_info=rcm_info,
+                         rcm_details=rcm_details,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@bp_link5.route('/design-evaluation/rcm/<int:rcm_id>')
+@login_required  
+def user_design_evaluation_rcm(rcm_id):
+    """사용자 디자인 평가 페이지 (RCM별)"""
+    user_info = get_user_info()
+    
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+    user_rcms = get_user_rcms(user_info['user_id'])
+    rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+    
+    if rcm_id not in rcm_ids:
+        flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
+        return redirect(url_for('link5.user_rcm'))
+    
+    # RCM 정보 조회
+    rcm_info = None
+    for rcm in user_rcms:
+        if rcm['rcm_id'] == rcm_id:
+            rcm_info = rcm
+            break
+    
+    # RCM 세부 데이터 조회
+    rcm_details = get_rcm_details(rcm_id)
+    
+    # 평가 내역이 있다면 불러오기
     try:
-        health = requests.get(OLLAMA_URL.replace('/api/generate', '/api/tags'), timeout=2)
-        if health.status_code != 200:
-            return jsonify({'error': 'AI 서버가 비활성화되어 있습니다.'}), 503
-    except Exception:
-        return jsonify({'error': 'AI 서버가 비활성화되어 있습니다.'}), 503
-    try:
-        payload = {
-            "model": OLLAMA_MODEL,
-            "prompt": prompt,
-            "stream": False
-        }
-        response = requests.post(OLLAMA_URL, json=payload, timeout=600)
-        response.raise_for_status()
-        answer = response.json().get("response", "답변이 없습니다.")
-        return jsonify({'answer': answer})
-    except (Timeout, ConnectionError):
-        return jsonify({'error': '챗봇 서버가 응답하지 않습니다.'}), 504
+        evaluations = get_design_evaluations(rcm_id, user_info['user_id'])
+        evaluation_dict = {}
+        for eval_data in evaluations:
+            control_id = eval_data['control_id']
+            evaluation_dict[control_id] = {
+                'design_exists': eval_data['design_exists'],
+                'design_description': eval_data['design_description'],
+                'design_deficiency': eval_data['design_deficiency'], 
+                'design_severity': eval_data['design_severity']
+            }
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        evaluation_dict = {}
+        print(f"평가 데이터 로드 오류: {e}")
+    
+    log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 디자인 평가', f'/user/design-evaluation/rcm/{rcm_id}',
+                     request.remote_addr, request.headers.get('User-Agent'))
+    
+    return render_template('user_design_evaluation_rcm.jsp',
+                         rcm_id=rcm_id,
+                         rcm_info=rcm_info,
+                         rcm_details=rcm_details, 
+                         evaluation_dict=evaluation_dict,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@bp_link5.route('/api/design-evaluation/load/<int:rcm_id>')
+@login_required
+def load_design_evaluation(rcm_id):
+    """디자인 평가 데이터 로드 API"""
+    user_info = get_user_info()
+    
+    try:
+        # 권한 체크
+        user_rcms = get_user_rcms(user_info['user_id'])
+        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+        
+        if rcm_id not in rcm_ids:
+            return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
+        
+        evaluations = get_design_evaluations(rcm_id, user_info['user_id'])
+        
+        evaluation_dict = {}
+        for eval_data in evaluations:
+            control_id = eval_data['control_id']
+            evaluation_dict[control_id] = {
+                'design_exists': eval_data['design_exists'],
+                'design_description': eval_data['design_description'],
+                'design_deficiency': eval_data['design_deficiency'],
+                'design_severity': eval_data['design_severity']
+            }
+        
+        return jsonify({'success': True, 'evaluations': evaluation_dict})
+        
+    except Exception as e:
+        print(f"평가 데이터 로드 오류: {e}")
+        return jsonify({'success': False, 'message': '데이터 로드 중 오류가 발생했습니다.'}), 500
+
+@bp_link5.route('/api/rcm-status')
+@login_required
+def user_rcm_status():
+    """사용자 RCM 현황 조회 API"""
+    user_info = get_user_info()
+    
+    try:
+        # 사용자가 접근 권한을 가진 RCM 목록 조회
+        user_rcms = get_user_rcms(user_info['user_id'])
+        
+        # 각 RCM의 평가 현황 조회
+        rcm_status = []
+        for rcm in user_rcms:
+            rcm_id = rcm['rcm_id']
+            
+            # 디자인 평가 현황
+            design_evals = get_design_evaluations(rcm_id, user_info['user_id'])
+            design_count = len(design_evals)
+            
+            # 운영 평가 현황  
+            operation_evals = get_operation_evaluations(rcm_id, user_info['user_id'])
+            operation_count = len(operation_evals)
+            
+            # RCM 총 통제 수 (rcm_details에서 가져오기)
+            rcm_details = get_rcm_details(rcm_id)
+            total_controls = len(rcm_details) if rcm_details else 0
+            
+            rcm_status.append({
+                'rcm_id': rcm_id,
+                'rcm_name': rcm['rcm_name'],
+                'total_controls': total_controls,
+                'design_evaluated': design_count,
+                'operation_evaluated': operation_count,
+                'design_progress': round(design_count / total_controls * 100, 1) if total_controls > 0 else 0,
+                'operation_progress': round(operation_count / total_controls * 100, 1) if total_controls > 0 else 0
+            })
+        
+        return jsonify({'success': True, 'rcm_status': rcm_status})
+        
+    except Exception as e:
+        print(f"RCM 현황 조회 오류: {e}")
+        return jsonify({'success': False, 'message': '현황 조회 중 오류가 발생했습니다.'}), 500
+
+@bp_link5.route('/api/rcm-list')
+@login_required
+def user_rcm_list():
+    """사용자 RCM 목록 조회 API (빠른 접근용)"""
+    user_info = get_user_info()
+    
+    try:
+        user_rcms = get_user_rcms(user_info['user_id'])
+        return jsonify({'success': True, 'rcms': user_rcms})
+        
+    except Exception as e:
+        print(f"RCM 목록 조회 오류: {e}")
+        return jsonify({'success': False, 'message': '목록 조회 중 오류가 발생했습니다.'}), 500

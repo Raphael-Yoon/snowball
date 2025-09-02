@@ -90,9 +90,6 @@
                             <button class="btn btn-sm btn-success me-2" onclick="evaluateAllControls()">
                                 <i class="fas fa-check-double me-1"></i>전체 평가
                             </button>
-                            <button class="btn btn-sm btn-info me-2" onclick="showSampleUploadModal()">
-                                <i class="fas fa-upload me-1"></i>샘플 업로드
-                            </button>
                             <button class="btn btn-sm btn-warning me-2" onclick="resetAllEvaluations()">
                                 <i class="fas fa-undo me-1"></i>평가 초기화
                             </button>
@@ -109,13 +106,13 @@
                                     <tr>
                                         <th width="8%">통제코드</th>
                                         <th width="15%">통제명</th>
-                                        <th width="20%">통제활동설명</th>
+                                        <th width="25%">통제활동설명</th>
                                         <th width="8%">핵심통제</th>
                                         <th width="8%">통제주기</th>
                                         <th width="8%">통제유형</th>
-                                        <th width="8%">설계평가</th>
+                                        <th width="10%">설계평가</th>
                                         <th width="10%">평가결과</th>
-                                        <th width="15%">조치사항</th>
+                                        <th width="8%">조치사항</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -296,6 +293,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- 샘플 업로드 모달 -->
     <div class="modal fade" id="sampleUploadModal" tabindex="-1">
@@ -749,7 +747,8 @@
             document.body.removeChild(link);
         }
         
-        // 샘플 업로드 모달 표시
+
+        // 샘플 업로드 모달 표시 (일괄 업로드용)
         function showSampleUploadModal() {
             const modal = new bootstrap.Modal(document.getElementById('sampleUploadModal'));
             modal.show();
