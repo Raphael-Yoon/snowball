@@ -107,9 +107,48 @@ def init_db():
             )
         ''')
         
-        # 설계평가 진행상황 저장 테이블
+        # 설계평가 헤더 테이블 (평가 세션 정보)
         conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_design_evaluation (
+            CREATE TABLE IF NOT EXISTS sb_design_evaluation_header (
+                header_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rcm_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                evaluation_session TEXT NOT NULL,
+                evaluation_status TEXT DEFAULT 'IN_PROGRESS',
+                total_controls INTEGER DEFAULT 0,
+                evaluated_controls INTEGER DEFAULT 0,
+                progress_percentage REAL DEFAULT 0.0,
+                start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_date TIMESTAMP DEFAULT NULL,
+                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
+                FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
+                UNIQUE(rcm_id, user_id, evaluation_session)
+            )
+        ''')
+        
+        # 설계평가 라인 테이블 (개별 통제 평가)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_design_evaluation_line (
+                line_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                header_id INTEGER NOT NULL,
+                control_code TEXT NOT NULL,
+                control_sequence INTEGER DEFAULT 1,
+                description_adequacy TEXT,
+                improvement_suggestion TEXT,
+                overall_effectiveness TEXT,
+                evaluation_rationale TEXT,
+                recommended_actions TEXT,
+                evaluation_date TIMESTAMP DEFAULT NULL,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (header_id) REFERENCES sb_design_evaluation_header (header_id) ON DELETE CASCADE,
+                UNIQUE(header_id, control_code)
+            )
+        ''')
+        
+        # 기존 단일 테이블을 레거시로 유지 (호환성을 위해)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_design_evaluation_legacy (
                 evaluation_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 rcm_id INTEGER NOT NULL,
                 control_code TEXT NOT NULL,
@@ -119,13 +158,23 @@ def init_db():
                 overall_effectiveness TEXT,
                 evaluation_rationale TEXT,
                 recommended_actions TEXT,
-                evaluation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                evaluation_date TIMESTAMP DEFAULT NULL,
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                evaluation_session TEXT DEFAULT NULL,
                 FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
-                FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
-                UNIQUE(rcm_id, control_code, user_id)
+                FOREIGN KEY (user_id) REFERENCES sb_user (user_id)
             )
         ''')
+        
+        # 기존 데이터를 레거시 테이블로 마이그레이션
+        try:
+            conn.execute('''
+                INSERT OR IGNORE INTO sb_design_evaluation_legacy 
+                SELECT * FROM sb_design_evaluation
+            ''')
+            conn.execute('DROP TABLE IF EXISTS sb_design_evaluation')
+        except:
+            pass  # 기존 테이블이 없거나 이미 마이그레이션된 경우 무시
         
         # 운영평가 진행상황 저장 테이블
         conn.execute('''
@@ -140,7 +189,7 @@ def init_db():
                 test_results TEXT,
                 conclusion TEXT,
                 evaluation_notes TEXT,
-                evaluation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                evaluation_date TIMESTAMP DEFAULT NULL,
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
                 FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
@@ -556,34 +605,213 @@ def get_all_rcms():
         ''').fetchall()
         return [dict(rcm) for rcm in rcms]
 
-def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data):
-    """설계평가 결과 저장"""
+def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evaluation_session=None):
+    """설계평가 결과 저장 (Header-Line 구조)"""
     with get_db() as conn:
-        conn.execute('''
-            INSERT OR REPLACE INTO sb_design_evaluation (
-                rcm_id, control_code, user_id, description_adequacy, 
-                improvement_suggestion, overall_effectiveness, 
-                evaluation_rationale, recommended_actions, last_updated
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        # 1. Header 존재 확인 및 생성
+        header_id = get_or_create_evaluation_header(conn, rcm_id, user_id, evaluation_session)
+        
+        # 2. Line 데이터 저장/업데이트
+        # 기존 레코드만 업데이트 (평가 저장은 이미 생성된 레코드에만 수행)
+        cursor = conn.execute('''
+            UPDATE sb_design_evaluation_line SET
+                description_adequacy = ?, improvement_suggestion = ?,
+                overall_effectiveness = ?, evaluation_rationale = ?,
+                recommended_actions = ?, evaluation_date = CURRENT_TIMESTAMP,
+                last_updated = CURRENT_TIMESTAMP
+            WHERE header_id = ? AND control_code = ?
         ''', (
-            rcm_id, control_code, user_id,
             evaluation_data.get('adequacy'),
             evaluation_data.get('improvement'),
             evaluation_data.get('effectiveness'),
             evaluation_data.get('rationale'),
-            evaluation_data.get('actions')
+            evaluation_data.get('actions'),
+            header_id, control_code
         ))
+        
+        # 업데이트된 레코드가 없으면 오류
+        if cursor.rowcount == 0:
+            raise ValueError(f"평가할 통제({control_code})를 찾을 수 없습니다. 먼저 평가 구조를 생성해주세요.")
+        
+        # 3. Header 진행률 업데이트
+        update_evaluation_progress(conn, header_id)
+        
         conn.commit()
 
-def get_design_evaluations(rcm_id, user_id):
-    """특정 RCM의 사용자별 설계평가 결과 조회"""
+def create_evaluation_structure(rcm_id, user_id, evaluation_session):
+    """평가 시작 시 완전한 Header-Line 구조 생성"""
+    if not evaluation_session or evaluation_session.strip() == '':
+        raise ValueError("평가 세션명이 필요합니다.")
+    
     with get_db() as conn:
-        evaluations = conn.execute('''
-            SELECT * FROM sb_design_evaluation
-            WHERE rcm_id = ? AND user_id = ?
-            ORDER BY control_code
-        ''', (rcm_id, user_id)).fetchall()
+        # 1. RCM 상세 정보 조회
+        rcm_details = get_rcm_details(rcm_id)
+        if not rcm_details:
+            raise ValueError(f"RCM ID {rcm_id}에 대한 상세 정보를 찾을 수 없습니다.")
+        
+        total_controls = len(rcm_details)
+        
+        # 2. 헤더 생성
+        cursor = conn.execute('''
+            INSERT INTO sb_design_evaluation_header (
+                rcm_id, user_id, evaluation_session, total_controls,
+                evaluated_controls, progress_percentage, evaluation_status
+            ) VALUES (?, ?, ?, ?, 0, 0.0, 'IN_PROGRESS')
+        ''', (rcm_id, user_id, evaluation_session, total_controls))
+        
+        header_id = cursor.lastrowid
+        
+        # 3. 모든 통제에 대한 빈 라인 생성
+        for idx, control in enumerate(rcm_details, 1):
+            conn.execute('''
+                INSERT INTO sb_design_evaluation_line (
+                    header_id, control_code, control_sequence,
+                    description_adequacy, improvement_suggestion, 
+                    overall_effectiveness, evaluation_rationale, recommended_actions
+                ) VALUES (?, ?, ?, '', '', '', '', '')
+            ''', (header_id, control['control_code'], idx))
+        
+        conn.commit()
+        return header_id
+
+def get_or_create_evaluation_header(conn, rcm_id, user_id, evaluation_session):
+    """평가 헤더 조회 또는 생성 (레거시 호환용)"""
+    if not evaluation_session:
+        raise ValueError("평가 세션명이 필요합니다.")
+    
+    # 기존 헤더 확인
+    header = conn.execute('''
+        SELECT header_id FROM sb_design_evaluation_header
+        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+    ''', (rcm_id, user_id, evaluation_session)).fetchone()
+    
+    if header:
+        return header['header_id']
+    
+    # 새 구조로 생성
+    return create_evaluation_structure(rcm_id, user_id, evaluation_session)
+
+def update_evaluation_progress(conn, header_id):
+    """평가 진행률 업데이트"""
+    # 완료된 평가 수 계산 (evaluation_date 기준)
+    result = conn.execute('''
+        SELECT COUNT(*) as evaluated_count
+        FROM sb_design_evaluation_line
+        WHERE header_id = ? AND evaluation_date IS NOT NULL
+    ''', (header_id,)).fetchone()
+    
+    evaluated_count = result['evaluated_count']
+    
+    # 헤더 정보 조회
+    header = conn.execute('''
+        SELECT total_controls FROM sb_design_evaluation_header
+        WHERE header_id = ?
+    ''', (header_id,)).fetchone()
+    
+    total_controls = header['total_controls']
+    progress = (evaluated_count / total_controls * 100) if total_controls > 0 else 0
+    status = 'COMPLETED' if progress >= 100 else 'IN_PROGRESS'
+    
+    # 헤더 업데이트
+    conn.execute('''
+        UPDATE sb_design_evaluation_header
+        SET evaluated_controls = ?, 
+            progress_percentage = ?,
+            evaluation_status = ?,
+            last_updated = CURRENT_TIMESTAMP,
+            completed_date = CASE WHEN ? = 'COMPLETED' THEN CURRENT_TIMESTAMP ELSE completed_date END
+        WHERE header_id = ?
+    ''', (evaluated_count, progress, status, status, header_id))
+
+def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
+    """특정 RCM의 사용자별 설계평가 결과 조회 (Header-Line 구조)"""
+    print(f"get_design_evaluations called: rcm_id={rcm_id}, user_id={user_id}, evaluation_session='{evaluation_session}'")
+    
+    try:
+        with get_db() as conn:
+            if evaluation_session:
+                # 특정 평가 세션의 결과 조회
+                evaluations = conn.execute('''
+                SELECT l.*, h.evaluation_session, h.start_date, h.evaluation_status
+                FROM sb_design_evaluation_line l
+                JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
+                WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ?
+                ORDER BY l.control_sequence, l.control_code
+                ''', (rcm_id, user_id, evaluation_session)).fetchall()
+            else:
+                # 가장 최근 세션의 결과 조회
+                evaluations = conn.execute('''
+                    SELECT l.*, h.evaluation_session, h.start_date, h.evaluation_status
+                    FROM sb_design_evaluation_line l
+                    JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
+                    WHERE h.rcm_id = ? AND h.user_id = ?
+                          AND h.header_id = (
+                              SELECT header_id FROM sb_design_evaluation_header
+                              WHERE rcm_id = ? AND user_id = ?
+                              ORDER BY start_date DESC LIMIT 1
+                          )
+                    ORDER BY l.control_sequence, l.control_code
+                ''', (rcm_id, user_id, rcm_id, user_id)).fetchall()
+            
+        print(f"Found {len(evaluations)} evaluation records")
+        if evaluations:
+            print(f"Sample evaluation columns: {list(evaluations[0].keys())}")
+        
         return [dict(eval) for eval in evaluations]
+    
+    except Exception as e:
+        print(f"Error in get_design_evaluations: {e}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+def get_user_evaluation_sessions(rcm_id, user_id):
+    """사용자의 설계평가 세션 목록 조회 (Header-Line 구조)"""
+    with get_db() as conn:
+        sessions = conn.execute('''
+            SELECT h.evaluation_session, h.start_date, h.last_updated,
+                   h.evaluated_controls, h.total_controls, h.progress_percentage,
+                   h.evaluation_status, h.completed_date
+            FROM sb_design_evaluation_header h
+            WHERE h.rcm_id = ? AND h.user_id = ?
+            ORDER BY h.start_date DESC
+        ''', (rcm_id, user_id)).fetchall()
+        return [dict(session) for session in sessions]
+
+def delete_evaluation_session(rcm_id, user_id, evaluation_session):
+    """특정 평가 세션 삭제 (Header-Line 구조)"""
+    with get_db() as conn:
+        # 헤더 조회
+        header = conn.execute('''
+            SELECT header_id FROM sb_design_evaluation_header
+            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+        ''', (rcm_id, user_id, evaluation_session)).fetchone()
+        
+        if not header:
+            return 0
+        
+        header_id = header['header_id']
+        
+        # 1. 먼저 line 레코드들 삭제
+        conn.execute('''
+            DELETE FROM sb_design_evaluation_line 
+            WHERE header_id = ?
+        ''', (header_id,))
+        
+        # 2. header 레코드 삭제
+        cursor = conn.execute('''
+            DELETE FROM sb_design_evaluation_header 
+            WHERE header_id = ?
+        ''', (header_id,))
+        deleted_count = cursor.rowcount
+        conn.commit()
+        return deleted_count
+
+# 임시로 비활성화 - 테이블 구조 문제로 인해 
+# def get_design_evaluation_versions(rcm_id, control_code, company_name):
+#     """특정 통제의 모든 설계평가 버전 조회"""
+#     pass
 
 def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_data):
     """운영평가 결과 저장"""

@@ -95,21 +95,26 @@ def user_design_evaluation_rcm(rcm_id):
     # RCM 세부 데이터 조회
     rcm_details = get_rcm_details(rcm_id)
     
-    # 평가 내역이 있다면 불러오기
+    # 평가 내역이 있다면 불러오기 (가장 최근 세션)
     try:
-        evaluations = get_design_evaluations(rcm_id, user_info['user_id'])
+        evaluations = get_design_evaluations(rcm_id, user_info['user_id'], None)  # None = 가장 최근 세션
         evaluation_dict = {}
         for eval_data in evaluations:
-            control_id = eval_data['control_id']
-            evaluation_dict[control_id] = {
-                'design_exists': eval_data['design_exists'],
-                'design_description': eval_data['design_description'],
-                'design_deficiency': eval_data['design_deficiency'], 
-                'design_severity': eval_data['design_severity']
+            control_code = eval_data['control_code']
+            evaluation_dict[control_code] = {
+                'adequacy': eval_data['description_adequacy'],
+                'improvement': eval_data['improvement_suggestion'],
+                'effectiveness': eval_data['overall_effectiveness'],
+                'rationale': eval_data['evaluation_rationale'],
+                'actions': eval_data['recommended_actions'],
+                'evaluation_date': eval_data['evaluation_date']  # 완료 여부 판단용
             }
+        print(f"Loaded {len(evaluations)} evaluation records from database")
     except Exception as e:
         evaluation_dict = {}
         print(f"평가 데이터 로드 오류: {e}")
+        import traceback
+        traceback.print_exc()
     
     log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 디자인 평가', f'/user/design-evaluation/rcm/{rcm_id}',
                      request.remote_addr, request.headers.get('User-Agent'))
@@ -137,16 +142,18 @@ def load_design_evaluation(rcm_id):
         if rcm_id not in rcm_ids:
             return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
         
-        evaluations = get_design_evaluations(rcm_id, user_info['user_id'])
+        evaluations = get_design_evaluations(rcm_id, user_info['user_id'], None)  # None = 가장 최근 세션
         
         evaluation_dict = {}
         for eval_data in evaluations:
-            control_id = eval_data['control_id']
-            evaluation_dict[control_id] = {
-                'design_exists': eval_data['design_exists'],
-                'design_description': eval_data['design_description'],
-                'design_deficiency': eval_data['design_deficiency'],
-                'design_severity': eval_data['design_severity']
+            control_code = eval_data['control_code']
+            evaluation_dict[control_code] = {
+                'adequacy': eval_data['description_adequacy'],
+                'improvement': eval_data['improvement_suggestion'],
+                'effectiveness': eval_data['overall_effectiveness'],
+                'rationale': eval_data['evaluation_rationale'],
+                'actions': eval_data['recommended_actions'],
+                'evaluation_date': eval_data['evaluation_date']  # 완료 여부 판단용
             }
         
         return jsonify({'success': True, 'evaluations': evaluation_dict})
@@ -192,7 +199,11 @@ def user_rcm_status():
                 'operation_progress': round(operation_count / total_controls * 100, 1) if total_controls > 0 else 0
             })
         
-        return jsonify({'success': True, 'rcm_status': rcm_status})
+        return jsonify({
+            'success': True, 
+            'rcm_status': rcm_status,
+            'total_count': len(rcm_status)  # 설계평가 페이지에서 사용
+        })
         
     except Exception as e:
         print(f"RCM 현황 조회 오류: {e}")
