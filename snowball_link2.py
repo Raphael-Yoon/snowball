@@ -1,6 +1,8 @@
 from datetime import datetime
 import os
 import re
+import json
+import tempfile
 from io import BytesIO
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
@@ -60,6 +62,88 @@ TEXT_PROCESSING_RULES = {
     'unify_punctuation': True,       # 문장부호 통일 (예: "。" → ".")
     'normalize_line_breaks': True,   # 줄바꿈 정규화
 }
+
+# ================================
+# 진행률 관리 설정 (인터뷰 처리용)
+# ================================
+
+# WSGI 환경에서 안전한 경로 사용
+PROGRESS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'progress_data')
+if not os.path.exists(PROGRESS_DIR):
+    try:
+        os.makedirs(PROGRESS_DIR, exist_ok=True)
+        print(f"Created progress directory: {PROGRESS_DIR}")
+    except Exception as e:
+        print(f"Error creating progress directory {PROGRESS_DIR}: {e}")
+        # 시스템 임시 디렉토리를 대안으로 사용
+        PROGRESS_DIR = os.path.join(tempfile.gettempdir(), 'snowball_progress')
+        os.makedirs(PROGRESS_DIR, exist_ok=True)
+        print(f"Using fallback progress directory: {PROGRESS_DIR}")
+
+def get_progress_status(task_id):
+    """파일에서 진행률 상태 읽기"""
+    progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
+    if os.path.exists(progress_file):
+        try:
+            with open(progress_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                print(f"Progress read for task {task_id}: {data}")  # 디버그 로그
+                return data
+        except (IOError, json.JSONDecodeError) as e:
+            print(f"Error reading progress file for task {task_id}: {e}")
+    print(f"Progress file not found for task {task_id}, returning default")
+    return {
+        'percentage': 0,
+        'current_task': 'AI 검토를 준비하고 있습니다...',
+        'is_processing': True # 클라이언트가 폴링을 계속하도록 설정
+    }
+
+def set_progress_status(task_id, status):
+    """파일에 진행률 상태 저장"""
+    progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
+    try:
+        # 임시 파일에 먼저 쓰고 원자적으로 이동 (WSGI 환경에서 안전)
+        temp_file = progress_file + '.tmp'
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            json.dump(status, f, ensure_ascii=False, indent=2)
+            f.flush()  # 버퍼를 즉시 플러시
+            os.fsync(f.fileno())  # 디스크에 강제로 쓰기
+        
+        # 원자적으로 파일 이동
+        os.replace(temp_file, progress_file)
+        print(f"Progress written for task {task_id}: {status}")  # 디버그 로그
+    except IOError as e:
+        print(f"Error writing progress file for task {task_id}: {e}")
+        # 임시 파일이 남아있으면 삭제
+        try:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+        except:
+            pass
+
+def update_progress(task_id, percentage, task_description):
+    """진행률 업데이트 함수 (파일 기반)"""
+    if task_id is None:
+        return
+    
+    status = {
+        'percentage': percentage,
+        'current_task': task_description,
+        'is_processing': percentage < 100,
+        'timestamp': datetime.now().isoformat()  # 타임스탬프 추가
+    }
+    set_progress_status(task_id, status)
+    print(f"Progress Update (Task {task_id}): {percentage}% - {task_description}")
+
+def reset_progress(task_id):
+    """진행률 파일 삭제 함수"""
+    progress_file = os.path.join(PROGRESS_DIR, f"{task_id}.progress")
+    try:
+        if os.path.exists(progress_file):
+            os.unlink(progress_file)
+            print(f"Progress file deleted for task {task_id}")
+    except IOError as e:
+        print(f"Error deleting progress file for task {task_id}: {e}")
 
 # ITGC 통제 정의 (반복 코드 제거를 위한 데이터 구조)
 ITGC_CONTROLS = {
@@ -496,6 +580,45 @@ def get_skipped_controls(answers):
     print(f"[SKIP DEBUG] Cloud 타입: {answers[4] if len(answers) > 4 else 'None'}, SOC1 Report: {answers[5] if len(answers) > 5 else 'None'}")
     print(f"[SKIP DEBUG] 스킵된 통제 목록: {skipped_controls}")
     return skipped_controls
+
+def clear_skipped_answers(answers, textarea_answers):
+    """조건부 질문 스킵 시 해당 범위의 답변을 공란으로 처리"""
+    if not answers or len(answers) < 4:
+        return
+    
+    skip_ranges = []
+    
+    # 3번 답변이 N이면 4~5번 질문 생략
+    if len(answers) > 3 and answers[3] and str(answers[3]).upper() == 'N':
+        skip_ranges.append((4, 5))
+    
+    # 14번 답변이 N이면 15~23번 질문 생략
+    if len(answers) > 14 and answers[14] and str(answers[14]).upper() == 'N':
+        skip_ranges.append((15, 23))
+    
+    # 24번 답변이 N이면 25~30번 질문 생략
+    if len(answers) > 24 and answers[24] and str(answers[24]).upper() == 'N':
+        skip_ranges.append((25, 30))
+    
+    # 31번 답변이 N이면 32~37번 질문 생략
+    if len(answers) > 31 and answers[31] and str(answers[31]).upper() == 'N':
+        skip_ranges.append((32, 37))
+    
+    # 38번 답변이 N이면 39~43번 질문 생략
+    if len(answers) > 38 and answers[38] and str(answers[38]).upper() == 'N':
+        skip_ranges.append((39, 43))
+    
+    # 스킵된 범위의 답변을 공란으로 설정
+    for start, end in skip_ranges:
+        for i in range(start, end + 1):
+            if i < len(answers):
+                answers[i] = ''
+            if i < len(textarea_answers):
+                textarea_answers[i] = ''
+    
+    print(f"[CLEAR DEBUG] 스킵된 질문 범위: {skip_ranges}")
+    for start, end in skip_ranges:
+        print(f"[CLEAR DEBUG] {start}~{end}번 답변 공란 처리 완료")
 
 def set_sheet_tab_color_for_skipped_controls(wb, answers):
     """

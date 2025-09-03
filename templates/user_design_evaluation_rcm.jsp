@@ -54,12 +54,8 @@
                                         <td><span class="badge bg-primary">{{ rcm_details|length }}개</span></td>
                                     </tr>
                                     <tr>
-                                        <th>핵심 통제:</th>
-                                        <td>
-                                            <span class="badge bg-danger">
-                                                {{ rcm_details|selectattr('key_control', 'equalto', 'Y')|list|length }}개
-                                            </span>
-                                        </td>
+                                        <th>평가자:</th>
+                                        <td><strong>{{ user_info.user_name }}</strong></td>
                                     </tr>
                                 </table>
                             </div>
@@ -107,8 +103,7 @@
                                     <tr>
                                         <th width="8%">통제코드</th>
                                         <th width="15%">통제명</th>
-                                        <th width="25%">통제활동설명</th>
-                                        <th width="8%">핵심통제</th>
+                                        <th width="33%">통제활동설명</th>
                                         <th width="8%">통제주기</th>
                                         <th width="8%">통제유형</th>
                                         <th width="10%">설계평가</th>
@@ -122,17 +117,10 @@
                                         <td><code>{{ detail.control_code }}</code></td>
                                         <td><strong>{{ detail.control_name }}</strong></td>
                                         <td>
-                                            <span class="text-truncate" style="max-width: 150px; display: inline-block;" 
+                                            <span class="text-truncate" style="max-width: 500px; display: inline-block;" 
                                                   title="{{ detail.control_description or '-' }}">
                                                 {{ detail.control_description or '-' }}
                                             </span>
-                                        </td>
-                                        <td>
-                                            {% if detail.key_control and detail.key_control.upper() == 'Y' %}
-                                                <span class="badge bg-danger">핵심</span>
-                                            {% else %}
-                                                <span class="badge bg-secondary">일반</span>
-                                            {% endif %}
                                         </td>
                                         <td>{{ detail.control_frequency or '-' }}</td>
                                         <td>{{ detail.control_type or '-' }}</td>
@@ -195,10 +183,6 @@
                                 <div class="col-md-6">
                                     <label class="form-label"><strong>통제명:</strong></label>
                                     <p id="modalControlName" class="fw-bold"></p>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label"><strong>핵심통제:</strong></label>
-                                    <p id="modalKeyControl"></p>
                                 </div>
                             </div>
                             <div class="row">
@@ -488,8 +472,6 @@
             const type = cells[5].textContent.trim();
             
             document.getElementById('modalControlDescription').textContent = description || '통제활동 설명이 등록되지 않았습니다.';
-            document.getElementById('modalKeyControl').innerHTML = keyControl.includes('핵심') ? 
-                '<span class="badge bg-danger">핵심통제</span>' : '<span class="badge bg-secondary">일반통제</span>';
             document.getElementById('modalControlFrequency').textContent = frequency || '-';
             document.getElementById('modalControlType').textContent = type || '-';
             
@@ -720,7 +702,8 @@
             const sampleEffectiveness = ['effective', 'partially_effective', 'ineffective'];
             
             for (let i = 1; i <= totalControls; i++) {
-                if (!evaluationResults[i]) {
+                // evaluation_date가 없는 통제만 평가 (미완료 통제)
+                if (!evaluationResults[i] || !evaluationResults[i].evaluation_date) {
                     const adequacy = sampleAdequacies[Math.floor(Math.random() * sampleAdequacies.length)];
                     const effectiveness = sampleEffectiveness[Math.floor(Math.random() * sampleEffectiveness.length)];
                     
@@ -766,9 +749,12 @@
             }
             
             // 컨트롤 코드 찾기
-            const controlCode = {% for detail in rcm_details %}
-                {{ loop.index }} === controlIndex ? '{{ detail.control_code }}' : 
-            {% endfor %} null;
+            let controlCode = null;
+            {% for detail in rcm_details %}
+            if ({{ loop.index }} === controlIndex) {
+                controlCode = '{{ detail.control_code }}';
+            }
+            {% endfor %}
             
             if (!controlCode) {
                 console.error('통제 코드를 찾을 수 없습니다.');
