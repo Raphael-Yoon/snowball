@@ -201,20 +201,21 @@ def login():
     if request.method == 'POST':
         action = request.form.get('action')
         
-        # snowball.pythonanywhere.com에서 user_id=1과 password=150606으로 직접 로그인 처리
+        # snowball.pythonanywhere.com에서 이메일과 password=150606으로 직접 로그인 처리
         if action == 'direct_login':
-            user_id = request.form.get('user_id')
+            email = request.form.get('email')
             password = request.form.get('password')
             host = request.headers.get('Host', '')
             
-            # snowball.pythonanywhere.com 도메인과 user_id=1, password=150606 확인
-            if (host.startswith('snowball.pythonanywhere.com') and 
-                user_id == '1' and password == '150606'):
-                
+            if not email or not password:
+                return render_template('login.jsp', error="이메일과 비밀번호를 입력해주세요.", remote_addr=request.remote_addr, show_direct_login=host.startswith('snowball.pythonanywhere.com'))
+            
+            # snowball.pythonanywhere.com 도메인에서 password=150606 확인
+            if host.startswith('snowball.pythonanywhere.com') and password == '150606':
                 with get_db() as conn:
                     user = conn.execute(
-                        'SELECT * FROM sb_user WHERE user_id = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
-                        (1,)
+                        'SELECT * FROM sb_user WHERE user_email = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
+                        (email,)
                     ).fetchone()
                     
                     if user:
@@ -236,17 +237,17 @@ def login():
                         
                         # 마지막 로그인 날짜 업데이트
                         conn.execute(
-                            'UPDATE sb_user SET last_login_date = CURRENT_TIMESTAMP WHERE user_id = ?',
-                            (1,)
+                            'UPDATE sb_user SET last_login_date = CURRENT_TIMESTAMP WHERE user_email = ?',
+                            (email,)
                         )
                         conn.commit()
                         
                         print(f"직접 로그인 성공: {user_dict['user_name']} ({user_dict['user_email']}) from {host}")
                         return redirect(url_for('index'))
                     else:
-                        return render_template('login.jsp', error="사용자 ID 1을 찾을 수 없거나 활성화되지 않았습니다.", remote_addr=request.remote_addr)
+                        return render_template('login.jsp', error="등록되지 않은 사용자이거나 활성화되지 않았습니다.", remote_addr=request.remote_addr, show_direct_login=True)
             else:
-                return render_template('login.jsp', error="잘못된 접근입니다.", remote_addr=request.remote_addr)
+                return render_template('login.jsp', error="잘못된 비밀번호입니다.", remote_addr=request.remote_addr, show_direct_login=host.startswith('snowball.pythonanywhere.com'))
         
         elif action == 'send_otp':
             # OTP 발송 요청
