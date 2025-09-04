@@ -23,26 +23,15 @@
             {% endif %}
             
             {% if not step or step != 'verify' %}
-            <!-- 1단계: 이메일 입력 및 인증 요청 -->
+            <!-- 1단계: 이메일 입력 및 OTP 요청 -->
             <form method="POST" action="{{ url_for('login') }}">
-                {% if show_direct_login %}
-                <input type="hidden" name="action" value="direct_login">
-                {% else %}
                 <input type="hidden" name="action" value="send_otp">
-                {% endif %}
                 <div class="form-group">
                     <label for="email">이메일:</label>
                     <input type="email" id="email" name="email" required 
                            placeholder="등록된 이메일 주소를 입력하세요">
                 </div>
-                {% if show_direct_login %}
-                <div class="form-group">
-                    <label for="password">비밀번호:</label>
-                    <input type="password" id="password" name="password" required 
-                           placeholder="비밀번호를 입력하세요">
-                </div>
-                <button type="submit" class="btn-primary">로그인</button>
-                {% else %}
+                {% if not show_direct_login %}
                 <div class="form-group">
                     <label>인증 방법:</label>
                     <div class="radio-group">
@@ -58,14 +47,19 @@
                         {% endif %}
                     </div>
                 </div>
-                <button type="submit" class="btn-primary">인증 코드 발송</button>
                 {% endif %}
+                <button type="submit" class="btn-primary">인증 코드 발송</button>
             </form>
             {% else %}
             <!-- 2단계: OTP 코드 입력 -->
             <div class="otp-info">
+                {% if show_direct_login %}
+                <p><strong>{{ email }}</strong> 사용자의 인증 코드를 입력해주세요.</p>
+                <p>6자리 인증 코드를 입력하세요.</p>
+                {% else %}
                 <p><strong>{{ email }}</strong>로 인증 코드를 발송했습니다.</p>
                 <p>이메일을 확인하고 6자리 인증 코드를 입력해주세요.</p>
+                {% endif %}
             </div>
             <form method="POST" action="{{ url_for('login') }}">
                 <input type="hidden" name="action" value="verify_otp">
