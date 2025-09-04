@@ -29,7 +29,7 @@ import re
 
 
 app = Flask(__name__)
-app.secret_key = '150606'
+app.secret_key = os.getenv('FLASK_SECRET_KEY', '150606')
 
 # 세션 만료 시간 설정 (24시간으로 연장)
 # 브라우저 종료시에만 세션 만료 (permanent session 사용하지 않음)
@@ -53,6 +53,9 @@ else:
     START_QUESTION = 0
 
 load_dotenv()
+
+# 보안 관련 상수 (환경변수에서 로드)
+PYTHONANYWHERE_AUTH_CODE = os.getenv('PYTHONANYWHERE_AUTH_CODE', '150606')
 
 # 데이터베이스 초기화
 with app.app_context():
@@ -240,9 +243,9 @@ def login():
             if not email or not otp_code:
                 return render_template('login.jsp', error="인증 코드를 입력해주세요.", remote_addr=request.remote_addr)
             
-            # snowball.pythonanywhere.com에서는 고정 코드 150606 확인
+            # snowball.pythonanywhere.com에서는 고정 코드 확인
             if host.startswith('snowball.pythonanywhere.com'):
-                if otp_code == '150606':
+                if otp_code == PYTHONANYWHERE_AUTH_CODE:
                     # 사용자 정보 조회
                     user = find_user_by_email(email)
                     if user:
