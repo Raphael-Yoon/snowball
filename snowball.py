@@ -22,7 +22,7 @@ from snowball_link6 import bp_link6
 from snowball_link7 import bp_link7
 from snowball_link8 import bp_link8
 from snowball_admin import admin_bp
-from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations
+from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations, find_user_by_email
 import uuid
 import json
 import re
@@ -201,98 +201,103 @@ def login():
     if request.method == 'POST':
         action = request.form.get('action')
         
-        # snowball.pythonanywhere.com에서 이메일과 password=150606으로 직접 로그인 처리
-        if action == 'direct_login':
-            email = request.form.get('email')
-            password = request.form.get('password')
-            host = request.headers.get('Host', '')
-            
-            if not email or not password:
-                return render_template('login.jsp', error="이메일과 비밀번호를 입력해주세요.", remote_addr=request.remote_addr, show_direct_login=host.startswith('snowball.pythonanywhere.com'))
-            
-            # snowball.pythonanywhere.com 도메인에서 password=150606 확인
-            if host.startswith('snowball.pythonanywhere.com') and password == '150606':
-                with get_db() as conn:
-                    user = conn.execute(
-                        'SELECT * FROM sb_user WHERE user_email = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
-                        (email,)
-                    ).fetchone()
-                    
-                    if user:
-                        # SQLite Row 객체를 딕셔너리로 변환
-                        user_dict = dict(user)
-                        
-                        session['user_id'] = user_dict['user_id']
-                        session['user_name'] = user_dict['user_name']
-                        session['user_info'] = {
-                            'user_id': user_dict['user_id'],
-                            'user_name': user_dict['user_name'],
-                            'user_email': user_dict['user_email'],
-                            'company_name': user_dict.get('company_name', ''),
-                            'phone_number': user_dict.get('phone_number', ''),
-                            'admin_flag': user_dict.get('admin_flag', 'N')
-                        }
-                        session['login_time'] = datetime.now().isoformat()
-                        session['last_activity'] = datetime.now().isoformat()
-                        
-                        # 마지막 로그인 날짜 업데이트
-                        conn.execute(
-                            'UPDATE sb_user SET last_login_date = CURRENT_TIMESTAMP WHERE user_email = ?',
-                            (email,)
-                        )
-                        conn.commit()
-                        
-                        print(f"직접 로그인 성공: {user_dict['user_name']} ({user_dict['user_email']}) from {host}")
-                        return redirect(url_for('index'))
-                    else:
-                        return render_template('login.jsp', error="등록되지 않은 사용자이거나 활성화되지 않았습니다.", remote_addr=request.remote_addr, show_direct_login=True)
-            else:
-                return render_template('login.jsp', error="잘못된 비밀번호입니다.", remote_addr=request.remote_addr, show_direct_login=host.startswith('snowball.pythonanywhere.com'))
-        
-        elif action == 'send_otp':
+        if action == 'send_otp':
             # OTP 발송 요청
             email = request.form.get('email')
             method = request.form.get('method', 'email')
+            host = request.headers.get('Host', '')
             
             if not email:
-                return render_template('login.jsp', error="이메일을 입력해주세요.", remote_addr=request.remote_addr)
+                return render_template('login.jsp', error="이메일을 입력해주세요.", remote_addr=request.remote_addr, show_direct_login=host.startswith('snowball.pythonanywhere.com'))
             
-            success, message = send_otp(email, method)
-            if success:
+            # snowball.pythonanywhere.com에서는 실제 OTP 발송하지 않고 고정 메시지 표시
+            if host.startswith('snowball.pythonanywhere.com'):
+                # 사용자가 존재하는지만 확인
+                user = find_user_by_email(email)
+                if not user:
+                    return render_template('login.jsp', error="등록되지 않은 사용자입니다.", remote_addr=request.remote_addr, show_direct_login=True)
+                
                 session['login_email'] = email
-                return render_template('login.jsp', step='verify', email=email, message=message, remote_addr=request.remote_addr)
+                return render_template('login.jsp', step='verify', email=email, 
+                                     message="인증 코드를 입력해주세요.", 
+                                     remote_addr=request.remote_addr, 
+                                     show_direct_login=True)
             else:
-                return render_template('login.jsp', error=message, remote_addr=request.remote_addr)
+                # 일반적인 OTP 발송
+                success, message = send_otp(email, method)
+                if success:
+                    session['login_email'] = email
+                    return render_template('login.jsp', step='verify', email=email, message=message, remote_addr=request.remote_addr)
+                else:
+                    return render_template('login.jsp', error=message, remote_addr=request.remote_addr)
         
         elif action == 'verify_otp':
             # OTP 검증
             email = session.get('login_email')
             otp_code = request.form.get('otp_code')
+            host = request.headers.get('Host', '')
             
             if not email or not otp_code:
                 return render_template('login.jsp', error="인증 코드를 입력해주세요.", remote_addr=request.remote_addr)
             
-            success, result = verify_otp(email, otp_code)
-            if success:
-                # 로그인 성공
-                user = result
-                # session.permanent = True  # 브라우저 종료시 세션 만료
-                session['user_id'] = user['user_id']
-                session['user_name'] = user['user_name']
-                session['user_info'] = {
-                    'user_id': user['user_id'],
-                    'user_name': user['user_name'],
-                    'user_email': user['user_email'],
-                    'company_name': user.get('company_name', ''),
-                    'phone_number': user.get('phone_number', ''),
-                    'admin_flag': user.get('admin_flag', 'N')
-                }
-                session['login_time'] = datetime.now().isoformat()
-                session.pop('login_email', None)  # 임시 이메일 정보 삭제
-                print(f"로그인 성공: {user['user_name']} ({user['user_email']})")
-                return redirect(url_for('index'))
+            # snowball.pythonanywhere.com에서는 고정 코드 150606 확인
+            if host.startswith('snowball.pythonanywhere.com'):
+                if otp_code == '150606':
+                    # 사용자 정보 조회
+                    user = find_user_by_email(email)
+                    if user:
+                        # 로그인 성공
+                        session['user_id'] = user['user_id']
+                        session['user_name'] = user['user_name']
+                        session['user_info'] = {
+                            'user_id': user['user_id'],
+                            'user_name': user['user_name'],
+                            'user_email': user['user_email'],
+                            'company_name': user.get('company_name', ''),
+                            'phone_number': user.get('phone_number', ''),
+                            'admin_flag': user.get('admin_flag', 'N')
+                        }
+                        session['login_time'] = datetime.now().isoformat()
+                        session['last_activity'] = datetime.now().isoformat()
+                        session.pop('login_email', None)  # 임시 이메일 정보 삭제
+                        
+                        # 마지막 로그인 날짜 업데이트
+                        with get_db() as conn:
+                            conn.execute(
+                                'UPDATE sb_user SET last_login_date = CURRENT_TIMESTAMP WHERE user_email = ?',
+                                (email,)
+                            )
+                            conn.commit()
+                        
+                        print(f"고정 코드 로그인 성공: {user['user_name']} ({user['user_email']}) from {host}")
+                        return redirect(url_for('index'))
+                    else:
+                        return render_template('login.jsp', step='verify', email=email, error="사용자 정보를 찾을 수 없습니다.", remote_addr=request.remote_addr, show_direct_login=True)
+                else:
+                    return render_template('login.jsp', step='verify', email=email, error="잘못된 인증 코드입니다.", remote_addr=request.remote_addr, show_direct_login=True)
             else:
-                return render_template('login.jsp', step='verify', email=email, error=result, remote_addr=request.remote_addr)
+                # 일반적인 OTP 검증
+                success, result = verify_otp(email, otp_code)
+                if success:
+                    # 로그인 성공
+                    user = result
+                    # session.permanent = True  # 브라우저 종료시 세션 만료
+                    session['user_id'] = user['user_id']
+                    session['user_name'] = user['user_name']
+                    session['user_info'] = {
+                        'user_id': user['user_id'],
+                        'user_name': user['user_name'],
+                        'user_email': user['user_email'],
+                        'company_name': user.get('company_name', ''),
+                        'phone_number': user.get('phone_number', ''),
+                        'admin_flag': user.get('admin_flag', 'N')
+                    }
+                    session['login_time'] = datetime.now().isoformat()
+                    session.pop('login_email', None)  # 임시 이메일 정보 삭제
+                    print(f"로그인 성공: {user['user_name']} ({user['user_email']})")
+                    return redirect(url_for('index'))
+                else:
+                    return render_template('login.jsp', step='verify', email=email, error=result, remote_addr=request.remote_addr)
     
     # GET 요청 시 현재 호스트 확인하여 로그인 폼 표시
     host = request.headers.get('Host', '')
