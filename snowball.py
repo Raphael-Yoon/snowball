@@ -245,8 +245,8 @@ def login():
                         return redirect(url_for('index'))
                     else:
                         return render_template('login.jsp', error="사용자 ID 1을 찾을 수 없거나 활성화되지 않았습니다.", remote_addr=request.remote_addr)
-                else:
-                    return render_template('login.jsp', error="잘못된 접근입니다.", remote_addr=request.remote_addr)
+            else:
+                return render_template('login.jsp', error="잘못된 접근입니다.", remote_addr=request.remote_addr)
         
         elif action == 'send_otp':
             # OTP 발송 요청
