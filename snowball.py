@@ -60,20 +60,9 @@ with app.app_context():
 
 @app.before_request
 def before_request():
-    """모든 요청 전에 실행되는 함수 - 세션 유지 처리 및 타임아웃 체크"""
-    # 로그인한 사용자의 세션을 자동으로 갱신
-    if 'user_id' in session:
-        # 마지막 활동 시간 체크 (10분 초과 시 자동 로그아웃)
-        if 'last_activity' in session:
-            last_activity = datetime.fromisoformat(session['last_activity'])
-            if datetime.now() - last_activity > timedelta(minutes=10):
-                print(f"세션 타임아웃: 10분 비활성으로 자동 로그아웃")
-                session.clear()
-                return redirect(url_for('login'))
-        
-        # session.permanent = True  # 브라우저 종료시 세션 만료
-        # 세션 갱신 시간을 업데이트
-        session['last_activity'] = datetime.now().isoformat()
+    """모든 요청 전에 실행되는 함수"""
+    # 필요시 추가 처리를 위한 함수
+    pass
 
 def is_logged_in():
     """로그인 상태 확인 함수"""
@@ -156,7 +145,7 @@ def log_session_info(route_name):
 def index():
     log_session_info("메인 페이지")
     
-    # 개발 단계: 127.0.0.1:5001 접속시 자동 로그인
+    # 개발 단계: 127.0.0.1:5001 접속시 자동 로그인 (Snowball 계정)
     if not is_logged_in():
         # 클라이언트 IP가 127.0.0.1이고 포트가 5001인 경우에만 자동 로그인
         client_ip = request.environ.get('REMOTE_ADDR', '')
@@ -212,7 +201,54 @@ def login():
     if request.method == 'POST':
         action = request.form.get('action')
         
-        if action == 'send_otp':
+        # snowball.pythonanywhere.com에서 user_id=1과 password=150606으로 직접 로그인 처리
+        if action == 'direct_login':
+            user_id = request.form.get('user_id')
+            password = request.form.get('password')
+            host = request.headers.get('Host', '')
+            
+            # snowball.pythonanywhere.com 도메인과 user_id=1, password=150606 확인
+            if (host.startswith('snowball.pythonanywhere.com') and 
+                user_id == '1' and password == '150606'):
+                
+                with get_db() as conn:
+                    user = conn.execute(
+                        'SELECT * FROM sb_user WHERE user_id = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
+                        (1,)
+                    ).fetchone()
+                    
+                    if user:
+                        # SQLite Row 객체를 딕셔너리로 변환
+                        user_dict = dict(user)
+                        
+                        session['user_id'] = user_dict['user_id']
+                        session['user_name'] = user_dict['user_name']
+                        session['user_info'] = {
+                            'user_id': user_dict['user_id'],
+                            'user_name': user_dict['user_name'],
+                            'user_email': user_dict['user_email'],
+                            'company_name': user_dict.get('company_name', ''),
+                            'phone_number': user_dict.get('phone_number', ''),
+                            'admin_flag': user_dict.get('admin_flag', 'N')
+                        }
+                        session['login_time'] = datetime.now().isoformat()
+                        session['last_activity'] = datetime.now().isoformat()
+                        
+                        # 마지막 로그인 날짜 업데이트
+                        conn.execute(
+                            'UPDATE sb_user SET last_login_date = CURRENT_TIMESTAMP WHERE user_id = ?',
+                            (1,)
+                        )
+                        conn.commit()
+                        
+                        print(f"직접 로그인 성공: {user_dict['user_name']} ({user_dict['user_email']}) from {host}")
+                        return redirect(url_for('index'))
+                    else:
+                        return render_template('login.jsp', error="사용자 ID 1을 찾을 수 없거나 활성화되지 않았습니다.", remote_addr=request.remote_addr)
+                else:
+                    return render_template('login.jsp', error="잘못된 접근입니다.", remote_addr=request.remote_addr)
+        
+        elif action == 'send_otp':
             # OTP 발송 요청
             email = request.form.get('email')
             method = request.form.get('method', 'email')
@@ -257,7 +293,11 @@ def login():
             else:
                 return render_template('login.jsp', step='verify', email=email, error=result, remote_addr=request.remote_addr)
     
-    return render_template('login.jsp', remote_addr=request.remote_addr)
+    # GET 요청 시 현재 호스트 확인하여 로그인 폼 표시
+    host = request.headers.get('Host', '')
+    show_direct_login = host.startswith('snowball.pythonanywhere.com')
+    
+    return render_template('login.jsp', remote_addr=request.remote_addr, show_direct_login=show_direct_login)
 
 
 @app.route('/logout')

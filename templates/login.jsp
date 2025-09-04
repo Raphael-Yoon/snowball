@@ -22,6 +22,34 @@
                 <div class="success-message">{{ message }}</div>
             {% endif %}
             
+            {% if show_direct_login %}
+            <!-- snowball.pythonanywhere.com 직접 로그인 -->
+            <div class="direct-login-section">
+                <div class="login-tabs">
+                    <button type="button" class="tab-button active" onclick="showDirectLogin()">직접 로그인</button>
+                    <button type="button" class="tab-button" onclick="showOtpLogin()">OTP 로그인</button>
+                </div>
+                
+                <div id="direct-login-form" class="login-form">
+                    <form method="POST" action="{{ url_for('login') }}">
+                        <input type="hidden" name="action" value="direct_login">
+                        <div class="form-group">
+                            <label for="user_id">사용자 ID:</label>
+                            <input type="text" id="user_id" name="user_id" required 
+                                   placeholder="사용자 ID (1)" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">비밀번호:</label>
+                            <input type="password" id="password" name="password" required 
+                                   placeholder="비밀번호">
+                        </div>
+                        <button type="submit" class="btn-primary">로그인</button>
+                    </form>
+                </div>
+                
+                <div id="otp-login-form" class="login-form" style="display: none;">
+            {% endif %}
+            
             {% if not step or step != 'verify' %}
             <!-- 1단계: 이메일 입력 및 OTP 요청 -->
             <form method="POST" action="{{ url_for('login') }}">
@@ -48,6 +76,11 @@
                 </div>
                 <button type="submit" class="btn-primary">인증 코드 발송</button>
             </form>
+            
+            {% if show_direct_login %}
+                </div>
+            </div>
+            {% endif %}
             {% else %}
             <!-- 2단계: OTP 코드 입력 -->
             <div class="otp-info">
@@ -170,6 +203,27 @@
     
     
     <script>
+        // 탭 전환 함수들
+        function showDirectLogin() {
+            document.getElementById('direct-login-form').style.display = 'block';
+            document.getElementById('otp-login-form').style.display = 'none';
+            
+            // 탭 버튼 활성화 상태 변경
+            const tabs = document.querySelectorAll('.tab-button');
+            tabs[0].classList.add('active');
+            tabs[1].classList.remove('active');
+        }
+        
+        function showOtpLogin() {
+            document.getElementById('direct-login-form').style.display = 'none';
+            document.getElementById('otp-login-form').style.display = 'block';
+            
+            // 탭 버튼 활성화 상태 변경
+            const tabs = document.querySelectorAll('.tab-button');
+            tabs[0].classList.remove('active');
+            tabs[1].classList.add('active');
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             const showInquiryBtn = document.getElementById('showInquiryBtn');
             const inquiryContainer = document.getElementById('inquiryContainer');
@@ -183,18 +237,20 @@
             });
             {% endif %}
             
-            showInquiryBtn.addEventListener('click', function() {
-                if (inquiryContainer.style.display === 'none') {
-                    inquiryContainer.style.display = 'block';
-                    // 스크롤 효과로 폼으로 이동
-                    inquiryContainer.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'nearest' 
-                    });
-                } else {
-                    inquiryContainer.style.display = 'none';
-                }
-            });
+            if (showInquiryBtn) {
+                showInquiryBtn.addEventListener('click', function() {
+                    if (inquiryContainer.style.display === 'none') {
+                        inquiryContainer.style.display = 'block';
+                        // 스크롤 효과로 폼으로 이동
+                        inquiryContainer.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'nearest' 
+                        });
+                    } else {
+                        inquiryContainer.style.display = 'none';
+                    }
+                });
+            }
         });
     </script>
 </body>
