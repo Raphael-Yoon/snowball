@@ -287,6 +287,14 @@
                                 <textarea class="form-control" id="recommendedActions" rows="2" 
                                           placeholder="실무와 문서 간 차이 해소나 통제 운영 개선을 위한 구체적인 조치사항을 제안하세요..."></textarea>
                             </div>
+                            
+                            <div class="mb-3">
+                                <label for="evaluationImages" class="form-label">평가 증빙 자료 (이미지)</label>
+                                <input type="file" class="form-control" id="evaluationImages" 
+                                       accept="image/*" multiple>
+                                <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
+                                <div id="imagePreview" class="mt-2"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -383,6 +391,7 @@
     <script>
         let currentEvaluationIndex = null;
         let evaluationResults = {};
+        let evaluationImages = {}; // 평가별 이미지 저장
         const rcmId = {{ rcm_id }};
         
         console.log('***** JavaScript rcmId value:', rcmId, '(type:', typeof rcmId, ') *****');
@@ -418,6 +427,181 @@
             sessionStorage.clear();
             console.log('SessionStorage cleared:');
             debugSessionStorage();
+        }
+
+        // 이미지 업로드 설정
+        function setupImageUpload() {
+            const imageInput = document.getElementById('evaluationImages');
+            if (imageInput) {
+                imageInput.addEventListener('change', handleImageSelection);
+            }
+        }
+        
+        // 이미지 선택 처리
+        function handleImageSelection(event) {
+            const files = event.target.files;
+            const previewContainer = document.getElementById('imagePreview');
+            
+            if (!previewContainer) return;
+            
+            // 기존 미리보기 초기화
+            previewContainer.innerHTML = '';
+            
+            // 선택된 이미지가 없으면 종료
+            if (!files || files.length === 0) return;
+            
+            // 각 파일에 대해 미리보기 생성
+            Array.from(files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const imagePreview = createImagePreview(e.target.result, file.name, index);
+                        previewContainer.appendChild(imagePreview);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // 현재 평가의 이미지 저장
+            if (currentEvaluationIndex !== null) {
+                evaluationImages[currentEvaluationIndex] = Array.from(files);
+            }
+        }
+        
+        // 이미지 미리보기 엘리먼트 생성
+        function createImagePreview(src, fileName, index) {
+            const div = document.createElement('div');
+            div.className = 'image-preview-item d-inline-block me-2 mb-2 position-relative';
+            div.style.maxWidth = '150px';
+            
+            div.innerHTML = `
+                <img src="${src}" class="img-thumbnail" style="max-width: 100%; max-height: 100px;" alt="${fileName}">
+                <div class="small text-muted text-truncate" style="max-width: 150px;">${fileName}</div>
+                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 rounded-circle" 
+                        style="width: 20px; height: 20px; padding: 0; margin: 2px;"
+                        onclick="removeImagePreview(${index}, this.parentElement)">×</button>
+            `;
+            
+            return div;
+        }
+        
+        // 이미지 미리보기 제거
+        function removeImagePreview(index, element) {
+            element.remove();
+            
+            // 파일 입력에서도 제거 (HTML5 FileList는 수정할 수 없으므로 새로운 파일 리스트 생성)
+            const imageInput = document.getElementById('evaluationImages');
+            if (imageInput && currentEvaluationIndex !== null) {
+                const currentFiles = evaluationImages[currentEvaluationIndex] || [];
+                const newFiles = currentFiles.filter((_, i) => i !== index);
+                evaluationImages[currentEvaluationIndex] = newFiles;
+                
+                // 미리보기 컨테이너의 모든 이미지 다시 인덱싱
+                updateImageIndices();
+            }
+        }
+        
+        // 이미지 인덱스 업데이트
+        function updateImageIndices() {
+            const previewContainer = document.getElementById('imagePreview');
+            if (!previewContainer) return;
+            
+            const imageItems = previewContainer.querySelectorAll('.image-preview-item');
+            imageItems.forEach((item, newIndex) => {
+                const button = item.querySelector('button');
+                if (button) {
+                    button.setAttribute('onclick', `removeImagePreview(${newIndex}, this.parentElement)`);
+                }
+            });
+        }
+        
+        // 기존 이미지 표시
+        function displayExistingImages(images) {
+            const previewContainer = document.getElementById('imagePreview');
+            if (!previewContainer) return;
+            
+            // 기존 미리보기 초기화
+            previewContainer.innerHTML = '';
+            
+            // 기존 이미지들을 미리보기에 표시
+            if (images && images.length > 0) {
+                images.forEach((imageInfo, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'image-preview-item d-inline-block me-2 mb-2 position-relative';
+                    div.style.maxWidth = '150px';
+                    
+                    div.innerHTML = `
+                        <img src="${imageInfo.url}" class="img-thumbnail" style="max-width: 100%; max-height: 100px;" alt="${imageInfo.filename}">
+                        <div class="small text-muted text-truncate" style="max-width: 150px;">${imageInfo.filename}</div>
+                        <div class="small text-success">저장됨</div>
+                    `;
+                    
+                    previewContainer.appendChild(div);
+                });
+            }
+        }
+        
+        // 평가 이미지 보기 모달
+        function showEvaluationImages(index) {
+            const evaluation = evaluationResults[index];
+            if (!evaluation || !evaluation.images || evaluation.images.length === 0) {
+                alert('첨부된 이미지가 없습니다.');
+                return;
+            }
+            
+            // 이미지 갤러리 모달 생성
+            let modalHtml = `
+                <div class="modal fade" id="imageGalleryModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">평가 첨부 이미지 (${evaluation.images.length}개)</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+            `;
+            
+            evaluation.images.forEach((imageInfo, imgIndex) => {
+                modalHtml += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <img src="${imageInfo.url}" class="card-img-top" style="max-height: 300px; object-fit: contain;" alt="${imageInfo.filename}">
+                            <div class="card-body p-2">
+                                <small class="text-muted">${imageInfo.filename}</small>
+                                <br>
+                                <a href="${imageInfo.url}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
+                                    <i class="fas fa-external-link-alt me-1"></i>원본 보기
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            modalHtml += `
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 기존 모달 제거
+            const existingModal = document.getElementById('imageGalleryModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // 새 모달 추가 및 표시
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = new bootstrap.Modal(document.getElementById('imageGalleryModal'));
+            modal.show();
+            
+            // 모달이 닫히면 DOM에서 제거
+            document.getElementById('imageGalleryModal').addEventListener('hidden.bs.modal', function () {
+                this.remove();
+            });
         }
 
         // 전역으로 함수 노출 (브라우저 콘솔에서 호출 가능)
@@ -547,10 +731,16 @@
                 .catch(error => {
                     console.error('기존 평가 결과 불러오기 오류:', error);
                 });
+            
+            // 이미지 업로드 처리
+            setupImageUpload();
         }
         
         // 평가 모달 열기
         function openEvaluationModal(index, controlCode, controlName) {
+            console.log('=== openEvaluationModal called ===');
+            console.log('Parameters:', {index, controlCode, controlName});
+            
             currentEvaluationIndex = index;
             
             // 해당 행의 데이터 가져오기
@@ -577,14 +767,25 @@
             }
             {% endfor %}
             
+            // 기본 디버깅
+            console.log('DEBUG - Modal opened for index:', index);
+            console.log('DEBUG - evaluationResults:', evaluationResults);
+            console.log('DEBUG - evaluationResults[index]:', evaluationResults[index]);
+            
             // 기존 평가 결과가 있다면 로드
             if (evaluationResults[index]) {
                 const result = evaluationResults[index];
+                console.log('DEBUG - Full result data:', result);
+                
                 document.getElementById('descriptionAdequacy').value = result.adequacy || '';
                 document.getElementById('improvementSuggestion').value = result.improvement || '';
                 document.getElementById('overallEffectiveness').value = result.effectiveness || '';
                 document.getElementById('evaluationRationale').value = result.rationale || '';
                 document.getElementById('recommendedActions').value = result.actions || '';
+                
+                // 기존 이미지 표시
+                console.log('DEBUG - Images data:', result.images);
+                displayExistingImages(result.images || []);
             } else {
                 // 폼 초기화
                 document.getElementById('descriptionAdequacy').value = '';
@@ -592,7 +793,14 @@
                 document.getElementById('overallEffectiveness').value = '';
                 document.getElementById('evaluationRationale').value = '';
                 document.getElementById('recommendedActions').value = '';
+                
+                // 이미지 초기화
+                displayExistingImages([]);
             }
+            
+            // 이미지 입력 필드 초기화
+            const imageInput = document.getElementById('evaluationImages');
+            if (imageInput) imageInput.value = '';
             
             const modal = new bootstrap.Modal(document.getElementById('evaluationModal'));
             modal.show();
@@ -646,11 +854,16 @@
             {% endfor %} null;
             
             if (controlCode) {
+                // 이미지 데이터 준비
+                const imageData = evaluationImages[currentEvaluationIndex] || [];
+                const imageFileNames = imageData.map(file => file.name);
+                
                 const requestData = {
                     rcm_id: rcmId,
                     control_code: controlCode,
                     evaluation_data: evaluation,
-                    evaluation_session: currentSession
+                    evaluation_session: currentSession,
+                    image_files: imageFileNames
                 };
                 
                 console.log('=== API Request Debug ===');
@@ -658,17 +871,28 @@
                 console.log('Request data stringified:', JSON.stringify(requestData, null, 2));
                 console.log('evaluation_session in request:', requestData.evaluation_session);
                 
+                // FormData를 사용하여 이미지 파일과 함께 전송
+                const formData = new FormData();
+                formData.append('rcm_id', rcmId);
+                formData.append('control_code', controlCode);
+                formData.append('evaluation_data', JSON.stringify(evaluation));
+                formData.append('evaluation_session', currentSession);
+                
+                // 이미지 파일들 추가
+                if (imageData.length > 0) {
+                    imageData.forEach((file, index) => {
+                        formData.append(`evaluation_image_${index}`, file);
+                    });
+                }
+                
                 fetch('/api/design-evaluation/save', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestData)
+                    // Content-Type 헤더를 제거 (FormData가 자동으로 설정)
+                    body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert('설계평가 결과가 저장되었습니다.');
                         
                         // 서버에서 최신 데이터를 다시 로드하여 리스트 새로고침
                         loadExistingEvaluations();
@@ -745,9 +969,20 @@
                         break;
                 }
                 
+                // 이미지가 있는지 확인
+                let imageDisplay = '';
+                if (evaluation.images && evaluation.images.length > 0) {
+                    const imageCount = evaluation.images.length;
+                    imageDisplay = `<br><small class="text-primary">
+                        <i class="fas fa-image me-1"></i>${imageCount}개 첨부파일
+                        <a href="#" onclick="showEvaluationImages(${index})" class="text-decoration-none ms-1">보기</a>
+                    </small>`;
+                }
+                
                 resultElement.innerHTML = `
                     <span class="badge ${resultClass}">${resultText}</span>
                     <br><small class="text-muted">(${adequacyText})</small>
+                    ${imageDisplay}
                 `;
                 
                 actionElement.innerHTML = evaluation.actions || '<span class="text-muted">-</span>';

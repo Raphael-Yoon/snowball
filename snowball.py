@@ -944,8 +944,8 @@ def user_design_evaluation():
 @app.route('/user/design-evaluation/rcm/<int:rcm_id>')
 @login_required
 def user_design_evaluation_rcm(rcm_id):
-    """RCM 기반 설계평가 페이지 - link5로 리디렉션"""
-    return redirect(url_for('link5.user_design_evaluation_rcm', rcm_id=rcm_id))
+    """RCM 기반 설계평가 페이지 - link6으로 리디렉션"""
+    return redirect(url_for('link6.user_design_evaluation_rcm', rcm_id=rcm_id))
 
 # 이 함수는 snowball_link6.py로 이전됨 - 전체 주석 처리
 # @app.route('/api/design-evaluation/save', methods=['POST'])
