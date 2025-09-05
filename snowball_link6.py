@@ -1,7 +1,10 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session, current_app
-from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, get_user_evaluation_sessions, delete_evaluation_session, create_evaluation_structure, log_user_activity, get_db
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, get_user_evaluation_sessions, delete_evaluation_session, create_evaluation_structure, log_user_activity, get_db, get_or_create_evaluation_header
 from snowball_link5 import get_user_info, is_logged_in
 import sys
+import os
+import json
+from werkzeug.utils import secure_filename
 
 bp_link6 = Blueprint('link6', __name__)
 
@@ -21,21 +24,79 @@ def user_design_evaluation():
                          user_info=user_info,
                          remote_addr=request.remote_addr)
 
+@bp_link6.route('/design-evaluation/rcm/<int:rcm_id>')
+@login_required  
+def user_design_evaluation_rcm(rcm_id):
+    """사용자 디자인 평가 페이지 (RCM별)"""
+    user_info = get_user_info()
+    
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+    user_rcms = get_user_rcms(user_info['user_id'])
+    rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+    
+    if rcm_id not in rcm_ids:
+        flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
+        return redirect(url_for('link6.user_design_evaluation'))
+    
+    # RCM 정보 조회
+    rcm_info = None
+    for rcm in user_rcms:
+        if rcm['rcm_id'] == rcm_id:
+            rcm_info = rcm
+            break
+    
+    # RCM 세부 데이터 조회
+    rcm_details = get_rcm_details(rcm_id)
+    
+    log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 디자인 평가', f'/user/design-evaluation/rcm/{rcm_id}',
+                     request.remote_addr, request.headers.get('User-Agent'))
+    
+    return render_template('user_design_evaluation_rcm.jsp',
+                         rcm_id=rcm_id,
+                         rcm_info=rcm_info,
+                         rcm_details=rcm_details,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
 @bp_link6.route('/api/design-evaluation/save', methods=['POST'])
 @login_required
 def save_design_evaluation_api():
     """설계평가 결과 저장 API"""
     user_info = get_user_info()
-    data = request.get_json()
     
-    sys.stderr.write(f"[DEBUG] Raw request data received: {data}\n")
+    # FormData와 JSON 모두 처리
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        # FormData 처리 (이미지 포함)
+        rcm_id = request.form.get('rcm_id')
+        control_code = request.form.get('control_code')
+        evaluation_data_str = request.form.get('evaluation_data')
+        evaluation_session = request.form.get('evaluation_session')
+        
+        # JSON 문자열을 파싱
+        evaluation_data = json.loads(evaluation_data_str) if evaluation_data_str else None
+        
+        # 이미지 파일 처리
+        uploaded_images = []
+        for key in request.files:
+            if key.startswith('evaluation_image_'):
+                file = request.files[key]
+                if file and file.filename:
+                    uploaded_images.append(file)
+        
+        sys.stderr.write(f"[DEBUG] FormData request - images: {len(uploaded_images)}\n")
+    else:
+        # 기존 JSON 처리
+        data = request.get_json()
+        rcm_id = data.get('rcm_id') if data else None
+        control_code = data.get('control_code') if data else None
+        evaluation_data = data.get('evaluation_data') if data else None
+        evaluation_session = data.get('evaluation_session') if data else None
+        uploaded_images = []
+    
+    sys.stderr.write(f"[DEBUG] Raw request data received\n")
     sys.stderr.write(f"[DEBUG] User info: {user_info}\n")
     sys.stderr.flush()
-    
-    rcm_id = data.get('rcm_id') if data else None
-    control_code = data.get('control_code') if data else None
-    evaluation_data = data.get('evaluation_data') if data else None
-    evaluation_session = data.get('evaluation_session') if data else None  # 평가 세션명
     
     # 디버깅용 로그
     sys.stderr.write(f"[DEBUG] Design evaluation save request: rcm_id={rcm_id}, control_code={control_code}, evaluation_session='{evaluation_session}'\n")
@@ -66,6 +127,57 @@ def save_design_evaluation_api():
                     'success': False,
                     'message': '해당 RCM에 대한 접근 권한이 없습니다.'
                 })
+        
+        # 이미지 파일 저장
+        saved_images = []
+        if uploaded_images:
+            # 헤더 ID 가져오기 (이미지 저장 폴더명으로 사용)
+            with get_db() as conn:
+                header_id = get_or_create_evaluation_header(conn, rcm_id, user_info['user_id'], evaluation_session)
+            
+            # 이미지 저장 디렉토리 생성 (header_id로 분리)
+            upload_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(header_id), control_code)
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            for i, image_file in enumerate(uploaded_images):
+                if image_file and image_file.filename:
+                    # 디버깅 로그
+                    sys.stderr.write(f"[DEBUG] Original filename: '{image_file.filename}'\n")
+                    
+                    # 확장자를 먼저 분리
+                    original_name, original_ext = os.path.splitext(image_file.filename)
+                    sys.stderr.write(f"[DEBUG] Original split - name: '{original_name}', ext: '{original_ext}'\n")
+                    
+                    # 안전한 파일명 생성 (확장자 제외)
+                    safe_name = secure_filename(original_name)
+                    sys.stderr.write(f"[DEBUG] Secure name: '{safe_name}'\n")
+                    
+                    # secure_filename이 빈 문자열을 반환하면 기본 이름 사용
+                    if not safe_name or safe_name.strip() == '' or safe_name == '_':
+                        safe_name = 'evaluation_image'
+                        sys.stderr.write(f"[DEBUG] Using default name because secure_filename returned empty or underscore\n")
+                    
+                    # 중복 방지를 위해 타임스탬프 추가
+                    import time
+                    timestamp = str(int(time.time()))
+                    
+                    # 최종 파일명: 안전한이름_타임스탬프_인덱스.확장자
+                    safe_filename = f"{safe_name}_{timestamp}_{i}{original_ext.lower()}"
+                    sys.stderr.write(f"[DEBUG] Final safe filename: '{safe_filename}'\n")
+                    sys.stderr.flush()
+                    
+                    # 파일 저장
+                    file_path = os.path.join(upload_dir, safe_filename)
+                    image_file.save(file_path)
+                    
+                    # 상대 경로로 저장 (DB 저장용)
+                    relative_path = f"uploads/design_evaluations/{rcm_id}/{header_id}/{control_code}/{safe_filename}"
+                    saved_images.append(relative_path)
+            
+            # 평가 데이터에 이미지 경로 추가
+            if 'images' not in evaluation_data:
+                evaluation_data['images'] = []
+            evaluation_data['images'].extend(saved_images)
         
         # 설계평가 결과 저장
         save_design_evaluation(rcm_id, control_code, user_info['user_id'], evaluation_data, evaluation_session)
@@ -232,13 +344,52 @@ def load_evaluation_data_api(rcm_id):
             # 디버깅용 로그 추가
             print(f"Control {control_code}: evaluation_date = {evaluation_date} (type: {type(evaluation_date)})")
             
+            # 해당 통제의 이미지 파일 찾기
+            saved_images = []
+            
+            # header_id를 찾기 위해 현재 평가 데이터에서 확인
+            current_header_id = header_id
+            if not current_header_id and evaluation_session:
+                # header_id가 없으면 세션명으로 찾기
+                try:
+                    with get_db() as conn:
+                        result = conn.execute('''
+                            SELECT header_id FROM sb_design_evaluation_header
+                            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                        ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchone()
+                        if result:
+                            current_header_id = result['header_id']
+                except Exception as e:
+                    print(f"Error finding header_id: {e}")
+            
+            if current_header_id:
+                image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(current_header_id), control_code)
+                print(f"[DEBUG] Checking image directory: {image_dir}")
+                if os.path.exists(image_dir):
+                    for filename in os.listdir(image_dir):
+                        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
+                            relative_path = f"uploads/design_evaluations/{rcm_id}/{current_header_id}/{control_code}/{filename}"
+                            saved_images.append({
+                                'filename': filename,
+                                'path': relative_path,
+                                'url': f"/static/{relative_path}"
+                            })
+                    print(f"[DEBUG] Found {len(saved_images)} images for control {control_code}")
+                    for img in saved_images:
+                        print(f"[DEBUG] Image: {img}")
+                else:
+                    print(f"[DEBUG] Image directory does not exist: {image_dir}")
+            else:
+                print(f"[DEBUG] No header_id found for control {control_code}")
+            
             evaluation_dict[control_code] = {
                 'adequacy': eval_data['description_adequacy'],
                 'improvement': eval_data['improvement_suggestion'],
                 'effectiveness': eval_data['overall_effectiveness'],
                 'rationale': eval_data['evaluation_rationale'],
                 'actions': eval_data['recommended_actions'],
-                'evaluation_date': evaluation_date
+                'evaluation_date': evaluation_date,
+                'images': saved_images
             }
         
         return jsonify({
