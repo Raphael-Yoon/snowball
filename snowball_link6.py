@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session, current_app
-from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_design_evaluation, get_design_evaluations, get_user_evaluation_sessions, delete_evaluation_session, create_evaluation_structure, log_user_activity, get_db
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, get_user_evaluation_sessions, delete_evaluation_session, create_evaluation_structure, log_user_activity, get_db
 from snowball_link5 import get_user_info, is_logged_in
 import sys
 
@@ -190,10 +190,19 @@ def get_evaluation_sessions_api(rcm_id):
 @login_required
 def load_evaluation_data_api(rcm_id):
     """특정 평가 세션의 데이터 로드 API"""
+    print("***** SNOWBALL_LINK6: load_evaluation_data_api CALLED *****")
     user_info = get_user_info()
     evaluation_session = request.args.get('session')
+    header_id = request.args.get('header_id')
+    print(f"***** SNOWBALL_LINK6: rcm_id={rcm_id}, header_id={header_id}, session={evaluation_session} *****")
     
-    print(f"Load evaluation data API called: rcm_id={rcm_id}, session='{evaluation_session}', user_info={user_info}")
+    print(f"Load evaluation data API called: rcm_id={rcm_id}, session='{evaluation_session}', header_id={header_id}, user_info={user_info}")
+    print(f"***** REQUEST URL: {request.url} *****")
+    print(f"***** RCM_ID from URL parameter: {rcm_id} (type: {type(rcm_id)}) *****")
+    print(f"***** REQUEST ARGS: {dict(request.args)} *****")
+    print(f"***** header_id type: {type(header_id)}, value: '{header_id}' *****")
+    print(f"***** header_id is None: {header_id is None} *****")
+    print(f"***** header_id is empty string: {header_id == ''} *****")
     
     try:
         # 권한 체크
@@ -204,18 +213,32 @@ def load_evaluation_data_api(rcm_id):
             return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
         
         # 평가 데이터 로드
-        evaluations = get_design_evaluations(rcm_id, user_info['user_id'], evaluation_session)
+        if header_id:
+            print(f"***** SNOWBALL_LINK6: Using get_design_evaluations_by_header_id with header_id={header_id} *****")
+            print(f"***** SNOWBALL_LINK6: Parameters - rcm_id={rcm_id}, user_id={user_info['user_id']}, header_id={int(header_id)} *****")
+            evaluations = get_design_evaluations_by_header_id(rcm_id, user_info['user_id'], int(header_id))
+            print(f"***** SNOWBALL_LINK6: Returned {len(evaluations)} evaluations *****")
+        else:
+            print(f"***** SNOWBALL_LINK6: Using get_design_evaluations with session='{evaluation_session}' *****")
+            evaluations = get_design_evaluations(rcm_id, user_info['user_id'], evaluation_session)
+            print(f"***** SNOWBALL_LINK6: Returned {len(evaluations)} evaluations *****")
         
         # 통제별로 정리
         evaluation_dict = {}
         for eval_data in evaluations:
             control_code = eval_data['control_code']
+            evaluation_date = eval_data.get('evaluation_date')
+            
+            # 디버깅용 로그 추가
+            print(f"Control {control_code}: evaluation_date = {evaluation_date} (type: {type(evaluation_date)})")
+            
             evaluation_dict[control_code] = {
                 'adequacy': eval_data['description_adequacy'],
                 'improvement': eval_data['improvement_suggestion'],
                 'effectiveness': eval_data['overall_effectiveness'],
                 'rationale': eval_data['evaluation_rationale'],
-                'actions': eval_data['recommended_actions']
+                'actions': eval_data['recommended_actions'],
+                'evaluation_date': evaluation_date
             }
         
         return jsonify({

@@ -730,17 +730,28 @@ def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
     try:
         with get_db() as conn:
             if evaluation_session:
-                # 특정 평가 세션의 결과 조회
-                evaluations = conn.execute('''
+                # 특정 평가 세션의 가장 최신 결과 조회
+                query = '''
                 SELECT l.*, h.evaluation_session, h.start_date, h.evaluation_status
                 FROM sb_design_evaluation_line l
                 JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
                 WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ?
+                      AND h.header_id = (
+                          SELECT header_id FROM sb_design_evaluation_header
+                          WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                          ORDER BY start_date DESC LIMIT 1
+                      )
                 ORDER BY l.control_sequence, l.control_code
-                ''', (rcm_id, user_id, evaluation_session)).fetchall()
+                '''
+                params = (rcm_id, user_id, evaluation_session, rcm_id, user_id, evaluation_session)
+                print(f"Executing query with session: {query}")
+                print(f"Parameters: rcm_id={rcm_id}, user_id={user_id}, evaluation_session='{evaluation_session}'")
+                final_query = query.replace('?', '{}').format(rcm_id, user_id, f"'{evaluation_session}'", rcm_id, user_id, f"'{evaluation_session}'")
+                print(f"***** FINAL QUERY WITH PARAMS: {final_query} *****")
+                evaluations = conn.execute(query, params).fetchall()
             else:
                 # 가장 최근 세션의 결과 조회
-                evaluations = conn.execute('''
+                query = '''
                     SELECT l.*, h.evaluation_session, h.start_date, h.evaluation_status
                     FROM sb_design_evaluation_line l
                     JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
@@ -751,11 +762,24 @@ def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
                               ORDER BY start_date DESC LIMIT 1
                           )
                     ORDER BY l.control_sequence, l.control_code
-                ''', (rcm_id, user_id, rcm_id, user_id)).fetchall()
+                '''
+                params = (rcm_id, user_id, rcm_id, user_id)
+                print(f"Executing query without session: {query}")
+                print(f"Parameters: rcm_id={rcm_id}, user_id={user_id}")
+                final_query = query.replace('?', '{}').format(rcm_id, user_id, rcm_id, user_id)
+                print(f"***** FINAL QUERY WITH PARAMS: {final_query} *****")
+                evaluations = conn.execute(query, params).fetchall()
             
         print(f"Found {len(evaluations)} evaluation records")
         if evaluations:
             print(f"Sample evaluation columns: {list(evaluations[0].keys())}")
+            # 각 레코드의 evaluation_date 값 출력
+            for i, eval_record in enumerate(evaluations):
+                eval_dict = dict(eval_record)
+                print(f"Record {i+1}: header_id={eval_dict.get('header_id')}, line_id={eval_dict.get('line_id')}, control_code={eval_dict.get('control_code')}, evaluation_date={eval_dict.get('evaluation_date')} (type: {type(eval_dict.get('evaluation_date'))})")
+                if i >= 2:  # 처음 3개만 출력
+                    print("... (showing first 3 records only)")
+                    break
         
         return [dict(eval) for eval in evaluations]
     
@@ -766,11 +790,64 @@ def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
         traceback.print_exc()
         return []
 
+def get_design_evaluations_by_header_id(rcm_id, user_id, header_id):
+    """특정 header_id의 설계평가 결과 조회"""
+    print(f"get_design_evaluations_by_header_id called: rcm_id={rcm_id}, user_id={user_id}, header_id={header_id}")
+    
+    try:
+        with get_db() as conn:
+            # 특정 header_id의 결과 조회 - 간단하게 header_id로만 필터링
+            query = '''
+            SELECT l.*, h.evaluation_session, h.start_date, h.evaluation_status
+            FROM sb_design_evaluation_line l
+            JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
+            WHERE l.header_id = ?
+            ORDER BY l.control_sequence, l.control_code
+            '''
+            params = (header_id,)
+            
+            # 실행할 쿼리를 콘솔에 출력
+            final_query = f"""
+            SELECT l.*, h.evaluation_session, h.start_date, h.evaluation_status
+            FROM sb_design_evaluation_line l
+            JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
+            WHERE l.header_id = {header_id}
+            ORDER BY l.control_sequence, l.control_code
+            """
+            
+            print("="*80)
+            print("📋 EXECUTING SQL QUERY:")
+            print("="*80)
+            print(final_query.strip())
+            print("="*80)
+            evaluations = conn.execute(query, params).fetchall()
+            
+        print(f"Found {len(evaluations)} evaluation records for header_id={header_id}")
+        print(f"***** QUERY EXECUTED: header_id filter applied *****")
+        if evaluations:
+            print(f"Sample evaluation columns: {list(evaluations[0].keys())}")
+            # 각 레코드의 evaluation_date 값 출력
+            for i, eval_record in enumerate(evaluations):
+                eval_dict = dict(eval_record)
+                print(f"Record {i+1}: header_id={eval_dict.get('header_id')}, line_id={eval_dict.get('line_id')}, control_code={eval_dict.get('control_code')}, evaluation_date={eval_dict.get('evaluation_date')} (type: {type(eval_dict.get('evaluation_date'))})")
+                if i >= 2:  # 처음 3개만 출력
+                    print("... (showing first 3 records only)")
+                    break
+        
+        return [dict(eval) for eval in evaluations]
+    
+    except Exception as e:
+        print(f"Error in get_design_evaluations_by_header_id: {e}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        return []
+
 def get_user_evaluation_sessions(rcm_id, user_id):
     """사용자의 설계평가 세션 목록 조회 (Header-Line 구조)"""
     with get_db() as conn:
         sessions = conn.execute('''
-            SELECT h.evaluation_session, h.start_date, h.last_updated,
+            SELECT h.header_id, h.evaluation_session, h.start_date, h.last_updated,
                    h.evaluated_controls, h.total_controls, h.progress_percentage,
                    h.evaluation_status, h.completed_date
             FROM sb_design_evaluation_header h
@@ -842,3 +919,21 @@ def get_operation_evaluations(rcm_id, user_id):
             ORDER BY control_code
         ''', (rcm_id, user_id)).fetchall()
         return [dict(eval) for eval in evaluations]
+
+def count_design_evaluations(rcm_id, user_id):
+    """특정 RCM의 사용자별 설계평가 헤더 개수 조회 (평가 세션 개수)"""
+    with get_db() as conn:
+        count = conn.execute('''
+            SELECT COUNT(*) FROM sb_design_evaluation_header
+            WHERE rcm_id = ? AND user_id = ?
+        ''', (rcm_id, user_id)).fetchone()[0]
+        return count
+
+def count_operation_evaluations(rcm_id, user_id):
+    """특정 RCM의 사용자별 운영평가 완료된 통제 수량 조회 (효율적)"""
+    with get_db() as conn:
+        count = conn.execute('''
+            SELECT COUNT(*) FROM sb_operation_evaluation
+            WHERE rcm_id = ? AND user_id = ?
+        ''', (rcm_id, user_id)).fetchone()[0]
+        return count

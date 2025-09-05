@@ -394,9 +394,12 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // 평가 세션명을 세션 스토리지에 저장
+                    // 평가 세션명과 헤더 ID를 세션 스토리지에 저장
                     sessionStorage.setItem('currentEvaluationSession', evaluationName);
+                    sessionStorage.setItem('currentEvaluationHeaderId', data.header_id);
                     sessionStorage.setItem('isNewEvaluationSession', 'true'); // 새 세션임을 표시
+                    
+                    console.log('New evaluation created - header_id:', data.header_id);
                     
                     // 모달 닫기
                     const modal = bootstrap.Modal.getInstance(document.getElementById('evaluationNameModal'));
@@ -489,7 +492,7 @@
                                                         </small>
                                                     </div>
                                                     <div class="btn-group">
-                                                        <button class="btn btn-sm btn-primary" onclick="resumeEvaluation(${rcmId}, '${session.evaluation_session}')">
+                                                        <button class="btn btn-sm btn-primary" onclick="resumeEvaluation(${rcmId}, '${session.evaluation_session}', ${session.header_id})">
                                                             <i class="fas fa-play me-1"></i>이어하기
                                                         </button>
                                                         <button class="btn btn-sm btn-outline-danger" onclick="deleteEvaluationSession(${rcmId}, '${session.evaluation_session}')">
@@ -519,9 +522,10 @@
         }
         
         // 평가 세션 이어하기
-        function resumeEvaluation(rcmId, sessionName) {
-            // 평가 세션명을 세션 스토리지에 저장
+        function resumeEvaluation(rcmId, sessionName, headerId) {
+            // 평가 세션명과 헤더 ID를 세션 스토리지에 저장
             sessionStorage.setItem('currentEvaluationSession', sessionName);
+            sessionStorage.setItem('currentEvaluationHeaderId', headerId);
             
             // 모달 닫기
             const modal = bootstrap.Modal.getInstance(document.getElementById('sessionSelectionModal'));
