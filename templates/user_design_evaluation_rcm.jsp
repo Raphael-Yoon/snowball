@@ -15,7 +15,12 @@
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><i class="fas fa-clipboard-check me-2"></i>RCM 설계평가</h1>
+                    <div>
+                        <h1><i class="fas fa-clipboard-check me-2"></i>RCM 설계평가</h1>
+                        <div id="evaluationNameDisplay" class="text-primary fw-bold fs-6 mt-1" style="display: none;">
+                            평가명: <span id="currentEvaluationName"></span>
+                        </div>
+                    </div>
                     <div>
                         <a href="/user/design-evaluation" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>목록으로
@@ -84,8 +89,8 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="fas fa-list me-2"></i>통제 설계평가</h5>
                         <div>
-                            <button class="btn btn-sm btn-success me-2" onclick="evaluateAllControls()">
-                                <i class="fas fa-check-double me-1"></i>전체 평가
+                            <button class="btn btn-sm btn-success me-2" onclick="evaluateAllControls()" title="임시 데이터를 생성하여 화면에만 표시 (실제 저장되지 않음)">
+                                <i class="fas fa-check-double me-1"></i>전체 평가 (임시)
                             </button>
                             <button class="btn btn-sm btn-warning me-2" onclick="resetAllEvaluations()">
                                 <i class="fas fa-undo me-1"></i>평가 초기화
@@ -101,14 +106,14 @@
                             <table class="table table-striped" id="controlsTable">
                                 <thead>
                                     <tr>
-                                        <th width="8%">통제코드</th>
-                                        <th width="15%">통제명</th>
-                                        <th width="33%">통제활동설명</th>
+                                        <th width="6%">통제코드</th>
+                                        <th width="12%">통제명</th>
+                                        <th width="28%">통제활동설명</th>
                                         <th width="8%">통제주기</th>
                                         <th width="8%">통제유형</th>
-                                        <th width="10%">설계평가</th>
-                                        <th width="10%">평가결과</th>
-                                        <th width="8%">조치사항</th>
+                                        <th width="9%">설계평가</th>
+                                        <th width="9%">평가결과</th>
+                                        <th width="18%">조치사항</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -117,10 +122,10 @@
                                         <td><code>{{ detail.control_code }}</code></td>
                                         <td><strong>{{ detail.control_name }}</strong></td>
                                         <td>
-                                            <span class="text-truncate" style="max-width: 500px; display: inline-block;" 
-                                                  title="{{ detail.control_description or '-' }}">
+                                            <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; max-height: calc(1.4em * 2);" 
+                                                 title="{{ detail.control_description or '-' }}">
                                                 {{ detail.control_description or '-' }}
-                                            </span>
+                                            </div>
                                         </td>
                                         <td>{{ detail.control_frequency or '-' }}</td>
                                         <td>{{ detail.control_type or '-' }}</td>
@@ -176,27 +181,43 @@
                         </div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-3">
-                                    <label class="form-label"><strong>통제코드:</strong></label>
-                                    <p id="modalControlCode" class="text-primary fw-bold"></p>
+                                <div class="col-md-6">
+                                    <table class="table table-borderless mb-0">
+                                        <tr>
+                                            <th style="width: 100px; white-space: nowrap; vertical-align: top;">통제코드:</th>
+                                            <td style="vertical-align: top;">
+                                                <span id="modalControlCode" class="text-primary fw-bold"></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th style="width: 100px; white-space: nowrap; vertical-align: top;">통제명:</th>
+                                            <td style="vertical-align: top;">
+                                                <span id="modalControlName" class="fw-bold"></span>
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label"><strong>통제명:</strong></label>
-                                    <p id="modalControlName" class="fw-bold"></p>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <label class="form-label"><strong>통제주기:</strong></label>
-                                    <p id="modalControlFrequency" class="text-muted"></p>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label"><strong>통제유형:</strong></label>
-                                    <p id="modalControlType" class="text-muted"></p>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label"><strong>통제구분:</strong></label>
-                                    <p id="modalControlNature" class="text-muted"></p>
+                                    <table class="table table-borderless mb-0">
+                                        <tr>
+                                            <th style="width: 100px; white-space: nowrap; vertical-align: top;">통제주기:</th>
+                                            <td style="vertical-align: top;">
+                                                <span id="modalControlFrequency" class="text-muted"></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th style="width: 100px; white-space: nowrap; vertical-align: top;">통제유형:</th>
+                                            <td style="vertical-align: top;">
+                                                <span id="modalControlType" class="text-muted"></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th style="width: 100px; white-space: nowrap; vertical-align: top;">통제구분:</th>
+                                            <td style="vertical-align: top;">
+                                                <span id="modalControlNature" class="text-muted"></span>
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -364,15 +385,50 @@
         let evaluationResults = {};
         const rcmId = {{ rcm_id }};
         
-        // 페이지 로드 시 기존 평가 결과 불러오기
-        document.addEventListener('DOMContentLoaded', function() {
-            // 페이지 로드 시 세션 스토리지 상태 확인
-            console.log('=== Page Load SessionStorage Debug ===');
-            console.log('sessionStorage length:', sessionStorage.length);
+        console.log('***** JavaScript rcmId value:', rcmId, '(type:', typeof rcmId, ') *****');
+        
+        // SessionStorage 디버깅 함수
+        function debugSessionStorage() {
+            console.log('=== SessionStorage Debug ===');
+            console.log('sessionStorage.length:', sessionStorage.length);
+            console.log('All sessionStorage items:');
             for (let i = 0; i < sessionStorage.length; i++) {
                 const key = sessionStorage.key(i);
-                console.log(`${key}: ${sessionStorage.getItem(key)}`);
+                const value = sessionStorage.getItem(key);
+                console.log(`  "${key}": "${value}" (type: ${typeof value})`);
             }
+            console.log('Direct access:');
+            console.log('  currentEvaluationSession:', `"${sessionStorage.getItem('currentEvaluationSession')}"`);
+            console.log('  currentEvaluationHeaderId:', `"${sessionStorage.getItem('currentEvaluationHeaderId')}"`);
+            console.log('========================');
+        }
+
+        // SessionStorage 수동 설정 함수 (디버깅용)
+        function setManualSessionStorage() {
+            console.log('Setting manual sessionStorage values...');
+            sessionStorage.setItem('currentEvaluationSession', 'FY25_설계평가');
+            sessionStorage.setItem('currentEvaluationHeaderId', '8');
+            console.log('Manual values set. Current sessionStorage:');
+            debugSessionStorage();
+        }
+
+        // SessionStorage 초기화 함수 (디버깅용)  
+        function clearSessionStorage() {
+            console.log('Clearing all sessionStorage...');
+            sessionStorage.clear();
+            console.log('SessionStorage cleared:');
+            debugSessionStorage();
+        }
+
+        // 전역으로 함수 노출 (브라우저 콘솔에서 호출 가능)
+        window.debugSessionStorage = debugSessionStorage;
+        window.setManualSessionStorage = setManualSessionStorage;
+        window.clearSessionStorage = clearSessionStorage;
+
+        // 페이지 로드 시 기존 평가 결과 불러오기
+        document.addEventListener('DOMContentLoaded', function() {
+            // SessionStorage 상태 확인
+            debugSessionStorage();
             
             // 새 세션인지 확인
             const isNewSession = sessionStorage.getItem('isNewEvaluationSession') === 'true';
@@ -388,6 +444,9 @@
                 console.log('No session found, created default session:', defaultSession);
             }
             
+            // 평가명 화면에 표시
+            updateEvaluationNameDisplay();
+            
             if (isNewSession && currentSession) {
                 // 새 세션 알림 표시
                 showNewSessionAlert(currentSession);
@@ -397,6 +456,17 @@
             
             loadExistingEvaluations();
         });
+        
+        // 평가명 화면에 표시
+        function updateEvaluationNameDisplay() {
+            const currentSession = sessionStorage.getItem('currentEvaluationSession');
+            if (currentSession) {
+                document.getElementById('currentEvaluationName').textContent = currentSession;
+                document.getElementById('evaluationNameDisplay').style.display = 'block';
+            } else {
+                document.getElementById('evaluationNameDisplay').style.display = 'none';
+            }
+        }
         
         // 새 세션 알림 표시
         function showNewSessionAlert(sessionName) {
@@ -428,20 +498,46 @@
         // 기존 평가 결과 불러오기
         function loadExistingEvaluations() {
             const currentSession = sessionStorage.getItem('currentEvaluationSession');
-            const url = currentSession ? 
-                `/api/design-evaluation/load/${rcmId}?session=${encodeURIComponent(currentSession)}` : 
-                `/api/design-evaluation/load/${rcmId}`;
+            const headerId = sessionStorage.getItem('currentEvaluationHeaderId');
+            
+            console.log('DEBUG - SessionStorage values:');
+            console.log('currentEvaluationSession:', currentSession);
+            console.log('currentEvaluationHeaderId:', headerId);
+            console.log('headerId type:', typeof headerId);
+            console.log('headerId is null:', headerId === null);
+            console.log('headerId is undefined:', headerId === undefined);
+            
+            let url;
+            if (headerId && headerId !== 'null' && headerId !== 'undefined') {
+                url = `/api/design-evaluation/load/${rcmId}?header_id=${headerId}`;
+                console.log('Using header_id route');
+            } else if (currentSession) {
+                url = `/api/design-evaluation/load/${rcmId}?session=${encodeURIComponent(currentSession)}`;
+                console.log('Using session route');
+            } else {
+                url = `/api/design-evaluation/load/${rcmId}`;
+                console.log('Using default route');
+            }
+                
+            console.log('Loading evaluations from URL:', url);
                 
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Full API response:', data);
+                    
                     if (data.success && data.evaluations) {
+                        console.log('Evaluation data received:', data.evaluations);
+                        
                         // 컨트롤 코드를 인덱스로 매핑
                         {% for detail in rcm_details %}
                         const controlCode{{ loop.index }} = '{{ detail.control_code }}';
                         if (data.evaluations[controlCode{{ loop.index }}]) {
-                            evaluationResults[{{ loop.index }}] = data.evaluations[controlCode{{ loop.index }}];
-                            updateEvaluationUI({{ loop.index }}, data.evaluations[controlCode{{ loop.index }}]);
+                            const evaluationData = data.evaluations[controlCode{{ loop.index }}];
+                            console.log(`Control ${controlCode{{ loop.index }}} data:`, evaluationData);
+                            
+                            evaluationResults[{{ loop.index }}] = evaluationData;
+                            updateEvaluationUI({{ loop.index }}, evaluationData);
                         }
                         {% endfor %}
                         
@@ -467,9 +563,8 @@
             
             // 통제 세부 정보 설정
             const description = cells[2].textContent.trim();
-            const keyControl = cells[3].textContent.trim();
-            const frequency = cells[4].textContent.trim();
-            const type = cells[5].textContent.trim();
+            const frequency = cells[3].textContent.trim();
+            const type = cells[4].textContent.trim();
             
             document.getElementById('modalControlDescription').textContent = description || '통제활동 설명이 등록되지 않았습니다.';
             document.getElementById('modalControlFrequency').textContent = frequency || '-';
@@ -598,8 +693,23 @@
             const actionElement = document.getElementById(`action-${index}`);
             const buttonElement = document.getElementById(`eval-btn-${index}`);
             
-            // evaluation_date가 있을 때만 완료로 표시
-            if (evaluation.evaluation_date) {
+            // 디버깅용 로그 추가
+            console.log(`UpdateEvaluationUI - Index: ${index}, evaluation_date: ${evaluation.evaluation_date} (type: ${typeof evaluation.evaluation_date})`);
+            
+            // evaluation_date가 있을 때만 완료로 표시 (null, undefined, 빈 문자열 모두 제외)
+            const hasValidEvaluationDate = evaluation.evaluation_date && 
+                                         evaluation.evaluation_date !== '' && 
+                                         evaluation.evaluation_date !== null &&
+                                         evaluation.evaluation_date !== 'null';
+            
+            // 임시평가 데이터인지 확인 (evaluation_date는 없지만 평가 데이터는 있는 경우)
+            const isTemporaryEvaluation = !hasValidEvaluationDate && 
+                                        evaluation.adequacy && 
+                                        evaluation.effectiveness;
+            
+            console.log(`Index ${index} - hasValidEvaluationDate: ${hasValidEvaluationDate}, isTemporaryEvaluation: ${isTemporaryEvaluation}`);
+            
+            if (hasValidEvaluationDate) {
                 // 결과 표시 (종합 효과성 기준)
                 let resultClass = '';
                 let resultText = '';
@@ -646,8 +756,57 @@
                 buttonElement.innerHTML = '<i class="fas fa-check me-1"></i>완료';
                 buttonElement.classList.remove('btn-outline-success');
                 buttonElement.classList.add('btn-success');
+            } else if (isTemporaryEvaluation) {
+                // 임시평가 데이터 표시 (저장되지 않은 샘플 데이터)
+                let resultClass = '';
+                let resultText = '';
+                switch(evaluation.effectiveness) {
+                    case 'effective':
+                        resultClass = 'bg-info';  // 파란색으로 임시 데이터 구분
+                        resultText = '효과적 (임시)';
+                        break;
+                    case 'partially_effective':
+                        resultClass = 'bg-info';
+                        resultText = '부분적 효과적 (임시)';
+                        break;
+                    case 'ineffective':
+                        resultClass = 'bg-info';
+                        resultText = '비효과적 (임시)';
+                        break;
+                }
+                
+                let adequacyText = '';
+                switch(evaluation.adequacy) {
+                    case 'adequate':
+                        adequacyText = '설명 적절';
+                        break;
+                    case 'partially_adequate':
+                        adequacyText = '설명 부분적';
+                        break;
+                    case 'inadequate':
+                        adequacyText = '설명 부적절';
+                        break;
+                    case 'missing':
+                        adequacyText = '설명 누락';
+                        break;
+                }
+                
+                resultElement.innerHTML = `
+                    <span class="badge ${resultClass}" title="임시 데이터 - 저장되지 않음">${resultText}</span>
+                    <br><small class="text-muted">(${adequacyText})</small>
+                `;
+                
+                // 조치사항도 (임시) 표시
+                const actionText = evaluation.actions || '조치사항 없음';
+                actionElement.innerHTML = `<span class="text-info" title="임시 데이터 - 저장되지 않음">${actionText} <small>(임시)</small></span>`;
+                
+                // 버튼 상태 - 임시평가 상태
+                buttonElement.innerHTML = '<i class="fas fa-edit me-1"></i>실제평가';
+                buttonElement.classList.remove('btn-success');
+                buttonElement.classList.add('btn-outline-primary');
+                buttonElement.title = '실제 평가를 수행하여 저장하세요';
             } else {
-                // evaluation_date가 없으면 미완료 상태로 표시
+                // evaluation_date가 없고 임시평가도 아니면 미평가 상태로 표시
                 resultElement.innerHTML = '<span class="badge bg-secondary">미평가</span>';
                 actionElement.innerHTML = '<span class="text-muted">-</span>';
                 
@@ -691,9 +850,9 @@
             }
         }
         
-        // 전체 평가 (샘플 데이터로 자동 평가)
+        // 전체 평가 (샘플 데이터로 자동 평가 - 임시 데이터만 표시, 저장하지 않음)
         function evaluateAllControls() {
-            if (!confirm('모든 통제에 대해 샘플 설계평가를 수행하시겠습니까?\n(실제 업무에서는 각 통제를 개별적으로 검토해야 합니다)')) {
+            if (!confirm('모든 통제에 대해 샘플 설계평가를 수행하시겠습니까?\n\n⚠️ 주의사항:\n- 이 기능은 임시 데이터를 생성하여 화면에만 표시합니다\n- 실제로 데이터베이스에 저장되지 않습니다\n- 실제 업무에서는 각 통제를 개별적으로 검토해야 합니다')) {
                 return;
             }
             
@@ -726,18 +885,17 @@
                         actions: actionText
                     };
                     
+                    // 임시 데이터로만 화면에 표시 (서버에 저장하지 않음)
                     evaluationResults[i] = evaluation;
                     updateEvaluationUI(i, evaluation);
                     
-                    // 서버에 실제 저장
-                    saveEvaluationToServer(i, evaluation);
+                    // evaluation_date는 설정하지 않음 (저장되지 않은 임시 데이터이므로)
                 }
             }
             
-            alert('전체 설계평가가 완료되었습니다.');
+            alert('임시 설계평가 데이터가 생성되었습니다.\n\n📢 안내사항:\n- 화면에 표시된 데이터는 임시 데이터입니다\n- 실제로 저장되지 않았습니다\n- 개별 통제를 클릭하여 실제 평가를 수행해주세요');
             
-            // 서버에서 최신 데이터를 다시 로드하여 리스트 새로고침
-            loadExistingEvaluations();
+            // 임시 데이터이므로 서버에서 다시 로드하지 않음
         }
         
         // 서버에 평가 결과 저장 (전체 평가용)
