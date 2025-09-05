@@ -1,249 +1,369 @@
-from flask import Blueprint, request, jsonify
-from openai import OpenAI
-import os
-import uuid
+from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session, current_app
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, get_user_evaluation_sessions, delete_evaluation_session, create_evaluation_structure, log_user_activity, get_db
+from snowball_link5 import get_user_info, is_logged_in
+import sys
 
 bp_link6 = Blueprint('link6', __name__)
 
-# 미리 정의된 질문 목록
-PREDEFINED_QUESTIONS = [
-    "시스템 이름을 적어주세요.",
-    "사용하고 있는 시스템은 상용소프트웨어입니까?",
-    "기능을 회사내부에서 수정하여 사용할 수 있습니까?",
-    "Cloud 서비스를 사용하고 있습니까?",
-    "어떤 종류의 Cloud입니까?",
-    "Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?",
-    "OS 종류와 버전을 작성해 주세요.",
-    "OS 접근제어 Tool 을 사용하고 있습니까?",
-    "DB 종류와 버전을 작성해 주세요.",
-    "DB 접근제어 Tool 을 사용하고 있습니까?",
-    "별도의 Batch Schedule Tool 을 사용하고 있습니까?",
-    "사용자 권한부여 이력이 시스템에 기록되고 있습니까?",
-    "사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?",
-    "권한이 부여되는 절차를 기술해 주세요.",
-    "사용자 권한회수 이력이 시스템에 기록되고 있습니까?",
-    "부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?",
-    "부서이동 등 기존권한의 회수가 필요한 경우 수행되는 절차를 기술해 주세요.",
-    "퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?",
-    "퇴사자 발생시 접근권한을 차단하는(계정 삭제 등) 절차를 기술해 주세요.",
-    "전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?",
-    "패스워드 설정사항을 기술해 주세요(최소자리, 복잡성, 변경주기 등)"
-]
+# 설계평가 관련 기능들
 
-# 질문 스킵 로직 매핑 (0-based 인덱스 사용)
-QUESTION_SKIP_LOGIC = {
-    1: {  # "상용소프트웨어입니까?" (인덱스 1)
-        "skip_if": ["아니오", "N", "no", "아니다"],
-        "skip_to": [2]  # "기능을 회사내부에서 수정하여 사용할 수 있습니까?" 스킵 (인덱스 2)
-    },
-    3: {  # "Cloud 서비스를 사용하고 있습니까?" (인덱스 3)
-        "skip_if": ["아니오", "N", "no", "아니다"],
-        "skip_to": [4, 5]  # Cloud 관련 후속 질문들 스킵 (인덱스 4, 5)
-    },
-    12: {  # "사용자가 새로운 권한이 필요한 경우... 절차가 있습니까?" (인덱스 12)
-        "skip_if": ["아니오", "N", "no", "아니다"],
-        "skip_to": [13]  # "절차를 기술해 주세요" 스킵 (인덱스 13)
-    },
-    15: {  # "기존권한의 회수가 필요한 경우... 절차가 있습니까?" (인덱스 15)
-        "skip_if": ["아니오", "N", "no", "아니다"],
-        "skip_to": [16]  # "절차를 기술해 주세요" 스킵 (인덱스 16)
-    },
-    17: {  # "퇴사자 발생시... 절차가 있습니까?" (인덱스 17)
-        "skip_if": ["아니오", "N", "no", "아니다"],
-        "skip_to": [18]  # "절차를 기술해 주세요" 스킵 (인덱스 18)
-    }
-}
+@bp_link6.route('/design-evaluation')
+@login_required
+def user_design_evaluation():
+    """설계평가 페이지"""
+    user_info = get_user_info()
+    
+    log_user_activity(user_info, 'PAGE_ACCESS', '설계평가', '/user/design-evaluation', 
+                     request.remote_addr, request.headers.get('User-Agent'))
+    
+    return render_template('user_design_evaluation.jsp',
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
 
-# 세션별 데이터 저장
-user_sessions = {}
-conversation_histories = {}
-
-def _get_openai_client():
-    api_key = os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        return None
-    return OpenAI(api_key=api_key)
-
-def _get_next_question_index(current_index, user_answer, skipped_questions):
-    """다음 질문 인덱스를 결정하는 함수 (스킵 로직 포함)"""
-    # 현재 질문에 스킵 로직이 있는지 확인
-    if current_index in QUESTION_SKIP_LOGIC:
-        skip_config = QUESTION_SKIP_LOGIC[current_index]
-        # 사용자 답변이 스킵 조건에 해당하는지 확인
-        if any(skip_word.lower() in user_answer.lower() for skip_word in skip_config["skip_if"]):
-            # 스킵할 질문들을 기록
-            for skip_index in skip_config["skip_to"]:
-                skipped_questions.add(skip_index)
+@bp_link6.route('/api/design-evaluation/save', methods=['POST'])
+@login_required
+def save_design_evaluation_api():
+    """설계평가 결과 저장 API"""
+    user_info = get_user_info()
+    data = request.get_json()
     
-    # 다음 질문 인덱스 찾기 (스킵된 질문들 제외)
-    next_index = current_index + 1
-    while next_index < len(PREDEFINED_QUESTIONS) and next_index in skipped_questions:
-        next_index += 1
+    sys.stderr.write(f"[DEBUG] Raw request data received: {data}\n")
+    sys.stderr.write(f"[DEBUG] User info: {user_info}\n")
+    sys.stderr.flush()
     
-    return next_index
-
-
-@bp_link6.route('/link6_start_interview', methods=['POST'])
-def link6_start_interview():
-    # 새 인터뷰 세션 시작
-    session_id = str(uuid.uuid4())
+    rcm_id = data.get('rcm_id') if data else None
+    control_code = data.get('control_code') if data else None
+    evaluation_data = data.get('evaluation_data') if data else None
+    evaluation_session = data.get('evaluation_session') if data else None  # 평가 세션명
     
-    # 세션 데이터 초기화
-    user_sessions[session_id] = {
-        'current_question_index': 0,
-        'user_answers': [],
-        'completed': False,
-        'skipped_questions': set(),  # 스킵된 질문 인덱스들
-        'total_questions_to_answer': len(PREDEFINED_QUESTIONS)  # 동적으로 업데이트됨
-    }
-    conversation_histories[session_id] = []
+    # 디버깅용 로그
+    sys.stderr.write(f"[DEBUG] Design evaluation save request: rcm_id={rcm_id}, control_code={control_code}, evaluation_session='{evaluation_session}'\n")
+    sys.stderr.flush()
     
-    # 첫 번째 질문 반환
-    first_question = PREDEFINED_QUESTIONS[0]
-    
-    return jsonify({
-        'session_id': session_id,
-        'question': first_question,
-        'question_number': 1,
-        'total_questions': len(PREDEFINED_QUESTIONS),
-        'message': '인터뷰를 시작합니다!'
-    })
-
-@bp_link6.route('/link6_submit_answer', methods=['POST'])
-def link6_submit_answer():
-    data = request.get_json() or {}
-    session_id = data.get('session_id', '')
-    user_answer = data.get('answer', '').strip()
-    
-    if not session_id or session_id not in user_sessions:
-        return jsonify({'error': '유효하지 않은 세션입니다.'}), 400
-    
-    if not user_answer:
-        return jsonify({'error': '답변을 입력해주세요.'}), 400
-    
-    session_data = user_sessions[session_id]
-    current_index = session_data['current_question_index']
-    
-    if current_index >= len(PREDEFINED_QUESTIONS):
-        return jsonify({'error': '모든 질문이 완료되었습니다.'}), 400
-    
-    # 사용자 답변 저장
-    current_question = PREDEFINED_QUESTIONS[current_index]
-    session_data['user_answers'].append({
-        'question': current_question,
-        'answer': user_answer,
-        'timestamp': str(uuid.uuid4())[:8]
-    })
-    
-    # 대화 히스토리에 추가
-    conversation_histories[session_id].extend([
-        {"role": "assistant", "content": current_question},
-        {"role": "user", "content": user_answer}
-    ])
-    
-    # 다음 질문 인덱스 결정 (스킵 로직 적용)
-    next_index = _get_next_question_index(
-        current_index, 
-        user_answer, 
-        session_data['skipped_questions']
-    )
-    
-    # 전체 질문 수 업데이트 (스킵된 질문 제외)
-    session_data['total_questions_to_answer'] = len(PREDEFINED_QUESTIONS) - len(session_data['skipped_questions'])
-    
-    if next_index >= len(PREDEFINED_QUESTIONS):
-        # 모든 질문 완료
-        session_data['completed'] = True
+    if not all([rcm_id, control_code, evaluation_data, evaluation_session]):
+        missing_fields = []
+        if not rcm_id: missing_fields.append('RCM ID')
+        if not control_code: missing_fields.append('통제 코드')
+        if not evaluation_data: missing_fields.append('평가 데이터')
+        if not evaluation_session: missing_fields.append('세션명')
+        
         return jsonify({
-            'completed': True,
-            'message': '모든 질문에 답변해주셔서 감사합니다!',
-            'total_answers': len(session_data['user_answers']),
-            'skipped_questions': len(session_data['skipped_questions'])
+            'success': False,
+            'message': f'필수 데이터가 누락되었습니다: {", ".join(missing_fields)}'
         })
     
-    # 다음 질문으로 이동
-    session_data['current_question_index'] = next_index
-    next_question = PREDEFINED_QUESTIONS[next_index]
-    
-    # 실제 답변한 질문 수 계산
-    answered_questions = len(session_data['user_answers'])
-    
-    return jsonify({
-        'question': next_question,
-        'question_number': answered_questions + 1,
-        'total_questions': session_data['total_questions_to_answer'],
-        'session_id': session_id,
-        'skipped_info': f"{len(session_data['skipped_questions'])}개 질문 스킵됨" if session_data['skipped_questions'] else None
-    })
-
-@bp_link6.route('/link6_get_summary', methods=['POST'])
-def link6_get_summary():
-    data = request.get_json() or {}
-    session_id = data.get('session_id', '')
-    
-    if not session_id or session_id not in user_sessions:
-        return jsonify({'error': '유효하지 않은 세션입니다.'}), 400
-    
-    session_data = user_sessions[session_id]
-    if not session_data['completed']:
-        return jsonify({'error': '아직 인터뷰가 완료되지 않았습니다.'}), 400
-    
-    client = _get_openai_client()
-    if client is None:
-        return jsonify({'error': 'OPENAI_API_KEY가 설정되지 않았습니다.'}), 500
-
     try:
-        # 사용자 답변들을 정리해서 요약 요청
-        answers_text = "\n".join([
-            f"Q: {qa['question']}\nA: {qa['answer']}\n"
-            for qa in session_data['user_answers']
-        ])
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+        with get_db() as conn:
+            access_check = conn.execute('''
+                SELECT permission_type FROM sb_user_rcm
+                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+            ''', (user_info['user_id'], rcm_id)).fetchone()
+            
+            if not access_check:
+                return jsonify({
+                    'success': False,
+                    'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                })
         
-        summary_prompt = f"""
-다음은 IT 시스템에 대한 정보 수집 결과입니다. 답변을 바탕으로 시스템 현황을 분석하여 요약해주세요:
-
-{answers_text}
-
-다음 형식으로 요약해주세요:
-1. 시스템 개요 (시스템명, 유형, 클라우드 여부 등)
-2. 기술적 환경 (OS, DB, 보안도구 등)
-3. 권한 관리 현황 (권한 부여/회수 절차, 모니터링 등)
-4. 보안 수준 평가 및 개선 권장사항
-5. 컴플라이언스 관련 사항
-"""
+        # 설계평가 결과 저장
+        save_design_evaluation(rcm_id, control_code, user_info['user_id'], evaluation_data, evaluation_session)
         
-        model_name = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
-        completion = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": "당신은 IT 시스템 보안 및 컴플라이언스 전문가입니다. 기업의 IT 환경을 분석하고 보안 위험도를 평가하는 역할을 합니다."},
-                {"role": "user", "content": summary_prompt}
-            ],
-            max_completion_tokens=1000
-        )
-        summary = completion.choices[0].message.content or '요약을 생성할 수 없습니다.'
+        # 활동 로그 기록
+        log_user_activity(user_info, 'DESIGN_EVALUATION', f'설계평가 저장 - {control_code}', 
+                         f'/api/design-evaluation/save', 
+                         request.remote_addr, request.headers.get('User-Agent'))
         
         return jsonify({
-            'summary': summary,
-            'user_answers': session_data['user_answers'],
-            'session_id': session_id
+            'success': True,
+            'message': '새로운 설계평가 결과가 저장되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"설계평가 저장 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': '저장 중 오류가 발생했습니다.'
+        })
+
+@bp_link6.route('/api/design-evaluation/reset', methods=['POST'])
+@login_required
+def reset_design_evaluations_api():
+    """설계평가 결과 초기화 API"""
+    user_info = get_user_info()
+    data = request.get_json()
+    
+    rcm_id = data.get('rcm_id')
+    
+    if not rcm_id:
+        return jsonify({
+            'success': False,
+            'message': 'RCM ID가 누락되었습니다.'
+        })
+    
+    try:
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+        with get_db() as conn:
+            access_check = conn.execute('''
+                SELECT permission_type FROM sb_user_rcm
+                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+            ''', (user_info['user_id'], rcm_id)).fetchone()
+            
+            if not access_check:
+                return jsonify({
+                    'success': False,
+                    'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                })
+            
+            # 해당 사용자의 모든 설계평가 결과 삭제 (Header-Line 구조)
+            # 1. 먼저 line 레코드들 삭제
+            conn.execute('''
+                DELETE FROM sb_design_evaluation_line 
+                WHERE header_id IN (
+                    SELECT header_id FROM sb_design_evaluation_header 
+                    WHERE rcm_id = ? AND user_id = ?
+                )
+            ''', (rcm_id, user_info['user_id']))
+            
+            # 2. header 레코드 삭제
+            cursor = conn.execute('''
+                DELETE FROM sb_design_evaluation_header 
+                WHERE rcm_id = ? AND user_id = ?
+            ''', (rcm_id, user_info['user_id']))
+            deleted_count = cursor.rowcount
+            
+            conn.commit()
+        
+        # 활동 로그 기록
+        log_user_activity(user_info, 'DESIGN_EVALUATION_RESET', f'설계평가 초기화 - RCM ID: {rcm_id}', 
+                         f'/api/design-evaluation/reset', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({
+            'success': True,
+            'message': f'{deleted_count}개의 설계평가 결과가 초기화되었습니다.',
+            'deleted_count': deleted_count
+        })
+        
+    except Exception as e:
+        print(f"설계평가 초기화 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': '초기화 중 오류가 발생했습니다.'
+        })
+
+# 임시 비활성화 - 테이블 구조 문제로 인해
+# @bp_link6.route('/api/design-evaluation/versions/<int:rcm_id>/<control_code>')
+# @login_required
+# def get_evaluation_versions_api(rcm_id, control_code):
+#     return jsonify({'success': False, 'message': '기능 준비 중입니다.'}), 503
+
+@bp_link6.route('/api/design-evaluation/sessions/<int:rcm_id>')
+@login_required
+def get_evaluation_sessions_api(rcm_id):
+    """사용자의 설계평가 세션 목록 조회 API"""
+    user_info = get_user_info()
+    
+    try:
+        # 권한 체크
+        user_rcms = get_user_rcms(user_info['user_id'])
+        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+        
+        if rcm_id not in rcm_ids:
+            return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
+        
+        # 평가 세션 목록 조회
+        sessions = get_user_evaluation_sessions(rcm_id, user_info['user_id'])
+        
+        return jsonify({
+            'success': True,
+            'sessions': sessions,
+            'total_count': len(sessions)
+        })
+        
+    except Exception as e:
+        print(f"평가 세션 조회 오류: {e}")
+        return jsonify({'success': False, 'message': '세션 조회 중 오류가 발생했습니다.'}), 500
+
+@bp_link6.route('/api/design-evaluation/load/<int:rcm_id>')
+@login_required
+def load_evaluation_data_api(rcm_id):
+    """특정 평가 세션의 데이터 로드 API"""
+    print("***** SNOWBALL_LINK6: load_evaluation_data_api CALLED *****")
+    user_info = get_user_info()
+    evaluation_session = request.args.get('session')
+    header_id = request.args.get('header_id')
+    print(f"***** SNOWBALL_LINK6: rcm_id={rcm_id}, header_id={header_id}, session={evaluation_session} *****")
+    
+    print(f"Load evaluation data API called: rcm_id={rcm_id}, session='{evaluation_session}', header_id={header_id}, user_info={user_info}")
+    print(f"***** REQUEST URL: {request.url} *****")
+    print(f"***** RCM_ID from URL parameter: {rcm_id} (type: {type(rcm_id)}) *****")
+    print(f"***** REQUEST ARGS: {dict(request.args)} *****")
+    print(f"***** header_id type: {type(header_id)}, value: '{header_id}' *****")
+    print(f"***** header_id is None: {header_id is None} *****")
+    print(f"***** header_id is empty string: {header_id == ''} *****")
+    
+    try:
+        # 권한 체크
+        user_rcms = get_user_rcms(user_info['user_id'])
+        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+        
+        if rcm_id not in rcm_ids:
+            return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
+        
+        # 평가 데이터 로드
+        if header_id:
+            print(f"***** SNOWBALL_LINK6: Using get_design_evaluations_by_header_id with header_id={header_id} *****")
+            print(f"***** SNOWBALL_LINK6: Parameters - rcm_id={rcm_id}, user_id={user_info['user_id']}, header_id={int(header_id)} *****")
+            evaluations = get_design_evaluations_by_header_id(rcm_id, user_info['user_id'], int(header_id))
+            print(f"***** SNOWBALL_LINK6: Returned {len(evaluations)} evaluations *****")
+        else:
+            print(f"***** SNOWBALL_LINK6: Using get_design_evaluations with session='{evaluation_session}' *****")
+            evaluations = get_design_evaluations(rcm_id, user_info['user_id'], evaluation_session)
+            print(f"***** SNOWBALL_LINK6: Returned {len(evaluations)} evaluations *****")
+        
+        # 통제별로 정리
+        evaluation_dict = {}
+        for eval_data in evaluations:
+            control_code = eval_data['control_code']
+            evaluation_date = eval_data.get('evaluation_date')
+            
+            # 디버깅용 로그 추가
+            print(f"Control {control_code}: evaluation_date = {evaluation_date} (type: {type(evaluation_date)})")
+            
+            evaluation_dict[control_code] = {
+                'adequacy': eval_data['description_adequacy'],
+                'improvement': eval_data['improvement_suggestion'],
+                'effectiveness': eval_data['overall_effectiveness'],
+                'rationale': eval_data['evaluation_rationale'],
+                'actions': eval_data['recommended_actions'],
+                'evaluation_date': evaluation_date
+            }
+        
+        return jsonify({
+            'success': True,
+            'evaluations': evaluation_dict,
+            'session_name': evaluation_session
+        })
+        
+    except Exception as e:
+        print(f"평가 데이터 로드 오류: {e}")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error details: rcm_id={rcm_id}, evaluation_session='{evaluation_session}', user_info={user_info}")
+        return jsonify({'success': False, 'message': f'데이터 로드 중 오류가 발생했습니다: {str(e)}'}), 500
+
+@bp_link6.route('/api/design-evaluation/delete-session', methods=['POST'])
+@login_required
+def delete_evaluation_session_api():
+    """평가 세션 삭제 API"""
+    user_info = get_user_info()
+    data = request.get_json()
+    
+    rcm_id = data.get('rcm_id')
+    evaluation_session = data.get('evaluation_session')
+    
+    if not all([rcm_id, evaluation_session]):
+        return jsonify({
+            'success': False,
+            'message': '필수 데이터가 누락되었습니다.'
+        })
+    
+    try:
+        # 권한 체크
+        user_rcms = get_user_rcms(user_info['user_id'])
+        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+        
+        if rcm_id not in rcm_ids:
+            return jsonify({
+                'success': False,
+                'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+            })
+        
+        # 세션 삭제
+        deleted_count = delete_evaluation_session(rcm_id, user_info['user_id'], evaluation_session)
+        
+        # 활동 로그 기록
+        log_user_activity(user_info, 'DESIGN_EVALUATION_DELETE', f'설계평가 세션 삭제 - {evaluation_session}', 
+                         f'/api/design-evaluation/delete-session', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({
+            'success': True,
+            'message': f'평가 세션 "{evaluation_session}"이 삭제되었습니다.',
+            'deleted_count': deleted_count
+        })
+        
+    except Exception as e:
+        print(f"평가 세션 삭제 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': '삭제 중 오류가 발생했습니다.'
+        })
+
+@bp_link6.route('/api/design-evaluation/create-evaluation', methods=['POST'])
+@login_required
+def create_design_evaluation_api():
+    """새로운 설계평가 생성 API (Header + 모든 Line 생성)"""
+    user_info = get_user_info()
+    data = request.get_json()
+    
+    rcm_id = data.get('rcm_id')
+    evaluation_session = data.get('evaluation_session')
+    
+    if not all([rcm_id, evaluation_session]):
+        return jsonify({
+            'success': False,
+            'message': '필수 데이터가 누락되었습니다.'
+        })
+    
+    try:
+        # 권한 체크
+        user_rcms = get_user_rcms(user_info['user_id'])
+        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+        
+        if rcm_id not in rcm_ids:
+            return jsonify({
+                'success': False,
+                'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+            })
+        
+        # 중복 세션명 체크
+        existing_sessions = get_user_evaluation_sessions(rcm_id, user_info['user_id'])
+        session_names = [session['evaluation_session'] for session in existing_sessions]
+        
+        if evaluation_session in session_names:
+            return jsonify({
+                'success': False,
+                'message': f'"{evaluation_session}" 세션이 이미 존재합니다. 다른 이름을 사용해주세요.',
+                'exists': True
+            })
+        
+        # 평가 구조 생성 (Header + 모든 빈 Line 생성)
+        header_id = create_evaluation_structure(rcm_id, user_info['user_id'], evaluation_session)
+        
+        # 활동 로그 기록
+        log_user_activity(user_info, 'DESIGN_EVALUATION_CREATE', 
+                         f'설계평가 생성 - {evaluation_session}', 
+                         f'/api/design-evaluation/create-evaluation', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({
+            'success': True,
+            'message': f'설계평가 "{evaluation_session}"이 생성되었습니다.',
+            'header_id': header_id,
+            'evaluation_session': evaluation_session
+        })
+        
+    except ValueError as ve:
+        print(f"평가 생성 검증 오류: {ve}")
+        return jsonify({
+            'success': False,
+            'message': str(ve)
         })
     except Exception as e:
-        return jsonify({'error': f'요약 생성 오류: {str(e)}'}), 500
-
-@bp_link6.route('/link6_session_status', methods=['POST'])
-def link6_session_status():
-    data = request.get_json() or {}
-    session_id = data.get('session_id', '')
-    
-    if not session_id or session_id not in user_sessions:
-        return jsonify({'error': '유효하지 않은 세션입니다.'}), 400
-    
-    session_data = user_sessions[session_id]
-    return jsonify({
-        'session_id': session_id,
-        'current_question_index': session_data['current_question_index'],
-        'total_questions': len(PREDEFINED_QUESTIONS),
-        'completed': session_data['completed'],
-        'answers_count': len(session_data['user_answers'])
-    })
+        print(f"평가 생성 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': '평가 생성 중 오류가 발생했습니다.'
+        })

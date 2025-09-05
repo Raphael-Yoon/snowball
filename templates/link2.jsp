@@ -446,45 +446,45 @@
                 5: { type: 'radio', value: 'Y' }, // Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까? (스킵되지만 기본값 제공)
                 6: { type: 'radio', value: 'N' }, // 권한부여 이력 미기록
                 7: { type: 'radio', value: 'N' }, // 권한회수 이력 미기록
-                8: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 권한 부여 절차 없음
+                8: { type: 'skip' }, // Cloud 서비스와 무관하므로 자동입력하지 않음
                 9: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 권한 회수 절차 없음
                 10: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 퇴사자 권한 차단 절차 없음
-                11: { type: 'textarea', value: '없음' }, // Application 관리자
+                11: { type: 'textarea', value: '' }, // Application 관리자
                 12: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 권한 모니터링 절차 없음
-                13: { type: 'textarea', value: '설정 없음' }, // 패스워드 정책
+                13: { type: 'textarea', value: '' }, // 패스워드 정책
                 14: { type: 'radio', value: 'N' }, // DB 접속 불가 → 15~23번 스킵
                 15: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 데이터 변경 절차 없음
-                16: { type: 'textarea', value: '없음' }, // 데이터 변경 권한자
+                16: { type: 'textarea', value: '' }, // 데이터 변경 권한자
                 17: { type: 'radio', value: 'Y' }, // DB 접속 가능
                 18: { type: 'text', value: 'MySQL 8.0' }, // DB 종류와 버전 (스킵되지만 기본값 제공)
                 19: { type: 'radio_text', radio: 'N', text: '' }, // DB 접근제어 Tool 미사용 (스킵되지만 기본값 제공)
                 20: { type: 'radio', value: 'N' }, // DB 접근권한 부여 이력 미기록 (스킵되지만 기본값 제공)
                 21: { type: 'radio_textarea', radio: 'N', textarea: '' }, // DB 접근권한 승인 절차 없음 (스킵되지만 기본값 제공)
-                22: { type: 'textarea', value: '없음' }, // DB 관리자 권한자 (스킵되지만 기본값 제공)
-                23: { type: 'textarea', value: '설정 없음' }, // DB 패스워드 정책 (스킵되지만 기본값 제공)
+                22: { type: 'textarea', value: '' }, // DB 관리자 권한자 (스킵되지만 기본값 제공)
+                23: { type: 'textarea', value: '' }, // DB 패스워드 정책 (스킵되지만 기본값 제공)
                 24: { type: 'radio', value: 'N' }, // OS 접속 불가 → 25~30번 스킵
                 25: { type: 'text', value: 'Linux Ubuntu 20.04' }, // OS 종류와 버전 (스킵되지만 기본값 제공)
                 26: { type: 'radio_text', radio: 'N', text: '' }, // OS 접근제어 Tool 미사용 (스킵되지만 기본값 제공)
                 27: { type: 'radio', value: 'N' }, // OS 접근권한 부여 이력 미기록 (스킵되지만 기본값 제공)
                 28: { type: 'radio_textarea', radio: 'N', textarea: '' }, // OS 접근권한 승인 절차 없음 (스킵되지만 기본값 제공)
-                29: { type: 'textarea', value: '없음' }, // OS 관리자 권한자 (스킵되지만 기본값 제공)
-                30: { type: 'textarea', value: '설정 없음' }, // OS 패스워드 정책 (스킵되지만 기본값 제공)
+                29: { type: 'textarea', value: '' }, // OS 관리자 권한자 (스킵되지만 기본값 제공)
+                30: { type: 'textarea', value: '' }, // OS 패스워드 정책 (스킵되지만 기본값 제공)
                 31: { type: 'radio', value: 'N' }, // 프로그램 변경 불가 → 32~37번 스킵
                 32: { type: 'radio', value: 'N' }, // 프로그램 변경 이력 미기록 (스킵되지만 기본값 제공)
                 33: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 프로그램 변경 승인 절차 없음 (스킵되지만 기본값 제공)
                 34: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 사용자 테스트 절차 없음 (스킵되지만 기본값 제공)
                 35: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 이관 승인 절차 없음 (스킵되지만 기본값 제공)
-                36: { type: 'textarea', value: '없음' }, // 이관 권한자 (스킵되지만 기본값 제공)
+                36: { type: 'textarea', value: '' }, // 이관 권한자 (스킵되지만 기본값 제공)
                 37: { type: 'radio', value: 'N' }, // 개발/테스트 서버 미운용 (스킵되지만 기본값 제공)
                 38: { type: 'radio', value: 'N' }, // 배치 스케줄 없음 → 39~43번 스킵
                 39: { type: 'radio_text', radio: 'N', text: '' }, // Batch Schedule Tool 미사용 (스킵되지만 기본값 제공)
                 40: { type: 'radio', value: 'N' }, // 배치 스케줄 등록/변경 이력 미기록 (스킵되지만 기본값 제공)
                 41: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 배치 스케줄 승인 절차 없음 (스킵되지만 기본값 제공)
-                42: { type: 'textarea', value: '없음' }, // 배치 스케줄 권한자 (스킵되지만 기본값 제공)
-                43: { type: 'textarea', value: '모니터링 없음' }, // 배치 모니터링 (스킵되지만 기본값 제공)
-                44: { type: 'textarea', value: '장애 대응 절차 없음' }, // 장애 대응 절차
-                45: { type: 'textarea', value: '백업 절차 없음' }, // 백업 절차
-                46: { type: 'textarea', value: '서버실 출입 관리 없음' } // 서버실 출입 절차
+                42: { type: 'textarea', value: '' }, // 배치 스케줄 권한자 (스킵되지만 기본값 제공)
+                43: { type: 'textarea', value: '' }, // 배치 모니터링 (스킵되지만 기본값 제공)
+                44: { type: 'textarea', value: '' }, // 장애 대응 절차
+                45: { type: 'textarea', value: '' }, // 백업 절차
+                46: { type: 'textarea', value: '' } // 서버실 출입 절차
             };
             
             const sample = skipSamples[questionNumber];
@@ -554,6 +554,10 @@
             if (sample.type === 'textarea') {
                 const textarea = document.querySelector(`textarea[name='a${currentIndex}']`);
                 if (textarea) textarea.value = sample.value;
+            }
+            if (sample.type === 'skip') {
+                console.log(`[SKIP SAMPLE] 질문 ${questionNumber}번은 자동입력하지 않음`);
+                return; // 자동입력하지 않고 종료
             }
             
             // 자동으로 다음(제출) 버튼 클릭

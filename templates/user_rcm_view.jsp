@@ -101,8 +101,7 @@
                                     <tr>
                                         <th>통제코드</th>
                                         <th>통제명</th>
-                                        <th>통제활동설명</th>
-                                        <th>핵심통제</th>
+                                        <th>통제활동 설명</th>
                                         <th>통제주기</th>
                                         <th>통제유형</th>
                                         <th>통제구분</th>
@@ -117,19 +116,10 @@
                                         <td><strong>{{ detail.control_name }}</strong></td>
                                         <td>
                                             {% if detail.control_description %}
-                                                <span class="text-truncate" style="max-width: 200px; display: inline-block;" 
-                                                      title="{{ detail.control_description }}">
+                                                <div style="max-width: 400px; max-height: 80px; overflow-y: auto; font-size: 0.9rem; line-height: 1.4;" 
+                                                     title="{{ detail.control_description }}">
                                                     {{ detail.control_description }}
-                                                </span>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if detail.key_control %}
-                                                <span class="badge bg-{{ 'danger' if detail.key_control.upper() == 'Y' else 'secondary' }}">
-                                                    {{ '핵심' if detail.key_control.upper() == 'Y' else '일반' }}
-                                                </span>
+                                                </div>
                                             {% else %}
                                                 <span class="text-muted">-</span>
                                             {% endif %}

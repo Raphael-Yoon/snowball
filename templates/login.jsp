@@ -31,6 +31,7 @@
                     <input type="email" id="email" name="email" required 
                            placeholder="등록된 이메일 주소를 입력하세요">
                 </div>
+                {% if not show_direct_login %}
                 <div class="form-group">
                     <label>인증 방법:</label>
                     <div class="radio-group">
@@ -46,13 +47,19 @@
                         {% endif %}
                     </div>
                 </div>
+                {% endif %}
                 <button type="submit" class="btn-primary">인증 코드 발송</button>
             </form>
             {% else %}
             <!-- 2단계: OTP 코드 입력 -->
             <div class="otp-info">
+                {% if show_direct_login %}
+                <p><strong>{{ email }}</strong> 사용자의 인증 코드를 입력해주세요.</p>
+                <p>6자리 인증 코드를 입력하세요.</p>
+                {% else %}
                 <p><strong>{{ email }}</strong>로 인증 코드를 발송했습니다.</p>
                 <p>이메일을 확인하고 6자리 인증 코드를 입력해주세요.</p>
+                {% endif %}
             </div>
             <form method="POST" action="{{ url_for('login') }}">
                 <input type="hidden" name="action" value="verify_otp">
@@ -183,18 +190,20 @@
             });
             {% endif %}
             
-            showInquiryBtn.addEventListener('click', function() {
-                if (inquiryContainer.style.display === 'none') {
-                    inquiryContainer.style.display = 'block';
-                    // 스크롤 효과로 폼으로 이동
-                    inquiryContainer.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'nearest' 
-                    });
-                } else {
-                    inquiryContainer.style.display = 'none';
-                }
-            });
+            if (showInquiryBtn) {
+                showInquiryBtn.addEventListener('click', function() {
+                    if (inquiryContainer.style.display === 'none') {
+                        inquiryContainer.style.display = 'block';
+                        // 스크롤 효과로 폼으로 이동
+                        inquiryContainer.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'nearest' 
+                        });
+                    } else {
+                        inquiryContainer.style.display = 'none';
+                    }
+                });
+            }
         });
     </script>
 </body>

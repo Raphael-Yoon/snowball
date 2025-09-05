@@ -33,12 +33,12 @@
                     </div>
                     <div class="card-body">
                         <p class="card-text">
-                            <strong>설계평가(Design Effectiveness Testing)</strong>는 통제가 이론적으로 효과적으로 설계되었는지를 평가하는 과정입니다.
+                            <strong>설계평가(Design Effectiveness Testing)</strong>는 RCM에 기록된 통제활동이 현재 실제 업무와 일치하는지를 확인하고, 실무적으로 효과적으로 운영되고 있는지를 평가하는 과정입니다.
                         </p>
                         <ul>
-                            <li><strong>목적:</strong> 통제의 설계가 식별된 위험을 적절히 완화할 수 있는지 평가</li>
-                            <li><strong>범위:</strong> 통제의 설계, 구현 상태, 문서화 수준 검토</li>
-                            <li><strong>결과:</strong> 설계 효과성 결론 및 개선점 도출</li>
+                            <li><strong>목적:</strong> 문서상 통제와 실제 수행되는 통제의 일치성 확인 및 실무 효과성 검증</li>
+                            <li><strong>범위:</strong> 통제 절차의 현실 반영도, 실제 운영 상태, 위험 완화 효과 검토</li>
+                            <li><strong>결과:</strong> 실무와 문서 간 차이점 식별 및 통제 운영 개선방안 도출</li>
                         </ul>
                     </div>
                 </div>
@@ -121,9 +121,12 @@
                                     </div>
                                 </div>
                                 
-                                <div class="d-grid">
+                                <div class="d-grid gap-2">
                                     <button id="startDesignEvalBtn" class="btn btn-success" onclick="startDesignEvaluation()">
-                                        <i class="fas fa-play me-1"></i>RCM 설계평가 시작
+                                        <i class="fas fa-play me-1"></i>새로운 설계평가 시작
+                                    </button>
+                                    <button id="resumeDesignEvalBtn" class="btn btn-outline-primary" onclick="showResumeModal()">
+                                        <i class="fas fa-history me-1"></i>기존 설계평가 이어하기
                                     </button>
                                 </div>
                             </div>
@@ -249,12 +252,16 @@
         }
         
         // RCM 선택 모달 표시
-        function showRcmSelectionModal(rcms) {
+        function showRcmSelectionModal(rcms, isNew = true) {
             // 기존 모달이 있다면 제거
             const existingModal = document.getElementById('rcmSelectionModal');
             if (existingModal) {
                 existingModal.remove();
             }
+            
+            const titleText = isNew ? '새로운 설계평가할 RCM 선택' : '이어할 설계평가 RCM 선택';
+            const buttonText = isNew ? '평가 시작' : '세션 선택';
+            const buttonAction = isNew ? 'startNewEvaluation' : 'showSessionSelection';
             
             // 모달 HTML 생성
             const modalHtml = `
@@ -263,7 +270,7 @@
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title">
-                                    <i class="fas fa-clipboard-check me-2"></i>설계평가할 RCM 선택
+                                    <i class="fas fa-clipboard-check me-2"></i>${titleText}
                                 </h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
@@ -280,8 +287,8 @@
                                                         <span class="badge bg-${rcm.permission_type === 'admin' ? 'danger' : 'success'}">
                                                             ${rcm.permission_type === 'admin' ? '관리자' : '읽기'}
                                                         </span>
-                                                        <button class="btn btn-sm btn-success" onclick="startRcmDesignEval(${rcm.rcm_id}, '${rcm.rcm_name}')">
-                                                            <i class="fas fa-play me-1"></i>평가 시작
+                                                        <button class="btn btn-sm btn-success" onclick="${buttonAction}(${rcm.rcm_id}, '${rcm.rcm_name}')">
+                                                            <i class="fas fa-${isNew ? 'play' : 'history'} me-1"></i>${buttonText}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -303,14 +310,262 @@
             modal.show();
         }
         
-        // 특정 RCM의 설계평가 시작
-        function startRcmDesignEval(rcmId, rcmName) {
+        // 새로운 설계평가 시작
+        function startNewEvaluation(rcmId, rcmName) {
             // 모달 닫기
             const modal = bootstrap.Modal.getInstance(document.getElementById('rcmSelectionModal'));
             modal.hide();
             
+            // 평가명 입력 모달 표시
+            showEvaluationNameModal(rcmId, rcmName);
+        }
+        
+        // 평가명 입력 모달
+        function showEvaluationNameModal(rcmId, rcmName) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const defaultName = `FY${year.toString().slice(-2)}_설계평가`;
+            
+            const modalHtml = `
+                <div class="modal fade" id="evaluationNameModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-edit me-2"></i>설계평가명 입력
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="text-muted mb-3">RCM: <strong>${rcmName}</strong></p>
+                                <div class="mb-3">
+                                    <label for="evaluationNameInput" class="form-label">설계평가명</label>
+                                    <input type="text" class="form-control" id="evaluationNameInput" 
+                                           value="${defaultName}" placeholder="예: FY25_설계평가">
+                                    <div class="form-text">평가를 구분할 수 있는 이름을 입력하세요.</div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                                <button type="button" class="btn btn-success" onclick="confirmStartEvaluation(${rcmId})">
+                                    <i class="fas fa-play me-1"></i>평가 시작
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = new bootstrap.Modal(document.getElementById('evaluationNameModal'));
+            modal.show();
+            
+            // 모달이 닫힐 때 DOM에서 제거
+            modal._element.addEventListener('hidden.bs.modal', function () {
+                this.remove();
+            });
+        }
+        
+        // 평가 시작 확인
+        function confirmStartEvaluation(rcmId) {
+            const evaluationName = document.getElementById('evaluationNameInput').value.trim();
+            
+            if (!evaluationName) {
+                alert('평가명을 입력해주세요.');
+                return;
+            }
+            
+            // 버튼 비활성화 (중복 클릭 방지)
+            const confirmButton = document.querySelector('#evaluationNameModal .btn-success');
+            confirmButton.disabled = true;
+            confirmButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>생성 중...';
+            
+            // 서버에 설계평가 생성 요청 (Header + Line 구조 생성)
+            fetch('/api/design-evaluation/create-evaluation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    rcm_id: rcmId,
+                    evaluation_session: evaluationName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 평가 세션명과 헤더 ID를 세션 스토리지에 저장
+                    sessionStorage.setItem('currentEvaluationSession', evaluationName);
+                    sessionStorage.setItem('currentEvaluationHeaderId', data.header_id);
+                    sessionStorage.setItem('isNewEvaluationSession', 'true'); // 새 세션임을 표시
+                    
+                    console.log('New evaluation created - header_id:', data.header_id);
+                    
+                    // 모달 닫기
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('evaluationNameModal'));
+                    modal.hide();
+                    
+                    // 설계평가 페이지로 이동
+                    window.location.href = `/design-evaluation/rcm/${rcmId}`;
+                } else {
+                    alert(data.message);
+                    
+                    // 버튼 복원
+                    confirmButton.disabled = false;
+                    confirmButton.innerHTML = '<i class="fas fa-play me-1"></i>평가 시작';
+                }
+            })
+            .catch(error => {
+                console.error('평가 생성 오류:', error);
+                alert('평가 생성 중 오류가 발생했습니다.');
+                
+                // 버튼 복원
+                confirmButton.disabled = false;
+                confirmButton.innerHTML = '<i class="fas fa-play me-1"></i>평가 시작';
+            });
+        }
+        
+        // 기존 평가 이어하기 모달
+        function showResumeModal() {
+            fetch('/api/user/rcm-list')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.rcms.length > 0) {
+                        showRcmSelectionModal(data.rcms, false);
+                    } else {
+                        alert('평가할 수 있는 RCM이 없습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('RCM 목록 로드 오류:', error);
+                    alert('RCM 목록을 불러오는 중 오류가 발생했습니다.');
+                });
+        }
+        
+        // 평가 세션 선택
+        function showSessionSelection(rcmId, rcmName) {
+            // 모달 닫기
+            const modal = bootstrap.Modal.getInstance(document.getElementById('rcmSelectionModal'));
+            modal.hide();
+            
+            // 세션 목록 조회
+            fetch(`/api/design-evaluation/sessions/${rcmId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showSessionSelectionModal(rcmId, rcmName, data.sessions);
+                    } else {
+                        alert('세션 목록을 불러올 수 없습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('세션 목록 조회 오류:', error);
+                    alert('세션 목록을 불러오는 중 오류가 발생했습니다.');
+                });
+        }
+        
+        // 세션 선택 모달
+        function showSessionSelectionModal(rcmId, rcmName, sessions) {
+            const modalHtml = `
+                <div class="modal fade" id="sessionSelectionModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-history me-2"></i>평가 세션 선택
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="text-muted mb-3">RCM: <strong>${rcmName}</strong></p>
+                                ${sessions.length > 0 ? 
+                                    sessions.map(session => `
+                                        <div class="card mb-3">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 class="mb-1">${session.evaluation_session}</h6>
+                                                        <small class="text-muted">
+                                                            시작: ${new Date(session.start_date).toLocaleDateString()} | 
+                                                            최종 수정: ${new Date(session.last_updated).toLocaleDateString()} | 
+                                                            평가된 통제: ${session.evaluated_controls}개
+                                                        </small>
+                                                    </div>
+                                                    <div class="btn-group">
+                                                        <button class="btn btn-sm btn-primary" onclick="resumeEvaluation(${rcmId}, '${session.evaluation_session}', ${session.header_id})">
+                                                            <i class="fas fa-play me-1"></i>이어하기
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteEvaluationSession(${rcmId}, '${session.evaluation_session}')">
+                                                            <i class="fas fa-trash me-1"></i>삭제
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('') 
+                                    : '<div class="text-center py-4"><p class="text-muted">저장된 평가 세션이 없습니다.</p></div>'
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = new bootstrap.Modal(document.getElementById('sessionSelectionModal'));
+            modal.show();
+            
+            // 모달이 닫힐 때 DOM에서 제거
+            modal._element.addEventListener('hidden.bs.modal', function () {
+                this.remove();
+            });
+        }
+        
+        // 평가 세션 이어하기
+        function resumeEvaluation(rcmId, sessionName, headerId) {
+            // 평가 세션명과 헤더 ID를 세션 스토리지에 저장
+            sessionStorage.setItem('currentEvaluationSession', sessionName);
+            sessionStorage.setItem('currentEvaluationHeaderId', headerId);
+            
+            // 모달 닫기
+            const modal = bootstrap.Modal.getInstance(document.getElementById('sessionSelectionModal'));
+            modal.hide();
+            
             // 설계평가 페이지로 이동
-            window.location.href = `/user/design-evaluation/rcm/${rcmId}`;
+            window.location.href = `/design-evaluation/rcm/${rcmId}`;
+        }
+        
+        // 평가 세션 삭제
+        function deleteEvaluationSession(rcmId, sessionName) {
+            if (!confirm(`"${sessionName}" 세션을 삭제하시겠습니까?`)) {
+                return;
+            }
+            
+            fetch('/api/design-evaluation/delete-session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    rcm_id: rcmId,
+                    evaluation_session: sessionName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    // 모달 닫기 (삭제 완료 후 새 모달을 열지 않음)
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('sessionSelectionModal'));
+                    modal.hide();
+                } else {
+                    alert('삭제 중 오류가 발생했습니다: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('세션 삭제 오류:', error);
+                alert('세션 삭제 중 오류가 발생했습니다.');
+            });
         }
     </script>
 </body>
