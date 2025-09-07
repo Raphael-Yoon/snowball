@@ -127,7 +127,7 @@
 		<script>
 			window.isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
 		</script>
-		<script src="{{ url_for('static', filename='js/session-manager.js') }}"></script>
+		<!-- <script src="{{ url_for('static', filename='js/session-manager.js') }}"></script> -->
 		
 	</body>
 </html>

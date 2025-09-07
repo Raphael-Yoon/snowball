@@ -56,7 +56,7 @@ def init_db():
             )
         ''')
         
-        # RCM 마스터 테이블 생성 (기존 테이블이 있으면 유지)
+        # RCM 마스터 테이블 생성 (헤더 정보만 관리)
         conn.execute('''
             CREATE TABLE IF NOT EXISTS sb_rcm (
                 rcm_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,7 +69,7 @@ def init_db():
             )
         ''')
         
-        # RCM 상세 데이터 테이블 생성
+        # RCM 상세 데이터 테이블 생성 (매핑 및 AI 검토 정보 포함)
         conn.execute('''
             CREATE TABLE IF NOT EXISTS sb_rcm_detail (
                 detail_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,10 +85,46 @@ def init_db():
                 population_completeness_check TEXT,
                 population_count TEXT,
                 test_procedure TEXT,
+                -- 매핑 관련 컬럼들
+                mapped_std_control_id INTEGER,  -- 매핑된 기준통제 ID
+                mapped_date TIMESTAMP,
+                mapped_by INTEGER,
+                -- AI 검토 관련 컬럼들
+                ai_review_status TEXT DEFAULT 'not_reviewed',  -- 'not_reviewed', 'in_progress', 'completed'
+                ai_review_recommendation TEXT,  -- AI 개선권고사항
+                ai_reviewed_date TIMESTAMP,
+                ai_reviewed_by INTEGER,
                 FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
+                FOREIGN KEY (mapped_std_control_id) REFERENCES sb_standard_control (std_control_id),
+                FOREIGN KEY (mapped_by) REFERENCES sb_user (user_id),
+                FOREIGN KEY (ai_reviewed_by) REFERENCES sb_user (user_id),
                 UNIQUE(rcm_id, control_code)
             )
         ''')
+        
+        # 기존 sb_rcm_detail 테이블에 새 컬럼들 추가
+        try:
+            detail_columns = [
+                ('mapped_std_control_id', 'INTEGER'),
+                ('mapped_date', 'TIMESTAMP'),
+                ('mapped_by', 'INTEGER'),
+                ('ai_review_status', 'TEXT DEFAULT \'not_reviewed\''),
+                ('ai_review_recommendation', 'TEXT'),
+                ('ai_reviewed_date', 'TIMESTAMP'),
+                ('ai_reviewed_by', 'INTEGER')
+            ]
+            
+            for col_name, col_type in detail_columns:
+                try:
+                    conn.execute(f'ALTER TABLE sb_rcm_detail ADD COLUMN {col_name} {col_type}')
+                    print(f"sb_rcm_detail 테이블에 {col_name} 컬럼을 추가했습니다.")
+                except:
+                    # 컬럼이 이미 존재하는 경우 무시
+                    pass
+                    
+        except Exception as e:
+            print(f"sb_rcm_detail 컬럼 추가 중 오류 (무시됨): {e}")
+            pass
         
         # 사용자-RCM 매핑 테이블 생성 (N:M 관계)
         conn.execute('''
@@ -196,6 +232,169 @@ def init_db():
                 UNIQUE(rcm_id, control_code, user_id)
             )
         ''')
+        
+        # 기준통제 마스터 테이블 생성
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_standard_control (
+                std_control_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                control_category TEXT NOT NULL,
+                control_code TEXT NOT NULL,
+                control_name TEXT NOT NULL,
+                control_description TEXT,
+                ai_review_prompt TEXT,  -- AI 검토시 사용할 프롬프트
+                creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(control_category, control_code)
+            )
+        ''')
+        
+        # RCM과 기준통제 매핑 테이블 생성
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_rcm_standard_mapping (
+                mapping_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rcm_id INTEGER NOT NULL,
+                control_code TEXT NOT NULL,
+                std_control_id INTEGER NOT NULL,
+                mapping_confidence REAL DEFAULT 0.0,  -- 매핑 신뢰도 (0.0 ~ 1.0)
+                mapping_type TEXT DEFAULT 'auto',  -- 'auto', 'manual', 'ai'
+                mapped_by INTEGER,
+                mapping_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active TEXT DEFAULT 'Y',
+                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
+                FOREIGN KEY (std_control_id) REFERENCES sb_standard_control (std_control_id),
+                FOREIGN KEY (mapped_by) REFERENCES sb_user (user_id),
+                UNIQUE(rcm_id, control_code, std_control_id)
+            )
+        ''')
+        
+        
+        # RCM 완성도 평가 결과 테이블 생성 (히스토리 관리)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_rcm_completeness_eval (
+                eval_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rcm_id INTEGER NOT NULL,
+                eval_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completeness_score REAL DEFAULT 0.0,  -- 완성도 점수 (0.0 ~ 100.0)
+                eval_details TEXT,  -- JSON 형태로 상세 평가 결과 저장
+                eval_by INTEGER,
+                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
+                FOREIGN KEY (eval_by) REFERENCES sb_user (user_id)
+            )
+        ''')
+        
+        # 사용하지 않는 테이블 및 컬럼 정리
+        try:
+            # 기존 review 관련 테이블들 제거
+            conn.execute('DROP TABLE IF EXISTS sb_rcm_review_result')
+            conn.execute('DROP TABLE IF EXISTS sb_rcm_review')
+            print("사용하지 않는 review 관련 테이블들을 제거했습니다.")
+            
+            # sb_rcm 테이블에서 review 관련 컬럼들 제거 (SQLite는 DROP COLUMN을 지원하지 않으므로 테이블 재생성)
+            # 기존 데이터가 있는지 확인
+            has_review_columns = conn.execute(
+                "SELECT COUNT(*) FROM pragma_table_info('sb_rcm') WHERE name LIKE 'review_%'"
+            ).fetchone()[0]
+            
+            if has_review_columns > 0:
+                print("sb_rcm 테이블에서 review 관련 컬럼들을 제거합니다...")
+                
+                # 임시 테이블 생성
+                conn.execute('''
+                    CREATE TABLE sb_rcm_temp (
+                        rcm_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        rcm_name TEXT NOT NULL,
+                        description TEXT,
+                        upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        upload_user_id INTEGER NOT NULL,
+                        is_active TEXT DEFAULT 'Y',
+                        FOREIGN KEY (upload_user_id) REFERENCES sb_user (user_id)
+                    )
+                ''')
+                
+                # 기본 데이터만 복사
+                conn.execute('''
+                    INSERT INTO sb_rcm_temp (rcm_id, rcm_name, description, upload_date, upload_user_id, is_active)
+                    SELECT rcm_id, rcm_name, description, upload_date, upload_user_id, is_active
+                    FROM sb_rcm
+                ''')
+                
+                # 기존 테이블 삭제 후 새 테이블로 이름 변경
+                conn.execute('DROP TABLE sb_rcm')
+                conn.execute('ALTER TABLE sb_rcm_temp RENAME TO sb_rcm')
+                
+                print("sb_rcm 테이블에서 review 관련 컬럼들이 제거되었습니다.")
+            
+            # sb_rcm_detail 테이블에서 불필요한 컬럼들 제거
+            has_unnecessary_columns = conn.execute(
+                "SELECT COUNT(*) FROM pragma_table_info('sb_rcm_detail') WHERE name IN ('mapping_confidence', 'mapping_type', 'ai_review_score')"
+            ).fetchone()[0]
+            
+            if has_unnecessary_columns > 0:
+                print("sb_rcm_detail 테이블에서 불필요한 컬럼들을 제거합니다...")
+                
+                # 기존 컬럼 목록 조회
+                columns_info = conn.execute("PRAGMA table_info('sb_rcm_detail')").fetchall()
+                
+                # 제거할 컬럼을 제외한 컬럼들만 선택
+                keep_columns = [col[1] for col in columns_info if col[1] not in ('mapping_confidence', 'mapping_type', 'ai_review_score')]
+                columns_str = ', '.join(keep_columns)
+                
+                # 임시 테이블 생성 (필요한 컬럼만)
+                conn.execute(f'''
+                    CREATE TABLE sb_rcm_detail_temp AS 
+                    SELECT {columns_str} FROM sb_rcm_detail
+                ''')
+                
+                # 기존 테이블 삭제 후 새 테이블로 이름 변경
+                conn.execute('DROP TABLE sb_rcm_detail')
+                conn.execute('ALTER TABLE sb_rcm_detail_temp RENAME TO sb_rcm_detail')
+                
+                print("sb_rcm_detail 테이블에서 불필요한 컬럼들이 제거되었습니다.")
+                
+        except Exception as e:
+            print(f"테이블/컬럼 정리 중 오류 (무시됨): {e}")
+            pass
+        
+        # 기준통제 테이블에 ai_review_prompt 컬럼 추가 (기존 테이블에 없는 경우)
+        try:
+            conn.execute('ALTER TABLE sb_standard_control ADD COLUMN ai_review_prompt TEXT')
+            print("sb_standard_control 테이블에 ai_review_prompt 컬럼을 추가했습니다.")
+        except:
+            # 컬럼이 이미 존재하거나 테이블이 없는 경우 무시
+            pass
+        
+        # 불필요한 컬럼들 삭제 (SQLite는 DROP COLUMN을 지원하지 않으므로 테이블 재생성)
+        try:
+            # 기존 데이터 백업
+            conn.execute('''
+                CREATE TABLE sb_standard_control_new (
+                    std_control_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    control_category TEXT NOT NULL,
+                    control_code TEXT NOT NULL,
+                    control_name TEXT NOT NULL,
+                    control_description TEXT,
+                    ai_review_prompt TEXT,
+                    creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(control_category, control_code)
+                )
+            ''')
+            
+            # 데이터 복사 (필요한 컬럼만)
+            conn.execute('''
+                INSERT INTO sb_standard_control_new 
+                (std_control_id, control_category, control_code, control_name, control_description, ai_review_prompt, creation_date)
+                SELECT std_control_id, control_category, control_code, control_name, control_description, ai_review_prompt, creation_date
+                FROM sb_standard_control
+            ''')
+            
+            # 기존 테이블 삭제 후 새 테이블로 이름 변경
+            conn.execute('DROP TABLE sb_standard_control')
+            conn.execute('ALTER TABLE sb_standard_control_new RENAME TO sb_standard_control')
+            
+            print("sb_standard_control 테이블에서 불필요한 컬럼들을 삭제했습니다.")
+        except Exception as e:
+            # 테이블 재구성 실패 시 무시 (이미 올바른 구조일 수 있음)
+            print(f"테이블 재구성 중 오류 (무시됨): {e}")
+            pass
         
         # 기존 테이블이 있는지 확인하고 데이터 마이그레이션
         existing_table = conn.execute(
@@ -433,6 +632,14 @@ def log_user_activity(user_info, action_type, page_name, url_path, ip_address, u
         return
     
     try:
+        # additional_info가 딕셔너리인 경우 JSON 문자열로 변환
+        if additional_info and isinstance(additional_info, dict):
+            import json
+            additional_info = json.dumps(additional_info, ensure_ascii=False)
+        elif additional_info and not isinstance(additional_info, str):
+            # 딕셔너리가 아닌 다른 타입은 문자열로 변환
+            additional_info = str(additional_info)
+            
         with get_db() as conn:
             conn.execute('''
                 INSERT INTO sb_user_activity_log 
@@ -937,3 +1144,410 @@ def count_operation_evaluations(rcm_id, user_id):
             WHERE rcm_id = ? AND user_id = ?
         ''', (rcm_id, user_id)).fetchone()[0]
         return count
+
+# 기준통제 관련 함수들
+
+def initialize_standard_controls():
+    """기준통제 초기 데이터 삽입 (빈 함수 - 수동으로 데이터 삽입 예정)"""
+    print("기준통제 데이터는 수동으로 삽입해주세요.")
+
+def get_standard_controls():
+    """기준통제 목록 조회"""
+    with get_db() as conn:
+        controls = conn.execute('''
+            SELECT * FROM sb_standard_control 
+            ORDER BY control_category, control_code
+        ''').fetchall()
+        return [dict(control) for control in controls]
+
+def save_rcm_standard_mapping(rcm_id, control_code, std_control_id, confidence, mapping_type, mapped_by):
+    """RCM과 기준통제 매핑 저장"""
+    with get_db() as conn:
+        conn.execute('''
+            INSERT OR REPLACE INTO sb_rcm_standard_mapping
+            (rcm_id, control_code, std_control_id, mapping_confidence, mapping_type, mapped_by)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (rcm_id, control_code, std_control_id, confidence, mapping_type, mapped_by))
+        conn.commit()
+
+def get_rcm_standard_mappings(rcm_id):
+    """RCM의 기준통제 매핑 조회"""
+    with get_db() as conn:
+        mappings = conn.execute('''
+            SELECT m.*, sc.control_name as std_control_name, sc.control_category
+            FROM sb_rcm_standard_mapping m
+            JOIN sb_standard_control sc ON m.std_control_id = sc.std_control_id
+            WHERE m.rcm_id = ? AND m.is_active = 'Y'
+            ORDER BY m.control_code
+        ''', (rcm_id,)).fetchall()
+        return [dict(mapping) for mapping in mappings]
+
+def evaluate_rcm_completeness(rcm_id, user_id):
+    """RCM 완성도 평가 실행"""
+    import json
+    
+    # RCM 상세 데이터 조회
+    rcm_details = get_rcm_details(rcm_id)
+    total_controls = len(rcm_details)
+    
+    if total_controls == 0:
+        return {
+            'completeness_score': 0.0,
+            'total_controls': 0,
+            'mapped_controls': 0,
+            'missing_fields_count': 0,
+            'details': []
+        }
+    
+    # 기준통제 매핑 조회
+    mappings = get_rcm_standard_mappings(rcm_id)
+    mapped_controls = len(mappings)
+    
+    # 각 통제별 완성도 검사
+    eval_details = []
+    missing_fields_count = 0
+    
+    for detail in rcm_details:
+        control_eval = {
+            'control_code': detail['control_code'],
+            'control_name': detail['control_name'],
+            'is_mapped': False,
+            'missing_fields': [],
+            'required_fields': [],
+            'completeness': 0.0
+        }
+        
+        # 매핑된 기준통제 찾기
+        mapped_std = None
+        for mapping in mappings:
+            if mapping['control_code'] == detail['control_code']:
+                mapped_std = mapping
+                control_eval['is_mapped'] = True
+                control_eval['std_control_name'] = mapping['std_control_name']
+                control_eval['required_fields'] = []  # 현재는 필수 필드 체크 안함
+                break
+        
+        # 매핑된 통제는 100% 완성도로 처리 (현재는 단순 매핑 여부만 체크)
+        if mapped_std:
+            control_eval['completeness'] = 100.0
+        
+        eval_details.append(control_eval)
+    
+    # 전체 완성도 점수 계산 (매핑 비율 기준)
+    completeness_score = (mapped_controls / total_controls * 100) if total_controls > 0 else 0.0
+    missing_fields_count = 0  # 현재는 필수 필드 체크 안함
+    
+    # 결과 저장
+    eval_result = {
+        'completeness_score': round(completeness_score, 2),
+        'total_controls': total_controls,
+        'mapped_controls': mapped_controls,
+        'missing_fields_count': missing_fields_count,
+        'details': eval_details
+    }
+    
+    with get_db() as conn:
+        conn.execute('''
+            INSERT INTO sb_rcm_completeness_eval
+            (rcm_id, total_controls, mapped_controls, missing_fields_count, 
+             completeness_score, eval_details, eval_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (rcm_id, total_controls, mapped_controls, missing_fields_count,
+              completeness_score, json.dumps(eval_details, ensure_ascii=False), user_id))
+        conn.commit()
+    
+    return eval_result
+
+# RCM 검토 결과 저장/조회 함수들
+
+def save_rcm_mapping(rcm_id, detail_id, std_control_id, user_id):
+    """개별 RCM 통제의 매핑 저장 (sb_rcm_detail 테이블 사용)"""
+    try:
+        with get_db() as conn:
+            cursor = conn.execute('''
+                UPDATE sb_rcm_detail
+                SET mapped_std_control_id = ?,
+                    mapped_date = CURRENT_TIMESTAMP,
+                    mapped_by = ?
+                WHERE detail_id = ?
+            ''', (std_control_id, user_id, detail_id))
+            
+            if cursor.rowcount == 0:
+                raise Exception(f"Detail ID {detail_id}를 찾을 수 없습니다.")
+            
+            conn.commit()
+            return True
+            
+    except Exception as e:
+        print(f"매핑 저장 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+def get_rcm_detail_mappings(rcm_id):
+    """RCM의 개별 통제 매핑 조회 (sb_rcm_detail 테이블 사용)"""
+    with get_db() as conn:
+        mappings = conn.execute('''
+            SELECT 
+                d.detail_id,
+                d.control_code,
+                d.control_name,
+                d.mapped_std_control_id as std_control_id,
+                d.mapped_date,
+                d.mapped_by,
+                sc.control_name as std_control_name,
+                sc.control_category
+            FROM sb_rcm_detail d
+            LEFT JOIN sb_standard_control sc ON d.mapped_std_control_id = sc.std_control_id
+            WHERE d.rcm_id = ? AND d.mapped_std_control_id IS NOT NULL
+            ORDER BY d.control_code
+        ''', (rcm_id,)).fetchall()
+        return [dict(mapping) for mapping in mappings]
+
+def save_rcm_ai_review(rcm_id, detail_id, recommendation, user_id):
+    """개별 RCM 통제의 AI 검토 결과 저장"""
+    try:
+        with get_db() as conn:
+            cursor = conn.execute('''
+                UPDATE sb_rcm_detail
+                SET ai_review_status = 'completed',
+                    ai_review_recommendation = ?,
+                    ai_reviewed_date = CURRENT_TIMESTAMP,
+                    ai_reviewed_by = ?
+                WHERE detail_id = ?
+            ''', (recommendation, user_id, detail_id))
+            
+            if cursor.rowcount == 0:
+                raise Exception(f"Detail ID {detail_id}를 찾을 수 없습니다.")
+            
+            conn.commit()
+            return True
+            
+    except Exception as e:
+        print(f"AI 검토 저장 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+def get_control_review_result(rcm_id, detail_id):
+    """개별 통제의 검토 결과 조회"""
+    try:
+        with get_db() as conn:
+            cursor = conn.execute('''
+                SELECT 
+                    detail_id,
+                    control_code,
+                    control_name,
+                    mapped_std_control_id,
+                    mapped_date,
+                    mapped_by,
+                    ai_review_status,
+                    ai_review_recommendation,
+                    ai_reviewed_date,
+                    ai_reviewed_by
+                FROM sb_rcm_detail
+                WHERE detail_id = ?
+            ''', (detail_id,))
+            
+            result = cursor.fetchone()
+            if result:
+                return {
+                    'detail_id': result[0],
+                    'control_code': result[1],
+                    'control_name': result[2],
+                    'mapped_std_control_id': result[3],
+                    'mapped_date': result[4],
+                    'mapped_by': result[5],
+                    'ai_review_status': result[6],
+                    'ai_review_recommendation': result[7],
+                    'ai_reviewed_date': result[8],
+                    'ai_reviewed_by': result[9]
+                }
+            return None
+            
+    except Exception as e:
+        print(f"통제 검토 결과 조회 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+def save_control_review_result(rcm_id, detail_id, std_control_id, ai_review_recommendation, user_id, status='completed'):
+    """개별 통제 검토 결과 저장 (매핑 + AI 검토 통합)"""
+    try:
+        with get_db() as conn:
+            cursor = conn.execute('''
+                UPDATE sb_rcm_detail
+                SET mapped_std_control_id = ?,
+                    mapped_date = CURRENT_TIMESTAMP,
+                    mapped_by = ?,
+                    ai_review_status = ?,
+                    ai_review_recommendation = ?,
+                    ai_reviewed_date = CURRENT_TIMESTAMP,
+                    ai_reviewed_by = ?
+                WHERE detail_id = ?
+            ''', (std_control_id, user_id, status, ai_review_recommendation, user_id, detail_id))
+            
+            if cursor.rowcount == 0:
+                raise Exception(f"Detail ID {detail_id}를 찾을 수 없습니다.")
+            
+            conn.commit()
+            return True
+            
+    except Exception as e:
+        print(f"통제 검토 결과 저장 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+def get_rcm_review_result(rcm_id):
+    """RCM 검토 결과 조회 (sb_rcm_detail 테이블에서)"""
+    try:
+        with get_db() as conn:
+            # RCM 기본 정보
+            rcm_info = conn.execute('''
+                SELECT rcm_id, rcm_name FROM sb_rcm WHERE rcm_id = ?
+            ''', (rcm_id,)).fetchone()
+            
+            if not rcm_info:
+                return None
+            
+            # 통제별 매핑 및 AI 검토 정보
+            details = conn.execute('''
+                SELECT detail_id, control_code, control_name,
+                       mapped_std_control_id, mapped_date, mapped_by,
+                       ai_review_status, ai_review_recommendation, ai_reviewed_date, ai_reviewed_by,
+                       mu.user_name as mapped_user_name,
+                       au.user_name as ai_reviewed_user_name
+                FROM sb_rcm_detail d
+                LEFT JOIN sb_user mu ON d.mapped_by = mu.user_id
+                LEFT JOIN sb_user au ON d.ai_reviewed_by = au.user_id
+                WHERE d.rcm_id = ?
+                ORDER BY d.control_code
+            ''', (rcm_id,)).fetchall()
+            
+            # 데이터를 구조화
+            mapping_data = {}
+            ai_review_data = {}
+            
+            for detail in details:
+                detail_dict = dict(detail)
+                
+                # 매핑 정보
+                if detail['mapped_std_control_id']:
+                    mapping_data[str(detail['mapped_std_control_id'])] = {
+                        'control_code': detail['control_code'],
+                        'mapped_date': detail['mapped_date'],
+                        'mapped_by': detail['mapped_by'],
+                        'mapped_user_name': detail['mapped_user_name']
+                    }
+                
+                # AI 검토 정보
+                if detail['ai_review_status'] == 'completed':
+                    ai_review_data[str(detail['mapped_std_control_id'] or detail['detail_id'])] = {
+                        'status': 'completed',
+                        'recommendation': detail['ai_review_recommendation'],
+                        'reviewed_date': detail['ai_reviewed_date'],
+                        'reviewed_by': detail['ai_reviewed_by'],
+                        'reviewed_user_name': detail['ai_reviewed_user_name']
+                    }
+            
+            return {
+                'rcm_id': rcm_info['rcm_id'],
+                'rcm_name': rcm_info['rcm_name'],
+                'mapping_data': mapping_data,
+                'ai_review_data': ai_review_data,
+                'has_data': len(mapping_data) > 0 or len(ai_review_data) > 0
+            }
+                
+    except Exception as e:
+        print(f"RCM 검토 결과 조회 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def clear_rcm_review_result(rcm_id):
+    """RCM 검토 결과 초기화"""
+    try:
+        with get_db() as conn:
+            conn.execute('''
+                UPDATE sb_rcm_detail
+                SET mapped_std_control_id = NULL,
+                    mapped_date = NULL,
+                    mapped_by = NULL,
+                    ai_review_status = 'not_reviewed',
+                    ai_review_recommendation = NULL,
+                    ai_reviewed_date = NULL,
+                    ai_reviewed_by = NULL
+                WHERE rcm_id = ?
+            ''', (rcm_id,))
+            conn.commit()
+            return True
+            
+    except Exception as e:
+        print(f"RCM 검토 결과 초기화 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def get_rcm_review_status_summary():
+    """모든 RCM의 검토 상태 요약"""
+    try:
+        with get_db() as conn:
+            results = conn.execute('''
+                SELECT r.rcm_id, r.rcm_name,
+                       COUNT(d.detail_id) as total_controls,
+                       COUNT(d.mapped_std_control_id) as mapped_count,
+                       COUNT(CASE WHEN d.ai_review_status = 'completed' THEN 1 END) as ai_reviewed_count,
+                       MAX(d.mapped_date) as last_mapped_date,
+                       MAX(d.ai_reviewed_date) as last_reviewed_date
+                FROM sb_rcm r
+                LEFT JOIN sb_rcm_detail d ON r.rcm_id = d.rcm_id
+                WHERE r.is_active = 'Y'
+                GROUP BY r.rcm_id, r.rcm_name
+                ORDER BY r.rcm_name
+            ''').fetchall()
+            
+            summary_list = []
+            for result in results:
+                result_dict = dict(result)
+                
+                # 검토 상태 결정
+                if result['ai_reviewed_count'] > 0:
+                    result_dict['review_status'] = 'in_progress'
+                elif result['mapped_count'] > 0:
+                    result_dict['review_status'] = 'in_progress'
+                else:
+                    result_dict['review_status'] = 'not_started'
+                
+                summary_list.append(result_dict)
+            
+            return summary_list
+            
+    except Exception as e:
+        print(f"RCM 검토 상태 요약 조회 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+# 호환성을 위한 wrapper 함수
+def save_rcm_review_result(rcm_id, user_id, mapping_data, ai_review_data, status='in_progress', notes=''):
+    """기존 API 호환성을 위한 wrapper 함수"""
+    # 매핑 데이터 저장
+    for std_control_id, mapping_info in mapping_data.items():
+        if mapping_info.get('control_code'):
+            save_rcm_mapping(rcm_id, mapping_info['control_code'], int(std_control_id), user_id)
+    
+    # AI 검토 데이터 저장
+    for std_control_id, ai_info in ai_review_data.items():
+        if ai_info.get('status') == 'completed' and ai_info.get('recommendation'):
+            # std_control_id로 control_code 찾기
+            with get_db() as conn:
+                result = conn.execute('''
+                    SELECT control_code FROM sb_rcm_detail
+                    WHERE rcm_id = ? AND mapped_std_control_id = ?
+                ''', (rcm_id, int(std_control_id))).fetchone()
+                
+                if result:
+                    save_rcm_ai_review(rcm_id, result['control_code'], ai_info['recommendation'], user_id)
+    
+    return rcm_id
