@@ -47,7 +47,7 @@
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="premiumServicesDropdown">
                             <li><a class="dropdown-item" href="{{ url_for('link5.user_rcm') }}">
-                                <i class="fas fa-database me-2"></i>RCM 조회
+                                <i class="fas fa-database me-2"></i>RCM 조회/평가
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('link6.user_design_evaluation') }}">
                                 <i class="fas fa-clipboard-check me-2"></i>설계평가

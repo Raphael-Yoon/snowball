@@ -128,11 +128,11 @@
                 <!-- RCM 조회 -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-primary h-100">
-                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM 조회" 
+                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM 조회/평가" 
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center">RCM 조회</h5>
-                            <p class="feature-description">귀하에게 할당된 RCM 데이터를 조회할 수 있습니다.</p>
+                            <h5 class="feature-title text-center">RCM 조회/평가</h5>
+                            <p class="feature-description">귀하에게 할당된 RCM 데이터를 조회하고 AI를 활용한 통제항목 검토를 수행할 수 있습니다.</p>
                             
                             <div class="text-center mt-auto">
                                 <a href="/user/rcm" class="feature-link">자세히 보기</a>
@@ -284,7 +284,7 @@
         }
         
     </script>
-    <script src="{{ url_for('static', filename='js/session-manager.js') }}"></script>
+    <!-- <script src="{{ url_for('static', filename='js/session-manager.js') }}"></script> -->
     
 </body>
 </html>
