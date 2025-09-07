@@ -24,16 +24,6 @@
         .control-item.mapped { border-left-color: #28a745; }
         .control-item.unmapped { border-left-color: #dc3545; }
         
-        .missing-field {
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 4px;
-            padding: 2px 6px;
-            margin: 2px;
-            font-size: 0.8rem;
-            display: inline-block;
-        }
-        
         .progress-custom {
             height: 25px;
         }
@@ -85,14 +75,6 @@
                                     <small class="text-muted">
                                         ({{ "%.1f"|format((eval_result.mapped_controls / eval_result.total_controls * 100) if eval_result.total_controls > 0 else 0) }}%)
                                     </small>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>누락된 필드:</th>
-                                <td>
-                                    <span class="{{ 'text-danger' if eval_result.missing_fields_count > 0 else 'text-success' }}">
-                                        {{ eval_result.missing_fields_count }}개
-                                    </span>
                                 </td>
                             </tr>
                         </table>
@@ -173,14 +155,6 @@
                                 </li>
                             {% endif %}
                             
-                            {% if eval_result.missing_fields_count > 0 %}
-                                <li class="mb-2">
-                                    <i class="fas fa-arrow-right text-warning me-2"></i>
-                                    <strong>필수 필드 보완:</strong> 
-                                    {{ eval_result.missing_fields_count }}개의 필수 필드가 누락되어 있습니다. 
-                                    누락된 필드를 보완하여 통제의 완성도를 높이세요.
-                                </li>
-                            {% endif %}
                             
                             {% if eval_result.completeness_score < 70 %}
                                 <li class="mb-2">
@@ -426,8 +400,60 @@
             const numericStdControlId = parseInt(stdControlId);
             
             if (!rcmControlCode) {
-                // 매핑 해제
-                delete existingMappings[numericStdControlId];
+                // 매핑 해제 - 서버에서도 삭제해야 함
+                const existingMapping = existingMappings[numericStdControlId];
+                if (existingMapping) {
+                    const detailId = findDetailId(existingMapping.control_code);
+                    if (detailId) {
+                        // 서버에서 매핑 삭제
+                        fetch(`/api/rcm/{{ rcm_info.rcm_id }}/detail/${detailId}/mapping`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            credentials: 'same-origin'
+                        })
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result.success) {
+                                // 클라이언트에서도 삭제
+                                delete existingMappings[numericStdControlId];
+                                
+                                // UI 업데이트
+                                const selectElement = document.getElementById(`select_${stdControlId}`);
+                                const row = selectElement.closest('tr');
+                                row.classList.remove('table-success');
+                                
+                                // AI 검토 버튼 제거
+                                const aiCell = row.querySelector('td:nth-child(4)');
+                                aiCell.innerHTML = '<span class="text-muted small">매핑 후 이용 가능</span>';
+                                
+                                // 개선권고사항 초기화
+                                const recommendationCell = row.querySelector('td:nth-child(6)');
+                                recommendationCell.innerHTML = '<span class="text-muted small">-</span>';
+                                
+                                // 상태 아이콘 업데이트
+                                const statusCell = row.querySelector('td:nth-child(5)');
+                                statusCell.innerHTML = '<i class="fas fa-circle text-muted" title="매핑 안됨"></i>';
+                                
+                                // AI 검토 결과도 삭제
+                                delete aiReviewResults[numericStdControlId];
+                                
+                                // 저장 완료 알림 표시
+                                showAutoSaveIndicator();
+                            } else {
+                                alert('매핑 해제에 실패했습니다: ' + result.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('매핑 해제 오류:', error);
+                            alert('매핑 해제 중 오류가 발생했습니다.');
+                        });
+                    }
+                } else {
+                    // 이미 해제된 상태이면 UI만 업데이트
+                    delete existingMappings[numericStdControlId];
+                }
                 return;
             }
             
@@ -510,28 +536,13 @@
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>검토 중...';
             button.disabled = true;
             
-            // 모의 개선권고사항 생성
-            const sampleRecommendations = [
-                "통제 설명을 더 구체화하세요",
-                "테스트 절차가 부족합니다",
-                "승인자 권한을 명시하세요",
-                "모니터링 주기를 설정하세요",
-                "문서화가 필요합니다",
-                "예외 처리 방안을 추가하세요"
-            ];
-            
-            const randomRecommendation = sampleRecommendations[Math.floor(Math.random() * sampleRecommendations.length)];
-            
-            // AI 검토 API 호출
+            // 실제 AI 검토 API 호출 (모의 데이터 제거)
             fetch(`/api/rcm/{{ rcm_info.rcm_id }}/detail/${detailId}/ai-review`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                credentials: 'same-origin',
-                body: JSON.stringify({
-                    recommendation: randomRecommendation
-                })
+                credentials: 'same-origin'
             })
             .then(response => response.json())
             .then(data => {
@@ -542,10 +553,13 @@
                     button.classList.add('btn-success');
                     button.disabled = false;
                     
+                    // AI 검토 결과에서 개선권고사항 추출
+                    const aiRecommendation = data.recommendation || '검토 완료';
+                    
                     // 개선권고사항 업데이트
                     const recommendationElement = document.getElementById(`recommendation_${stdControlId}`);
                     if (recommendationElement) {
-                        recommendationElement.innerHTML = `<span class="text-warning small"><i class="fas fa-lightbulb me-1"></i>${randomRecommendation}</span>`;
+                        recommendationElement.innerHTML = `<span class="text-warning small"><i class="fas fa-lightbulb me-1"></i>${aiRecommendation}</span>`;
                     }
                     
                     console.log(`AI 검토 완료: ${stdControlName} -> ${rcmControlCode}`);
@@ -554,7 +568,7 @@
                     const numericStdControlId = parseInt(stdControlId);
                     aiReviewResults[numericStdControlId] = {
                         status: 'completed',
-                        recommendation: randomRecommendation,
+                        recommendation: aiRecommendation,
                         reviewed_date: new Date().toISOString(),
                         std_control_name: stdControlName,
                         rcm_control_code: rcmControlCode
@@ -831,28 +845,13 @@
             return new Promise((resolve, reject) => {
                 const { stdControlId, stdControlName, rcmControlCode, detailId } = reviewData;
                 
-                // 모의 개선권고사항 생성
-                const sampleRecommendations = [
-                    "통제 설명을 더 구체화하세요",
-                    "테스트 절차가 부족합니다",
-                    "승인자 권한을 명시하세요",
-                    "모니터링 주기를 설정하세요",
-                    "문서화가 필요합니다",
-                    "예외 처리 방안을 추가하세요"
-                ];
-                
-                const randomRecommendation = sampleRecommendations[Math.floor(Math.random() * sampleRecommendations.length)];
-                
-                // AI 검토 API 호출
+                // 실제 AI 검토 API 호출
                 fetch(`/api/rcm/{{ rcm_info.rcm_id }}/detail/${detailId}/ai-review`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({
-                        recommendation: randomRecommendation
-                    })
+                    credentials: 'same-origin'
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -866,16 +865,19 @@
                             button.disabled = false;
                         }
                         
+                        // AI 검토 결과에서 개선권고사항 추출
+                        const aiRecommendation = data.recommendation || '검토 완료';
+                        
                         // 개선권고사항 업데이트
                         const recommendationElement = document.getElementById(`recommendation_${stdControlId}`);
                         if (recommendationElement) {
-                            recommendationElement.innerHTML = `<span class="text-warning small"><i class="fas fa-lightbulb me-1"></i>${randomRecommendation}</span>`;
+                            recommendationElement.innerHTML = `<span class="text-warning small"><i class="fas fa-lightbulb me-1"></i>${aiRecommendation}</span>`;
                         }
                         
                         // AI 검토 결과 저장
                         aiReviewResults[stdControlId] = {
                             status: 'completed',
-                            recommendation: randomRecommendation,
+                            recommendation: aiRecommendation,
                             reviewed_date: new Date().toISOString(),
                             std_control_name: stdControlName,
                             rcm_control_code: rcmControlCode

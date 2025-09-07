@@ -1195,7 +1195,6 @@ def evaluate_rcm_completeness(rcm_id, user_id):
             'completeness_score': 0.0,
             'total_controls': 0,
             'mapped_controls': 0,
-            'missing_fields_count': 0,
             'details': []
         }
     
@@ -1205,15 +1204,12 @@ def evaluate_rcm_completeness(rcm_id, user_id):
     
     # 각 통제별 완성도 검사
     eval_details = []
-    missing_fields_count = 0
     
     for detail in rcm_details:
         control_eval = {
             'control_code': detail['control_code'],
             'control_name': detail['control_name'],
             'is_mapped': False,
-            'missing_fields': [],
-            'required_fields': [],
             'completeness': 0.0
         }
         
@@ -1224,7 +1220,6 @@ def evaluate_rcm_completeness(rcm_id, user_id):
                 mapped_std = mapping
                 control_eval['is_mapped'] = True
                 control_eval['std_control_name'] = mapping['std_control_name']
-                control_eval['required_fields'] = []  # 현재는 필수 필드 체크 안함
                 break
         
         # 매핑된 통제는 100% 완성도로 처리 (현재는 단순 매핑 여부만 체크)
@@ -1235,24 +1230,22 @@ def evaluate_rcm_completeness(rcm_id, user_id):
     
     # 전체 완성도 점수 계산 (매핑 비율 기준)
     completeness_score = (mapped_controls / total_controls * 100) if total_controls > 0 else 0.0
-    missing_fields_count = 0  # 현재는 필수 필드 체크 안함
     
     # 결과 저장
     eval_result = {
         'completeness_score': round(completeness_score, 2),
         'total_controls': total_controls,
         'mapped_controls': mapped_controls,
-        'missing_fields_count': missing_fields_count,
         'details': eval_details
     }
     
     with get_db() as conn:
         conn.execute('''
             INSERT INTO sb_rcm_completeness_eval
-            (rcm_id, total_controls, mapped_controls, missing_fields_count, 
+            (rcm_id, total_controls, mapped_controls, 
              completeness_score, eval_details, eval_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (rcm_id, total_controls, mapped_controls, missing_fields_count,
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (rcm_id, total_controls, mapped_controls,
               completeness_score, json.dumps(eval_details, ensure_ascii=False), user_id))
         conn.commit()
     
@@ -1280,6 +1273,34 @@ def save_rcm_mapping(rcm_id, detail_id, std_control_id, user_id):
             
     except Exception as e:
         print(f"매핑 저장 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+def delete_rcm_mapping(rcm_id, detail_id, user_id):
+    """개별 RCM 통제의 매핑 삭제 (sb_rcm_detail 테이블 사용)"""
+    try:
+        with get_db() as conn:
+            cursor = conn.execute('''
+                UPDATE sb_rcm_detail
+                SET mapped_std_control_id = NULL,
+                    mapped_date = NULL,
+                    mapped_by = NULL,
+                    ai_review_status = NULL,
+                    ai_review_recommendation = NULL,
+                    ai_reviewed_date = NULL,
+                    ai_reviewed_by = NULL
+                WHERE detail_id = ?
+            ''', (detail_id,))
+            
+            if cursor.rowcount == 0:
+                raise Exception(f"Detail ID {detail_id}를 찾을 수 없습니다.")
+            
+            conn.commit()
+            return True
+            
+    except Exception as e:
+        print(f"매핑 삭제 오류: {e}")
         import traceback
         traceback.print_exc()
         raise
@@ -1551,3 +1572,4 @@ def save_rcm_review_result(rcm_id, user_id, mapping_data, ai_review_data, status
                     save_rcm_ai_review(rcm_id, result['control_code'], ai_info['recommendation'], user_id)
     
     return rcm_id
+
