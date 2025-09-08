@@ -178,6 +178,28 @@
         </div>
     </div>
 
+    <!-- RCM 통제 상세정보 모달 -->
+    <div class="modal fade" id="rcmDetailModal" tabindex="-1" aria-labelledby="rcmDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rcmDetailModalLabel">
+                        <i class="fas fa-info-circle me-2"></i>통제 상세정보
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="rcmDetailContent">
+                        <!-- 동적으로 생성될 내용 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let standardControls = [];
@@ -281,9 +303,9 @@
                 html += `<thead class="table-light">`;
                 html += `<tr>`;
                 html += `<th width="16%">통제명</th>`;
-                html += `<th width="33%">통제설명</th>`;
-                html += `<th width="20%">RCM 통제 선택</th>`;
-                html += `<th width="8%">AI 검토</th>`;
+                html += `<th width="30%">통제설명</th>`;
+                html += `<th width="18%">RCM 통제 선택</th>`;
+                html += `<th width="13%">AI 검토</th>`;
                 html += `<th width="5%">상태</th>`;
                 html += `<th width="18%">개선권고사항</th>`;
                 html += `</tr>`;
@@ -338,18 +360,28 @@
                         const rcmControl = rcmControls.find(rc => rc.control_code === mapping.control_code);
                         const detailId = rcmControl ? rcmControl.detail_id : '';
                         
+                        // 상세보기 버튼 먼저 배치 (작은 사이즈)
+                        html += `<button class="btn btn-xs btn-outline-info me-1" 
+                                  onclick="showRcmDetail('${mapping.control_code}')"
+                                  title="RCM 통제 상세정보 보기"
+                                  style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                  <i class="fas fa-eye"></i>
+                                  </button>`;
+                        
                         if (aiResult && aiResult.status === 'completed') {
                             // AI 검토 완료된 상태
-                            html += `<button class="btn btn-sm btn-success" 
+                            html += `<button class="btn btn-xs btn-success" 
                                       onclick="startAiReview(${control.std_control_id}, '${control.control_name.replace(/'/g, "\\'")}', '${mapping.control_code}', ${detailId})"
-                                      id="ai_btn_${control.std_control_id}">`;
+                                      id="ai_btn_${control.std_control_id}"
+                                      style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">`;
                             html += `<i class="fas fa-check me-1"></i>완료`;
                             html += `</button>`;
                         } else {
                             // AI 검토 대기 상태
-                            html += `<button class="btn btn-sm btn-outline-primary" 
+                            html += `<button class="btn btn-xs btn-outline-primary" 
                                       onclick="startAiReview(${control.std_control_id}, '${control.control_name.replace(/'/g, "\\'")}', '${mapping.control_code}', ${detailId})"
-                                      id="ai_btn_${control.std_control_id}">`;
+                                      id="ai_btn_${control.std_control_id}"
+                                      style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">`;
                             html += `<i class="fas fa-brain me-1"></i>AI 검토`;
                             html += `</button>`;
                         }
@@ -371,8 +403,8 @@
                     html += `<td>`;
                     if (isMapped) {
                         if (aiResult && aiResult.status === 'completed' && aiResult.recommendation) {
-                            html += `<span class="text-warning small" id="recommendation_${control.std_control_id}">`;
-                            html += `<i class="fas fa-lightbulb me-1"></i>${aiResult.recommendation}`;
+                            html += `<span class="text-dark small" id="recommendation_${control.std_control_id}" style="color: #212529 !important;">`;
+                            html += `<i class="fas fa-lightbulb me-1 text-warning"></i>${aiResult.recommendation}`;
                             html += `</span>`;
                         } else {
                             html += `<span class="text-muted small" id="recommendation_${control.std_control_id}">AI 검토 후 표시</span>`;
@@ -500,9 +532,16 @@
                     
                     const aiCell = row.querySelector('td:nth-child(4)'); // AI 검토 컬럼
                     aiCell.innerHTML = `
-                        <button class="btn btn-sm btn-outline-primary" 
+                        <button class="btn btn-xs btn-outline-info me-1" 
+                                onclick="showRcmDetail('${rcmControlCode}')"
+                                title="RCM 통제 상세정보 보기"
+                                style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-xs btn-outline-primary" 
                                 onclick="startAiReview(${stdControlId}, '${stdControlName.replace(/'/g, "\\'")}', '${rcmControlCode}', ${mappingDetailId})"
-                                id="ai_btn_${stdControlId}">
+                                id="ai_btn_${stdControlId}"
+                                style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
                             <i class="fas fa-brain me-1"></i>AI 검토
                         </button>
                     `;
@@ -559,7 +598,9 @@
                     // 개선권고사항 업데이트
                     const recommendationElement = document.getElementById(`recommendation_${stdControlId}`);
                     if (recommendationElement) {
-                        recommendationElement.innerHTML = `<span class="text-warning small"><i class="fas fa-lightbulb me-1"></i>${aiRecommendation}</span>`;
+                        recommendationElement.innerHTML = `<i class="fas fa-lightbulb me-1 text-warning"></i>${aiRecommendation}`;
+                        recommendationElement.className = "text-dark small";
+                        recommendationElement.style.color = "#212529 !important";
                     }
                     
                     console.log(`AI 검토 완료: ${stdControlName} -> ${rcmControlCode}`);
@@ -871,7 +912,9 @@
                         // 개선권고사항 업데이트
                         const recommendationElement = document.getElementById(`recommendation_${stdControlId}`);
                         if (recommendationElement) {
-                            recommendationElement.innerHTML = `<span class="text-warning small"><i class="fas fa-lightbulb me-1"></i>${aiRecommendation}</span>`;
+                            recommendationElement.innerHTML = `<i class="fas fa-lightbulb me-1 text-warning"></i>${aiRecommendation}`;
+                            recommendationElement.className = "text-dark small";
+                            recommendationElement.style.color = "#212529 !important";
                         }
                         
                         // AI 검토 결과 저장
@@ -900,6 +943,58 @@
             const control = standardControls.find(ctrl => ctrl.std_control_id === stdControlId);
             return control ? control.control_name : `기준통제 ${stdControlId}`;
         }
+
+        // RCM 통제 상세정보 모달 표시
+        function showRcmDetail(controlCode) {
+            try {
+                // rcmControls에서 해당 통제 찾기
+                const rcmControl = rcmControls.find(rc => rc.control_code === controlCode);
+                if (!rcmControl) {
+                    alert('통제 정보를 찾을 수 없습니다.');
+                    return;
+                }
+
+                // 모달 제목 설정
+                document.getElementById('rcmDetailModalLabel').textContent = `${controlCode} - ${rcmControl.control_name}`;
+
+                // 모달 내용 설정
+                const content = `
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="20%" class="text-muted">통제 코드:</th>
+                            <td><strong>${controlCode}</strong></td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">통제명:</th>
+                            <td>${rcmControl.control_name}</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">통제 설명:</th>
+                            <td>${rcmControl.control_description || '<span class="text-muted">설명 없음</span>'}</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">통제 유형:</th>
+                            <td>${rcmControl.control_type || '<span class="text-muted">미분류</span>'}</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">담당자:</th>
+                            <td>${rcmControl.responsible_party || '<span class="text-muted">미지정</span>'}</td>
+                        </tr>
+                    </table>
+                `;
+
+                document.getElementById('rcmDetailContent').innerHTML = content;
+
+                // 모달 표시
+                const modal = new bootstrap.Modal(document.getElementById('rcmDetailModal'));
+                modal.show();
+
+            } catch (error) {
+                console.error('모달 표시 오류:', error);
+                alert('통제 정보를 표시하는 중 오류가 발생했습니다.');
+            }
+        }
+        
         
         // 이전 결과 수동 불러오기 (현재 비활성화)
         function loadPreviousResult() {
