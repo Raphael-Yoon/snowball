@@ -38,8 +38,8 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1><i class="fas fa-chart-bar me-2"></i>RCM 검토</h1>
                     <div>
-                        <a href="/rcm/{{ rcm_info.rcm_id }}/view" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left me-1"></i>상세보기로
+                        <a href="/rcm" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>RCM 목록으로
                         </a>
                     </div>
                 </div>
@@ -120,10 +120,13 @@
                     <div class="card-header">
                         <h5><i class="fas fa-list-check me-2"></i>기준통제별 매핑 현황</h5>
                         <div class="float-end">
+                            <a href="/rcm/{{ rcm_info.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="fas fa-list me-1"></i>RCM 상세보기로
+                            </a>
                             <button id="autoSaveIndicator" class="btn btn-sm btn-success me-2" disabled title="모든 매핑과 AI 검토 결과가 실시간으로 자동 저장됩니다" style="display: none;">
                                 <i class="fas fa-check me-1"></i>자동 저장됨
                             </button>
-                            <button class="btn btn-sm btn-primary" onclick="bulkAiReview()" title="매핑된 항목 중 AI 검토가 완료되지 않은 항목을 모두 처리합니다">
+                            <button class="btn btn-sm btn-outline-primary" onclick="bulkAiReview()" title="매핑된 항목 중 AI 검토가 완료되지 않은 항목을 모두 처리합니다">
                                 <i class="fas fa-magic me-1"></i>AI 전체 검토
                             </button>
                         </div>
@@ -369,12 +372,28 @@
                                   </button>`;
                         
                         if (aiResult && aiResult.status === 'completed') {
-                            // AI 검토 완료된 상태
-                            html += `<button class="btn btn-xs btn-success" 
+                            // AI 검토 완료된 상태 - 결과에 따라 버튼 스타일 구분
+                            const recommendation = aiResult.recommendation || '';
+                            let buttonClass, buttonIcon, buttonText;
+                            if (recommendation.includes('매핑이 부적절합니다') || recommendation.includes('매핑이 부적절함')) {
+                                buttonClass = 'btn-danger';
+                                buttonIcon = 'fas fa-times';
+                                buttonText = '매핑오류';
+                            } else if (recommendation.includes('현재 통제 설계가 적정합니다') || recommendation.includes('현재 통제가 적절히')) {
+                                buttonClass = 'btn-success';
+                                buttonIcon = 'fas fa-check';
+                                buttonText = '완료';
+                            } else {
+                                buttonClass = 'btn-warning';
+                                buttonIcon = 'fas fa-exclamation-triangle';
+                                buttonText = '개선필요';
+                            }
+                            
+                            html += `<button class="btn btn-xs ${buttonClass}" 
                                       onclick="startAiReview(${control.std_control_id}, '${control.control_name.replace(/'/g, "\\'")}', '${mapping.control_code}', ${detailId})"
                                       id="ai_btn_${control.std_control_id}"
                                       style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">`;
-                            html += `<i class="fas fa-check me-1"></i>완료`;
+                            html += `<i class="${buttonIcon} me-1"></i>${buttonText}`;
                             html += `</button>`;
                         } else {
                             // AI 검토 대기 상태
@@ -586,14 +605,30 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // 검토 완료 후 결과 표시
-                    button.innerHTML = '<i class="fas fa-check me-1"></i>완료';
-                    button.classList.remove('btn-outline-primary');
-                    button.classList.add('btn-success');
-                    button.disabled = false;
-                    
                     // AI 검토 결과에서 개선권고사항 추출
                     const aiRecommendation = data.recommendation || '검토 완료';
+                    
+                    // AI 응답을 분석해서 상태 구분
+                    let buttonClass, buttonIcon, buttonText;
+                    if (aiRecommendation.includes('매핑이 부적절합니다') || aiRecommendation.includes('매핑이 부적절함')) {
+                        buttonClass = 'btn-danger';
+                        buttonIcon = 'fas fa-times';
+                        buttonText = '매핑오류';
+                    } else if (aiRecommendation.includes('현재 통제 설계가 적정합니다') || aiRecommendation.includes('현재 통제가 적절히')) {
+                        buttonClass = 'btn-success';
+                        buttonIcon = 'fas fa-check';
+                        buttonText = '완료';
+                    } else {
+                        buttonClass = 'btn-warning';
+                        buttonIcon = 'fas fa-exclamation-triangle';
+                        buttonText = '개선필요';
+                    }
+                    
+                    // 검토 완료 후 결과 표시
+                    button.innerHTML = `<i class="${buttonIcon} me-1"></i>${buttonText}`;
+                    button.classList.remove('btn-outline-primary');
+                    button.classList.add(buttonClass);
+                    button.disabled = false;
                     
                     // 개선권고사항 업데이트
                     const recommendationElement = document.getElementById(`recommendation_${stdControlId}`);
@@ -603,7 +638,7 @@
                         recommendationElement.style.color = "#212529 !important";
                     }
                     
-                    console.log(`AI 검토 완료: ${stdControlName} -> ${rcmControlCode}`);
+                    // console.log(`AI 검토 완료: ${stdControlName} -> ${rcmControlCode}`);
                     
                     // AI 검토 결과 저장 (숫자형 ID로 저장)
                     const numericStdControlId = parseInt(stdControlId);
@@ -680,9 +715,9 @@
         
         // 자동 저장 (임시 비활성화)
         function autoSaveReviewResult() {
-            console.log('자동 저장 호출됨 (현재 비활성화)');
-            console.log('기존 매핑:', existingMappings);
-            console.log('AI 검토 결과:', aiReviewResults);
+            // console.log('자동 저장 호출됨 (현재 비활성화)');
+            // console.log('기존 매핑:', existingMappings);
+            // console.log('AI 검토 결과:', aiReviewResults);
             
             // 자동저장 임시 비활성화 - 개별 통제 API로 변경 후 재활성화 예정
             /*
@@ -702,7 +737,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    console.log('자동 저장 완료');
+                    // console.log('자동 저장 완료');
                     showAutoSaveIndicator();
                 }
             })
@@ -714,7 +749,7 @@
         
         // 검토 결과 수동 저장 (현재 비활성화)
         function saveReviewResult() {
-            console.log('수동 저장 호출됨 (현재 비활성화)');
+            // console.log('수동 저장 호출됨 (현재 비활성화)');
             alert('수동 저장은 개별 통제 API로 변경 예정입니다.');
             
             // 개별 통제 API로 변경 후 재구현 예정
@@ -774,7 +809,7 @@
             .then(data => {
                 if (data.success && data.has_saved_review) {
                     const result = data.review_result;
-                    console.log('이전 검토 결과 발견:', result);
+                    // console.log('이전 검토 결과 발견:', result);
                     
                     // 매핑 데이터 복원 (키를 숫자형으로 변환)
                     if (result.mapping_data) {
@@ -792,7 +827,7 @@
                         }
                     }
                     
-                    console.log('이전 결과가 복원되었습니다.');
+                    // console.log('이전 결과가 복원되었습니다.');
                 }
             })
             .catch(error => {
@@ -998,7 +1033,7 @@
         
         // 이전 결과 수동 불러오기 (현재 비활성화)
         function loadPreviousResult() {
-            console.log('수동 불러오기 호출됨 (현재 비활성화)');
+            // console.log('수동 불러오기 호출됨 (현재 비활성화)');
             alert('수동 불러오기는 개별 통제 API로 변경 예정입니다.');
             
             // 개별 통제 API로 변경 후 재구현 예정

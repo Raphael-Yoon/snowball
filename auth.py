@@ -286,7 +286,7 @@ def init_db():
             # 기존 review 관련 테이블들 제거
             conn.execute('DROP TABLE IF EXISTS sb_rcm_review_result')
             conn.execute('DROP TABLE IF EXISTS sb_rcm_review')
-            print("사용하지 않는 review 관련 테이블들을 제거했습니다.")
+            pass  # 사용하지 않는 review 관련 테이블들을 제거했습니다.
             
             # sb_rcm 테이블에서 review 관련 컬럼들 제거 (SQLite는 DROP COLUMN을 지원하지 않으므로 테이블 재생성)
             # 기존 데이터가 있는지 확인
@@ -295,7 +295,7 @@ def init_db():
             ).fetchone()[0]
             
             if has_review_columns > 0:
-                print("sb_rcm 테이블에서 review 관련 컬럼들을 제거합니다...")
+                pass  # sb_rcm 테이블에서 review 관련 컬럼들을 제거합니다...
                 
                 # 임시 테이블 생성
                 conn.execute('''
@@ -321,7 +321,7 @@ def init_db():
                 conn.execute('DROP TABLE sb_rcm')
                 conn.execute('ALTER TABLE sb_rcm_temp RENAME TO sb_rcm')
                 
-                print("sb_rcm 테이블에서 review 관련 컬럼들이 제거되었습니다.")
+                pass  # sb_rcm 테이블에서 review 관련 컬럼들이 제거되었습니다.
             
             # sb_rcm_detail 테이블에서 불필요한 컬럼들 제거
             has_unnecessary_columns = conn.execute(
@@ -329,7 +329,7 @@ def init_db():
             ).fetchone()[0]
             
             if has_unnecessary_columns > 0:
-                print("sb_rcm_detail 테이블에서 불필요한 컬럼들을 제거합니다...")
+                pass  # sb_rcm_detail 테이블에서 불필요한 컬럼들을 제거합니다...
                 
                 # 기존 컬럼 목록 조회
                 columns_info = conn.execute("PRAGMA table_info('sb_rcm_detail')").fetchall()
@@ -348,7 +348,7 @@ def init_db():
                 conn.execute('DROP TABLE sb_rcm_detail')
                 conn.execute('ALTER TABLE sb_rcm_detail_temp RENAME TO sb_rcm_detail')
                 
-                print("sb_rcm_detail 테이블에서 불필요한 컬럼들이 제거되었습니다.")
+                pass  # sb_rcm_detail 테이블에서 불필요한 컬럼들이 제거되었습니다.
                 
         except Exception as e:
             print(f"테이블/컬럼 정리 중 오류 (무시됨): {e}")
@@ -390,7 +390,7 @@ def init_db():
             conn.execute('DROP TABLE sb_standard_control')
             conn.execute('ALTER TABLE sb_standard_control_new RENAME TO sb_standard_control')
             
-            print("sb_standard_control 테이블에서 불필요한 컬럼들을 삭제했습니다.")
+            pass  # sb_standard_control 테이블에서 불필요한 컬럼들을 삭제했습니다.
         except Exception as e:
             # 테이블 재구성 실패 시 무시 (이미 올바른 구조일 수 있음)
             print(f"테이블 재구성 중 오류 (무시됨): {e}")
@@ -1183,13 +1183,13 @@ def get_rcm_standard_mappings(rcm_id):
         return [dict(mapping) for mapping in mappings]
 
 def evaluate_rcm_completeness(rcm_id, user_id):
-    """RCM 완성도 평가 실행"""
+    """RCM 완성도 평가 실행 (sb_rcm_detail 기반 매핑 일관성 유지)"""
     import json
-    
-    # RCM 상세 데이터 조회
+
+    # RCM 상세 데이터 조회 (여기의 mapped_std_control_id가 화면과 일관)
     rcm_details = get_rcm_details(rcm_id)
     total_controls = len(rcm_details)
-    
+
     if total_controls == 0:
         return {
             'completeness_score': 0.0,
@@ -1197,40 +1197,39 @@ def evaluate_rcm_completeness(rcm_id, user_id):
             'mapped_controls': 0,
             'details': []
         }
-    
-    # 기준통제 매핑 조회
-    mappings = get_rcm_standard_mappings(rcm_id)
-    mapped_controls = len(mappings)
-    
-    # 각 통제별 완성도 검사
+
+    # sb_rcm_detail에서 매핑된 항목 수 계산 및 표기용 기준통제명 캐싱
+    mapped_std_ids = [d['mapped_std_control_id'] for d in rcm_details if d.get('mapped_std_control_id')]
+    mapped_controls = len(mapped_std_ids)
+
+    std_id_to_name = {}
+    if mapped_std_ids:
+        placeholders = ','.join(['?'] * len(mapped_std_ids))
+        with get_db() as conn:
+            rows = conn.execute(
+                f"SELECT std_control_id, control_name FROM sb_standard_control WHERE std_control_id IN ({placeholders})",
+                tuple(mapped_std_ids)
+            ).fetchall()
+            std_id_to_name = {row['std_control_id']: row['control_name'] for row in rows}
+
+    # 각 통제별 완성도 검사 (현재는 매핑 존재 여부를 100%로 간주)
     eval_details = []
-    
     for detail in rcm_details:
+        std_id = detail.get('mapped_std_control_id')
+        is_mapped = std_id is not None
         control_eval = {
             'control_code': detail['control_code'],
             'control_name': detail['control_name'],
-            'is_mapped': False,
-            'completeness': 0.0
+            'is_mapped': bool(is_mapped),
+            'completeness': 100.0 if is_mapped else 0.0
         }
-        
-        # 매핑된 기준통제 찾기
-        mapped_std = None
-        for mapping in mappings:
-            if mapping['control_code'] == detail['control_code']:
-                mapped_std = mapping
-                control_eval['is_mapped'] = True
-                control_eval['std_control_name'] = mapping['std_control_name']
-                break
-        
-        # 매핑된 통제는 100% 완성도로 처리 (현재는 단순 매핑 여부만 체크)
-        if mapped_std:
-            control_eval['completeness'] = 100.0
-        
+        if is_mapped:
+            control_eval['std_control_name'] = std_id_to_name.get(std_id)
         eval_details.append(control_eval)
-    
+
     # 전체 완성도 점수 계산 (매핑 비율 기준)
     completeness_score = (mapped_controls / total_controls * 100) if total_controls > 0 else 0.0
-    
+
     # 결과 저장
     eval_result = {
         'completeness_score': round(completeness_score, 2),
@@ -1238,17 +1237,17 @@ def evaluate_rcm_completeness(rcm_id, user_id):
         'mapped_controls': mapped_controls,
         'details': eval_details
     }
-    
+
     with get_db() as conn:
         conn.execute('''
             INSERT INTO sb_rcm_completeness_eval
-            (rcm_id, total_controls, mapped_controls, 
+            (rcm_id, total_controls, mapped_controls,
              completeness_score, eval_details, eval_by)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (rcm_id, total_controls, mapped_controls,
               completeness_score, json.dumps(eval_details, ensure_ascii=False), user_id))
         conn.commit()
-    
+
     return eval_result
 
 # RCM 검토 결과 저장/조회 함수들

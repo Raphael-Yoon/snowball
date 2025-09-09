@@ -52,8 +52,8 @@
                                     <tr>
                                         <th>내 권한:</th>
                                         <td>
-                                            <span class="badge bg-{{ 'danger' if permission_type == 'admin' else 'success' }}">
-                                                {{ '관리자' if permission_type == 'admin' else '읽기' }}
+                                            <span class="badge bg-{{ 'danger' if rcm_info.permission_type == 'admin' else 'success' }}">
+                                                {{ '관리자' if rcm_info.permission_type == 'admin' else '읽기' }}
                                             </span>
                                         </td>
                                     </tr>
@@ -88,15 +88,12 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="fas fa-list me-2"></i>통제 상세 목록</h5>
                         <div>
-                            <a href="/rcm/{{ rcm_info.rcm_id }}/mapping" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="fas fa-link me-1"></i>기준통제 매핑
-                            </a>
-                            <button class="btn btn-sm btn-info me-2" onclick="evaluateCompleteness()">
+                            <button class="btn btn-sm btn-outline-primary me-2" onclick="evaluateCompleteness()">
                                 <i class="fas fa-search me-1"></i>통제항목 검토
                             </button>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="exportToExcel()">
-                                <i class="fas fa-file-excel me-1"></i>Excel 다운로드
-                            </button>
+                            <a href="/rcm/{{ rcm_info.rcm_id }}/mapping" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-link me-1"></i>기준통제 매핑
+                            </a>
                         </div>
                     </div>
                     <div class="card-body">
@@ -164,48 +161,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Excel 다운로드 기능
-        function exportToExcel() {
-            const table = document.getElementById('rcmTable');
-            if (!table) {
-                alert('다운로드할 데이터가 없습니다.');
-                return;
-            }
-            
-            let csv = '';
-            const rows = table.querySelectorAll('tr');
-            
-            for (let i = 0; i < rows.length; i++) {
-                const cols = rows[i].querySelectorAll('td, th');
-                const rowData = [];
-                
-                for (let j = 0; j < cols.length; j++) {
-                    let cellData = cols[j].textContent.trim();
-                    // CSV용 특수문자 처리
-                    cellData = cellData.replace(/"/g, '""');
-                    if (cellData.includes(',') || cellData.includes('"') || cellData.includes('\n')) {
-                        cellData = '"' + cellData + '"';
-                    }
-                    rowData.push(cellData);
-                }
-                csv += rowData.join(',') + '\n';
-            }
-            
-            // BOM 추가 (한글 깨짐 방지)
-            const bom = '\uFEFF';
-            const csvContent = bom + csv;
-            
-            // 다운로드
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', '{{ rcm_info.rcm_name }}_통제목록.csv');
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
 
         // RCM 완성도 평가 기능
         function evaluateCompleteness() {
@@ -230,7 +185,7 @@
                     
                     if (data.success) {
                         // 바로 상세 보고서 페이지로 이동
-                        window.open(`/rcm/{{ rcm_info.rcm_id }}/completeness-report`, '_blank');
+                        window.location.href = `/rcm/{{ rcm_info.rcm_id }}/completeness-report`;
                     } else {
                         alert('검토 중 오류가 발생했습니다: ' + data.message);
                     }

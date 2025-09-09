@@ -570,7 +570,7 @@
                             <div class="card-body p-2">
                                 <small class="text-muted">${imageInfo.filename}</small>
                                 <br>
-                                <a href="${imageInfo.url}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
+                                <a href="${imageInfo.url}" class="btn btn-sm btn-outline-primary mt-1">
                                     <i class="fas fa-external-link-alt me-1"></i>원본 보기
                                 </a>
                             </div>
