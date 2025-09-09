@@ -134,7 +134,7 @@
                     
                     if (data.success) {
                         // 바로 상세 보고서 페이지로 이동
-                        window.open(`/rcm/${rcmId}/completeness-report`, '_blank');
+                        window.location.href = `/rcm/${rcmId}/completeness-report`;
                     } else {
                         alert('검토 중 오류가 발생했습니다: ' + data.message);
                     }
