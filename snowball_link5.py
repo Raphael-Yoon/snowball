@@ -165,7 +165,7 @@ def get_standard_controls_api():
         print(f"기준통제 조회 오류: {e}")
         return jsonify({'success': False, 'message': '기준통제 조회 중 오류가 발생했습니다.'}), 500
 
-@bp_link5.route('/api/rcm/<int:rcm_id>/mapping', methods=['GET', 'POST'])
+@bp_link5.route('/api/rcm/<int:rcm_id>/mapping', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def rcm_mapping_api(rcm_id):
     """RCM 기준통제 매핑 API"""
@@ -223,6 +223,50 @@ def rcm_mapping_api(rcm_id):
             import traceback
             traceback.print_exc()
             return jsonify({'success': False, 'message': f'매핑 저장 중 오류가 발생했습니다: {str(e)}'}), 500
+    
+    elif request.method == 'DELETE':
+        # 매핑 삭제
+        try:
+            data = request.get_json()
+            control_code = data.get('control_code')
+            
+            if not control_code:
+                return jsonify({'success': False, 'message': '통제코드가 누락되었습니다.'}), 400
+            
+            # control_code로 detail_id 찾기
+            with get_db() as conn:
+                result = conn.execute('''
+                    SELECT detail_id FROM sb_rcm_detail 
+                    WHERE rcm_id = ? AND control_code = ?
+                ''', (rcm_id, control_code)).fetchone()
+                
+                if not result:
+                    return jsonify({'success': False, 'message': f'통제코드 {control_code}를 찾을 수 없습니다.'}), 400
+                
+                detail_id = result['detail_id']
+            
+            # 매핑 삭제 (mapped_std_control_id를 NULL로 설정)
+            with get_db() as conn:
+                conn.execute('''
+                    UPDATE sb_rcm_detail
+                    SET mapped_std_control_id = NULL,
+                        mapped_date = NULL,
+                        mapped_by = NULL
+                    WHERE rcm_id = ? AND detail_id = ?
+                ''', (rcm_id, detail_id))
+                conn.commit()
+            
+            log_user_activity(user_info, 'RCM_MAPPING_DELETE', f'RCM 기준통제 매핑 삭제 - {control_code}', 
+                             f'/api/rcm/{rcm_id}/mapping', 
+                             request.remote_addr, request.headers.get('User-Agent'))
+            
+            return jsonify({'success': True, 'message': '매핑이 삭제되었습니다.'})
+            
+        except Exception as e:
+            print(f"매핑 삭제 오류: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'success': False, 'message': f'매핑 삭제 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @bp_link5.route('/api/rcm/<int:rcm_id>/evaluate-completeness', methods=['POST'])
 @login_required

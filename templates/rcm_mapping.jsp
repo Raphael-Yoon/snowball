@@ -56,9 +56,6 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1><i class="fas fa-link me-2"></i>기준통제 매핑</h1>
                     <div>
-                        <button class="btn btn-success me-2" onclick="saveAllMappings()">
-                            <i class="fas fa-save me-1"></i>매핑 저장
-                        </button>
                         <a href="/rcm/{{ rcm_info.rcm_id }}/view" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>상세보기로
                         </a>
@@ -145,7 +142,7 @@
                                         {% endif %}
                                     </div>
                                     
-                                    <button class="btn btn-sm btn-primary w-100" onclick="selectRcmControl('{{ detail.control_code }}', '{{ detail.control_name }}')">
+                                    <button class="btn btn-sm btn-primary w-100 select-btn" id="select-{{ detail.control_code }}" onclick="selectRcmControl('{{ detail.control_code }}', '{{ detail.control_name }}')" style="display: {% if current_mapping %}none{% else %}block{% endif %};">
                                         <i class="fas fa-hand-pointer me-1"></i>기준통제 선택
                                     </button>
                                 </div>
@@ -253,7 +250,42 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let selectedRcmControlCode = null;
-        let mappingChanges = {}; // 변경사항 추적
+        
+        // 성공 토스트 알림 함수
+        function showSuccessToast(message) {
+            // 기존 토스트가 있다면 제거
+            const existingToast = document.getElementById('successToast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            // 새 토스트 생성
+            const toast = document.createElement('div');
+            toast.id = 'successToast';
+            toast.className = 'position-fixed top-0 end-0 p-3';
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `
+                <div class="toast show" role="alert">
+                    <div class="toast-header">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <strong class="me-auto">저장 완료</strong>
+                        <button type="button" class="btn-close" onclick="this.closest('#successToast').remove()"></button>
+                    </div>
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // 3초 후 자동 제거
+            setTimeout(() => {
+                if (document.getElementById('successToast')) {
+                    document.getElementById('successToast').remove();
+                }
+            }, 3000);
+        }
         
         // RCM 통제 선택
         function selectRcmControl(controlCode, controlName) {
@@ -279,82 +311,166 @@
             });
         }
         
-        // 기준통제에 매핑
+        // 기준통제에 매핑 (자동 저장)
         function mapToStandardControl(stdControlId, stdControlName) {
             if (!selectedRcmControlCode) {
                 alert('먼저 RCM 통제를 선택해주세요.');
                 return;
             }
             
-            // 매핑 정보 저장
-            mappingChanges[selectedRcmControlCode] = {
-                std_control_id: stdControlId,
-                std_control_name: stdControlName,
-                action: 'add'
-            };
+            // 현재 선택된 통제코드를 저장 (clearSelection 전에)
+            const currentControlCode = selectedRcmControlCode;
             
-            // UI 업데이트
-            updateMappingUI(selectedRcmControlCode, stdControlName);
-            
-            // 선택 해제
-            clearSelection();
-            
-            console.log('매핑 생성:', selectedRcmControlCode, '->', stdControlName);
+            // 즉시 서버에 저장
+            fetch(`/api/rcm/{{ rcm_info.rcm_id }}/mapping`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    control_code: currentControlCode,
+                    std_control_id: stdControlId,
+                    confidence: 0.8,
+                    mapping_type: 'manual'
+                })
+            })
+            .then(response => {
+                console.log('서버 응답 상태:', response.status, response.statusText);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                console.log('서버 응답:', result);
+                if (result.success) {
+                    // UI 업데이트
+                    updateMappingUI(currentControlCode, stdControlName);
+                    
+                    // 성공 알림 (간단한 토스트 형태)
+                    showSuccessToast(`${currentControlCode} 매핑이 저장되었습니다.`);
+                    
+                    // 선택 해제 (성공 후)
+                    clearSelection();
+                    
+                    console.log('매핑 자동 저장 완료:', currentControlCode, '->', stdControlName);
+                } else {
+                    console.error('저장 실패 응답:', result);
+                    alert('매핑 저장 실패: ' + (result.message || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                console.error('매핑 저장 오류 상세:', error);
+                alert('매핑 저장 중 오류가 발생했습니다: ' + error.message);
+            });
         }
         
-        // 매핑 해제
+        // 매핑 해제 (자동 삭제)
         function removeMapping(controlCode) {
-            mappingChanges[controlCode] = {
-                action: 'remove'
-            };
-            
-            // UI 업데이트
-            const card = document.querySelector(`[data-control-code="${controlCode}"]`);
-            card.classList.remove('mapped');
-            card.classList.add('unmapped');
-            
-            const mappedInfo = document.getElementById(`mapped-${controlCode}`);
-            mappedInfo.style.display = 'none';
-            mappedInfo.innerHTML = '';
-            
-            // 배지 업데이트
-            const badge = card.querySelector('.badge');
-            badge.textContent = '미매핑';
-            badge.className = 'badge bg-danger mb-1';
-            
-            const statusText = card.querySelector('small');
-            statusText.innerHTML = '<i class="fas fa-times me-1"></i>기준통제 선택 필요';
-            statusText.className = 'text-danger';
-            
-            updateProgress();
-            console.log('매핑 해제:', controlCode);
+            // 즉시 서버에서 삭제
+            fetch(`/api/rcm/{{ rcm_info.rcm_id }}/mapping`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    control_code: controlCode
+                })
+            })
+            .then(response => {
+                console.log('삭제 응답 상태:', response.status, response.statusText);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                console.log('삭제 응답:', result);
+                if (result.success) {
+                    // UI 업데이트
+                    const card = document.querySelector(`[data-control-code="${controlCode}"]`);
+                    card.classList.remove('mapped');
+                    card.classList.add('unmapped');
+                    
+                    const mappedInfo = document.getElementById(`mapped-${controlCode}`);
+                    mappedInfo.style.display = 'none';
+                    mappedInfo.innerHTML = '';
+                    
+                    // 배지 업데이트
+                    const badge = card.querySelector('.badge');
+                    badge.textContent = '미매핑';
+                    badge.className = 'badge bg-danger mb-1';
+                    
+                    const statusText = card.querySelector('small');
+                    statusText.innerHTML = '<i class="fas fa-times me-1"></i>기준통제 선택 필요';
+                    statusText.className = 'text-danger';
+                    
+                    // '기준통제 선택' 버튼 다시 보이기
+                    const selectButton = document.getElementById(`select-${controlCode}`);
+                    if (selectButton) {
+                        selectButton.style.display = 'block';
+                    }
+                    
+                    updateProgress();
+                    
+                    // 성공 알림
+                    showSuccessToast(`${controlCode} 매핑이 해제되었습니다.`);
+                    
+                    console.log('매핑 자동 삭제 완료:', controlCode);
+                } else {
+                    console.error('삭제 실패 응답:', result);
+                    alert('매핑 삭제 실패: ' + (result.message || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                console.error('매핑 삭제 오류 상세:', error);
+                alert('매핑 삭제 중 오류가 발생했습니다: ' + error.message);
+            });
         }
         
         // 매핑 UI 업데이트
         function updateMappingUI(controlCode, stdControlName) {
             const card = document.querySelector(`[data-control-code="${controlCode}"]`);
+            if (!card) {
+                console.error(`카드를 찾을 수 없습니다: ${controlCode}`);
+                return;
+            }
             card.classList.remove('unmapped');
             card.classList.add('mapped');
             
             const mappedInfo = document.getElementById(`mapped-${controlCode}`);
-            mappedInfo.innerHTML = `
-                <div class="alert alert-success py-2">
-                    <strong>매핑된 기준통제:</strong> ${stdControlName}
-                    <button class="btn btn-sm btn-outline-danger float-end" onclick="removeMapping('${controlCode}')">
-                        <i class="fas fa-times"></i> 해제
-                    </button>
-                </div>
-            `;
-            mappedInfo.style.display = 'block';
+            if (mappedInfo) {
+                mappedInfo.innerHTML = `
+                    <div class="alert alert-success py-2">
+                        <strong>매핑된 기준통제:</strong> ${stdControlName}
+                        <button class="btn btn-sm btn-outline-danger float-end" onclick="removeMapping('${controlCode}')">
+                            <i class="fas fa-times"></i> 해제
+                        </button>
+                    </div>
+                `;
+                mappedInfo.style.display = 'block';
+            }
             
             // 배지 업데이트
             const badge = card.querySelector('.badge');
-            badge.textContent = '매핑됨';
-            badge.className = 'badge bg-success mb-1';
+            if (badge) {
+                badge.textContent = '매핑됨';
+                badge.className = 'badge bg-success mb-1';
+            }
             
             const statusText = card.querySelector('small');
-            statusText.innerHTML = `<i class="fas fa-link me-1"></i>${stdControlName}`;
-            statusText.className = 'text-success';
+            if (statusText) {
+                statusText.innerHTML = `<i class="fas fa-link me-1"></i>${stdControlName}`;
+                statusText.className = 'text-success';
+            }
+            
+            // '기준통제 선택' 버튼 숨기기
+            const selectButton = document.getElementById(`select-${controlCode}`);
+            if (selectButton) {
+                selectButton.style.display = 'none';
+            }
             
             updateProgress();
         }
@@ -367,57 +483,6 @@
             
             document.getElementById('mappingProgress').textContent = `${mappedCount}/${totalCount}`;
             document.getElementById('progressBar').style.width = `${percentage}%`;
-        }
-        
-        // 모든 매핑 저장
-        function saveAllMappings() {
-            if (Object.keys(mappingChanges).length === 0) {
-                alert('저장할 변경사항이 없습니다.');
-                return;
-            }
-            
-            const savePromises = [];
-            
-            for (const [controlCode, change] of Object.entries(mappingChanges)) {
-                if (change.action === 'add') {
-                    // 매핑 추가
-                    const promise = fetch(`/api/rcm/{{ rcm_info.rcm_id }}/mapping`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        credentials: 'same-origin',
-                        body: JSON.stringify({
-                            control_code: controlCode,
-                            std_control_id: change.std_control_id,
-                            confidence: 0.8,
-                            mapping_type: 'manual'
-                        })
-                    });
-                    savePromises.push(promise);
-                } else if (change.action === 'remove') {
-                    // 매핑 삭제는 별도 API 필요 (현재는 스킵)
-                    console.log('매핑 삭제:', controlCode);
-                }
-            }
-            
-            if (savePromises.length > 0) {
-                Promise.all(savePromises)
-                    .then(responses => Promise.all(responses.map(r => r.json())))
-                    .then(results => {
-                        const allSuccess = results.every(result => result.success);
-                        if (allSuccess) {
-                            alert('매핑이 성공적으로 저장되었습니다.');
-                            mappingChanges = {}; // 변경사항 초기화
-                        } else {
-                            alert('일부 매핑 저장에 실패했습니다.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('매핑 저장 오류:', error);
-                        alert('매핑 저장 중 오류가 발생했습니다.');
-                    });
-            }
         }
     </script>
 </body>
