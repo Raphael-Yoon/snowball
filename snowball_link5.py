@@ -297,8 +297,8 @@ def rcm_mapping_page(rcm_id):
     # 기준통제 목록 조회
     standard_controls = get_standard_controls()
     
-    # 기존 매핑 조회
-    existing_mappings = get_rcm_standard_mappings(rcm_id)
+    # 기존 매핑 조회 (개별 통제 방식으로 변경)
+    existing_mappings = get_rcm_detail_mappings(rcm_id)
     
     return render_template('rcm_mapping.jsp',
                          rcm_info=rcm_info,

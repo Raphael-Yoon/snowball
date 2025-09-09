@@ -23,8 +23,7 @@
             background-color: #fff5f5;
         }
         .standard-control-list {
-            max-height: 300px;
-            overflow-y: auto;
+            /* 스크롤 제거로 모든 기준통제를 한번에 볼 수 있도록 개선 */
         }
         .standard-control-item {
             cursor: pointer;
@@ -97,13 +96,15 @@
         <div class="row">
             <!-- RCM 통제 목록 (왼쪽) -->
             <div class="col-md-7">
-                <div class="card">
+                <div class="card h-100">
                     <div class="card-header">
-                        <h5><i class="fas fa-list me-2"></i>RCM 통제 목록</h5>
+                        <h5 class="mb-1"><i class="fas fa-list me-2"></i>RCM 통제 목록</h5>
+                        <small class="text-muted">매핑할 RCM 통제를 선택하세요</small>
                     </div>
-                    <div class="card-body" style="max-height: 70vh; overflow-y: auto;">
+                    <div class="card-body" style="max-height: 70vh; overflow-y: auto; padding: 1rem;">
                         {% for detail in rcm_details %}
-                        <div class="mapping-card p-3 {% set mapped = false %}{% for mapping in existing_mappings %}{% if mapping.control_code == detail.control_code %}mapped{% set mapped = true %}{% endif %}{% endfor %}{% if not mapped %}unmapped{% endif %}" 
+                        {% set matching_mappings = existing_mappings|selectattr('control_code', 'equalto', detail.control_code)|list %}
+                        <div class="mapping-card p-3 {{ 'mapped' if matching_mappings else 'unmapped' }}" 
                              data-control-code="{{ detail.control_code }}">
                             <div class="row">
                                 <div class="col-md-12">
@@ -116,12 +117,7 @@
                                             <p class="text-muted small mb-2">{{ detail.control_description[:100] }}{% if detail.control_description|length > 100 %}...{% endif %}</p>
                                         </div>
                                         <div class="text-end">
-                                            {% set current_mapping = none %}
-                                            {% for mapping in existing_mappings %}
-                                                {% if mapping.control_code == detail.control_code %}
-                                                    {% set current_mapping = mapping %}
-                                                {% endif %}
-                                            {% endfor %}
+                                            {% set current_mapping = matching_mappings[0] if matching_mappings else none %}
                                             
                                             {% if current_mapping %}
                                                 <span class="badge bg-success mb-1">매핑됨</span>
@@ -162,12 +158,12 @@
 
             <!-- 기준통제 목록 (오른쪽) -->
             <div class="col-md-5">
-                <div class="card">
+                <div class="card h-100">
                     <div class="card-header">
-                        <h5><i class="fas fa-bookmark me-2"></i>기준통제 목록</h5>
+                        <h5 class="mb-1"><i class="fas fa-bookmark me-2"></i>기준통제 목록</h5>
                         <small class="text-muted">RCM 통제를 선택한 후 적절한 기준통제를 클릭하세요</small>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="max-height: 70vh; overflow-y: auto; padding: 1rem;">
                         <div id="selectedRcmControl" class="alert alert-info" style="display: none;">
                             <strong>선택된 RCM 통제:</strong> <span id="selectedControlName"></span>
                             <button class="btn btn-sm btn-outline-secondary float-end" onclick="clearSelection()">
