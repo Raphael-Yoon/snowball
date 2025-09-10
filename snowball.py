@@ -47,6 +47,10 @@ app.config.update(
 
 print(f"세션 설정 - Production: {is_production}, Secure: {app.config['SESSION_COOKIE_SECURE']}")
 
+# 앱 시작 시 기본 정보 출력
+print(f"Flask 앱 시작 - Secret Key: {app.secret_key[:10]}...")
+print(f"환경 변수(초기 로드 전) - PYTHONANYWHERE_AUTH_CODE: {os.getenv('PYTHONANYWHERE_AUTH_CODE', 'undefined')}")
+
 # --- File-based Progress Tracking ---
 # 진행률 관련 기능은 snowball_link2.py로 이동됨
 
@@ -60,10 +64,18 @@ load_dotenv()
 
 # 보안 관련 상수 (환경변수에서 로드)
 PYTHONANYWHERE_AUTH_CODE = os.getenv('PYTHONANYWHERE_AUTH_CODE', '150606')
+print(f"환경 변수 - PYTHONANYWHERE_AUTH_CODE: {PYTHONANYWHERE_AUTH_CODE}")
 
 # 데이터베이스 초기화
-with app.app_context():
-    init_db()
+try:
+    print("데이터베이스 초기화 시작")
+    with app.app_context():
+        init_db()
+    print("데이터베이스 초기화 완료")
+except Exception as e:
+    print(f"데이터베이스 초기화 오류: {e}")
+    import traceback
+    traceback.print_exc()
 
 @app.before_request
 def before_request():
@@ -122,31 +134,40 @@ def reset_interview_session():
 
 def log_session_info(route_name):
     """세션 정보를 콘솔에 출력하는 디버깅 함수"""
-    from datetime import datetime
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    print(f"\n=== [{timestamp}] {route_name} 접근 ===")
-    print(f"IP: {request.remote_addr}")
-    print(f"User-Agent: {request.headers.get('User-Agent', 'Unknown')[:50]}...")
-    
-    if 'user_id' in session:
-        current_user = get_current_user()
-        if current_user:
-            print(f"로그인 상태: ✓")
-            print(f"사용자 ID: {session['user_id']}")
-            print(f"사용자 이름: {current_user['user_name']}")
-            print(f"이메일: {current_user['user_email']}")
-            print(f"세션 로그인 시간: {session.get('login_time', 'N/A')}")
-            print(f"세션 마지막 활동: {session.get('last_activity', 'N/A')}")
-            print(f"DB 마지막 로그인: {current_user.get('last_login_date', 'N/A')}")
-            print(f"세션 영구 설정: {session.permanent}")
+    try:
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        print(f"\n=== [{timestamp}] {route_name} 접근 ===")
+        print(f"IP: {request.remote_addr}")
+        print(f"User-Agent: {request.headers.get('User-Agent', 'Unknown')[:50]}...")
+        
+        if 'user_id' in session:
+            try:
+                current_user = get_current_user()
+                if current_user:
+                    print(f"로그인 상태: ✓")
+                    print(f"사용자 ID: {session['user_id']}")
+                    print(f"사용자 이름: {current_user['user_name']}")
+                    print(f"이메일: {current_user['user_email']}")
+                    print(f"세션 로그인 시간: {session.get('login_time', 'N/A')}")
+                    print(f"세션 마지막 활동: {session.get('last_activity', 'N/A')}")
+                    print(f"DB 마지막 로그인: {current_user.get('last_login_date', 'N/A')}")
+                    print(f"세션 영구 설정: {session.permanent}")
+                else:
+                    print(f"로그인 상태: ✗ (세션은 있으나 사용자 정보 없음)")
+            except Exception as e:
+                print(f"사용자 정보 조회 오류: {e}")
+                print(f"세션 사용자 ID: {session.get('user_id', 'N/A')}")
         else:
-            print(f"로그인 상태: ✗ (세션은 있으나 사용자 정보 없음)")
-    else:
-        print(f"로그인 상태: ✗ (세션 없음)")
-    
-    print(f"세션 키: {list(session.keys())}")
-    print("=" * 50)
+            print(f"로그인 상태: ✗ (세션 없음)")
+        
+        print(f"세션 키: {list(session.keys())}")
+        print("=" * 50)
+    except Exception as e:
+        print(f"log_session_info 전체 오류: {e}")
+        import traceback
+        traceback.print_exc()
 
 @app.route('/')
 def index():
@@ -171,9 +192,17 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    log_session_info("로그인 페이지")
-    if request.method == 'POST':
-        action = request.form.get('action')
+    try:
+        from datetime import datetime  # datetime import 추가
+        print("로그인 페이지 접근 시작")
+        # log_session_info("로그인 페이지")  # 일시적으로 비활성화
+        action = None
+        if request.method == 'POST':
+            action = request.form.get('action')
+            print(f"POST 요청 액션: {action}")
+        else:
+            # GET 요청 시에는 액션 없음
+            action = None
         
         if action == 'admin_login':
             # 127.0.0.1에서 관리자 로그인
@@ -329,11 +358,18 @@ def login():
                 else:
                     return render_template('login.jsp', step='verify', email=email, error=result, remote_addr=request.remote_addr)
     
-    # GET 요청 시 현재 호스트 확인하여 로그인 폼 표시
-    host = request.headers.get('Host', '')
-    show_direct_login = host.startswith('snowball.pythonanywhere.com')
-    
-    return render_template('login.jsp', remote_addr=request.remote_addr, show_direct_login=show_direct_login)
+        # GET 혹은 액션 미지정 시 로그인 폼 표시
+        print("GET/기본 로그인 폼 표시")
+        host = request.headers.get('Host', '')
+        show_direct_login = host.startswith('snowball.pythonanywhere.com')
+        print(f"폼 렌더 - Host: {host}, show_direct_login: {show_direct_login}")
+        return render_template('login.jsp', remote_addr=request.remote_addr, show_direct_login=show_direct_login)
+        
+    except Exception as e:
+        print(f"로그인 페이지 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"로그인 페이지 오류가 발생했습니다: {str(e)}", 500
 
 
 @app.route('/logout')
@@ -395,6 +431,19 @@ def debug_info():
         debug_data['user_check_error'] = str(e)
     
     return f"<pre>{json.dumps(debug_data, indent=2, ensure_ascii=False)}</pre>"
+
+@app.route('/health')
+def health_check():
+    """서버 상태 확인"""
+    try:
+        return {
+            'status': 'ok', 
+            'host': request.headers.get('Host', ''),
+            'remote_addr': request.remote_addr,
+            'timestamp': datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}, 500
 
 @app.route('/clear_session', methods=['POST'])
 def clear_session():
