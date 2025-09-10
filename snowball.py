@@ -35,14 +35,17 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', '150606')
 # 세션 만료 시간 설정 (24시간으로 연장)
 # 브라우저 종료시에만 세션 만료 (permanent session 사용하지 않음)
 
-# 세션 보안 설정
+# 세션 보안 설정 - 환경에 따른 동적 설정
+is_production = os.getenv('PYTHONANYWHERE_DOMAIN') is not None or 'pythonanywhere' in os.getenv('SERVER_NAME', '')
 app.config.update(
-    SESSION_COOKIE_SECURE=False,  # HTTPS 환경에서는 True로 설정
+    SESSION_COOKIE_SECURE=is_production,  # 운영환경(HTTPS)에서만 True
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
     # 브라우저 종료 후에도 세션 유지되도록 설정
     SESSION_COOKIE_MAX_AGE=timedelta(hours=24).total_seconds(),  # 24시간
 )
+
+print(f"세션 설정 - Production: {is_production}, Secure: {app.config['SESSION_COOKIE_SECURE']}")
 
 # --- File-based Progress Tracking ---
 # 진행률 관련 기능은 snowball_link2.py로 이동됨
@@ -219,11 +222,17 @@ def login():
             
             # snowball.pythonanywhere.com에서는 실제 OTP 발송하지 않고 고정 메시지 표시
             if host.startswith('snowball.pythonanywhere.com'):
+                print(f"운영서버 OTP 발송 요청 - Host: {host}, Email: {email}")
+                
                 # 사용자가 존재하는지만 확인
                 user = find_user_by_email(email)
+                print(f"사용자 존재 확인 결과: {user is not None}")
+                
                 if not user:
+                    print(f"등록되지 않은 사용자: {email}")
                     return render_template('login.jsp', error="등록되지 않은 사용자입니다.", remote_addr=request.remote_addr, show_direct_login=True)
                 
+                print(f"세션에 login_email 저장: {email}")
                 session['login_email'] = email
                 return render_template('login.jsp', step='verify', email=email, 
                                      message="인증 코드를 입력해주세요.", 
@@ -244,15 +253,23 @@ def login():
             otp_code = request.form.get('otp_code')
             host = request.headers.get('Host', '')
             
+            print(f"OTP 검증 시도 - Host: {host}, Session Email: {email}, Input OTP: {otp_code}")
+            
             if not email or not otp_code:
+                print(f"필수 정보 누락 - Email: {email}, OTP: {otp_code}")
                 return render_template('login.jsp', error="인증 코드를 입력해주세요.", remote_addr=request.remote_addr)
             
             # snowball.pythonanywhere.com에서는 고정 코드 확인
             if host.startswith('snowball.pythonanywhere.com'):
+                print(f"운영서버 로그인 시도 - Host: {host}, Email: {email}, OTP: {otp_code}, Expected: {PYTHONANYWHERE_AUTH_CODE}")
+                
                 if otp_code == PYTHONANYWHERE_AUTH_CODE:
                     # 사용자 정보 조회
                     user = find_user_by_email(email)
+                    print(f"사용자 조회 결과: {user is not None}")
+                    
                     if user:
+                        print(f"사용자 정보: {user}")
                         # 로그인 성공
                         session['user_id'] = user['user_id']
                         session['user_name'] = user['user_name']
@@ -269,18 +286,24 @@ def login():
                         session.pop('login_email', None)  # 임시 이메일 정보 삭제
                         
                         # 마지막 로그인 날짜 업데이트
-                        with get_db() as conn:
-                            conn.execute(
-                                'UPDATE sb_user SET last_login_date = CURRENT_TIMESTAMP WHERE user_email = ?',
-                                (email,)
-                            )
-                            conn.commit()
+                        try:
+                            with get_db() as conn:
+                                conn.execute(
+                                    'UPDATE sb_user SET last_login_date = CURRENT_TIMESTAMP WHERE user_email = ?',
+                                    (email,)
+                                )
+                                conn.commit()
+                            print(f"로그인 날짜 업데이트 성공")
+                        except Exception as e:
+                            print(f"로그인 날짜 업데이트 실패: {e}")
                         
                         print(f"고정 코드 로그인 성공: {user['user_name']} ({user['user_email']}) from {host}")
                         return redirect(url_for('index'))
                     else:
+                        print(f"사용자를 찾을 수 없음: {email}")
                         return render_template('login.jsp', step='verify', email=email, error="사용자 정보를 찾을 수 없습니다.", remote_addr=request.remote_addr, show_direct_login=True)
                 else:
+                    print(f"잘못된 인증 코드: 입력값={otp_code}, 기대값={PYTHONANYWHERE_AUTH_CODE}")
                     return render_template('login.jsp', step='verify', email=email, error="잘못된 인증 코드입니다.", remote_addr=request.remote_addr, show_direct_login=True)
             else:
                 # 일반적인 OTP 검증
@@ -328,6 +351,50 @@ def extend_session():
         print(f"세션 연장: {session.get('user_name', 'Unknown')}")
         return jsonify({'success': True, 'message': '세션이 연장되었습니다.'})
     return jsonify({'success': False, 'message': '로그인이 필요합니다.'})
+
+@app.route('/debug_info')
+def debug_info():
+    """운영서버 디버깅 정보"""
+    host = request.headers.get('Host', '')
+    
+    # 운영서버에서만 접근 가능
+    if not host.startswith('snowball.pythonanywhere.com'):
+        return "디버그 정보는 운영서버에서만 확인 가능합니다.", 403
+    
+    debug_data = {
+        'host': host,
+        'remote_addr': request.remote_addr,
+        'user_agent': request.headers.get('User-Agent'),
+        'pythonanywhere_auth_code': PYTHONANYWHERE_AUTH_CODE,
+        'session_data': dict(session),
+        'session_config': {
+            'secure': app.config.get('SESSION_COOKIE_SECURE'),
+            'httponly': app.config.get('SESSION_COOKIE_HTTPONLY'),
+            'samesite': app.config.get('SESSION_COOKIE_SAMESITE'),
+            'max_age': app.config.get('SESSION_COOKIE_MAX_AGE')
+        },
+        'environment': {
+            'PYTHONANYWHERE_DOMAIN': os.getenv('PYTHONANYWHERE_DOMAIN'),
+            'SERVER_NAME': os.getenv('SERVER_NAME'),
+            'is_production': is_production
+        }
+    }
+    
+    # 사용자 정보 확인
+    try:
+        user = find_user_by_email('snowball2727@naver.com')
+        debug_data['user_exists'] = user is not None
+        if user:
+            debug_data['user_info'] = {
+                'user_id': user.get('user_id'),
+                'user_name': user.get('user_name'),
+                'user_email': user.get('user_email'),
+                'admin_flag': user.get('admin_flag')
+            }
+    except Exception as e:
+        debug_data['user_check_error'] = str(e)
+    
+    return f"<pre>{json.dumps(debug_data, indent=2, ensure_ascii=False)}</pre>"
 
 @app.route('/clear_session', methods=['POST'])
 def clear_session():

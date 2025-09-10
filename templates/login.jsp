@@ -24,6 +24,12 @@
             
             {% if not step or step != 'verify' %}
             <!-- 1단계: 이메일 입력 및 OTP 요청 -->
+            {% if show_direct_login %}
+            <div class="alert alert-info" style="background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <i class="fas fa-info-circle"></i> <strong>테스트 환경 로그인</strong><br>
+                이메일 입력 후 인증 코드는 <code>150606</code>을 사용하세요.
+            </div>
+            {% endif %}
             <form method="POST" action="{{ url_for('login') }}">
                 <input type="hidden" name="action" value="send_otp">
                 <div class="form-group">
@@ -70,7 +76,10 @@
             <div class="otp-info">
                 {% if show_direct_login %}
                 <p><strong>{{ email }}</strong> 사용자의 인증 코드를 입력해주세요.</p>
-                <p>6자리 인증 코드를 입력하세요.</p>
+                <div class="alert alert-info" style="background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                    <i class="fas fa-info-circle"></i> <strong>인증 코드: 150606</strong><br>
+                    테스트 환경에서는 고정 인증 코드 <code>150606</code>을 사용합니다.
+                </div>
                 {% else %}
                 <p><strong>{{ email }}</strong>로 인증 코드를 발송했습니다.</p>
                 <p>이메일을 확인하고 6자리 인증 코드를 입력해주세요.</p>
