@@ -55,6 +55,9 @@
                             <li><a class="dropdown-item" href="{{ url_for('link7.user_operation_evaluation') }}">
                                 <i class="fas fa-cogs me-2"></i>운영평가
                             </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('link9.internal_assessment') }}">
+                                <i class="fas fa-tasks me-2"></i>내부평가
+                            </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('link8.contact') }}">
                                 <i class="fas fa-envelope me-2"></i>Contact Us

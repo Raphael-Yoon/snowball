@@ -113,12 +113,12 @@
             </div>
         </div>
 
-        <!-- 기준통제별 매핑 결과 -->
+        <!-- RCM 통제별 매핑 현황 -->
         <div class="row">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="fas fa-list-check me-2"></i>기준통제별 매핑 현황</h5>
+                        <h5><i class="fas fa-list-check me-2"></i>RCM 통제별 검토 현황</h5>
                         <div class="float-end">
                             <a href="/rcm/{{ rcm_info.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-2">
                                 <i class="fas fa-list me-1"></i>RCM 상세보기로
@@ -132,7 +132,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <div id="standardControlsTables">
+                        <div id="rcmControlsTables">
                             <!-- JavaScript로 동적 생성 -->
                         </div>
                     </div>
@@ -247,17 +247,17 @@
         function loadExistingMappings() {
             // rcm_details에서 매핑 및 AI 검토 결과 구성
             rcmControls.forEach(rcmControl => {
-                // 매핑 정보 복원
+                // 매핑 정보를 RCM 통제 코드 기준으로 저장
                 if (rcmControl.mapped_std_control_id) {
                     const stdControlId = parseInt(rcmControl.mapped_std_control_id);
-                    existingMappings[stdControlId] = {
-                        control_code: rcmControl.control_code,
-                        rcm_control_name: rcmControl.control_name
+                    existingMappings[rcmControl.control_code] = {
+                        std_control_id: stdControlId,
+                        std_control_name: getStandardControlName(stdControlId)
                     };
                     
                     // 해당 통제의 AI 검토 결과도 복원
                     if (rcmControl.ai_review_status === 'completed' && rcmControl.ai_review_recommendation) {
-                        aiReviewResults[stdControlId] = {
+                        aiReviewResults[rcmControl.control_code] = {
                             status: rcmControl.ai_review_status,
                             recommendation: rcmControl.ai_review_recommendation,
                             reviewed_date: rcmControl.ai_reviewed_date,
@@ -267,185 +267,168 @@
                 }
             });
             
-            renderStandardControlsList();
+            renderRcmControlsList();
         }
         
-        // 기준통제 테이블 렌더링
-        function renderStandardControlsList() {
-            const container = document.getElementById('standardControlsTables');
-            const groupedControls = {};
-            
-            // 카테고리별로 그룹화
-            standardControls.forEach(control => {
-                if (!groupedControls[control.control_category]) {
-                    groupedControls[control.control_category] = [];
-                }
-                groupedControls[control.control_category].push(control);
-            });
+        // RCM 통제 테이블 렌더링
+        function renderRcmControlsList() {
+            const container = document.getElementById('rcmControlsTables');
             
             let html = '';
-            // 카테고리 정렬 순서 정의
-            const categoryOrder = ['APD', 'PC', 'CO', 'PD'];
-            const sortedCategories = categoryOrder.filter(cat => groupedControls[cat]);
-            // 정의되지 않은 카테고리도 추가
-            Object.keys(groupedControls).forEach(cat => {
-                if (!categoryOrder.includes(cat)) {
-                    sortedCategories.push(cat);
-                }
-            });
             
-            sortedCategories.forEach(category => {
-                html += `<div class="mb-4">`;
-                html += `<h6 class="text-primary border-bottom pb-2 mb-3">`;
-                html += `<i class="fas fa-folder-open me-2"></i>${category}`;
-                html += `</h6>`;
+            // 테이블 시작
+            html += `<div class="table-responsive">`;
+            html += `<table class="table table-hover">`;
+            html += `<thead class="table-light">`;
+            html += `<tr>`;
+            html += `<th width="10%">RCM 코드</th>`;
+            html += `<th width="20%">RCM 통제명</th>`;
+            html += `<th width="25%">RCM 통제설명</th>`;
+            html += `<th width="15%">매핑된 기준통제</th>`;
+            html += `<th width="13%">AI 검토</th>`;
+            html += `<th width="5%">상태</th>`;
+            html += `<th width="12%">개선권고사항</th>`;
+            html += `</tr>`;
+            html += `</thead>`;
+            html += `<tbody>`;
+            
+            rcmControls.forEach(rcmControl => {
+                const mapping = existingMappings[rcmControl.control_code];
+                const isMapped = !!mapping;
                 
-                // 테이블 시작
-                html += `<div class="table-responsive">`;
-                html += `<table class="table table-hover">`;
-                html += `<thead class="table-light">`;
-                html += `<tr>`;
-                html += `<th width="16%">통제명</th>`;
-                html += `<th width="30%">통제설명</th>`;
-                html += `<th width="18%">RCM 통제 선택</th>`;
-                html += `<th width="13%">AI 검토</th>`;
-                html += `<th width="5%">상태</th>`;
-                html += `<th width="18%">개선권고사항</th>`;
-                html += `</tr>`;
-                html += `</thead>`;
-                html += `<tbody>`;
+                html += `<tr class="${isMapped ? 'table-success' : ''}">`;
                 
-                groupedControls[category].forEach(control => {
-                    const mapping = existingMappings[control.std_control_id];
-                    const isMapped = !!mapping;
-                    
-                    html += `<tr class="${isMapped ? 'table-success' : ''}">`;
-                    
-                    // 통제명
-                    html += `<td>`;
-                    html += `<strong>${control.control_name}</strong>`;
-                    html += `</td>`;
-                    
-                    // 통제설명
-                    html += `<td>`;
-                    if (control.control_description) {
-                        html += `<div style="max-height: 60px; overflow-y: auto; font-size: 0.9rem;">`;
-                        html += control.control_description;
+                // RCM 코드
+                html += `<td>`;
+                html += `<strong>${rcmControl.control_code}</strong>`;
+                html += `</td>`;
+                
+                // RCM 통제명
+                html += `<td>`;
+                html += `<strong>${rcmControl.control_name}</strong>`;
+                html += `</td>`;
+                
+                // RCM 통제설명
+                html += `<td>`;
+                if (rcmControl.control_description) {
+                    html += `<div style="max-height: 60px; overflow-y: auto; font-size: 0.9rem;">`;
+                    html += rcmControl.control_description;
+                    html += `</div>`;
+                } else {
+                    html += `<span class="text-muted">설명 없음</span>`;
+                }
+                html += `</td>`;
+                
+                // 매핑된 기준통제 표시
+                html += `<td>`;
+                if (isMapped) {
+                    const stdControl = standardControls.find(sc => sc.std_control_id === mapping.std_control_id);
+                    if (stdControl) {
+                        html += `<div class="d-flex align-items-center">`;
+                        html += `<span class="badge bg-success me-2">${stdControl.control_category}</span>`;
+                        html += `<div>`;
+                        html += `<strong>${stdControl.control_name}</strong>`;
+                        if (stdControl.control_description) {
+                            html += `<br><small class="text-muted">${stdControl.control_description.length > 50 ? stdControl.control_description.substring(0, 50) + '...' : stdControl.control_description}</small>`;
+                        }
+                        html += `</div>`;
                         html += `</div>`;
                     } else {
-                        html += `<span class="text-muted">설명 없음</span>`;
+                        html += `<span class="text-warning">기준통제 정보 없음</span>`;
                     }
-                    html += `</td>`;
-                    
-                    // RCM 통제 선택
-                    html += `<td>`;
-                    html += `<select class="form-select form-select-sm" 
-                              onchange="updateMapping(${control.std_control_id}, this.value, '${control.control_name.replace(/'/g, "\\'")}', findDetailId(this.value))"
-                              id="select_${control.std_control_id}">`;
-                    html += `<option value="">통제 선택...</option>`;
-                    
-                    rcmControls.forEach(rcmControl => {
-                        const isSelected = mapping && mapping.control_code === rcmControl.control_code;
-                        const controlName = rcmControl.control_name.replace(/"/g, '&quot;');
-                        html += `<option value="${rcmControl.control_code}" ${isSelected ? 'selected' : ''}>`;
-                        html += `${rcmControl.control_code} - ${controlName}`;
-                        html += `</option>`;
-                    });
-                    
-                    html += `</select>`;
-                    html += `</td>`;
-                    
-                    // AI 검토 버튼
-                    html += `<td class="text-center">`;
-                    const aiResult = aiReviewResults[control.std_control_id];
-                    if (isMapped) {
-                        // RCM 컨트롤의 detail_id 찾기
-                        const rcmControl = rcmControls.find(rc => rc.control_code === mapping.control_code);
-                        const detailId = rcmControl ? rcmControl.detail_id : '';
-                        
-                        // 상세보기 버튼 먼저 배치 (작은 사이즈)
-                        html += `<button class="btn btn-xs btn-outline-info me-1" 
-                                  onclick="showRcmDetail('${mapping.control_code}')"
-                                  title="RCM 통제 상세정보 보기"
-                                  style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
-                                  <i class="fas fa-eye"></i>
-                                  </button>`;
-                        
-                        if (aiResult && aiResult.status === 'completed') {
-                            // AI 검토 완료된 상태 - 결과에 따라 버튼 스타일 구분
-                            const recommendation = aiResult.recommendation || '';
-                            let buttonClass, buttonIcon, buttonText;
-                            if (recommendation.includes('매핑이 부적절합니다') || recommendation.includes('매핑이 부적절함')) {
-                                buttonClass = 'btn-danger';
-                                buttonIcon = 'fas fa-times';
-                                buttonText = '매핑오류';
-                            } else if (recommendation.includes('현재 통제 설계가 적정합니다') || recommendation.includes('현재 통제가 적절히')) {
-                                buttonClass = 'btn-success';
-                                buttonIcon = 'fas fa-check';
-                                buttonText = '완료';
-                            } else {
-                                buttonClass = 'btn-warning';
-                                buttonIcon = 'fas fa-exclamation-triangle';
-                                buttonText = '개선필요';
-                            }
-                            
-                            html += `<button class="btn btn-xs ${buttonClass}" 
-                                      onclick="startAiReview(${control.std_control_id}, '${control.control_name.replace(/'/g, "\\'")}', '${mapping.control_code}', ${detailId})"
-                                      id="ai_btn_${control.std_control_id}"
-                                      style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">`;
-                            html += `<i class="${buttonIcon} me-1"></i>${buttonText}`;
-                            html += `</button>`;
-                        } else {
-                            // AI 검토 대기 상태
-                            html += `<button class="btn btn-xs btn-outline-primary" 
-                                      onclick="startAiReview(${control.std_control_id}, '${control.control_name.replace(/'/g, "\\'")}', '${mapping.control_code}', ${detailId})"
-                                      id="ai_btn_${control.std_control_id}"
-                                      style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">`;
-                            html += `<i class="fas fa-brain me-1"></i>AI 검토`;
-                            html += `</button>`;
-                        }
-                    } else {
-                        html += `<span class="text-muted small">매핑 필요</span>`;
-                    }
-                    html += `</td>`;
-                    
-                    // 상태
-                    html += `<td class="text-center">`;
-                    if (isMapped) {
-                        html += `<i class="fas fa-check-circle text-success" title="매핑됨"></i>`;
-                    } else {
-                        html += `<i class="fas fa-times-circle text-muted" title="미매핑"></i>`;
-                    }
-                    html += `</td>`;
-                    
-                    // 개선권고사항
-                    html += `<td>`;
-                    if (isMapped) {
-                        if (aiResult && aiResult.status === 'completed' && aiResult.recommendation) {
-                            html += `<span class="text-dark small" id="recommendation_${control.std_control_id}" style="color: #212529 !important;">`;
-                            html += `<i class="fas fa-lightbulb me-1 text-warning"></i>${aiResult.recommendation}`;
-                            html += `</span>`;
-                        } else {
-                            html += `<span class="text-muted small" id="recommendation_${control.std_control_id}">AI 검토 후 표시</span>`;
-                        }
-                    } else {
-                        html += `<span class="text-muted small">-</span>`;
-                    }
-                    html += `</td>`;
-                    
-                    html += `</tr>`;
-                });
+                } else {
+                    html += `<span class="text-muted">매핑 안됨</span>`;
+                }
+                html += `</td>`;
                 
-                html += `</tbody>`;
-                html += `</table>`;
-                html += `</div>`;
-                html += `</div>`;
+                // AI 검토 버튼
+                html += `<td class="text-center">`;
+                const aiResult = aiReviewResults[rcmControl.control_code];
+                if (isMapped) {
+                    // 상세보기 버튼 먼저 배치 (작은 사이즈)
+                    html += `<button class="btn btn-xs btn-outline-info me-1" 
+                              onclick="showRcmDetail('${rcmControl.control_code}')"
+                              title="RCM 통제 상세정보 보기"
+                              style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                              <i class="fas fa-eye"></i>
+                              </button>`;
+                    
+                    if (aiResult && aiResult.status === 'completed') {
+                        // AI 검토 완료된 상태 - 결과에 따라 버튼 스타일 구분
+                        const recommendation = aiResult.recommendation || '';
+                        let buttonClass, buttonIcon, buttonText;
+                        if (recommendation.includes('매핑이 부적절합니다') || recommendation.includes('매핑이 부적절함')) {
+                            buttonClass = 'btn-danger';
+                            buttonIcon = 'fas fa-times';
+                            buttonText = '매핑오류';
+                        } else if (recommendation.includes('현재 통제 설계가 적정합니다') || recommendation.includes('현재 통제가 적절히')) {
+                            buttonClass = 'btn-success';
+                            buttonIcon = 'fas fa-check';
+                            buttonText = '완료';
+                        } else {
+                            buttonClass = 'btn-warning';
+                            buttonIcon = 'fas fa-exclamation-triangle';
+                            buttonText = '개선필요';
+                        }
+                        
+                        html += `<button class="btn btn-xs ${buttonClass}" 
+                                  onclick="startRcmAiReview('${rcmControl.control_code}', '${rcmControl.control_name.replace(/'/g, "\\'")}', ${mapping.std_control_id}, ${rcmControl.detail_id})"
+                                  id="ai_btn_${rcmControl.control_code}"
+                                  style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">`;
+                        html += `<i class="${buttonIcon} me-1"></i>${buttonText}`;
+                        html += `</button>`;
+                    } else {
+                        // AI 검토 대기 상태
+                        html += `<button class="btn btn-xs btn-outline-primary" 
+                                  onclick="startRcmAiReview('${rcmControl.control_code}', '${rcmControl.control_name.replace(/'/g, "\\'")}', ${mapping.std_control_id}, ${rcmControl.detail_id})"
+                                  id="ai_btn_${rcmControl.control_code}"
+                                  style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">`;
+                        html += `<i class="fas fa-brain me-1"></i>AI 검토`;
+                        html += `</button>`;
+                    }
+                } else {
+                    html += `<span class="text-muted small">매핑 필요</span>`;
+                }
+                html += `</td>`;
+                
+                // 상태
+                html += `<td class="text-center">`;
+                if (isMapped) {
+                    html += `<i class="fas fa-check-circle text-success" title="매핑됨"></i>`;
+                } else {
+                    html += `<i class="fas fa-times-circle text-muted" title="미매핑"></i>`;
+                }
+                html += `</td>`;
+                
+                // 개선권고사항
+                html += `<td>`;
+                if (isMapped) {
+                    if (aiResult && aiResult.status === 'completed' && aiResult.recommendation) {
+                        html += `<span class="text-dark small" id="recommendation_${rcmControl.control_code}" style="color: #212529 !important;">`;
+                        html += `<i class="fas fa-lightbulb me-1 text-warning"></i>${aiResult.recommendation}`;
+                        html += `</span>`;
+                    } else {
+                        html += `<span class="text-muted small" id="recommendation_${rcmControl.control_code}">AI 검토 후 표시</span>`;
+                    }
+                } else {
+                    html += `<span class="text-muted small">-</span>`;
+                }
+                html += `</td>`;
+                
+                html += `</tr>`;
             });
+            
+            html += `</tbody>`;
+            html += `</table>`;
+            html += `</div>`;
             
             container.innerHTML = html;
         }
         
-        // 매핑 업데이트
+        // 매핑 변경 기능 제거됨 - 이 화면은 검토 전용입니다.
+        // 매핑 변경은 매핑 전용 화면에서 수행하세요.
+
+        // 기존 매핑 업데이트 함수 (호환성 유지)
         function updateMapping(stdControlId, rcmControlCode, stdControlName, detailId) {
             // 기준통제 ID를 숫자형으로 확실히 변환
             const numericStdControlId = parseInt(stdControlId);
@@ -585,7 +568,89 @@
             });
         }
         
-        // AI 검토 시작
+        // RCM 통제 AI 검토 시작
+        function startRcmAiReview(rcmControlCode, rcmControlName, stdControlId, detailId) {
+            const button = document.getElementById(`ai_btn_${rcmControlCode}`);
+            const originalText = button.innerHTML;
+            
+            // 로딩 상태로 변경
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>검토 중...';
+            button.disabled = true;
+            
+            // 실제 AI 검토 API 호출
+            fetch(`/api/rcm/{{ rcm_info.rcm_id }}/detail/${detailId}/ai-review`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // AI 검토 결과에서 개선권고사항 추출
+                    const aiRecommendation = data.recommendation || '검토 완료';
+                    
+                    // AI 응답을 분석해서 상태 구분
+                    let buttonClass, buttonIcon, buttonText;
+                    if (aiRecommendation.includes('매핑이 부적절합니다') || aiRecommendation.includes('매핑이 부적절함')) {
+                        buttonClass = 'btn-danger';
+                        buttonIcon = 'fas fa-times';
+                        buttonText = '매핑오류';
+                    } else if (aiRecommendation.includes('현재 통제 설계가 적정합니다') || aiRecommendation.includes('현재 통제가 적절히')) {
+                        buttonClass = 'btn-success';
+                        buttonIcon = 'fas fa-check';
+                        buttonText = '완료';
+                    } else {
+                        buttonClass = 'btn-warning';
+                        buttonIcon = 'fas fa-exclamation-triangle';
+                        buttonText = '개선필요';
+                    }
+                    
+                    // 검토 완료 후 결과 표시
+                    button.innerHTML = `<i class="${buttonIcon} me-1"></i>${buttonText}`;
+                    button.classList.remove('btn-outline-primary');
+                    button.classList.add(buttonClass);
+                    button.disabled = false;
+                    
+                    // 개선권고사항 업데이트
+                    const recommendationElement = document.getElementById(`recommendation_${rcmControlCode}`);
+                    if (recommendationElement) {
+                        recommendationElement.innerHTML = `<i class="fas fa-lightbulb me-1 text-warning"></i>${aiRecommendation}`;
+                        recommendationElement.className = "text-dark small";
+                        recommendationElement.style.color = "#212529 !important";
+                    }
+                    
+                    // AI 검토 결과 저장
+                    aiReviewResults[rcmControlCode] = {
+                        status: 'completed',
+                        recommendation: aiRecommendation,
+                        reviewed_date: new Date().toISOString(),
+                        rcm_control_name: rcmControlName,
+                        std_control_id: stdControlId
+                    };
+                    
+                    // 저장 완료 알림 표시
+                    showAutoSaveIndicator();
+                } else {
+                    // 오류 처리
+                    button.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>오류';
+                    button.classList.remove('btn-outline-primary');
+                    button.classList.add('btn-danger');
+                    button.disabled = false;
+                    console.error('AI 검토 오류:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('AI 검토 API 호출 오류:', error);
+                button.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>오류';
+                button.classList.remove('btn-outline-primary');
+                button.classList.add('btn-danger');
+                button.disabled = false;
+            });
+        }
+
+        // 기존 AI 검토 함수 (호환성 유지)
         function startAiReview(stdControlId, stdControlName, rcmControlCode, detailId) {
             const button = document.getElementById(`ai_btn_${stdControlId}`);
             const originalText = button.innerHTML;
@@ -836,24 +901,23 @@
             */
         }
         
-        // AI 전체 검토 기능
+        // AI 전체 검토 기능 (RCM 통제 기준)
         function bulkAiReview() {
             // 매핑된 항목 중 AI 검토가 완료되지 않은 항목들 찾기
             const pendingReviews = [];
             
-            // existingMappings에서 매핑된 항목들 확인
-            for (const [stdControlId, mapping] of Object.entries(existingMappings)) {
-                const numericStdControlId = parseInt(stdControlId);
-                
+            // existingMappings에서 매핑된 항목들 확인 (RCM 통제 코드 기준)
+            for (const [rcmControlCode, mapping] of Object.entries(existingMappings)) {
                 // 해당 항목이 AI 검토 완료되지 않았는지 확인
-                if (!aiReviewResults[numericStdControlId] || aiReviewResults[numericStdControlId].status !== 'completed') {
+                if (!aiReviewResults[rcmControlCode] || aiReviewResults[rcmControlCode].status !== 'completed') {
                     // 매핑 정보에서 필요한 데이터 추출
-                    const detailId = findDetailId(mapping.control_code);
-                    if (detailId) {
+                    const detailId = findDetailId(rcmControlCode);
+                    const rcmControl = rcmControls.find(rc => rc.control_code === rcmControlCode);
+                    if (detailId && rcmControl) {
                         pendingReviews.push({
-                            stdControlId: numericStdControlId,
-                            stdControlName: getStandardControlName(numericStdControlId),
-                            rcmControlCode: mapping.control_code,
+                            rcmControlCode: rcmControlCode,
+                            rcmControlName: rcmControl.control_name,
+                            stdControlId: mapping.std_control_id,
                             detailId: detailId
                         });
                     }
@@ -897,7 +961,7 @@
                 
                 try {
                     // 개별 AI 검토 실행
-                    await performSingleAiReview(review);
+                    await performSingleRcmAiReview(review);
                     completedCount++;
                 } catch (error) {
                     console.error('AI 검토 오류:', error);
@@ -916,7 +980,79 @@
             processNextReview(0);
         }
         
-        // 단일 AI 검토 실행 함수
+        // 단일 RCM AI 검토 실행 함수
+        async function performSingleRcmAiReview(reviewData) {
+            return new Promise((resolve, reject) => {
+                const { rcmControlCode, rcmControlName, stdControlId, detailId } = reviewData;
+                
+                // 실제 AI 검토 API 호출
+                fetch(`/api/rcm/{{ rcm_info.rcm_id }}/detail/${detailId}/ai-review`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // AI 검토 결과에서 개선권고사항 추출
+                        const aiRecommendation = data.recommendation || '검토 완료';
+                        
+                        // AI 응답을 분석해서 상태 구분
+                        let buttonClass, buttonIcon, buttonText;
+                        if (aiRecommendation.includes('매핑이 부적절합니다') || aiRecommendation.includes('매핑이 부적절함')) {
+                            buttonClass = 'btn-danger';
+                            buttonIcon = 'fas fa-times';
+                            buttonText = '매핑오류';
+                        } else if (aiRecommendation.includes('현재 통제 설계가 적정합니다') || aiRecommendation.includes('현재 통제가 적절히')) {
+                            buttonClass = 'btn-success';
+                            buttonIcon = 'fas fa-check';
+                            buttonText = '완료';
+                        } else {
+                            buttonClass = 'btn-warning';
+                            buttonIcon = 'fas fa-exclamation-triangle';
+                            buttonText = '개선필요';
+                        }
+                        
+                        // 해당 버튼 상태 업데이트
+                        const button = document.getElementById(`ai_btn_${rcmControlCode}`);
+                        if (button) {
+                            button.innerHTML = `<i class="${buttonIcon} me-1"></i>${buttonText}`;
+                            button.classList.remove('btn-outline-primary');
+                            button.classList.add(buttonClass);
+                            button.disabled = false;
+                        }
+                        
+                        // 개선권고사항 업데이트
+                        const recommendationElement = document.getElementById(`recommendation_${rcmControlCode}`);
+                        if (recommendationElement) {
+                            recommendationElement.innerHTML = `<i class="fas fa-lightbulb me-1 text-warning"></i>${aiRecommendation}`;
+                            recommendationElement.className = "text-dark small";
+                            recommendationElement.style.color = "#212529 !important";
+                        }
+                        
+                        // AI 검토 결과 저장
+                        aiReviewResults[rcmControlCode] = {
+                            status: 'completed',
+                            recommendation: aiRecommendation,
+                            reviewed_date: new Date().toISOString(),
+                            rcm_control_name: rcmControlName,
+                            std_control_id: stdControlId
+                        };
+                        
+                        resolve(data);
+                    } else {
+                        reject(new Error(data.message));
+                    }
+                })
+                .catch(error => {
+                    reject(error);
+                });
+            });
+        }
+
+        // 기존 단일 AI 검토 실행 함수 (호환성 유지)
         async function performSingleAiReview(reviewData) {
             return new Promise((resolve, reject) => {
                 const { stdControlId, stdControlName, rcmControlCode, detailId } = reviewData;

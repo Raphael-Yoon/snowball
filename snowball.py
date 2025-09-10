@@ -21,6 +21,7 @@ from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
 from snowball_link7 import bp_link7
 from snowball_link8 import bp_link8
+from snowball_link9 import bp_link9
 from snowball_admin import admin_bp
 from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations, find_user_by_email
 import uuid
@@ -148,40 +149,7 @@ def log_session_info(route_name):
 def index():
     log_session_info("메인 페이지")
     
-    # 개발 단계: 127.0.0.1:5001 접속시 자동 로그인 (Snowball 계정)
-    if not is_logged_in():
-        # 클라이언트 IP가 127.0.0.1이고 포트가 5001인 경우에만 자동 로그인
-        client_ip = request.environ.get('REMOTE_ADDR', '')
-        server_port = request.environ.get('SERVER_PORT', '')
-        
-        if client_ip == '127.0.0.1' and server_port == '5001':
-            with get_db() as conn:
-                user = conn.execute(
-                    'SELECT * FROM sb_user WHERE user_email = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
-                    ('snowball2727@naver.com',)
-                ).fetchone()
-                
-                if user:
-                    # SQLite Row 객체를 딕셔너리로 변환
-                    user_dict = dict(user)
-                    
-                    session['user_id'] = user_dict['user_id']
-                    session['user_email'] = user_dict['user_email']
-                    session['user_info'] = {
-                        'user_id': user_dict['user_id'],
-                        'user_name': user_dict['user_name'],
-                        'user_email': user_dict['user_email'],
-                        'company_name': user_dict.get('company_name', ''),
-                        'phone_number': user_dict.get('phone_number', ''),
-                        'admin_flag': user_dict.get('admin_flag', 'N')
-                    }
-                    from datetime import datetime
-                    session['last_activity'] = datetime.now().isoformat()
-                    print(f"127.0.0.1:5001 자동 로그인 성공: {user_dict['user_email']} (admin_flag: {user_dict.get('admin_flag', 'N')})")
-                else:
-                    print("자동 로그인 실패: snowball2727@naver.com 계정을 찾을 수 없습니다.")
-        else:
-            print(f"자동 로그인 조건 불만족 - IP: {client_ip}, Port: {server_port}")
+    # 자동 로그인 로직 제거됨 (수동 로그인으로 변경)
     
     user_info = get_user_info()
     user_name = user_info['user_name'] if user_info else "Guest"
@@ -204,7 +172,43 @@ def login():
     if request.method == 'POST':
         action = request.form.get('action')
         
-        if action == 'send_otp':
+        if action == 'admin_login':
+            # 127.0.0.1에서 관리자 로그인
+            client_ip = request.environ.get('REMOTE_ADDR', '')
+            server_port = request.environ.get('SERVER_PORT', '')
+            
+            if client_ip == '127.0.0.1' and server_port == '5001':
+                with get_db() as conn:
+                    user = conn.execute(
+                        'SELECT * FROM sb_user WHERE user_email = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
+                        ('snowball2727@naver.com',)
+                    ).fetchone()
+                    
+                    if user:
+                        # SQLite Row 객체를 딕셔너리로 변환
+                        user_dict = dict(user)
+                        
+                        session['user_id'] = user_dict['user_id']
+                        session['user_email'] = user_dict['user_email']
+                        session['user_info'] = {
+                            'user_id': user_dict['user_id'],
+                            'user_name': user_dict['user_name'],
+                            'user_email': user_dict['user_email'],
+                            'company_name': user_dict.get('company_name', ''),
+                            'phone_number': user_dict.get('phone_number', ''),
+                            'admin_flag': user_dict.get('admin_flag', 'N')
+                        }
+                        from datetime import datetime
+                        session['last_activity'] = datetime.now().isoformat()
+                        
+                        print(f"127.0.0.1:5001 관리자 로그인 성공: {user_dict['user_email']} (admin_flag: {user_dict.get('admin_flag', 'N')})")
+                        return redirect(url_for('index'))
+                    else:
+                        return render_template('login.jsp', error="관리자 계정을 찾을 수 없습니다.", remote_addr=request.remote_addr)
+            else:
+                return render_template('login.jsp', error="관리자 로그인은 로컬호스트에서만 가능합니다.", remote_addr=request.remote_addr)
+        
+        elif action == 'send_otp':
             # OTP 발송 요청
             email = request.form.get('email')
             method = request.form.get('method', 'email')
@@ -798,6 +802,36 @@ def ai_review_selection():
                          ai_review_count=current_count if is_logged_in() else None,
                          remote_addr=request.remote_addr)
 
+@app.route('/update_session_email', methods=['POST'])
+def update_session_email():
+    """세션의 이메일 주소 업데이트"""
+    try:
+        data = request.get_json()
+        new_email = data.get('email', '').strip()
+        
+        if not new_email:
+            return jsonify({'success': False, 'message': '이메일 주소가 비어있습니다.'})
+        
+        # 이메일 유효성 검사 (서버 측)
+        import re
+        email_pattern = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+        if not re.match(email_pattern, new_email):
+            return jsonify({'success': False, 'message': '올바른 이메일 형식이 아닙니다.'})
+        
+        # 세션의 answer 배열 첫 번째 요소(이메일) 업데이트
+        if 'answer' in session:
+            session['answer'][0] = new_email
+            session.modified = True  # 세션이 수정되었음을 명시
+        else:
+            return jsonify({'success': False, 'message': '세션 정보를 찾을 수 없습니다.'})
+        
+        print(f"이메일 업데이트 완료: {new_email}")
+        return jsonify({'success': True, 'message': '이메일이 성공적으로 변경되었습니다.'})
+        
+    except Exception as e:
+        print(f"이메일 업데이트 오류: {e}")
+        return jsonify({'success': False, 'message': '서버 오류가 발생했습니다.'})
+
 @app.route('/process_with_ai_option', methods=['POST'])
 def process_with_ai_option():
     """AI 검토 옵션에 따라 처리 페이지로 이동"""
@@ -1194,6 +1228,7 @@ app.register_blueprint(bp_link5)
 app.register_blueprint(bp_link6)
 app.register_blueprint(bp_link7)
 app.register_blueprint(bp_link8)
+app.register_blueprint(bp_link9)
 app.register_blueprint(admin_bp)
 
 if __name__ == '__main__':

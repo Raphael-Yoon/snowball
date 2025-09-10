@@ -233,6 +233,23 @@ def init_db():
             )
         ''')
         
+        # 내부평가 진행상황 저장 테이블
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_internal_assessment (
+                assessment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rcm_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                step INTEGER NOT NULL,  -- 1:계획수립, 2:설계평가, 3:운영평가, 4:결함식별, 5:개선계획, 6:보고서작성
+                progress_data TEXT,  -- JSON 형태의 진행상황 데이터
+                status TEXT DEFAULT 'pending',  -- 'pending', 'in_progress', 'completed'
+                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
+                FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
+                UNIQUE(rcm_id, user_id, step)
+            )
+        ''')
+        
         # 기준통제 마스터 테이블 생성
         conn.execute('''
             CREATE TABLE IF NOT EXISTS sb_standard_control (

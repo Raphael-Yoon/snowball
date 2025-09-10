@@ -808,6 +808,7 @@ RCM_CONTROL_PROMPTS = {
 
 검토 기준:
 - 먼저 통제 내용이 데이터베이스 관리자 권한 제한과 관련된 내용인지 확인 (애플리케이션 사용자, 비즈니스 프로세스 등은 부적절한 매핑)
+- 관리자 권한과 Superuser 권한은 동일한 권한으로 판단
 - 통제 영역이 DB 관리자 권한관리와 관련 없는 경우 '매핑이 부적절함' 지적
 - 관리자권한(Superuser 권한)은 IT담당자로 제한되는지 확인
 - 현업 사용자는 인정하지 않음을 확인
@@ -856,6 +857,7 @@ RCM_CONTROL_PROMPTS = {
 검토 기준:
 - 먼저 통제 내용이 운영체제 관리자 권한 제한과 관련된 내용인지 확인 (애플리케이션 기능, 데이터 검증 등은 부적절한 매핑)
 - 통제 영역이 OS 관리자 권한관리와 관련 없는 경우 '매핑이 부적절함' 지적
+- 관리자 권한과 Superuser 권한은 동일한 권한으로 판단
 - 관리자권한(Superuser 권한)은 IT담당자로 제한되는지 확인
 - 현업 사용자는 인정하지 않음을 확인
 
@@ -1193,7 +1195,7 @@ def get_rcm_ai_review(control_content, std_control_name=None):
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": "매핑 검토 전문가입니다. 코드 표기(예: PC02, CO01)나 내부 코드명은 무시하고, 통제 '내용'과 '업무영역'으로만 판단하세요. [매핑된 기준통제]의 의미(개념/업무영역)와 [RCM 통제] 내용이 다르면 반드시 '매핑이 부적절합니다'라는 정확한 문구를 포함해 답변하세요. 의미가 일치하고 적정하면 '현재 통제 설계가 적정합니다'라는 정확한 문구를 포함하세요."},
+                {"role": "system", "content": "매핑 검토 전문가입니다. 코드 표기(예: PC02, CO01)나 내부 코드명은 무시하고, 통제 '내용'과 '업무영역'으로만 판단하세요. [매핑된 기준통제]의 의미(개념/업무영역)와 [RCM 통제] 내용이 다르면 반드시 '매핑이 부적절합니다'라는 정확한 문구를 포함해 답변하세요. 의미가 일치하고 적정하면 '현재 통제 설계가 적정합니다'라는 정확한 문구를 포함하세요. 중요: 다음 용어들은 동일한 의미로 인식하세요 - OS 관리자 권한 = OS Super User = 시스템 관리자 = root 권한, DB 관리자 권한 = DB Super User = DBA = 데이터베이스 관리자 권한, 애플리케이션 관리자 = 앱 관리자 = Application Admin, 네트워크 관리자 = 망 관리자 = Network Admin, 데이터 = Data, 시스템 = System, 서버 = Server, 프로그램 = Program, 사용자 = User, 관리 = Management, 접근 = Access, 권한 = Authority = Permission, 보안 = Security, 백업 = Backup, 변경 = Change = Modification, 직접변경 = 변경 = 수정 = 갱신 = 업데이트, 담당자 = 지정된 담당자 = 적절한 담당자 = 승인된 담당자, 제한 = 한정 = 통제"},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=150,  # RCM 검토는 간결하게 (300→150으로 단축)

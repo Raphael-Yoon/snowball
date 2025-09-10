@@ -7,6 +7,33 @@
     		<link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
 		<link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .ai-option-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .ai-option-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+        }
+        
+        .ai-option-card.selected {
+            border-color: #007bff;
+            background-color: #f8f9ff;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.4);
+        }
+        
+        #emailInput.border-primary {
+            border-color: #007bff !important;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+        }
+        
+        .btn-close {
+            font-size: 0.8rem;
+        }
+    </style>
 </head>
 <body>
     <div class="container text-center mt-5">
@@ -25,9 +52,24 @@
                         <div class="mb-4">
                             <h5 class="mb-3"><i class="fas fa-robot"></i> AI 검토 옵션</h5>
                             <p class="text-muted">AI가 답변을 분석하여 더 정확하고 완성도 높은 문서를 생성할 수 있습니다.</p>
-                            {% if ai_review_count is defined %}
+                            
+                            <!-- AI 검토 범위 안내 -->
+                            {% if is_logged_in %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-user-check"></i> <strong>로그인 사용자</strong> - AI가 <strong>전체 통제</strong>를 검토합니다
+                                <br><small class="text-muted">APD, PC, CO 카테고리의 모든 통제 항목 (총 25개)</small>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-user"></i> <strong>비회원 사용자</strong> - AI가 <strong>핵심 통제 3개</strong>만 검토합니다
+                                <br><small class="text-muted">APD01 (Application 권한 승인), APD02 (Application 권한 제거), APD03 (Application 권한 검토)</small>
+                                <br><small><i class="fas fa-info-circle text-info"></i> 회원가입 시 전체 통제 검토가 가능합니다</small>
+                            </div>
+                            {% endif %}
+                            
+                            {% if is_logged_in and ai_review_count is defined %}
                             <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i> AI 검토 사용 현황: <strong>{{ ai_review_count }}</strong>회 사용
+                                <i class="fas fa-chart-bar"></i> AI 검토 사용 현황: <strong>{{ ai_review_count }}</strong>회 사용
                             </div>
                             {% endif %}
                         </div>
@@ -74,10 +116,34 @@
                         </div>
                         
                         <div class="mt-3">
-                            <p class="text-muted small">
-                                <i class="fas fa-info-circle"></i> 
-                                결과 문서는 <strong>{{ user_email }}</strong>로 전송됩니다.
-                            </p>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-8">
+                                            <label class="form-label mb-1">
+                                                <i class="fas fa-envelope"></i> 결과 문서 전송 이메일
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="email" class="form-control" id="emailInput" value="{{ user_email }}" readonly>
+                                                <button class="btn btn-outline-secondary" type="button" id="editEmailBtn">
+                                                    <i class="fas fa-edit"></i> 수정
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 text-end">
+                                            <button class="btn btn-success d-none" type="button" id="saveEmailBtn">
+                                                <i class="fas fa-check"></i> 저장
+                                            </button>
+                                            <button class="btn btn-secondary d-none ms-1" type="button" id="cancelEmailBtn">
+                                                <i class="fas fa-times"></i> 취소
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-info-circle"></i> 생성된 ITGC 설계평가 문서가 이 이메일로 전송됩니다.
+                                    </small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -93,6 +159,7 @@
             const proceedBtn = document.getElementById('proceedBtn');
             const enableAiReviewInput = document.getElementById('enableAiReview');
             
+            // AI 검토 옵션 선택 로직
             optionCards.forEach(card => {
                 card.addEventListener('click', function() {
                     // 모든 카드에서 selected 클래스 제거
@@ -117,6 +184,121 @@
                     }
                 });
             });
+
+            // 이메일 수정 기능
+            const emailInput = document.getElementById('emailInput');
+            const editEmailBtn = document.getElementById('editEmailBtn');
+            const saveEmailBtn = document.getElementById('saveEmailBtn');
+            const cancelEmailBtn = document.getElementById('cancelEmailBtn');
+            let originalEmail = emailInput.value;
+
+            // 수정 버튼 클릭
+            editEmailBtn.addEventListener('click', function() {
+                originalEmail = emailInput.value; // 원본 이메일 저장
+                emailInput.readOnly = false;
+                emailInput.focus();
+                emailInput.classList.add('border-primary');
+                
+                // 버튼 표시/숨김
+                editEmailBtn.classList.add('d-none');
+                saveEmailBtn.classList.remove('d-none');
+                cancelEmailBtn.classList.remove('d-none');
+            });
+
+            // 저장 버튼 클릭
+            saveEmailBtn.addEventListener('click', function() {
+                const newEmail = emailInput.value.trim();
+                
+                // 이메일 유효성 검사
+                if (!validateEmail(newEmail)) {
+                    alert('올바른 이메일 주소를 입력해주세요.');
+                    emailInput.focus();
+                    return;
+                }
+
+                // 서버에 이메일 업데이트 요청
+                updateEmailInSession(newEmail);
+            });
+
+            // 취소 버튼 클릭
+            cancelEmailBtn.addEventListener('click', function() {
+                emailInput.value = originalEmail; // 원본으로 복원
+                resetEmailEditMode();
+            });
+
+            // Enter 키로 저장
+            emailInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    saveEmailBtn.click();
+                }
+            });
+
+            // ESC 키로 취소
+            emailInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    cancelEmailBtn.click();
+                }
+            });
+
+            // 이메일 수정 모드 리셋
+            function resetEmailEditMode() {
+                emailInput.readOnly = true;
+                emailInput.classList.remove('border-primary');
+                
+                editEmailBtn.classList.remove('d-none');
+                saveEmailBtn.classList.add('d-none');
+                cancelEmailBtn.classList.add('d-none');
+            }
+
+            // 이메일 유효성 검사
+            function validateEmail(email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return emailRegex.test(email);
+            }
+
+            // 서버에 이메일 업데이트
+            function updateEmailInSession(newEmail) {
+                fetch('/update_session_email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ email: newEmail })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        resetEmailEditMode();
+                        // 성공 토스트 표시
+                        showToast('이메일이 성공적으로 변경되었습니다.', 'success');
+                    } else {
+                        alert('이메일 변경에 실패했습니다: ' + result.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('이메일 업데이트 오류:', error);
+                    alert('이메일 변경 중 오류가 발생했습니다.');
+                });
+            }
+
+            // 간단한 토스트 알림
+            function showToast(message, type = 'success') {
+                const toastDiv = document.createElement('div');
+                toastDiv.className = `alert alert-${type} position-fixed`;
+                toastDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+                toastDiv.innerHTML = `
+                    <i class="fas fa-check-circle"></i> ${message}
+                    <button type="button" class="btn-close float-end" onclick="this.parentElement.remove()"></button>
+                `;
+                document.body.appendChild(toastDiv);
+                
+                setTimeout(() => {
+                    if (toastDiv.parentElement) {
+                        toastDiv.remove();
+                    }
+                }, 3000);
+            }
         });
     </script>
 </body>
