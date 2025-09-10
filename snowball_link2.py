@@ -1680,6 +1680,21 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
     # 스킵된 통제 목록 미리 가져오기
     skipped_controls = get_skipped_controls(answers)
     
+    # AI 검토 대상 통제 결정 (로그인 상태에 따라)
+    ai_review_controls = set()
+    if enable_ai_review:
+        from snowball import is_logged_in  # 로그인 상태 확인 함수 import
+        
+        if is_logged_in():
+            # 로그인 상태: 스킵되지 않은 모든 통제 검토
+            ai_review_controls = set(c for c in control_list if c not in skipped_controls)
+            print(f"👤 로그인 사용자 - AI 검토 대상 통제 ({len(ai_review_controls)}개): 전체 통제")
+        else:
+            # 비로그인 상태: APD01, APD02, APD03만 검토 (스킵되지 않은 것만)
+            limited_controls = ['APD01', 'APD02', 'APD03']
+            ai_review_controls = set(c for c in limited_controls if c not in skipped_controls)
+            print(f"🔒 비로그인 사용자 - AI 검토 대상 통제 ({len(ai_review_controls)}개): {sorted(ai_review_controls)}")
+    
     total_controls = len(control_list)
     processed_controls = []
     failed_controls = []
@@ -1695,7 +1710,9 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                 progress_callback(progress_percent, f"{control} 통제 문서를 생성하고 있습니다... ({idx+1}/{total_controls})")
         
         try:
-            text_data = get_text_itgc(answers, control, textarea_answers, enable_ai_review)
+            # 해당 통제가 AI 검토 대상인지 확인
+            control_needs_ai_review = enable_ai_review and control in ai_review_controls
+            text_data = get_text_itgc(answers, control, textarea_answers, control_needs_ai_review)
             ws = wb[control]
             fill_sheet(ws, text_data, answers)
             
@@ -1710,16 +1727,16 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
             failed_controls.append((control, str(e)))
             print(f"✗ {control} 처리 실패: {str(e)}")
 
-        # AI 검토 결과가 있는 경우 Summary 시트용 데이터 수집
-        if enable_ai_review and 'AI_Review' in text_data and isinstance(text_data['AI_Review'], dict):
+        # AI 검토 결과가 있는 경우 Summary 시트용 데이터 수집 (선택된 통제만)
+        if control_needs_ai_review and 'AI_Review' in text_data and isinstance(text_data['AI_Review'], dict):
             summary_ai_reviews[control] = text_data['AI_Review']
             print(f"📊 {control} AI 검토 결과 Summary 수집 완료")
-        elif enable_ai_review:
+        elif control_needs_ai_review:
             print(f"⚠️ {control} AI_Review 데이터 없음: keys={list(text_data.keys()) if hasattr(text_data, 'keys') else 'N/A'}")
 
-        # AI 검토 결과가 있는 경우와 없는 경우에 따라 C14 처리
+        # AI 검토 결과가 있는 경우와 없는 경우에 따라 C14 처리 (선택된 통제만)
         ai_review_processed = False
-        if enable_ai_review and 'AI_Review' in text_data:
+        if control_needs_ai_review and 'AI_Review' in text_data:
             if isinstance(text_data['AI_Review'], dict):
                 # 결론만 C14에 기록
                 conclusion = text_data['AI_Review'].get('conclusion', '')
