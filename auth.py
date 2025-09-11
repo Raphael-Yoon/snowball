@@ -65,6 +65,7 @@ def init_db():
                 upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 upload_user_id INTEGER NOT NULL,
                 is_active TEXT DEFAULT 'Y',
+                completion_date TIMESTAMP DEFAULT NULL,
                 FOREIGN KEY (upload_user_id) REFERENCES sb_user (user_id)
             )
         ''')
@@ -463,6 +464,24 @@ def init_db():
             conn.execute('ALTER TABLE sb_user_new RENAME TO sb_user')
             print("새로운 sb_user 테이블이 생성되었습니다.")
         
+        # sb_rcm 테이블에 completion_date 컬럼 추가 (없는 경우)
+        try:
+            rcm_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm)').fetchall()]
+            if 'completion_date' not in rcm_columns:
+                print("sb_rcm 테이블에 completion_date 컬럼 추가")
+                conn.execute('ALTER TABLE sb_rcm ADD COLUMN completion_date TIMESTAMP DEFAULT NULL')
+        except Exception as e:
+            print(f"completion_date 컬럼 추가 중 오류 (무시됨): {e}")
+        
+        # sb_rcm_detail 테이블에 mapping_status 컬럼 추가 (없는 경우)
+        try:
+            rcm_detail_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm_detail)').fetchall()]
+            if 'mapping_status' not in rcm_detail_columns:
+                print("sb_rcm_detail 테이블에 mapping_status 컬럼 추가")
+                conn.execute('ALTER TABLE sb_rcm_detail ADD COLUMN mapping_status TEXT DEFAULT NULL')  # NULL, 'no_mapping', 'mapped'
+        except Exception as e:
+            print(f"mapping_status 컬럼 추가 중 오류 (무시됨): {e}")
+        
         conn.commit()
 
 def generate_otp():
@@ -762,7 +781,7 @@ def get_user_rcms(user_id):
     with get_db() as conn:
         rcms = conn.execute('''
             SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, 
-                   ur.permission_type, u.company_name
+                   r.completion_date, ur.permission_type, u.company_name
             FROM sb_rcm r
             INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
             INNER JOIN sb_user u ON r.upload_user_id = u.user_id
@@ -1215,9 +1234,10 @@ def evaluate_rcm_completeness(rcm_id, user_id):
             'details': []
         }
 
-    # sb_rcm_detail에서 매핑된 항목 수 계산 및 표기용 기준통제명 캐싱
+    # sb_rcm_detail에서 매핑된 항목 수 계산 (매핑 불가 포함) 및 표기용 기준통제명 캐싱
     mapped_std_ids = [d['mapped_std_control_id'] for d in rcm_details if d.get('mapped_std_control_id')]
-    mapped_controls = len(mapped_std_ids)
+    no_mapping_count = len([d for d in rcm_details if d.get('mapping_status') == 'no_mapping'])
+    mapped_controls = len(mapped_std_ids) + no_mapping_count  # 매핑 불가도 완성된 것으로 계산
 
     std_id_to_name = {}
     if mapped_std_ids:
@@ -1229,19 +1249,26 @@ def evaluate_rcm_completeness(rcm_id, user_id):
             ).fetchall()
             std_id_to_name = {row['std_control_id']: row['control_name'] for row in rows}
 
-    # 각 통제별 완성도 검사 (현재는 매핑 존재 여부를 100%로 간주)
+    # 각 통제별 완성도 검사 (매핑됨 또는 매핑불가 = 100%)
     eval_details = []
     for detail in rcm_details:
         std_id = detail.get('mapped_std_control_id')
+        mapping_status = detail.get('mapping_status')
         is_mapped = std_id is not None
+        is_no_mapping = mapping_status == 'no_mapping'
+        is_completed = is_mapped or is_no_mapping
+        
         control_eval = {
             'control_code': detail['control_code'],
             'control_name': detail['control_name'],
             'is_mapped': bool(is_mapped),
-            'completeness': 100.0 if is_mapped else 0.0
+            'is_no_mapping': bool(is_no_mapping),
+            'completeness': 100.0 if is_completed else 0.0
         }
         if is_mapped:
             control_eval['std_control_name'] = std_id_to_name.get(std_id)
+        elif is_no_mapping:
+            control_eval['std_control_name'] = '매핑 불가'
         eval_details.append(control_eval)
 
     # 전체 완성도 점수 계산 (매핑 비율 기준)
@@ -1273,18 +1300,34 @@ def save_rcm_mapping(rcm_id, detail_id, std_control_id, user_id):
     """개별 RCM 통제의 매핑 저장 (sb_rcm_detail 테이블 사용)"""
     try:
         with get_db() as conn:
-            cursor = conn.execute('''
-                UPDATE sb_rcm_detail
-                SET mapped_std_control_id = ?,
-                    mapped_date = CURRENT_TIMESTAMP,
-                    mapped_by = ?
-                WHERE detail_id = ?
-            ''', (std_control_id, user_id, detail_id))
+            # std_control_id가 -1이면 "매핑 불가" 처리
+            if std_control_id == -1:
+                cursor = conn.execute('''
+                    UPDATE sb_rcm_detail
+                    SET mapped_std_control_id = NULL,
+                        mapping_status = 'no_mapping',
+                        mapped_date = CURRENT_TIMESTAMP,
+                        mapped_by = ?
+                    WHERE detail_id = ?
+                ''', (user_id, detail_id))
+            else:
+                cursor = conn.execute('''
+                    UPDATE sb_rcm_detail
+                    SET mapped_std_control_id = ?,
+                        mapping_status = 'mapped',
+                        mapped_date = CURRENT_TIMESTAMP,
+                        mapped_by = ?
+                    WHERE detail_id = ?
+                ''', (std_control_id, user_id, detail_id))
             
             if cursor.rowcount == 0:
                 raise Exception(f"Detail ID {detail_id}를 찾을 수 없습니다.")
             
             conn.commit()
+            
+            # 매핑 변경 시 RCM 완료 상태 해제
+            clear_rcm_completion(rcm_id)
+            
             return True
             
     except Exception as e:
@@ -1300,6 +1343,7 @@ def delete_rcm_mapping(rcm_id, detail_id, user_id):
             cursor = conn.execute('''
                 UPDATE sb_rcm_detail
                 SET mapped_std_control_id = NULL,
+                    mapping_status = NULL,
                     mapped_date = NULL,
                     mapped_by = NULL,
                     ai_review_status = NULL,
@@ -1313,6 +1357,10 @@ def delete_rcm_mapping(rcm_id, detail_id, user_id):
                 raise Exception(f"Detail ID {detail_id}를 찾을 수 없습니다.")
             
             conn.commit()
+            
+            # 매핑 삭제 시 RCM 완료 상태 해제
+            clear_rcm_completion(rcm_id)
+            
             return True
             
     except Exception as e:
@@ -1358,6 +1406,10 @@ def save_rcm_ai_review(rcm_id, detail_id, recommendation, user_id):
                 raise Exception(f"Detail ID {detail_id}를 찾을 수 없습니다.")
             
             conn.commit()
+            
+            # AI 검토 변경 시 RCM 완료 상태 해제
+            clear_rcm_completion(rcm_id)
+            
             return True
             
     except Exception as e:
@@ -1588,4 +1640,20 @@ def save_rcm_review_result(rcm_id, user_id, mapping_data, ai_review_data, status
                     save_rcm_ai_review(rcm_id, result['control_code'], ai_info['recommendation'], user_id)
     
     return rcm_id
+
+def clear_rcm_completion(rcm_id):
+    """RCM 완료 상태 해제"""
+    try:
+        with get_db() as conn:
+            conn.execute('''
+                UPDATE sb_rcm 
+                SET completion_date = NULL 
+                WHERE rcm_id = ?
+            ''', (rcm_id,))
+            conn.commit()
+            print(f"RCM {rcm_id} 완료 상태가 해제되었습니다.")
+            return True
+    except Exception as e:
+        print(f"RCM 완료 상태 해제 오류: {e}")
+        return False
 

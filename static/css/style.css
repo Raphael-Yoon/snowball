@@ -556,6 +556,19 @@ h2 {
     display: none;
 }
 
+/* RCM 기준통제 매핑 화면: 우측 버튼 위치 일관성 보정 */
+.standard-control-item .text-end {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+.standard-control-item .text-end .badge {
+    order: 0;
+}
+.standard-control-item .text-end .btn {
+    margin-top: 0.25rem; /* mt-1과 동일한 효과 */
+}
+
 /* Link6 interview page styles moved from JSP */
 .interview-container{
     max-width: 800px;

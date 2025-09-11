@@ -120,6 +120,18 @@
                     <div class="card-header">
                         <h5><i class="fas fa-list-check me-2"></i>RCM 통제별 검토 현황</h5>
                         <div class="float-end">
+                            {% if rcm_info.completion_date %}
+                            <span class="badge bg-success me-2" style="font-size: 0.75rem;">
+                                <i class="fas fa-check-circle me-1"></i>완료됨 ({{ rcm_info.completion_date.strftime('%m-%d') }})
+                            </span>
+                            <button id="toggleCompletionBtn" class="btn btn-sm btn-warning me-2" onclick="toggleCompletion(false)">
+                                <i class="fas fa-undo me-1"></i>완료 해제
+                            </button>
+                            {% else %}
+                            <button id="toggleCompletionBtn" class="btn btn-sm btn-success me-2" onclick="toggleCompletion(true)">
+                                <i class="fas fa-check me-1"></i>검토 완료
+                            </button>
+                            {% endif %}
                             <a href="/rcm/{{ rcm_info.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-2">
                                 <i class="fas fa-list me-1"></i>RCM 상세보기로
                             </a>
@@ -336,6 +348,11 @@
                     } else {
                         html += `<span class="text-warning">기준통제 정보 없음</span>`;
                     }
+                } else if (rcmControl.mapping_status === 'no_mapping') {
+                    html += `<div class="d-flex align-items-center">`;
+                    html += `<span class="badge bg-warning me-2">매핑불가</span>`;
+                    html += `<span class="text-warning">매핑할 기준통제 없음</span>`;
+                    html += `</div>`;
                 } else {
                     html += `<span class="text-muted">매핑 안됨</span>`;
                 }
@@ -1221,6 +1238,56 @@
                 });
             }
             */
+        }
+
+        // RCM 완료 상태 토글 함수
+        function toggleCompletion(complete) {
+            const action = complete ? '완료' : '완료 해제';
+            
+            if (!confirm(`정말 이 RCM을 ${action}하시겠습니까?`)) {
+                return;
+            }
+
+            const btn = document.getElementById('toggleCompletionBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>처리중...';
+
+            fetch(`/rcm/{{ rcm_info.rcm_id }}/toggle-completion`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    complete: complete
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 페이지 새로고침으로 상태 반영
+                    window.location.reload();
+                } else {
+                    alert('오류가 발생했습니다: ' + (data.message || '알 수 없는 오류'));
+                    btn.disabled = false;
+                    // 버튼 상태 복원
+                    if (complete) {
+                        btn.innerHTML = '<i class="fas fa-check me-1"></i>검토 완료';
+                    } else {
+                        btn.innerHTML = '<i class="fas fa-undo me-1"></i>완료 해제';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('완료 상태 변경 오류:', error);
+                alert('완료 상태 변경 중 오류가 발생했습니다.');
+                btn.disabled = false;
+                // 버튼 상태 복원
+                if (complete) {
+                    btn.innerHTML = '<i class="fas fa-check me-1"></i>검토 완료';
+                } else {
+                    btn.innerHTML = '<i class="fas fa-undo me-1"></i>완료 해제';
+                }
+            });
         }
     </script>
 </body>

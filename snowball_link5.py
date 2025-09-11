@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
-from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, save_operation_evaluation, get_operation_evaluations, count_design_evaluations, count_operation_evaluations, log_user_activity, initialize_standard_controls, get_standard_controls, save_rcm_standard_mapping, get_rcm_standard_mappings, get_rcm_detail_mappings, evaluate_rcm_completeness, save_rcm_review_result, get_rcm_review_result, save_rcm_mapping, delete_rcm_mapping, save_rcm_ai_review, get_control_review_result, save_control_review_result, get_db
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, save_operation_evaluation, get_operation_evaluations, count_design_evaluations, count_operation_evaluations, log_user_activity, initialize_standard_controls, get_standard_controls, save_rcm_standard_mapping, get_rcm_standard_mappings, get_rcm_detail_mappings, evaluate_rcm_completeness, save_rcm_review_result, get_rcm_review_result, save_rcm_mapping, delete_rcm_mapping, save_rcm_ai_review, get_control_review_result, save_control_review_result, get_db, clear_rcm_completion
 import os
 import json
 from openai import OpenAI
@@ -397,6 +397,55 @@ def completeness_report(rcm_id):
                          user_info=user_info,
                          remote_addr=request.remote_addr)
 
+@bp_link5.route('/rcm/<int:rcm_id>/toggle-completion', methods=['POST'])
+@login_required
+def toggle_rcm_completion(rcm_id):
+    """RCM 완료 상태 토글"""
+    user_info = get_user_info()
+    
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+    user_rcms = get_user_rcms(user_info['user_id'])
+    rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+    
+    if rcm_id not in rcm_ids:
+        return jsonify({'success': False, 'message': '해당 RCM에 대한 접근 권한이 없습니다.'})
+    
+    try:
+        data = request.get_json()
+        complete = data.get('complete', False)
+        
+        with get_db() as conn:
+            if complete:
+                # 완료 상태로 변경 - 현재 날짜 설정
+                conn.execute('''
+                    UPDATE sb_rcm 
+                    SET completion_date = CURRENT_TIMESTAMP 
+                    WHERE rcm_id = ?
+                ''', (rcm_id,))
+                
+                # 활동 로그 기록
+                log_user_activity(user_info, 'RCM_COMPLETE', f'RCM 검토 완료', f'/rcm/{rcm_id}/completeness-report', 
+                                success=True, return_code=0, remote_addr=request.remote_addr)
+                
+                return jsonify({'success': True, 'message': 'RCM 검토가 완료되었습니다.'})
+            else:
+                # 완료 해제 - completion_date를 NULL로 설정
+                conn.execute('''
+                    UPDATE sb_rcm 
+                    SET completion_date = NULL 
+                    WHERE rcm_id = ?
+                ''', (rcm_id,))
+                
+                # 활동 로그 기록
+                log_user_activity(user_info, 'RCM_UNCOMPLETE', f'RCM 검토 완료 해제', f'/rcm/{rcm_id}/completeness-report', 
+                                success=True, return_code=0, remote_addr=request.remote_addr)
+                
+                return jsonify({'success': True, 'message': 'RCM 검토 완료가 해제되었습니다.'})
+                
+    except Exception as e:
+        print(f"RCM 완료 상태 변경 오류: {e}")
+        return jsonify({'success': False, 'message': f'오류가 발생했습니다: {str(e)}'})
+
 # RCM 검토 결과 저장/조회 API
 
 @bp_link5.route('/api/rcm/<int:rcm_id>/detail/<int:detail_id>/review', methods=['GET', 'POST'])
@@ -624,6 +673,53 @@ def control_mapping(rcm_id, detail_id):
     except Exception as e:
         print(f"매핑 처리 오류: {e}")
         return jsonify({'success': False, 'message': '매핑 처리 실패'}), 500
+
+@bp_link5.route('/api/rcm/<int:rcm_id>/standard-control/<int:std_control_id>/mappings', methods=['DELETE'])
+@login_required
+def delete_standard_control_mappings(rcm_id, std_control_id):
+    """특정 기준통제에 매핑된 모든 통제 매핑 해제 API"""
+    user_info = get_user_info()
+    
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+    user_rcms = get_user_rcms(user_info['user_id'])
+    rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+    
+    if rcm_id not in rcm_ids:
+        return jsonify({'success': False, 'message': '권한이 없습니다.'}), 403
+    
+    try:
+        # 해당 기준통제에 매핑된 모든 통제의 매핑을 해제
+        with get_db() as conn:
+            result = conn.execute('''
+                UPDATE sb_rcm_detail
+                SET mapped_std_control_id = NULL,
+                    mapped_date = NULL,
+                    mapped_by = NULL
+                WHERE rcm_id = ? AND mapped_std_control_id = ?
+            ''', (rcm_id, std_control_id))
+            
+            affected_rows = result.rowcount
+            conn.commit()
+        
+        # 완료 상태 해제 (매핑 변경 시)
+        clear_rcm_completion(rcm_id)
+        
+        log_user_activity(user_info, 'STANDARD_CONTROL_MAPPING_DELETE', 
+                         f'기준통제 {std_control_id} 매핑 해제 ({affected_rows}건)', 
+                         f'/api/rcm/{rcm_id}/standard-control/{std_control_id}/mappings', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({
+            'success': True, 
+            'message': f'{affected_rows}개 매핑이 해제되었습니다.',
+            'affected_count': affected_rows
+        })
+        
+    except Exception as e:
+        print(f"기준통제 매핑 해제 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'매핑 해제 중 오류가 발생했습니다: {str(e)}'}), 500
 
 # ================================
 # RCM AI 검토 설정 및 함수

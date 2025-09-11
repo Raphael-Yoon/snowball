@@ -60,9 +60,6 @@
                                             <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세보기
                                             </a>
-                                            <button class="btn btn-sm btn-outline-info" onclick="evaluateCompleteness({{ rcm.rcm_id }})">
-                                                <i class="fas fa-search me-1"></i>통제항목 검토
-                                            </button>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -110,42 +107,5 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // 통제항목 검토 기능
-        function evaluateCompleteness(rcmId) {
-            // 로딩 표시
-            const button = document.querySelector(`button[onclick="evaluateCompleteness(${rcmId})"]`);
-            const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>검토 중...';
-            button.disabled = true;
-                
-                // API 호출
-                fetch(`/api/rcm/${rcmId}/evaluate-completeness`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'same-origin'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    button.innerHTML = originalText;
-                    button.disabled = false;
-                    
-                    if (data.success) {
-                        // 바로 상세 보고서 페이지로 이동
-                        window.location.href = `/rcm/${rcmId}/completeness-report`;
-                    } else {
-                        alert('검토 중 오류가 발생했습니다: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    button.innerHTML = originalText;
-                    button.disabled = false;
-                    console.error('검토 오류:', error);
-                    alert('검토 중 오류가 발생했습니다.');
-                });
-        }
-    </script>
 </body>
 </html>
