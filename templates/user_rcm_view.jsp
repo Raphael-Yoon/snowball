@@ -88,9 +88,6 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="fas fa-list me-2"></i>통제 상세 목록</h5>
                         <div>
-                            <button class="btn btn-sm btn-outline-primary me-2" onclick="evaluateCompleteness()">
-                                <i class="fas fa-search me-1"></i>통제항목 검토
-                            </button>
                             <a href="/rcm/{{ rcm_info.rcm_id }}/mapping" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-link me-1"></i>기준통제 매핑
                             </a>
@@ -162,41 +159,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
 
-        // RCM 완성도 평가 기능
-        function evaluateCompleteness() {
-            // 로딩 표시
-            const button = document.querySelector('button[onclick="evaluateCompleteness()"]');
-            const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>검토 중...';
-            button.disabled = true;
-                
-                // API 호출
-                fetch(`/api/rcm/{{ rcm_info.rcm_id }}/evaluate-completeness`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'same-origin'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    button.innerHTML = originalText;
-                    button.disabled = false;
-                    
-                    if (data.success) {
-                        // 바로 상세 보고서 페이지로 이동
-                        window.location.href = `/rcm/{{ rcm_info.rcm_id }}/completeness-report`;
-                    } else {
-                        alert('검토 중 오류가 발생했습니다: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    button.innerHTML = originalText;
-                    button.disabled = false;
-                    console.error('검토 오류:', error);
-                    alert('검토 중 오류가 발생했습니다.');
-                });
-        }
 
         // 툴팁 초기화
         document.addEventListener('DOMContentLoaded', function() {

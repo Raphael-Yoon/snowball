@@ -22,6 +22,10 @@
             border-color: #dc3545;
             background-color: #fff5f5;
         }
+        .mapping-card.no-mapping {
+            border-color: #ffc107;
+            background-color: #fffbf0;
+        }
         .standard-control-list {
             /* 스크롤 제거로 모든 기준통제를 한번에 볼 수 있도록 개선 */
         }
@@ -50,7 +54,7 @@
 <body>
     {% include 'navi.jsp' %}
 
-    <div class="container-fluid mt-4">
+    <div class="container mt-4">
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -61,6 +65,7 @@
                         </a>
                     </div>
                 </div>
+                <hr>
             </div>
         </div>
 
@@ -128,27 +133,26 @@
                                             <strong>{{ control.control_code }}</strong>
                                             <br>
                                             <span class="small">{{ control.control_name }}</span>
-                                            {% if std_mappings %}
                                             <br>
-                                            <small class="text-success">
+                                            <br>
+                                            <small class="text-success mapping-info" style="{{ '' if std_mappings else 'display:none;' }}">
                                                 <i class="fas fa-link me-1"></i>
-                                                {% for mapping in std_mappings %}
-                                                {{ mapping.control_code }}{% if not loop.last %}, {% endif %}
-                                                {% endfor %}
-                                                에 매핑됨
+                                                {% if std_mappings %}
+                                                    {% for mapping in std_mappings %}
+                                                    {{ mapping.control_code }}{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                    에 매핑됨
+                                                {% endif %}
                                             </small>
-                                            {% endif %}
                                         </div>
                                         <div class="text-end">
                                             <span class="badge {{ 'bg-success' if std_mappings else 'bg-info' }}">
                                                 {{ control.control_category }}
                                             </span>
-                                            {% if std_mappings %}
                                             <br>
-                                            <button class="btn btn-sm btn-outline-danger mt-1" onclick="event.stopPropagation(); removeStandardControlMappings({{ control.std_control_id }}, '{{ control.control_code }}')">
+                                            <button class="btn btn-sm btn-outline-danger mt-1" style="{{ '' if std_mappings else 'display:none;' }}" onclick="event.stopPropagation(); removeStandardControlMappings({{ control.std_control_id }}, '{{ control.control_code }}')">
                                                 <i class="fas fa-times"></i> 해제
                                             </button>
-                                            {% endif %}
                                         </div>
                                     </div>
                                     {% if control.control_description %}
@@ -181,27 +185,26 @@
                                             <strong>{{ control.control_code }}</strong>
                                             <br>
                                             <span class="small">{{ control.control_name }}</span>
-                                            {% if std_mappings %}
                                             <br>
-                                            <small class="text-success">
+                                            <br>
+                                            <small class="text-success mapping-info" style="{{ '' if std_mappings else 'display:none;' }}">
                                                 <i class="fas fa-link me-1"></i>
-                                                {% for mapping in std_mappings %}
-                                                {{ mapping.control_code }}{% if not loop.last %}, {% endif %}
-                                                {% endfor %}
-                                                에 매핑됨
+                                                {% if std_mappings %}
+                                                    {% for mapping in std_mappings %}
+                                                    {{ mapping.control_code }}{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                    에 매핑됨
+                                                {% endif %}
                                             </small>
-                                            {% endif %}
                                         </div>
                                         <div class="text-end">
                                             <span class="badge {{ 'bg-success' if std_mappings else 'bg-info' }}">
                                                 {{ control.control_category }}
                                             </span>
-                                            {% if std_mappings %}
                                             <br>
-                                            <button class="btn btn-sm btn-outline-danger mt-1" onclick="event.stopPropagation(); removeStandardControlMappings({{ control.std_control_id }}, '{{ control.control_code }}')">
+                                            <button class="btn btn-sm btn-outline-danger mt-1" style="{{ '' if std_mappings else 'display:none;' }}" onclick="event.stopPropagation(); removeStandardControlMappings({{ control.std_control_id }}, '{{ control.control_code }}')">
                                                 <i class="fas fa-times"></i> 해제
                                             </button>
-                                            {% endif %}
                                         </div>
                                     </div>
                                     {% if control.control_description %}
@@ -227,7 +230,7 @@
                     <div class="card-body" style="max-height: 70vh; overflow-y: auto; padding: 1rem;">
                         {% for detail in rcm_details %}
                         {% set matching_mappings = existing_mappings|selectattr('control_code', 'equalto', detail.control_code)|list %}
-                        <div class="mapping-card p-3 {{ 'mapped' if matching_mappings else 'unmapped' }}" 
+                        <div class="mapping-card p-3 {{ 'mapped' if matching_mappings else ('no-mapping' if detail.mapping_status == 'no_mapping' else 'unmapped') }}" 
                              data-control-code="{{ detail.control_code }}"
                              onclick="mapRcmToStandardControl('{{ detail.control_code }}', '{{ detail.control_name }}')">
                             <div class="row">
@@ -249,6 +252,10 @@
                                                 <small class="text-success">
                                                     <i class="fas fa-link me-1"></i>{{ current_mapping.std_control_name }}
                                                 </small>
+                                            {% elif detail.mapping_status == 'no_mapping' %}
+                                                <span class="badge bg-warning mb-1">매핑불가</span>
+                                                <br>
+                                                <small class="text-warning">매핑할 기준통제 없음</small>
                                             {% else %}
                                                 <span class="badge bg-danger mb-1">미매핑</span>
                                                 <br>
@@ -410,60 +417,66 @@
         
         // 기준통제의 모든 매핑 해제
         function removeStandardControlMappings(stdControlId, stdControlCode) {
-            if (!confirm(`${stdControlCode} 기준통제의 모든 매핑을 해제하시겠습니까?`)) {
-                return;
-            }
+            console.log(`🔧 removeStandardControlMappings 호출됨: stdControlId=${stdControlId}, stdControlCode=${stdControlCode}`);
+            console.log(`🌐 API 호출: /api/rcm/{{ rcm_info.rcm_id }}/standard-control/${stdControlId}/mappings`);
             
-            // 해당 기준통제와 연결된 모든 RCM 통제 찾기
-            const mappedRcmControls = [];
-            document.querySelectorAll('[data-control-code]').forEach(card => {
-                if (card.classList.contains('mapped')) {
-                    const controlCode = card.getAttribute('data-control-code');
-                    mappedRcmControls.push(controlCode);
-                }
-            });
-            
-            // 각각에 대해 삭제 요청
-            const deletePromises = [];
-            mappedRcmControls.forEach(controlCode => {
-                deletePromises.push(
-                    fetch(`/api/rcm/{{ rcm_info.rcm_id }}/mapping`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        credentials: 'same-origin',
-                        body: JSON.stringify({
-                            control_code: controlCode
-                        })
-                    })
-                );
-            });
-            
-            Promise.all(deletePromises)
-                .then(responses => {
-                    return Promise.all(responses.map(r => r.json()));
-                })
-                .then(results => {
-                    let successCount = 0;
-                    results.forEach((result, index) => {
-                        if (result.success) {
-                            successCount++;
-                            const controlCode = mappedRcmControls[index];
-                            updateRcmControlUI(controlCode, false);
+            fetch(`/api/rcm/{{ rcm_info.rcm_id }}/standard-control/${stdControlId}/mappings`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('📡 API 응답:', data);
+                if (data.success) {
+                    console.log(`✅ 성공: ${data.affected_count}개 매핑 해제됨`);
+                    showSuccessToast(`${stdControlCode} 기준통제의 ${data.affected_count}개 매핑이 해제되었습니다.`);
+                    
+                    // 해당 기준통제와 매핑된 모든 RCM 통제의 UI 업데이트
+                    console.log(`🎨 UI 업데이트 시작 - 대상 stdControlId: ${stdControlId}`);
+                    let updatedCount = 0;
+                    document.querySelectorAll(`.rcm-control-card`).forEach(card => {
+                        const mappedStdControlId = card.getAttribute('data-mapped-std-control-id');
+                        console.log(`🔍 카드 확인 - mappedStdControlId: ${mappedStdControlId}, 대상: ${stdControlId}`);
+                        if (mappedStdControlId == stdControlId) {
+                            console.log(`🎯 매칭된 카드 발견 - UI 업데이트 진행`);
+                            updatedCount++;
+                            // 매핑 상태 해제
+                            card.removeAttribute('data-mapped-std-control-id');
+                            card.classList.remove('mapped');
+                            
+                            // 매핑 정보 숨기기
+                            const mappingInfo = card.querySelector('.mapping-info');
+                            if (mappingInfo) {
+                                mappingInfo.style.display = 'none';
+                            }
+                            
+                            // 매핑 버튼 다시 표시
+                            const mapButton = card.querySelector('.btn-map');
+                            if (mapButton) {
+                                mapButton.style.display = 'inline-block';
+                            }
                         }
                     });
+                    console.log(`📊 총 ${updatedCount}개 카드 UI 업데이트 완료`);
                     
-                    if (successCount > 0) {
-                        showSuccessToast(`${stdControlCode} 기준통제의 ${successCount}개 매핑이 해제되었습니다.`);
-                        updateStandardControlUI(stdControlId, false);
-                        updateProgress();
-                    }
-                })
-                .catch(error => {
-                    console.error('매핑 해제 오류:', error);
-                    alert('매핑 해제 중 오류가 발생했습니다: ' + error.message);
-                });
+                    // 기준통제 UI 업데이트 (매핑 해제)
+                    console.log('🔄 기준통제 UI 업데이트 시작');
+                    updateStandardControlUI(stdControlId, false, []);
+                    
+                    // 전체 진행률 업데이트
+                    console.log('📈 진행률 업데이트 시작');
+                    updateProgress();
+                } else {
+                    alert('매핑 해제 중 오류가 발생했습니다: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('매핑 해제 오류:', error);
+                alert('매핑 해제 중 오류가 발생했습니다: ' + error.message);
+            });
         }
 
         // 매핑 해제 (자동 삭제)
@@ -574,68 +587,42 @@
                 console.error(`기준통제를 찾을 수 없습니다: ${stdControlId}`);
                 return;
             }
-            
+
+            // 카드 상태 클래스
             if (isMapped) {
                 stdItem.classList.add('mapped');
-                
-                // 배지 색상 변경
-                const badge = stdItem.querySelector('.badge');
-                if (badge) {
-                    badge.className = badge.className.replace('bg-info', 'bg-success');
-                }
-                
-                // 매핑 정보와 해제 버튼 추가
-                const controlNameDiv = stdItem.querySelector('div > div');
-                let mappingInfo = controlNameDiv.querySelector('.text-success');
-                if (!mappingInfo) {
-                    mappingInfo = document.createElement('small');
-                    mappingInfo.className = 'text-success';
-                    controlNameDiv.appendChild(document.createElement('br'));
-                    controlNameDiv.appendChild(mappingInfo);
-                }
-                mappingInfo.innerHTML = `<i class="fas fa-link me-1"></i>${rcmControlCodes.join(', ')}에 매핑됨`;
-                
-                // 해제 버튼 추가
-                const buttonDiv = stdItem.querySelector('div > div.text-end');
-                let removeButton = buttonDiv.querySelector('.btn-outline-danger');
-                if (!removeButton) {
-                    removeButton = document.createElement('button');
-                    removeButton.className = 'btn btn-sm btn-outline-danger mt-1';
-                    removeButton.onclick = (e) => {
-                        e.stopPropagation();
-                        const stdControlCode = stdItem.textContent.split('\n')[0].trim();
-                        removeStandardControlMappings(stdControlId, stdControlCode);
-                    };
-                    removeButton.innerHTML = '<i class="fas fa-times"></i> 해제';
-                    buttonDiv.appendChild(document.createElement('br'));
-                    buttonDiv.appendChild(removeButton);
-                }
             } else {
                 stdItem.classList.remove('mapped');
-                
-                // 배지 색상 원복
-                const badge = stdItem.querySelector('.badge');
-                if (badge) {
-                    badge.className = badge.className.replace('bg-success', 'bg-info');
+            }
+
+            // 배지 색상 토글
+            const badge = stdItem.querySelector('.text-end .badge');
+            if (badge) {
+                if (isMapped) {
+                    badge.classList.remove('bg-info');
+                    badge.classList.add('bg-success');
+                } else {
+                    badge.classList.remove('bg-success');
+                    badge.classList.add('bg-info');
                 }
-                
-                // 매핑 정보와 해제 버튼 제거
-                const mappingInfo = stdItem.querySelector('.text-success');
-                if (mappingInfo) {
-                    mappingInfo.remove();
+            }
+
+            // 매핑 정보 토글 (템플릿 상주 요소)
+            const mappingInfo = stdItem.querySelector('.mapping-info');
+            if (mappingInfo) {
+                if (isMapped) {
+                    mappingInfo.style.display = '';
+                    mappingInfo.innerHTML = `<i class=\"fas fa-link me-1\"></i>${rcmControlCodes.join(', ')}에 매핑됨`;
+                } else {
+                    mappingInfo.style.display = 'none';
+                    mappingInfo.innerHTML = '';
                 }
-                const removeButton = stdItem.querySelector('.btn-outline-danger');
-                if (removeButton) {
-                    removeButton.remove();
-                }
-                
-                // br 태그들도 정리
-                const brs = stdItem.querySelectorAll('br');
-                brs.forEach(br => {
-                    if (br.nextSibling && br.nextSibling.classList && br.nextSibling.classList.contains('text-success')) {
-                        br.remove();
-                    }
-                });
+            }
+
+            // 해제 버튼 토글 (템플릿 상주 요소)
+            const removeButton = stdItem.querySelector('.text-end .btn-outline-danger');
+            if (removeButton) {
+                removeButton.style.display = isMapped ? 'inline-block' : 'none';
             }
         }
 
