@@ -39,7 +39,7 @@
                                 <a href="/admin/switch_back" class="btn btn-sm btn-danger ms-2" title="관리자로 돌아가기">
                                     <i class="fas fa-undo me-1"></i>관리자로 돌아가기
                                 </a>
-                            {% elif user_info and user_info.admin_flag == 'Y' %}
+                            {% elif user_info and user_info.get('admin_flag') == 'Y' %}
                                 <a href="/admin" class="btn btn-sm btn-warning ms-2" title="관리자 메뉴">
                                     <i class="fas fa-user-shield me-1"></i>관리자
                                 </a>
