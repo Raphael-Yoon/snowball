@@ -89,9 +89,11 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="fas fa-list me-2"></i>통제 설계평가</h5>
                         <div>
+                            {% if user_info.admin_flag == 'Y' %}
                             <button class="btn btn-sm btn-success me-2" onclick="evaluateAllControls()" title="임시 데이터를 생성하여 화면에만 표시 (실제 저장되지 않음)">
                                 <i class="fas fa-check-double me-1"></i>전체 평가 (임시)
                             </button>
+                            {% endif %}
                             <button class="btn btn-sm btn-warning me-2" onclick="resetAllEvaluations()">
                                 <i class="fas fa-undo me-1"></i>평가 초기화
                             </button>

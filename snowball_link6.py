@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session, current_app
+from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
 from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, get_user_evaluation_sessions, delete_evaluation_session, create_evaluation_structure, log_user_activity, get_db, get_or_create_evaluation_header
 from snowball_link5 import get_user_info, is_logged_in
 import sys

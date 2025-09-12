@@ -773,6 +773,10 @@ def admin_switch_user():
         # 대상 사용자로 세션 변경
         session['user_id'] = target_user_id
         
+        # 세션에 캐시된 user_info 삭제 (새로운 사용자 정보로 다시 로드되도록)
+        if 'user_info' in session:
+            del session['user_info']
+        
         return jsonify({
             'success': True,
             'message': '사용자 전환이 완료되었습니다.'
@@ -787,6 +791,11 @@ def admin_switch_back():
     if 'original_admin_id' in session:
         session['user_id'] = session['original_admin_id']
         del session['original_admin_id']
+        
+        # 세션에 캐시된 user_info 삭제 (관리자 정보로 다시 로드되도록)
+        if 'user_info' in session:
+            del session['user_info']
+            
         flash('관리자 계정으로 돌아왔습니다.')
     else:
         flash('원래 계정 정보를 찾을 수 없습니다.')
