@@ -65,16 +65,35 @@ def save_design_evaluation_api():
     """설계평가 결과 저장 API"""
     user_info = get_user_info()
     
+    # 요청 정보 로깅
+    sys.stderr.write(f"[DEBUG] === SAVE API CALLED ===\n")
+    sys.stderr.write(f"[DEBUG] Content-Type: {request.content_type}\n")
+    sys.stderr.write(f"[DEBUG] User info: {user_info}\n")
+    sys.stderr.write(f"[DEBUG] Request method: {request.method}\n")
+    sys.stderr.write(f"[DEBUG] Request form keys: {list(request.form.keys())}\n")
+    sys.stderr.write(f"[DEBUG] Request files keys: {list(request.files.keys())}\n")
+    sys.stderr.flush()
+    
     # FormData와 JSON 모두 처리
     if request.content_type and 'multipart/form-data' in request.content_type:
         # FormData 처리 (이미지 포함)
+        sys.stderr.write(f"[DEBUG] Processing FormData request\n")
         rcm_id = request.form.get('rcm_id')
         control_code = request.form.get('control_code')
         evaluation_data_str = request.form.get('evaluation_data')
         evaluation_session = request.form.get('evaluation_session')
         
+        sys.stderr.write(f"[DEBUG] FormData values:\n")
+        sys.stderr.write(f"[DEBUG]   rcm_id: {rcm_id} (type: {type(rcm_id)})\n")
+        sys.stderr.write(f"[DEBUG]   control_code: {control_code}\n")
+        sys.stderr.write(f"[DEBUG]   evaluation_session: {evaluation_session}\n")
+        sys.stderr.write(f"[DEBUG]   evaluation_data_str: {evaluation_data_str}\n")
+        sys.stderr.flush()
+        
         # JSON 문자열을 파싱
         evaluation_data = json.loads(evaluation_data_str) if evaluation_data_str else None
+        sys.stderr.write(f"[DEBUG] Parsed evaluation_data: {evaluation_data}\n")
+        sys.stderr.flush()
         
         # 이미지 파일 처리
         uploaded_images = []
@@ -87,12 +106,20 @@ def save_design_evaluation_api():
         sys.stderr.write(f"[DEBUG] FormData request - images: {len(uploaded_images)}\n")
     else:
         # 기존 JSON 처리
+        sys.stderr.write(f"[DEBUG] Processing JSON request\n")
         data = request.get_json()
+        sys.stderr.write(f"[DEBUG] JSON data: {data}\n")
         rcm_id = data.get('rcm_id') if data else None
         control_code = data.get('control_code') if data else None
         evaluation_data = data.get('evaluation_data') if data else None
         evaluation_session = data.get('evaluation_session') if data else None
         uploaded_images = []
+        sys.stderr.write(f"[DEBUG] Extracted values from JSON:\n")
+        sys.stderr.write(f"[DEBUG]   rcm_id: {rcm_id}\n")
+        sys.stderr.write(f"[DEBUG]   control_code: {control_code}\n")
+        sys.stderr.write(f"[DEBUG]   evaluation_session: {evaluation_session}\n")
+        sys.stderr.write(f"[DEBUG]   evaluation_data: {evaluation_data}\n")
+        sys.stderr.flush()
     
     sys.stderr.write(f"[DEBUG] Raw request data received\n")
     sys.stderr.write(f"[DEBUG] User info: {user_info}\n")
@@ -102,6 +129,14 @@ def save_design_evaluation_api():
     sys.stderr.write(f"[DEBUG] Design evaluation save request: rcm_id={rcm_id}, control_code={control_code}, evaluation_session='{evaluation_session}'\n")
     sys.stderr.flush()
     
+    # 필수 데이터 검증
+    sys.stderr.write(f"[DEBUG] Validating required fields:\n")
+    sys.stderr.write(f"[DEBUG]   rcm_id: {rcm_id} (valid: {bool(rcm_id)})\n")
+    sys.stderr.write(f"[DEBUG]   control_code: {control_code} (valid: {bool(control_code)})\n")
+    sys.stderr.write(f"[DEBUG]   evaluation_data: {evaluation_data} (valid: {bool(evaluation_data)})\n")
+    sys.stderr.write(f"[DEBUG]   evaluation_session: {evaluation_session} (valid: {bool(evaluation_session)})\n")
+    sys.stderr.flush()
+    
     if not all([rcm_id, control_code, evaluation_data, evaluation_session]):
         missing_fields = []
         if not rcm_id: missing_fields.append('RCM ID')
@@ -109,9 +144,13 @@ def save_design_evaluation_api():
         if not evaluation_data: missing_fields.append('평가 데이터')
         if not evaluation_session: missing_fields.append('세션명')
         
+        error_msg = f'필수 데이터가 누락되었습니다: {", ".join(missing_fields)}'
+        sys.stderr.write(f"[ERROR] {error_msg}\n")
+        sys.stderr.flush()
+        
         return jsonify({
             'success': False,
-            'message': f'필수 데이터가 누락되었습니다: {", ".join(missing_fields)}'
+            'message': error_msg
         })
     
     try:
@@ -180,7 +219,14 @@ def save_design_evaluation_api():
             evaluation_data['images'].extend(saved_images)
         
         # 설계평가 결과 저장
+        sys.stderr.write(f"[DEBUG] Calling save_design_evaluation with: rcm_id={rcm_id}, control_code={control_code}, user_id={user_info['user_id']}, evaluation_session={evaluation_session}\n")
+        sys.stderr.write(f"[DEBUG] Evaluation data: {evaluation_data}\n")
+        sys.stderr.flush()
+        
         save_design_evaluation(rcm_id, control_code, user_info['user_id'], evaluation_data, evaluation_session)
+        
+        sys.stderr.write(f"[DEBUG] save_design_evaluation completed successfully\n")
+        sys.stderr.flush()
         
         # 활동 로그 기록
         log_user_activity(user_info, 'DESIGN_EVALUATION', f'설계평가 저장 - {control_code}', 
@@ -193,10 +239,16 @@ def save_design_evaluation_api():
         })
         
     except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
         print(f"설계평가 저장 오류: {e}")
+        print(f"오류 상세: {error_traceback}")
+        sys.stderr.write(f"[ERROR] 설계평가 저장 오류: {e}\n")
+        sys.stderr.write(f"[ERROR] 오류 상세: {error_traceback}\n")
+        sys.stderr.flush()
         return jsonify({
             'success': False,
-            'message': '저장 중 오류가 발생했습니다.'
+            'message': f'저장 중 오류가 발생했습니다: {str(e)}'
         })
 
 @bp_link6.route('/api/design-evaluation/reset', methods=['POST'])
@@ -334,6 +386,12 @@ def load_evaluation_data_api(rcm_id):
             print(f"***** SNOWBALL_LINK6: Using get_design_evaluations with session='{evaluation_session}' *****")
             evaluations = get_design_evaluations(rcm_id, user_info['user_id'], evaluation_session)
             print(f"***** SNOWBALL_LINK6: Returned {len(evaluations)} evaluations *****")
+            
+            # 세션명으로 로드할 때 실제 header_id를 찾아서 반환
+            if evaluations and evaluation_session:
+                # 첫 번째 평가 데이터에서 header_id 추출
+                actual_header_id = evaluations[0].get('header_id')
+                print(f"***** SNOWBALL_LINK6: Found actual header_id={actual_header_id} for session='{evaluation_session}' *****")
         
         # 통제별로 정리
         evaluation_dict = {}
@@ -392,11 +450,19 @@ def load_evaluation_data_api(rcm_id):
                 'images': saved_images
             }
         
-        return jsonify({
+        response_data = {
             'success': True,
             'evaluations': evaluation_dict,
             'session_name': evaluation_session
-        })
+        }
+        
+        # 세션명으로 로드할 때 실제 header_id를 응답에 포함
+        if evaluations and evaluation_session and not header_id:
+            actual_header_id = evaluations[0].get('header_id')
+            response_data['header_id'] = actual_header_id
+            print(f"***** SNOWBALL_LINK6: Including header_id={actual_header_id} in response *****")
+        
+        return jsonify(response_data)
         
     except Exception as e:
         print(f"평가 데이터 로드 오류: {e}")

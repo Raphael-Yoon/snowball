@@ -796,7 +796,17 @@ def get_rcm_details(rcm_id):
         details = conn.execute('''
             SELECT * FROM sb_rcm_detail
             WHERE rcm_id = ?
-            ORDER BY control_code
+            ORDER BY 
+                CASE 
+                    WHEN control_code LIKE 'PWC%' THEN 1
+                    WHEN control_code LIKE 'APD%' THEN 2
+                    WHEN control_code LIKE 'PC%' THEN 3
+                    WHEN control_code LIKE 'CO%' THEN 4
+                    WHEN control_code LIKE 'PD%' THEN 5
+                    WHEN control_code LIKE 'ST%' THEN 6
+                    ELSE 7
+                END,
+                control_code
         ''', (rcm_id,)).fetchall()
         return [dict(detail) for detail in details]
 
@@ -850,36 +860,117 @@ def get_all_rcms():
 
 def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evaluation_session=None):
     """설계평가 결과 저장 (Header-Line 구조)"""
+    import sys
+    sys.stderr.write(f"[DEBUG] save_design_evaluation called with:\n")
+    sys.stderr.write(f"[DEBUG]   rcm_id: {rcm_id} (type: {type(rcm_id)})\n")
+    sys.stderr.write(f"[DEBUG]   control_code: {control_code}\n")
+    sys.stderr.write(f"[DEBUG]   user_id: {user_id}\n")
+    sys.stderr.write(f"[DEBUG]   evaluation_data: {evaluation_data}\n")
+    sys.stderr.write(f"[DEBUG]   evaluation_session: {evaluation_session}\n")
+    sys.stderr.flush()
+    
     with get_db() as conn:
         # 1. Header 존재 확인 및 생성
+        sys.stderr.write(f"[DEBUG] Getting or creating evaluation header...\n")
+        sys.stderr.flush()
         header_id = get_or_create_evaluation_header(conn, rcm_id, user_id, evaluation_session)
+        sys.stderr.write(f"[DEBUG] Header ID: {header_id}\n")
+        sys.stderr.flush()
         
-        # 2. Line 데이터 저장/업데이트
-        # 기존 레코드만 업데이트 (평가 저장은 이미 생성된 레코드에만 수행)
-        cursor = conn.execute('''
-            UPDATE sb_design_evaluation_line SET
-                description_adequacy = ?, improvement_suggestion = ?,
-                overall_effectiveness = ?, evaluation_rationale = ?,
-                recommended_actions = ?, evaluation_date = CURRENT_TIMESTAMP,
-                last_updated = CURRENT_TIMESTAMP
+        # 2. Line 데이터 저장/업데이트 (UPSERT 방식)
+        # 먼저 해당 line_id 찾기
+        line_record = conn.execute('''
+            SELECT line_id FROM sb_design_evaluation_line
             WHERE header_id = ? AND control_code = ?
-        ''', (
-            evaluation_data.get('adequacy'),
-            evaluation_data.get('improvement'),
-            evaluation_data.get('effectiveness'),
-            evaluation_data.get('rationale'),
-            evaluation_data.get('actions'),
-            header_id, control_code
-        ))
+        ''', (header_id, control_code)).fetchone()
         
-        # 업데이트된 레코드가 없으면 오류
-        if cursor.rowcount == 0:
-            raise ValueError(f"평가할 통제({control_code})를 찾을 수 없습니다. 먼저 평가 구조를 생성해주세요.")
+        if line_record:
+            # 기존 레코드 UPDATE
+            line_id = line_record['line_id']
+            sys.stderr.write(f"[DEBUG] Updating existing line record with line_id: {line_id}\n")
+            sys.stderr.flush()
+            
+            update_query = '''
+                UPDATE sb_design_evaluation_line SET
+                    description_adequacy = ?, improvement_suggestion = ?,
+                    overall_effectiveness = ?, evaluation_rationale = ?,
+                    recommended_actions = ?, evaluation_date = CURRENT_TIMESTAMP,
+                    last_updated = CURRENT_TIMESTAMP
+                WHERE line_id = ?
+            '''
+            update_params = (
+                evaluation_data.get('adequacy'),
+                evaluation_data.get('improvement'),
+                evaluation_data.get('effectiveness'),
+                evaluation_data.get('rationale'),
+                evaluation_data.get('actions'),
+                line_id
+            )
+            
+            sys.stderr.write(f"[DEBUG] UPDATE Query: {update_query}\n")
+            sys.stderr.write(f"[DEBUG] UPDATE Params: {update_params}\n")
+            sys.stderr.flush()
+            
+            cursor = conn.execute(update_query, update_params)
+            sys.stderr.write(f"[DEBUG] UPDATE executed, rowcount: {cursor.rowcount}\n")
+            sys.stderr.flush()
+        else:
+            # 레코드가 없으면 INSERT 수행
+            sys.stderr.write(f"[DEBUG] No existing line record found, creating new one\n")
+            sys.stderr.flush()
+            
+            # RCM 상세에서 control_sequence 찾기
+            rcm_details = get_rcm_details(rcm_id)
+            control_sequence = None
+            for idx, detail in enumerate(rcm_details, 1):
+                if detail['control_code'] == control_code:
+                    control_sequence = idx
+                    break
+            
+            sys.stderr.write(f"[DEBUG] Found control_sequence: {control_sequence} for control_code: {control_code}\n")
+            sys.stderr.flush()
+            
+            if control_sequence is None:
+                error_msg = f"통제 코드({control_code})를 RCM에서 찾을 수 없습니다."
+                sys.stderr.write(f"[ERROR] {error_msg}\n")
+                sys.stderr.flush()
+                raise ValueError(error_msg)
+            
+            insert_query = '''
+                INSERT INTO sb_design_evaluation_line (
+                    header_id, control_code, control_sequence,
+                    description_adequacy, improvement_suggestion,
+                    overall_effectiveness, evaluation_rationale,
+                    recommended_actions, evaluation_date, last_updated
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            '''
+            insert_params = (
+                header_id, control_code, control_sequence,
+                evaluation_data.get('adequacy'),
+                evaluation_data.get('improvement'),
+                evaluation_data.get('effectiveness'),
+                evaluation_data.get('rationale'),
+                evaluation_data.get('actions')
+            )
+            
+            sys.stderr.write(f"[DEBUG] INSERT Query: {insert_query}\n")
+            sys.stderr.write(f"[DEBUG] INSERT Params: {insert_params}\n")
+            sys.stderr.flush()
+            
+            cursor = conn.execute(insert_query, insert_params)
+            sys.stderr.write(f"[DEBUG] INSERT executed, rowcount: {cursor.rowcount}\n")
+            sys.stderr.flush()
         
         # 3. Header 진행률 업데이트
+        sys.stderr.write(f"[DEBUG] Updating evaluation progress for header_id: {header_id}\n")
+        sys.stderr.flush()
         update_evaluation_progress(conn, header_id)
         
+        sys.stderr.write(f"[DEBUG] Committing transaction...\n")
+        sys.stderr.flush()
         conn.commit()
+        sys.stderr.write(f"[DEBUG] Transaction committed successfully\n")
+        sys.stderr.flush()
 
 def create_evaluation_structure(rcm_id, user_id, evaluation_session):
     """평가 시작 시 완전한 Header-Line 구조 생성"""

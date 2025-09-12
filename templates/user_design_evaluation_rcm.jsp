@@ -68,7 +68,7 @@
                                 <div class="text-center">
                                     <h6 class="text-success">설계평가 진행률</h6>
                                     <div class="progress mb-2" style="height: 20px;">
-                                        <div class="progress-bar bg-success" id="evaluationProgress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                        <div class="progress-bar bg-success" id="evaluationProgress" role="progressbar" style="width: 0%; font-size: 12px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
                                     </div>
                                     <small class="text-muted">
                                         <span id="evaluatedCount">0</span> / <span id="totalControlCount">{{ rcm_details|length }}</span> 통제 평가 완료
@@ -267,12 +267,12 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label for="overallEffectiveness" class="form-label">실제 통제 운영 효과성 *</label>
+                                <label for="overallEffectiveness" class="form-label">실제 통제 설계 효과성 *</label>
                                 <select class="form-select" id="overallEffectiveness" required>
                                     <option value="">평가 결과 선택</option>
-                                    <option value="effective">효과적 - 현재 실제로 효과적으로 운영되고 있음</option>
-                                    <option value="partially_effective">부분적으로 효과적 - 실무 운영에 일부 개선이 필요함</option>
-                                    <option value="ineffective">비효과적 - 실제 위험 완화 효과가 부족함</option>
+                                    <option value="effective">효과적 - 통제 설계가 적절하고 위험을 효과적으로 완화함</option>
+                                    <option value="partially_effective">부분적으로 효과적 - 통제 설계에 일부 보완이 필요함</option>
+                                    <option value="ineffective">비효과적 - 통제 설계가 위험을 충분히 완화하지 못함</option>
                                 </select>
                             </div>
                             
@@ -299,8 +299,10 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-success" onclick="saveEvaluation()">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>취소
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="saveEvaluation()">
                         <i class="fas fa-save me-1"></i>평가 저장
                     </button>
                 </div>
@@ -376,7 +378,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>취소
+                    </button>
                     <button type="button" class="btn btn-info" onclick="uploadEvaluationFile()">
                         <i class="fas fa-upload me-1"></i>업로드 및 적용
                     </button>
@@ -604,6 +608,114 @@
             });
         }
 
+        // 권고 조치사항 필드 조건부 활성화 설정
+        function setupRecommendedActionsField() {
+            const effectivenessSelect = document.getElementById('overallEffectiveness');
+            const recommendedActionsField = document.getElementById('recommendedActions');
+            
+            if (effectivenessSelect && recommendedActionsField) {
+                // 초기 상태 설정
+                toggleRecommendedActions(effectivenessSelect.value);
+                
+                // 이벤트 리스너 추가
+                effectivenessSelect.addEventListener('change', function() {
+                    toggleRecommendedActions(this.value);
+                });
+            }
+        }
+        
+        // 권고 조치사항 필드 활성화/비활성화
+        function toggleRecommendedActions(effectivenessValue) {
+            const recommendedActionsField = document.getElementById('recommendedActions');
+            const container = recommendedActionsField.closest('.mb-3');
+            
+            if (effectivenessValue === 'effective') {
+                // 효과적인 경우 비활성화 및 숨김
+                recommendedActionsField.disabled = true;
+                recommendedActionsField.value = '';
+                recommendedActionsField.placeholder = '효과적인 통제는 조치사항이 필요하지 않습니다.';
+                if (container) {
+                    container.style.opacity = '0.5';
+                }
+            } else {
+                // 부분적으로 효과적이거나 비효과적인 경우 활성화
+                recommendedActionsField.disabled = false;
+                recommendedActionsField.placeholder = '통제 설계 개선을 위한 구체적인 조치사항을 제안하세요...';
+                if (container) {
+                    container.style.opacity = '1';
+                }
+            }
+        }
+        
+        // 개선 제안사항 필드 조건부 활성화 설정
+        function setupImprovementSuggestionField() {
+            const adequacySelect = document.getElementById('descriptionAdequacy');
+            const improvementField = document.getElementById('improvementSuggestion');
+            
+            if (adequacySelect && improvementField) {
+                // 초기 상태 설정
+                toggleImprovementSuggestion(adequacySelect.value);
+                
+                // 이벤트 리스너 추가
+                adequacySelect.addEventListener('change', function() {
+                    toggleImprovementSuggestion(this.value);
+                });
+            }
+        }
+        
+        // 개선 제안사항 필드 활성화/비활성화
+        function toggleImprovementSuggestion(adequacyValue) {
+            const improvementField = document.getElementById('improvementSuggestion');
+            const container = improvementField.closest('.mb-3');
+            
+            if (adequacyValue === 'adequate') {
+                // 적절한 경우 비활성화
+                improvementField.disabled = true;
+                improvementField.value = '';
+                improvementField.placeholder = '현실 반영도가 적절하므로 개선사항이 필요하지 않습니다.';
+                if (container) {
+                    container.style.opacity = '0.5';
+                }
+            } else {
+                // 부분적으로 적절, 부적절, 누락인 경우 활성화
+                improvementField.disabled = false;
+                improvementField.placeholder = '실제 업무와 차이가 있는 경우, RCM 문서 업데이트 방향이나 실무 개선 방안을 제안하세요...';
+                if (container) {
+                    container.style.opacity = '1';
+                }
+            }
+        }
+
+        // 성공 메시지 표시 함수
+        function showSuccessMessage(message) {
+            const alertHtml = `
+                <div class="alert alert-success alert-dismissible fade show position-fixed" 
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;" 
+                     role="alert" id="successAlert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>${message}</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            // 기존 성공 알림 제거
+            const existingAlert = document.getElementById('successAlert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+            
+            // 새 알림 추가
+            document.body.insertAdjacentHTML('beforeend', alertHtml);
+            
+            // 3초 후 자동으로 알림 제거
+            setTimeout(() => {
+                const alert = document.getElementById('successAlert');
+                if (alert) {
+                    alert.remove();
+                }
+            }, 3000);
+        }
+
         // 전역으로 함수 노출 (브라우저 콘솔에서 호출 가능)
         window.debugSessionStorage = debugSessionStorage;
         window.setManualSessionStorage = setManualSessionStorage;
@@ -626,10 +738,19 @@
                 const defaultSession = `평가_${new Date().getTime()}`;
                 sessionStorage.setItem('currentEvaluationSession', defaultSession);
                 console.log('No session found, created default session:', defaultSession);
+                
+                // 새 세션이므로 평가 구조 생성
+                createEvaluationStructure(defaultSession);
             }
             
             // 평가명 화면에 표시
             updateEvaluationNameDisplay();
+            
+            // 권고 조치사항 필드 조건부 활성화 설정
+            setupRecommendedActionsField();
+            
+            // 개선 제안사항 필드 조건부 활성화 설정
+            setupImprovementSuggestionField();
             
             if (isNewSession && currentSession) {
                 // 새 세션 알림 표시
@@ -652,6 +773,33 @@
             }
         }
         
+        // 평가 구조 생성
+        function createEvaluationStructure(sessionName) {
+            console.log('Creating evaluation structure for session:', sessionName);
+            
+            fetch('/api/design-evaluation/create-evaluation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    rcm_id: rcmId,
+                    evaluation_session: sessionName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Evaluation structure created successfully');
+                } else {
+                    console.error('Failed to create evaluation structure:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error creating evaluation structure:', error);
+            });
+        }
+
         // 새 세션 알림 표시
         function showNewSessionAlert(sessionName) {
             const alertHtml = `
@@ -691,13 +839,11 @@
             console.log('headerId is null:', headerId === null);
             console.log('headerId is undefined:', headerId === undefined);
             
+            // 항상 세션명으로 로드하여 최신 header_id를 사용
             let url;
-            if (headerId && headerId !== 'null' && headerId !== 'undefined') {
-                url = `/api/design-evaluation/load/${rcmId}?header_id=${headerId}`;
-                console.log('Using header_id route');
-            } else if (currentSession) {
+            if (currentSession) {
                 url = `/api/design-evaluation/load/${rcmId}?session=${encodeURIComponent(currentSession)}`;
-                console.log('Using session route');
+                console.log('Using session route to get latest header_id');
             } else {
                 url = `/api/design-evaluation/load/${rcmId}`;
                 console.log('Using default route');
@@ -712,6 +858,12 @@
                     
                     if (data.success && data.evaluations) {
                         console.log('Evaluation data received:', data.evaluations);
+                        
+                        // 응답에서 header_id를 받으면 sessionStorage에 저장
+                        if (data.header_id) {
+                            sessionStorage.setItem('currentEvaluationHeaderId', data.header_id);
+                            console.log('Updated currentEvaluationHeaderId to:', data.header_id);
+                        }
                         
                         // 컨트롤 코드를 인덱스로 매핑
                         {% for detail in rcm_details %}
@@ -808,19 +960,10 @@
         
         // 평가 결과 저장
         function saveEvaluation() {
-            // 세션 스토리지 전체 상태 확인
-            console.log('=== SessionStorage Debug ===');
-            console.log('sessionStorage length:', sessionStorage.length);
-            for (let i = 0; i < sessionStorage.length; i++) {
-                const key = sessionStorage.key(i);
-                console.log(`${key}: ${sessionStorage.getItem(key)}`);
-            }
+            console.log('saveEvaluation function called');
             
             const currentSession = sessionStorage.getItem('currentEvaluationSession');
             console.log('Current evaluation session from storage:', currentSession);
-            console.log('Type of currentSession:', typeof currentSession);
-            console.log('currentSession is null:', currentSession === null);
-            console.log('currentSession is empty string:', currentSession === '');
             
             if (!currentSession) {
                 alert('평가 세션 정보를 찾을 수 없습니다. 설계평가 목록에서 다시 시작해주세요.');
@@ -829,6 +972,8 @@
             
             const adequacy = document.getElementById('descriptionAdequacy').value;
             const effectiveness = document.getElementById('overallEffectiveness').value;
+            
+            console.log('Form validation - adequacy:', adequacy, 'effectiveness:', effectiveness);
             
             if (!adequacy) {
                 alert('통제활동 설명 적절성 평가는 필수 항목입니다.');
@@ -853,62 +998,87 @@
                 {{ loop.index }} === currentEvaluationIndex ? '{{ detail.control_code }}' : 
             {% endfor %} null;
             
-            if (controlCode) {
-                // 이미지 데이터 준비
-                const imageData = evaluationImages[currentEvaluationIndex] || [];
-                const imageFileNames = imageData.map(file => file.name);
-                
-                const requestData = {
-                    rcm_id: rcmId,
-                    control_code: controlCode,
-                    evaluation_data: evaluation,
-                    evaluation_session: currentSession,
-                    image_files: imageFileNames
-                };
-                
-                console.log('=== API Request Debug ===');
-                console.log('Sending evaluation data:', requestData);
-                console.log('Request data stringified:', JSON.stringify(requestData, null, 2));
-                console.log('evaluation_session in request:', requestData.evaluation_session);
-                
-                // FormData를 사용하여 이미지 파일과 함께 전송
-                const formData = new FormData();
-                formData.append('rcm_id', rcmId);
-                formData.append('control_code', controlCode);
-                formData.append('evaluation_data', JSON.stringify(evaluation));
-                formData.append('evaluation_session', currentSession);
-                
-                // 이미지 파일들 추가
-                if (imageData.length > 0) {
-                    imageData.forEach((file, index) => {
-                        formData.append(`evaluation_image_${index}`, file);
-                    });
-                }
-                
-                fetch('/api/design-evaluation/save', {
-                    method: 'POST',
-                    // Content-Type 헤더를 제거 (FormData가 자동으로 설정)
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        
-                        // 서버에서 최신 데이터를 다시 로드하여 리스트 새로고침
-                        loadExistingEvaluations();
-                    } else {
-                        alert('저장 실패: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('저장 오류:', error);
-                    alert('저장 중 오류가 발생했습니다.');
+            console.log('Control code:', controlCode);
+            
+            if (!controlCode) {
+                alert('통제 코드를 찾을 수 없습니다. 다시 시도해주세요.');
+                return;
+            }
+            
+            // 저장 버튼 비활성화 (중복 저장 방지)
+            const saveButton = document.querySelector('#evaluationModal .btn-primary');
+            const originalText = saveButton.innerHTML;
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>저장 중...';
+            
+            // 이미지 데이터 준비
+            const imageData = evaluationImages[currentEvaluationIndex] || [];
+            
+            // FormData를 사용하여 이미지 파일과 함께 전송
+            const formData = new FormData();
+            formData.append('rcm_id', rcmId);
+            formData.append('control_code', controlCode);
+            formData.append('evaluation_data', JSON.stringify(evaluation));
+            formData.append('evaluation_session', currentSession);
+            
+            // 이미지 파일들 추가
+            if (imageData.length > 0) {
+                imageData.forEach((file, index) => {
+                    formData.append(`evaluation_image_${index}`, file);
                 });
             }
             
-            // 모달 닫기
-            const modal = bootstrap.Modal.getInstance(document.getElementById('evaluationModal'));
-            modal.hide();
+            console.log('Sending evaluation data to server...');
+            console.log('FormData contents:');
+            for (let pair of formData.entries()) {
+                console.log(pair[0] + ': ' + (pair[1] instanceof File ? `File(${pair[1].name})` : pair[1]));
+            }
+            
+            fetch('/api/design-evaluation/save', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    // 로컬 평가 결과에 evaluation_date 설정 (정식 평가 완료 표시)
+                    evaluation.evaluation_date = new Date().toISOString();
+                    evaluationResults[currentEvaluationIndex] = evaluation;
+                    
+                    // UI 즉시 업데이트
+                    updateEvaluationUI(currentEvaluationIndex, evaluation);
+                    updateProgress();
+                    
+                    // 서버에서 최신 데이터를 다시 로드하여 리스트 새로고침
+                    // 저장 후에는 현재 세션의 최신 header_id를 사용하여 로드
+                    loadExistingEvaluations();
+                    
+                    // 성공 메시지 표시
+                    showSuccessMessage('평가가 성공적으로 저장되었습니다.');
+                    
+                    // 모달 닫기
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('evaluationModal'));
+                    modal.hide();
+                } else {
+                    throw new Error(data.message || '저장에 실패했습니다.');
+                }
+            })
+            .catch(error => {
+                console.error('저장 오류:', error);
+                alert('저장 중 오류가 발생했습니다: ' + error.message);
+            })
+            .finally(() => {
+                // 저장 버튼 복원
+                saveButton.disabled = false;
+                saveButton.innerHTML = originalText;
+            });
         }
         
         // 평가 결과 UI 업데이트
@@ -1092,14 +1262,33 @@
             }
             
             const totalControls = {{ rcm_details|length }};
-            const sampleAdequacies = ['adequate', 'partially_adequate', 'inadequate', 'missing'];
-            const sampleEffectiveness = ['effective', 'partially_effective', 'ineffective'];
             
             for (let i = 1; i <= totalControls; i++) {
                 // evaluation_date가 없는 통제만 평가 (미완료 통제)
                 if (!evaluationResults[i] || !evaluationResults[i].evaluation_date) {
-                    const adequacy = sampleAdequacies[Math.floor(Math.random() * sampleAdequacies.length)];
-                    const effectiveness = sampleEffectiveness[Math.floor(Math.random() * sampleEffectiveness.length)];
+                    // 현실적인 분포로 적정도 선택 (적절함 60%, 부분적으로 적절함 25%, 부적절함 10%, 누락 5%)
+                    const adequacyRand = Math.random();
+                    let adequacy;
+                    if (adequacyRand < 0.6) {
+                        adequacy = 'adequate';
+                    } else if (adequacyRand < 0.85) {
+                        adequacy = 'partially_adequate';
+                    } else if (adequacyRand < 0.95) {
+                        adequacy = 'inadequate';
+                    } else {
+                        adequacy = 'missing';
+                    }
+                    
+                    // 현실적인 분포로 효과성 선택 (효과적 55%, 부분적으로 효과적 35%, 비효과적 10%)
+                    const effectivenessRand = Math.random();
+                    let effectiveness;
+                    if (effectivenessRand < 0.55) {
+                        effectiveness = 'effective';
+                    } else if (effectivenessRand < 0.9) {
+                        effectiveness = 'partially_effective';
+                    } else {
+                        effectiveness = 'ineffective';
+                    }
                     
                     let improvementText = '';
                     let actionText = '';
