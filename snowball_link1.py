@@ -39,14 +39,26 @@ def generate_and_send_rcm_excel(form_data):
             section_col = ws[f'BR{row_num}'].value  # B컬럼 (Section)
             value_col = ws[f'BS{row_num}'].value    # C컬럼 (Value)
             
-            # B컬럼이 Common인 경우는 유지
+            # 디버깅: APP 섹션의 값들 출력
+            if section_col == 'APP':
+                print(f"Row {row_num}: section='{section_col}', value='{value_col}', param3='{form_data.get('param3')}'")
+            
+            # B컬럼이 Common인 경우는 무조건 유지
             if section_col == 'Common':
                 continue
             
-            # B컬럼이 APP인 경우 param3와 비교
+            # B컬럼이 APP인 경우
             elif section_col == 'APP':
-                if value_col != form_data.get('param3'):
+                # value_col이 '공통'인 경우는 무조건 유지
+                if value_col == '공통':
+                    print(f"Row {row_num}: APP + 공통 → 유지")
+                    continue
+                # value_col이 공통이 아닌 경우 param3와 일치할 때만 유지
+                elif value_col != form_data.get('param3'):
+                    print(f"Row {row_num}: APP + {value_col} != {form_data.get('param3')} → 삭제")
                     rows_to_delete.append(row_num)
+                else:
+                    print(f"Row {row_num}: APP + {value_col} == {form_data.get('param3')} → 유지")
             
             # B컬럼이 OS인 경우 param4와 비교
             elif section_col == 'OS':

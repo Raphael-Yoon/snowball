@@ -1046,16 +1046,15 @@ def update_evaluation_progress(conn, header_id):
     progress = (evaluated_count / total_controls * 100) if total_controls > 0 else 0
     status = 'COMPLETED' if progress >= 100 else 'IN_PROGRESS'
     
-    # 헤더 업데이트
+    # 헤더 업데이트 (completed_date는 수동으로만 설정)
     conn.execute('''
         UPDATE sb_design_evaluation_header
         SET evaluated_controls = ?, 
             progress_percentage = ?,
             evaluation_status = ?,
-            last_updated = CURRENT_TIMESTAMP,
-            completed_date = CASE WHEN ? = 'COMPLETED' THEN CURRENT_TIMESTAMP ELSE completed_date END
+            last_updated = CURRENT_TIMESTAMP
         WHERE header_id = ?
-    ''', (evaluated_count, progress, status, status, header_id))
+    ''', (evaluated_count, progress, status, header_id))
 
 def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
     """특정 RCM의 사용자별 설계평가 결과 조회 (Header-Line 구조)"""
