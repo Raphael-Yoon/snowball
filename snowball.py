@@ -205,11 +205,12 @@ def login():
             action = None
         
         if action == 'admin_login':
-            # 127.0.0.1에서 관리자 로그인
+            # 관리자 로그인 (IP 제한 없음)
             client_ip = request.environ.get('REMOTE_ADDR', '')
             server_port = request.environ.get('SERVER_PORT', '')
             
-            if client_ip == '127.0.0.1' and server_port == '5001':
+            # IP 제한 제거 - 어느 주소에서든 관리자 로그인 가능
+            if True:
                 with get_db() as conn:
                     user = conn.execute(
                         'SELECT * FROM sb_user WHERE user_email = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
@@ -233,12 +234,10 @@ def login():
                         from datetime import datetime
                         session['last_activity'] = datetime.now().isoformat()
                         
-                        print(f"127.0.0.1:5001 관리자 로그인 성공: {user_dict['user_email']} (admin_flag: {user_dict.get('admin_flag', 'N')})")
+                        print(f"관리자 로그인 성공: {user_dict['user_email']} (admin_flag: {user_dict.get('admin_flag', 'N')}) from {client_ip}:{server_port}")
                         return redirect(url_for('index'))
                     else:
                         return render_template('login.jsp', error="관리자 계정을 찾을 수 없습니다.", remote_addr=request.remote_addr)
-            else:
-                return render_template('login.jsp', error="관리자 로그인은 로컬호스트에서만 가능합니다.", remote_addr=request.remote_addr)
         
         elif action == 'send_otp':
             # OTP 발송 요청

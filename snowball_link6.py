@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
-from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, get_user_evaluation_sessions, delete_evaluation_session, create_evaluation_structure, log_user_activity, get_db, get_or_create_evaluation_header
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, get_user_evaluation_sessions, delete_evaluation_session, create_evaluation_structure, log_user_activity, get_db, get_or_create_evaluation_header, get_rcm_detail_mappings
 from snowball_link5 import get_user_info, is_logged_in
 import sys
 import os
@@ -48,6 +48,9 @@ def user_design_evaluation_rcm(rcm_id):
     # RCM 세부 데이터 조회
     rcm_details = get_rcm_details(rcm_id)
     
+    # 매핑 정보 조회
+    rcm_mappings = get_rcm_detail_mappings(rcm_id)
+    
     log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 디자인 평가', f'/user/design-evaluation/rcm/{rcm_id}',
                      request.remote_addr, request.headers.get('User-Agent'))
     
@@ -55,6 +58,7 @@ def user_design_evaluation_rcm(rcm_id):
                          rcm_id=rcm_id,
                          rcm_info=rcm_info,
                          rcm_details=rcm_details,
+                         rcm_mappings=rcm_mappings,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          remote_addr=request.remote_addr)
@@ -462,6 +466,32 @@ def load_evaluation_data_api(rcm_id):
             response_data['header_id'] = actual_header_id
             print(f"***** SNOWBALL_LINK6: Including header_id={actual_header_id} in response *****")
         
+        # header의 completed_date 정보도 포함
+        try:
+            with get_db() as conn:
+                # header_id가 있으면 해당 header의 completed_date 조회
+                if header_id:
+                    result = conn.execute('''
+                        SELECT completed_date FROM sb_design_evaluation_header
+                        WHERE header_id = ?
+                    ''', (int(header_id),)).fetchone()
+                elif evaluation_session:
+                    result = conn.execute('''
+                        SELECT completed_date FROM sb_design_evaluation_header
+                        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                    ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchone()
+                else:
+                    result = None
+                
+                if result:
+                    response_data['header_completed_date'] = result['completed_date']
+                    print(f"***** SNOWBALL_LINK6: Including header_completed_date={result['completed_date']} in response *****")
+                else:
+                    response_data['header_completed_date'] = None
+        except Exception as e:
+            print(f"Error fetching header completed_date: {e}")
+            response_data['header_completed_date'] = None
+        
         return jsonify(response_data)
         
     except Exception as e:
@@ -583,4 +613,150 @@ def create_design_evaluation_api():
         return jsonify({
             'success': False,
             'message': '평가 생성 중 오류가 발생했습니다.'
+        })
+
+@bp_link6.route('/api/design-evaluation/complete', methods=['POST'])
+@login_required
+def complete_design_evaluation_api():
+    """설계평가 완료 처리 API - header 테이블에 완료일시 업데이트"""
+    user_info = get_user_info()
+    data = request.get_json()
+    
+    rcm_id = data.get('rcm_id')
+    evaluation_session = data.get('evaluation_session')
+    
+    if not rcm_id or not evaluation_session:
+        return jsonify({
+            'success': False,
+            'message': 'RCM ID와 평가 세션이 필요합니다.'
+        })
+    
+    try:
+        # 권한 체크
+        user_rcms = get_user_rcms(user_info['user_id'])
+        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+        
+        if rcm_id not in rcm_ids:
+            return jsonify({
+                'success': False,
+                'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+            })
+        
+        # header 테이블에서 해당 평가 세션의 완료일시 업데이트
+        with get_db() as conn:
+            # 현재 평가 세션이 존재하는지 확인
+            header = conn.execute('''
+                SELECT header_id FROM sb_design_evaluation_header
+                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+            ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchone()
+            
+            if not header:
+                return jsonify({
+                    'success': False,
+                    'message': '해당 평가 세션을 찾을 수 없습니다.'
+                })
+            
+            # completed_date를 현재 시간으로 업데이트
+            from datetime import datetime
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            conn.execute('''
+                UPDATE sb_design_evaluation_header
+                SET completed_date = ?, evaluation_status = 'COMPLETED'
+                WHERE header_id = ?
+            ''', (current_time, header['header_id']))
+            
+            conn.commit()
+        
+        # 활동 로그 기록
+        log_user_activity(user_info, 'DESIGN_EVALUATION_COMPLETE', 
+                         f'설계평가 완료 - {evaluation_session}', 
+                         f'/api/design-evaluation/complete', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({
+            'success': True,
+            'message': '설계평가가 완료 처리되었습니다.',
+            'completed_date': current_time
+        })
+        
+    except Exception as e:
+        print(f"평가 완료 처리 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': '완료 처리 중 오류가 발생했습니다.'
+        })
+
+@bp_link6.route('/api/design-evaluation/cancel', methods=['POST'])
+@login_required
+def cancel_design_evaluation_api():
+    """설계평가 완료 취소 API - header 테이블의 completed_date를 NULL로 설정"""
+    user_info = get_user_info()
+    data = request.get_json()
+    
+    rcm_id = data.get('rcm_id')
+    evaluation_session = data.get('evaluation_session')
+    
+    if not rcm_id or not evaluation_session:
+        return jsonify({
+            'success': False,
+            'message': 'RCM ID와 평가 세션이 필요합니다.'
+        })
+    
+    try:
+        # 권한 체크
+        user_rcms = get_user_rcms(user_info['user_id'])
+        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+        
+        if rcm_id not in rcm_ids:
+            return jsonify({
+                'success': False,
+                'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+            })
+        
+        # header 테이블에서 해당 평가 세션의 완료일시를 NULL로 설정
+        with get_db() as conn:
+            # 현재 평가 세션이 존재하는지 확인
+            header = conn.execute('''
+                SELECT header_id, completed_date FROM sb_design_evaluation_header
+                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+            ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchone()
+            
+            if not header:
+                return jsonify({
+                    'success': False,
+                    'message': '해당 평가 세션을 찾을 수 없습니다.'
+                })
+            
+            if not header['completed_date']:
+                return jsonify({
+                    'success': False,
+                    'message': '완료되지 않은 평가입니다.'
+                })
+            
+            # completed_date를 NULL로 설정하고 status를 IN_PROGRESS로 변경
+            conn.execute('''
+                UPDATE sb_design_evaluation_header
+                SET completed_date = NULL, evaluation_status = 'IN_PROGRESS'
+                WHERE header_id = ?
+            ''', (header['header_id'],))
+            
+            conn.commit()
+        
+        # 활동 로그 기록
+        log_user_activity(user_info, 'DESIGN_EVALUATION_CANCEL', 
+                         f'설계평가 완료 취소 - {evaluation_session}', 
+                         f'/api/design-evaluation/cancel', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+        
+        return jsonify({
+            'success': True,
+            'message': '설계평가 완료가 취소되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"평가 완료 취소 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': '완료 취소 중 오류가 발생했습니다.'
         })
