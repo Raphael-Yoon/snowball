@@ -7,6 +7,23 @@
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        #rcmTable {
+            table-layout: fixed;
+            width: 100%;
+        }
+        #rcmTable th, #rcmTable td {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            vertical-align: top;
+        }
+        .text-truncate-custom {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
 </head>
 <body>
     {% include 'navi.jsp' %}
@@ -94,26 +111,29 @@
                             <table class="table table-striped table-hover" id="rcmTable">
                                 <thead>
                                     <tr>
-                                        <th>통제코드</th>
-                                        <th>통제명</th>
-                                        <th>통제활동설명</th>
-                                        <th>핵심통제</th>
-                                        <th>통제주기</th>
-                                        <th>통제유형</th>
-                                        <th>통제구분</th>
-                                        <th>모집단</th>
-                                        <th>테스트절차</th>
+                                        <th width="8%">통제코드</th>
+                                        <th width="15%">통제명</th>
+                                        <th width="25%">통제활동설명</th>
+                                        <th width="8%">핵심통제</th>
+                                        <th width="8%">통제주기</th>
+                                        <th width="8%">통제유형</th>
+                                        <th width="8%">통제구분</th>
+                                        <th width="10%">모집단</th>
+                                        <th width="10%">테스트절차</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for detail in rcm_details %}
                                     <tr>
                                         <td><code>{{ detail.control_code }}</code></td>
-                                        <td><strong>{{ detail.control_name }}</strong></td>
+                                        <td>
+                                            <span class="text-truncate-custom" title="{{ detail.control_name }}">
+                                                <strong>{{ detail.control_name }}</strong>
+                                            </span>
+                                        </td>
                                         <td>
                                             {% if detail.control_description %}
-                                                <span class="text-truncate" style="max-width: 200px; display: inline-block;" 
-                                                      title="{{ detail.control_description }}">
+                                                <span class="text-truncate-custom" title="{{ detail.control_description }}">
                                                     {{ detail.control_description }}
                                                 </span>
                                             {% else %}
@@ -129,14 +149,29 @@
                                                 <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
-                                        <td>{{ detail.control_frequency or '-' }}</td>
-                                        <td>{{ detail.control_type or '-' }}</td>
-                                        <td>{{ detail.control_nature or '-' }}</td>
-                                        <td>{{ detail.population or '-' }}</td>
+                                        <td>
+                                            <span class="text-truncate-custom" title="{{ detail.control_frequency or '-' }}">
+                                                {{ detail.control_frequency or '-' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="text-truncate-custom" title="{{ detail.control_type or '-' }}">
+                                                {{ detail.control_type or '-' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="text-truncate-custom" title="{{ detail.control_nature or '-' }}">
+                                                {{ detail.control_nature or '-' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="text-truncate-custom" title="{{ detail.population or '-' }}">
+                                                {{ detail.population or '-' }}
+                                            </span>
+                                        </td>
                                         <td>
                                             {% if detail.test_procedure %}
-                                                <span class="text-truncate" style="max-width: 150px; display: inline-block;" 
-                                                      title="{{ detail.test_procedure }}">
+                                                <span class="text-truncate-custom" title="{{ detail.test_procedure }}">
                                                     {{ detail.test_procedure }}
                                                 </span>
                                             {% else %}

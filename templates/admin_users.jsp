@@ -302,15 +302,15 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(`${userName} 사용자로 스위치되었습니다.`);
+                    alert(`[USER-001] ${userName} 사용자로 스위치되었습니다.`);
                     window.location.href = '/';  // 메인 페이지로 이동
                 } else {
-                    alert('스위치 실패: ' + data.message);
+                    alert('[USER-002] 스위치 실패: ' + data.message);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('사용자 스위치 중 오류가 발생했습니다.');
+                alert('[USER-003] 사용자 스위치 중 오류가 발생했습니다.');
             });
         }
 

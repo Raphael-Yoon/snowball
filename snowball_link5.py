@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
-from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, save_operation_evaluation, get_operation_evaluations, count_design_evaluations, count_operation_evaluations, log_user_activity, initialize_standard_controls, get_standard_controls, save_rcm_standard_mapping, get_rcm_standard_mappings, get_rcm_detail_mappings, evaluate_rcm_completeness, save_rcm_review_result, get_rcm_review_result, save_rcm_mapping, delete_rcm_mapping, save_rcm_ai_review, get_control_review_result, save_control_review_result, get_db, clear_rcm_completion
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, save_operation_evaluation, get_operation_evaluations, count_design_evaluations, count_operation_evaluations, log_user_activity, initialize_standard_controls, get_standard_controls, save_rcm_standard_mapping, get_rcm_standard_mappings, get_rcm_detail_mappings, evaluate_rcm_completeness, save_rcm_review_result, get_rcm_review_result, save_rcm_mapping, delete_rcm_mapping, save_rcm_ai_review, get_control_review_result, save_control_review_result, get_db, clear_rcm_completion, has_rcm_access
 import os
 import json
 from openai import OpenAI
@@ -49,13 +49,13 @@ def user_rcm_view(rcm_id):
     """사용자 RCM 상세 조회 페이지"""
     user_info = get_user_info()
     
-    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
-    user_rcms = get_user_rcms(user_info['user_id'])
-    rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
-    
-    if rcm_id not in rcm_ids:
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자는 모든 RCM 접근 가능)
+    if not has_rcm_access(user_info['user_id'], rcm_id):
         flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
         return redirect(url_for('link5.user_rcm'))
+    
+    # 사용자 RCM 목록 조회 (RCM 정보 포함)
+    user_rcms = get_user_rcms(user_info['user_id'])
     
     # RCM 기본 정보 조회
     rcm_info = None

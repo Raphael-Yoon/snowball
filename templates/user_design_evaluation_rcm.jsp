@@ -103,7 +103,7 @@
                             <button class="btn btn-sm btn-warning" onclick="resetAllEvaluations()">
                                 <i class="fas fa-undo me-1"></i>초기화
                             </button>
-                            <button class="btn btn-sm btn-outline-primary" onclick="exportEvaluationResult()">
+                            <button id="downloadBtn" class="btn btn-sm btn-outline-primary" onclick="exportEvaluationResult()" style="display: none;">
                                 <i class="fas fa-file-excel me-1"></i>다운로드
                             </button>
                         </div>
@@ -570,7 +570,7 @@
         function showEvaluationImages(index) {
             const evaluation = evaluationResults[index];
             if (!evaluation || !evaluation.images || evaluation.images.length === 0) {
-                alert('첨부된 이미지가 없습니다.');
+                alert('[DESIGN-001] 첨부된 이미지가 없습니다.');
                 return;
             }
             
@@ -812,6 +812,9 @@
             .then(data => {
                 if (data.success) {
                     console.log('Evaluation structure created successfully');
+                    // 새 평가 생성 시 이전 완료 상태 정리
+                    sessionStorage.removeItem('headerCompletedDate');
+                    console.log('Cleared previous headerCompletedDate for new evaluation');
                 } else {
                     console.error('Failed to create evaluation structure:', data.message);
                 }
@@ -886,13 +889,15 @@
                             console.log('Updated currentEvaluationHeaderId to:', data.header_id);
                         }
                         
-                        // header의 completed_date 저장 (완료취소 버튼으로만 제거되도록 자동 제거 안함)
-                        if (data.header_completed_date) {
+                        // header의 completed_date 저장 및 정리
+                        if (data.header_completed_date && data.header_completed_date !== 'null' && data.header_completed_date !== null) {
                             sessionStorage.setItem('headerCompletedDate', data.header_completed_date);
-                            console.log('Header completed_date:', data.header_completed_date);
+                            console.log('Header completed_date saved to session:', data.header_completed_date);
+                        } else {
+                            // header_completed_date가 null이면 sessionStorage 정리
+                            sessionStorage.removeItem('headerCompletedDate');
+                            console.log('Header completed_date is null, removed from sessionStorage');
                         }
-                        // 주의: header_completed_date가 null이어도 sessionStorage를 자동으로 제거하지 않음
-                        // 오직 완료취소 버튼을 통해서만 sessionStorage에서 제거됨
                         
                         // 컨트롤 코드를 인덱스로 매핑
                         {% for detail in rcm_details %}
@@ -934,8 +939,8 @@
             console.log('Modal open check - headerCompletedDate:', `'${headerCompletedDate}'`, 'isHeaderCompleted:', isHeaderCompleted);
             
             if (isHeaderCompleted) {
-                alert('평가가 완료된 상태입니다.\n수정하려면 먼저 완료를 취소해주세요.');
-                return;
+                // 완료된 상태에서는 조회만 가능하도록 처리 (alert 제거)
+                console.log('Header completed, opening in view-only mode');
             }
             
             currentEvaluationIndex = index;
@@ -974,11 +979,11 @@
                 const result = evaluationResults[index];
                 console.log('DEBUG - Full result data:', result);
                 
-                document.getElementById('descriptionAdequacy').value = result.adequacy || '';
-                document.getElementById('improvementSuggestion').value = result.improvement || '';
-                document.getElementById('overallEffectiveness').value = result.effectiveness || '';
-                document.getElementById('evaluationRationale').value = result.rationale || '';
-                document.getElementById('recommendedActions').value = result.actions || '';
+                document.getElementById('descriptionAdequacy').value = result.description_adequacy || '';
+                document.getElementById('improvementSuggestion').value = result.improvement_suggestion || '';
+                document.getElementById('overallEffectiveness').value = result.overall_effectiveness || '';
+                document.getElementById('evaluationRationale').value = result.evaluation_rationale || '';
+                document.getElementById('recommendedActions').value = result.recommended_actions || '';
                 
                 // 기존 이미지 표시
                 console.log('DEBUG - Images data:', result.images);
@@ -999,6 +1004,24 @@
             const imageInput = document.getElementById('evaluationImages');
             if (imageInput) imageInput.value = '';
             
+            // 완료 상태 확인하여 저장 버튼 제어
+            const saveButton = document.getElementById('saveEvaluationBtn');
+            if (saveButton) {
+                if (isHeaderCompleted) {
+                    saveButton.disabled = true;
+                    saveButton.innerHTML = '<i class="fas fa-lock me-1"></i>완료된 평가';
+                    saveButton.title = '평가가 완료되어 수정할 수 없습니다';
+                    saveButton.classList.remove('btn-success');
+                    saveButton.classList.add('btn-secondary');
+                } else {
+                    saveButton.disabled = false;
+                    saveButton.innerHTML = '<i class="fas fa-save me-1"></i>평가 저장';
+                    saveButton.title = '평가 결과를 저장합니다';
+                    saveButton.classList.remove('btn-secondary');
+                    saveButton.classList.add('btn-success');
+                }
+            }
+            
             const modal = new bootstrap.Modal(document.getElementById('evaluationModal'));
             modal.show();
         }
@@ -1007,11 +1030,25 @@
         function saveEvaluation() {
             console.log('saveEvaluation function called');
             
+            // 완료 상태 확인 - 완료된 평가는 저장할 수 없음
+            const headerCompletedDate = sessionStorage.getItem('headerCompletedDate');
+            const isHeaderCompleted = headerCompletedDate && 
+                                    headerCompletedDate !== 'null' && 
+                                    headerCompletedDate !== null && 
+                                    headerCompletedDate !== 'undefined' &&
+                                    headerCompletedDate.trim() !== '' &&
+                                    headerCompletedDate.trim() !== 'null';
+            
+            if (isHeaderCompleted) {
+                console.log('Header completed, save blocked');
+                return; // alert 없이 조용히 함수 종료
+            }
+            
             const currentSession = sessionStorage.getItem('currentEvaluationSession');
             console.log('Current evaluation session from storage:', currentSession);
             
             if (!currentSession) {
-                alert('평가 세션 정보를 찾을 수 없습니다. 설계평가 목록에서 다시 시작해주세요.');
+                alert('[DESIGN-003] 평가 세션 정보를 찾을 수 없습니다. 설계평가 목록에서 다시 시작해주세요.');
                 return;
             }
             
@@ -1021,12 +1058,12 @@
             console.log('Form validation - adequacy:', adequacy, 'effectiveness:', effectiveness);
             
             if (!adequacy) {
-                alert('통제활동 설명 적절성 평가는 필수 항목입니다.');
+                alert('[DESIGN-004] 통제활동 설명 적절성 평가는 필수 항목입니다.');
                 return;
             }
             
             if (!effectiveness) {
-                alert('종합 설계 효과성 평가는 필수 항목입니다.');
+                alert('[DESIGN-005] 종합 설계 효과성 평가는 필수 항목입니다.');
                 return;
             }
             
@@ -1046,7 +1083,7 @@
             console.log('Control code:', controlCode);
             
             if (!controlCode) {
-                alert('통제 코드를 찾을 수 없습니다. 다시 시도해주세요.');
+                alert('[DESIGN-006] 통제 코드를 찾을 수 없습니다. 다시 시도해주세요.');
                 return;
             }
             
@@ -1060,7 +1097,7 @@
             
             if (!saveButton) {
                 console.error('Save button not found!');
-                alert('저장 버튼을 찾을 수 없습니다.');
+                alert('[DESIGN-007] 저장 버튼을 찾을 수 없습니다.');
                 return;
             }
             
@@ -1136,7 +1173,7 @@
                 console.error('Error type:', error.constructor.name);
                 console.error('Error message:', error.message);
                 console.error('Full error:', error);
-                alert('저장 중 오류가 발생했습니다: ' + error.message);
+                alert('[DESIGN-008] 저장 중 오류가 발생했습니다: ' + error.message);
             })
             .finally(() => {
                 // 저장 버튼 복원
@@ -1166,8 +1203,8 @@
             
             // 임시평가 데이터인지 확인 (evaluation_date는 없지만 평가 데이터는 있는 경우)
             const isTemporaryEvaluation = !hasValidEvaluationDate && 
-                                        evaluation.adequacy && 
-                                        evaluation.effectiveness;
+                                        evaluation.description_adequacy && 
+                                        evaluation.overall_effectiveness;
             
             console.log(`Index ${index} - hasValidEvaluationDate: ${hasValidEvaluationDate}, isTemporaryEvaluation: ${isTemporaryEvaluation}`);
             
@@ -1175,7 +1212,7 @@
                 // 결과 표시 (종합 효과성 기준)
                 let resultClass = '';
                 let resultText = '';
-                switch(evaluation.effectiveness) {
+                switch(evaluation.overall_effectiveness) {
                     case 'effective':
                         resultClass = 'bg-success';
                         resultText = '효과적';
@@ -1192,7 +1229,7 @@
                 
                 // 설명 적절성도 함께 표시
                 let adequacyText = '';
-                switch(evaluation.adequacy) {
+                switch(evaluation.description_adequacy) {
                     case 'adequate':
                         adequacyText = '설명 적절';
                         break;
@@ -1223,16 +1260,16 @@
                     ${imageDisplay}
                 `;
                 
-                actionElement.innerHTML = evaluation.actions || '<span class="text-muted">-</span>';
+                actionElement.innerHTML = evaluation.recommended_actions || '<span class="text-muted">-</span>';
                 
                 // 버튼 상태 변경 - 완료
                 if (isHeaderCompleted) {
-                    // 헤더 완료 시 버튼 비활성화
-                    buttonElement.innerHTML = '<i class="fas fa-check-circle me-1"></i>완료됨';
+                    // 헤더 완료 시 버튼 상태 변경 (조회용으로 활성화)
+                    buttonElement.innerHTML = '<i class="fas fa-eye me-1"></i>조회';
                     buttonElement.classList.remove('btn-outline-success', 'btn-success', 'btn-secondary');
-                    buttonElement.classList.add('btn-sm', 'btn-outline-secondary');
-                    buttonElement.disabled = true;
-                    buttonElement.title = '평가가 완료되어 수정할 수 없습니다. 수정하려면 완료취소 버튼을 먼저 클릭하세요.';
+                    buttonElement.classList.add('btn-sm', 'btn-outline-info');
+                    buttonElement.disabled = false;
+                    buttonElement.title = '평가 결과를 조회합니다 (완료된 상태)';
                     buttonElement.setAttribute('data-bs-toggle', 'tooltip');
                 } else {
                     buttonElement.innerHTML = '<i class="fas fa-check me-1"></i>완료';
@@ -1246,7 +1283,7 @@
                 // 임시평가 데이터 표시 (저장되지 않은 샘플 데이터)
                 let resultClass = '';
                 let resultText = '';
-                switch(evaluation.effectiveness) {
+                switch(evaluation.overall_effectiveness) {
                     case 'effective':
                         resultClass = 'bg-info';  // 파란색으로 임시 데이터 구분
                         resultText = '효과적 (임시)';
@@ -1262,7 +1299,7 @@
                 }
                 
                 let adequacyText = '';
-                switch(evaluation.adequacy) {
+                switch(evaluation.description_adequacy) {
                     case 'adequate':
                         adequacyText = '설명 적절';
                         break;
@@ -1283,17 +1320,17 @@
                 `;
                 
                 // 조치사항도 (임시) 표시
-                const actionText = evaluation.actions || '조치사항 없음';
+                const actionText = evaluation.recommended_actions || '조치사항 없음';
                 actionElement.innerHTML = `<span class="text-info" title="임시 데이터 - 저장되지 않음" data-bs-toggle="tooltip">${actionText} <small>(임시)</small></span>`;
                 
                 // 버튼 상태 - 임시평가 상태
                 if (isHeaderCompleted) {
-                    // 헤더 완료 시 버튼 비활성화
-                    buttonElement.innerHTML = '<i class="fas fa-check-circle me-1"></i>완료됨';
+                    // 헤더 완료 시 버튼 상태 변경 (조회용으로 활성화)
+                    buttonElement.innerHTML = '<i class="fas fa-eye me-1"></i>조회';
                     buttonElement.classList.remove('btn-success', 'btn-outline-primary', 'btn-secondary');
-                    buttonElement.classList.add('btn-sm', 'btn-outline-secondary');
-                    buttonElement.disabled = true;
-                    buttonElement.title = '평가가 완료되어 수정할 수 없습니다. 수정하려면 완료취소 버튼을 먼저 클릭하세요.';
+                    buttonElement.classList.add('btn-sm', 'btn-outline-info');
+                    buttonElement.disabled = false;
+                    buttonElement.title = '실제 평가 결과를 조회합니다 (완료된 상태)';
                     buttonElement.setAttribute('data-bs-toggle', 'tooltip');
                 } else {
                     buttonElement.innerHTML = '<i class="fas fa-edit me-1"></i>실제평가';
@@ -1310,12 +1347,12 @@
                 
                 // 버튼 상태 - 미완료
                 if (isHeaderCompleted) {
-                    // 헤더 완료 시 버튼 비활성화
-                    buttonElement.innerHTML = '<i class="fas fa-check-circle me-1"></i>완료됨';
+                    // 헤더 완료 시 버튼 상태 변경 (조회용으로 활성화)
+                    buttonElement.innerHTML = '<i class="fas fa-eye me-1"></i>조회';
                     buttonElement.classList.remove('btn-success', 'btn-outline-success', 'btn-secondary');
-                    buttonElement.classList.add('btn-sm', 'btn-outline-secondary');
-                    buttonElement.disabled = true;
-                    buttonElement.title = '평가가 완료되어 수정할 수 없습니다. 수정하려면 완료취소 버튼을 먼저 클릭하세요.';
+                    buttonElement.classList.add('btn-sm', 'btn-outline-info');
+                    buttonElement.disabled = false;
+                    buttonElement.title = '평가 결과를 조회합니다 (완료된 상태)';
                     buttonElement.setAttribute('data-bs-toggle', 'tooltip');
                 } else {
                     buttonElement.innerHTML = '<i class="fas fa-edit me-1"></i>평가';
@@ -1379,6 +1416,7 @@
             // 상태 업데이트
             const statusElement = document.getElementById('evaluationStatus');
             const completeBtn = document.getElementById('completeEvaluationBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
             
             // 상태 표시 및 버튼 표시 로직
             statusElement.textContent = statusText;
@@ -1393,6 +1431,9 @@
                 completeBtn.title = '설계평가 완료를 취소합니다';
                 completeBtn.disabled = false;  // 명시적으로 활성화
                 completeBtn.setAttribute('data-bs-toggle', 'tooltip');
+                
+                // 완료 상태에서만 다운로드 버튼 표시
+                downloadBtn.style.display = 'block';
             } else if (evaluatedCount === totalControls) {
                 // 모든 개별 평가가 완료되었지만 헤더 완료가 안된 경우
                 completeBtn.style.display = 'block';
@@ -1401,8 +1442,12 @@
                 completeBtn.title = '설계평가를 완료 처리합니다';
                 completeBtn.disabled = false;  // 명시적으로 활성화
                 completeBtn.setAttribute('data-bs-toggle', 'tooltip');
+                
+                // 아직 완료되지 않았으므로 다운로드 버튼 숨김
+                downloadBtn.style.display = 'none';
             } else {
                 completeBtn.style.display = 'none';
+                downloadBtn.style.display = 'none';
             }
         }
         
@@ -1468,20 +1513,20 @@
                 }
             }
             
-            alert('임시 설계평가 데이터가 생성되었습니다.\n\n📢 안내사항:\n- 화면에 표시된 데이터는 임시 데이터입니다\n- 실제로 저장되지 않았습니다\n- 개별 통제를 클릭하여 실제 평가를 수행해주세요');
+            alert('[DESIGN-009] 임시 설계평가 데이터가 생성되었습니다.\n\n📢 안내사항:\n- 화면에 표시된 데이터는 임시 데이터입니다\n- 실제로 저장되지 않았습니다\n- 개별 통제를 클릭하여 실제 평가를 수행해주세요');
             
             // 임시 데이터이므로 서버에서 다시 로드하지 않음
         }
         
         // 전체 통제를 "적정" 값으로 실제 저장
         function saveAllAsAdequate() {
-            if (!confirm('모든 통제를 "적정" 값으로 실제 저장하시겠습니까?\n\n⚠️ 주의사항:\n- 이 작업은 실제로 데이터베이스에 저장됩니다\n- 이미 평가된 통제는 덮어쓰여집니다\n- 모든 통제가 "적절함" 및 "효과적"으로 설정됩니다')) {
+            if (!confirm('모든 통제를 다양한 평가 패턴으로 실제 저장하시겠습니까?\n\n⚠️ 주의사항:\n- 이 작업은 실제로 데이터베이스에 저장됩니다\n- 이미 평가된 통제는 덮어쓰여집니다\n- 통제별로 다양한 평가 결과가 적용됩니다\n  (적절함/부분적 적절함, 효과적/부분적 효과적 혼합)')) {
                 return;
             }
             
             const currentSession = sessionStorage.getItem('currentEvaluationSession');
             if (!currentSession) {
-                alert('평가 세션을 먼저 생성해주세요.');
+                alert('[DESIGN-010] 평가 세션을 먼저 생성해주세요.');
                 return;
             }
             
@@ -1494,9 +1539,9 @@
                 if (index > totalControls) {
                     // 모든 저장 완료
                     if (errors.length > 0) {
-                        alert(`저장 완료!\n성공: ${savedCount}개\n실패: ${errors.length}개\n\n실패 목록:\n${errors.join('\n')}`);
+                        alert(`[DESIGN-011] 저장 완료!\n성공: ${savedCount}개\n실패: ${errors.length}개\n\n실패 목록:\n${errors.join('\n')}`);
                     } else {
-                        alert(`모든 통제가 "적정" 값으로 저장되었습니다!\n총 ${savedCount}개 통제 저장 완료`);
+                        alert(`[DESIGN-012] 모든 통제가 다양한 평가 패턴으로 저장되었습니다!\n총 ${savedCount}개 통제 저장 완료\n\n적용된 패턴:\n- 패턴 1: 적절함 + 효과적\n- 패턴 2: 부분적 적절함 + 부분적 효과적\n- 패턴 3: 적절함 + 부분적 효과적\n- 패턴 4: 부분적 적절함 + 효과적`);
                     }
                     
                     // UI 업데이트 및 데이터 다시 로드
@@ -1517,14 +1562,46 @@
                     return;
                 }
                 
-                // 적정 평가 데이터 생성
-                const evaluationData = {
-                    description_adequacy: 'adequate',
-                    improvement_suggestion: '현재 통제 설계가 적절합니다.',
-                    overall_effectiveness: 'effective',
-                    evaluation_rationale: '통제가 위험을 효과적으로 완화하며 적절하게 설계되었습니다.',
-                    recommended_actions: '현행 유지'
-                };
+                // 다양한 평가 데이터 생성 (적정/부적정 혼합)
+                // 인덱스에 따라 다른 평가 패턴 적용
+                const patterns = [
+                    // 패턴 1: 적절함 + 효과적
+                    {
+                        description_adequacy: 'adequate',
+                        improvement_suggestion: '현재 통제 설계가 적절합니다.',
+                        overall_effectiveness: 'effective',
+                        evaluation_rationale: '통제가 위험을 효과적으로 완화하며 적절하게 설계되었습니다.',
+                        recommended_actions: '현행 유지'
+                    },
+                    // 패턴 2: 부분적으로 적절함 + 부분적으로 효과적
+                    {
+                        description_adequacy: 'partially_adequate',
+                        improvement_suggestion: '통제 문서화가 일부 부족하여 보완이 필요합니다.',
+                        overall_effectiveness: 'partially_effective',
+                        evaluation_rationale: '통제는 기본적으로 작동하고 있으나, 일부 위험 요소에 대한 완화 효과가 제한적입니다.',
+                        recommended_actions: '통제 절차 문서 업데이트 및 주기적 검토 강화'
+                    },
+                    // 패턴 3: 적절함 + 부분적으로 효과적  
+                    {
+                        description_adequacy: 'adequate',
+                        improvement_suggestion: '통제 설계는 적절하나 실행 과정에서 개선이 필요합니다.',
+                        overall_effectiveness: 'partially_effective',
+                        evaluation_rationale: '통제 설계는 적절하나 실제 수행 시 일관성이 부족하여 효과성이 제한적입니다.',
+                        recommended_actions: '통제 수행자 교육 강화 및 모니터링 절차 개선'
+                    },
+                    // 패턴 4: 부분적으로 적절함 + 효과적
+                    {
+                        description_adequacy: 'partially_adequate',
+                        improvement_suggestion: '통제 범위를 확대하여 모든 관련 위험을 포괄하도록 개선 필요합니다.',
+                        overall_effectiveness: 'effective',
+                        evaluation_rationale: '현재 범위 내에서는 효과적으로 작동하고 있으나, 일부 위험 영역이 누락되어 있습니다.',
+                        recommended_actions: '통제 범위 확대 및 추가 통제 절차 도입 검토'
+                    }
+                ];
+                
+                // 인덱스를 기반으로 패턴 선택 (4개 패턴을 순환)
+                const patternIndex = (index - 1) % patterns.length;
+                const evaluationData = patterns[patternIndex];
                 
                 // 서버에 저장
                 fetch('/api/design-evaluation/save', {
@@ -1565,7 +1642,7 @@
         function completeEvaluation() {
             const currentSession = sessionStorage.getItem('currentEvaluationSession');
             if (!currentSession) {
-                alert('평가 세션 정보를 찾을 수 없습니다.');
+                alert('[DESIGN-013] 평가 세션 정보를 찾을 수 없습니다.');
                 return;
             }
             
@@ -1622,7 +1699,7 @@
                         console.log('완료 취소 후 UI 업데이트 완료');
                         
                     } else {
-                        alert('완료 취소 중 오류가 발생했습니다: ' + data.message);
+                        alert('[DESIGN-014] 완료 취소 중 오류가 발생했습니다: ' + data.message);
                         // 버튼 원복
                         completeBtn.disabled = false;
                         completeBtn.innerHTML = originalText;
@@ -1630,7 +1707,7 @@
                 })
                 .catch(error => {
                     console.error('완료 취소 오류:', error);
-                    alert('완료 취소 중 오류가 발생했습니다: ' + error.message);
+                    alert('[DESIGN-015] 완료 취소 중 오류가 발생했습니다: ' + error.message);
                     // 버튼 원복
                     completeBtn.disabled = false;
                     completeBtn.innerHTML = originalText;
@@ -1673,7 +1750,7 @@
                         });
                         
                     } else {
-                        alert('완료 처리 중 오류가 발생했습니다: ' + data.message);
+                        alert('[DESIGN-016] 완료 처리 중 오류가 발생했습니다: ' + data.message);
                         // 버튼 원복
                         completeBtn.disabled = false;
                         completeBtn.innerHTML = originalText;
@@ -1681,7 +1758,7 @@
                 })
                 .catch(error => {
                     console.error('완료 처리 오류:', error);
-                    alert('완료 처리 중 오류가 발생했습니다: ' + error.message);
+                    alert('[DESIGN-017] 완료 처리 중 오류가 발생했습니다: ' + error.message);
                     // 버튼 원복
                     completeBtn.disabled = false;
                     completeBtn.innerHTML = originalText;
@@ -1766,14 +1843,14 @@
                     // 진행률 초기화
                     updateProgress();
                     
-                    alert('모든 설계평가가 초기화되었습니다.');
+                    alert('[DESIGN-018] 모든 설계평가가 초기화되었습니다.');
                 } else {
-                    alert('초기화 실패: ' + data.message);
+                    alert('[DESIGN-019] 초기화 실패: ' + data.message);
                 }
             })
             .catch(error => {
                 console.error('초기화 오류:', error);
-                alert('초기화 중 오류가 발생했습니다.');
+                alert('[DESIGN-020] 초기화 중 오류가 발생했습니다.');
             });
         }
         
@@ -1795,55 +1872,29 @@
         
         // 평가 결과 다운로드
         function exportEvaluationResult() {
-            if (Object.keys(evaluationResults).length === 0) {
-                alert('다운로드할 평가 결과가 없습니다.');
-                return;
-            }
+            // 새로운 엑셀 다운로드 API 호출
+            const downloadUrl = `/api/design-evaluation/download-excel/{{ rcm_id }}`;
             
-            // CSV 데이터 생성
-            let csv = '통제코드,통제명,통제활동설명,설명적절성,개선제안,종합효과성,평가근거,권고조치사항\n';
+            // 로딩 표시
+            const downloadBtn = document.getElementById('downloadBtn');
+            const originalText = downloadBtn.innerHTML;
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>생성 중...';
             
-            {% for detail in rcm_details %}
-            const index{{ loop.index }} = {{ loop.index }};
-            if (evaluationResults[index{{ loop.index }}]) {
-                const result = evaluationResults[index{{ loop.index }}];
-                
-                const adequacyText = {
-                    'adequate': '적절함',
-                    'partially_adequate': '부분적으로 적절함',
-                    'inadequate': '부적절함',
-                    'missing': '누락'
-                }[result.adequacy] || '';
-                
-                const effectivenessText = {
-                    'effective': '효과적',
-                    'partially_effective': '부분적으로 효과적',
-                    'ineffective': '비효과적'
-                }[result.effectiveness] || '';
-                
-                const controlDescription = `{{ detail.control_description or '없음' }}`.replace(/"/g, '""');
-                const improvement = (result.improvement || '').replace(/"/g, '""');
-                const rationale = (result.rationale || '').replace(/"/g, '""');
-                const actions = (result.actions || '').replace(/"/g, '""');
-                
-                csv += `"{{ detail.control_code }}","{{ detail.control_name }}","${controlDescription}","${adequacyText}","${improvement}","${effectivenessText}","${rationale}","${actions}"\n`;
-            }
-            {% endfor %}
-            
-            // BOM 추가 (한글 깨짐 방지)
-            const bom = '\uFEFF';
-            const csvContent = bom + csv;
-            
-            // 다운로드
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            // 새 창에서 다운로드 실행
             const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', '{{ rcm_info.rcm_name }}_설계평가결과.csv');
-            link.style.visibility = 'hidden';
+            link.href = downloadUrl;
+            link.target = '_blank';
+            link.style.display = 'none';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            
+            // 버튼 상태 복원 (약간의 딜레이 후)
+            setTimeout(() => {
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = originalText;
+            }, 2000);
         }
         
 

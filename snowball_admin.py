@@ -378,7 +378,7 @@ def admin_rcm_process_upload():
             return jsonify({'success': False, 'message': 'Excel 파일(.xlsx, .xls)만 업로드 가능합니다.'})
         
         # RCM 생성 (선택된 사용자를 소유자로 설정)
-        rcm_id = create_rcm(rcm_name, description, target_user_id)
+        rcm_id = create_rcm(rcm_name, description, target_user_id, file.filename)
         
         # Excel 파일 읽기
         from openpyxl import load_workbook
@@ -391,7 +391,12 @@ def admin_rcm_process_upload():
         try:
             # Excel 파일 읽기
             workbook = load_workbook(temp_file.name)
-            sheet = workbook.active
+            
+            # RCM 시트 선택 (RCM 시트가 있으면 사용, 없으면 활성 시트 사용)
+            if 'RCM' in workbook.sheetnames:
+                sheet = workbook['RCM']
+            else:
+                sheet = workbook.active
             
             # 헤더 추출 (첫 번째 행)
             headers = []
@@ -417,7 +422,8 @@ def admin_rcm_process_upload():
                 'sample_data': sample_data,
                 'file_path': temp_file.name,
                 'total_rows': sheet.max_row - 1,  # 헤더 제외
-                'auto_mapping': auto_mapping
+                'auto_mapping': auto_mapping,
+                'header_row': 1  # 기본 헤더 행
             }
             
             return jsonify({
@@ -462,17 +468,17 @@ def admin_rcm_mapping(rcm_id):
     
     # 시스템 필드 정의
     system_fields = [
-        {'key': 'control_code', 'name': '통제코드', 'required': True},
-        {'key': 'control_name', 'name': '통제명', 'required': True},
-        {'key': 'control_description', 'name': '통제활동설명', 'required': False},
-        {'key': 'key_control', 'name': '핵심통제여부', 'required': False},
-        {'key': 'control_frequency', 'name': '통제주기', 'required': False},
-        {'key': 'control_type', 'name': '통제유형', 'required': False},
-        {'key': 'control_nature', 'name': '통제구분', 'required': False},
-        {'key': 'population', 'name': '모집단', 'required': False},
-        {'key': 'population_completeness_check', 'name': '모집단완전성확인', 'required': False},
-        {'key': 'population_count', 'name': '모집단갯수', 'required': False},
-        {'key': 'test_procedure', 'name': '테스트절차', 'required': False}
+        {'key': 'control_code', 'name': '통제코드', 'required': True, 'description': ''},
+        {'key': 'control_name', 'name': '통제명', 'required': True, 'description': ''},
+        {'key': 'control_description', 'name': '통제활동설명', 'required': False, 'description': ''},
+        {'key': 'key_control', 'name': '핵심통제여부', 'required': False, 'description': ''},
+        {'key': 'control_frequency', 'name': '통제주기', 'required': False, 'description': ''},
+        {'key': 'control_type', 'name': '통제유형', 'required': False, 'description': '예방 또는 적발'},
+        {'key': 'control_nature', 'name': '통제구분', 'required': False, 'description': '수동 또는 자동'},
+        {'key': 'population', 'name': '모집단', 'required': False, 'description': ''},
+        {'key': 'population_completeness_check', 'name': '모집단완전성확인', 'required': False, 'description': ''},
+        {'key': 'population_count', 'name': '모집단갯수', 'required': False, 'description': ''},
+        {'key': 'test_procedure', 'name': '테스트절차', 'required': False, 'description': ''}
     ]
     
     return render_template('admin_rcm_mapping.jsp',
@@ -502,8 +508,11 @@ def admin_rcm_save_mapping():
         
         # 세션에서 업로드 정보 가져오기
         upload_key = f'rcm_upload_{rcm_id}'
+        print(f"[DEBUG] Looking for session key: {upload_key}")
+        print(f"[DEBUG] Available session keys: {list(session.keys())}")
+        
         if upload_key not in session:
-            return jsonify({'success': False, 'message': '업로드 정보를 찾을 수 없습니다.'})
+            return jsonify({'success': False, 'message': f'업로드 정보를 찾을 수 없습니다. 키: {upload_key}, 세션 키들: {list(session.keys())}'})
         
         upload_info = session[upload_key]
         file_path = upload_info['file_path']
@@ -525,28 +534,87 @@ def admin_rcm_save_mapping():
         if not os.path.exists(file_path):
             return jsonify({'success': False, 'message': 'Excel 파일을 찾을 수 없습니다.'})
         
-        workbook = load_workbook(file_path)
-        sheet = workbook.active
-        
-        # 데이터 처리
-        rcm_data = []
-        for row_num in range(2, sheet.max_row + 1):  # 헤더 제외
-            row_data = {}
+        try:
+            workbook = load_workbook(file_path)
+            # RCM 시트 선택 (RCM 시트가 있으면 사용, 없으면 활성 시트 사용)
+            if 'RCM' in workbook.sheetnames:
+                sheet = workbook['RCM']
+            else:
+                sheet = workbook.active
             
-            # 각 필드별로 매핑된 컬럼에서 데이터 추출
-            for field_name, column_index in field_mapping.items():
-                cell_value = sheet.cell(row=row_num, column=column_index + 1).value  # Excel은 1부터 시작
-                row_data[field_name] = str(cell_value) if cell_value is not None else ''
+            # 헤더 행 번호 가져오기 (기본값: 1)
+            header_row = int(request.form.get('header_row', 1))
             
-            rcm_data.append(row_data)
+            # 데이터 처리
+            rcm_data = []
+            for row_num in range(header_row + 1, sheet.max_row + 1):  # 헤더 제외
+                row_data = {}
+                
+                # 각 필드별로 매핑된 컬럼에서 데이터 추출
+                for field_name, column_index in field_mapping.items():
+                    cell_value = sheet.cell(row=row_num, column=column_index + 1).value  # Excel은 1부터 시작
+                    row_data[field_name] = str(cell_value) if cell_value is not None else ''
+                
+                rcm_data.append(row_data)
+        finally:
+            # 워크북 명시적으로 닫기
+            if 'workbook' in locals():
+                workbook.close()
         
         # DB에 데이터 저장
         save_rcm_details(rcm_id, rcm_data)
         
+        # 회사별 폴더에 원본 파일 저장
+        try:
+            # RCM 정보에서 회사명 가져오기
+            with get_db() as conn:
+                rcm_info = conn.execute('''
+                    SELECT r.original_filename, u.company_name 
+                    FROM sb_rcm r
+                    JOIN sb_user u ON r.upload_user_id = u.user_id
+                    WHERE r.rcm_id = ?
+                ''', (rcm_id,)).fetchone()
+                
+                if rcm_info and rcm_info['company_name'] and rcm_info['original_filename']:
+                    company_name = rcm_info['company_name']
+                    original_filename = rcm_info['original_filename']
+                    
+                    # 회사별 업로드 디렉토리 생성
+                    company_upload_dir = os.path.join('uploads', company_name)
+                    os.makedirs(company_upload_dir, exist_ok=True)
+                    
+                    # 회사별 폴더에 파일 저장
+                    permanent_file_path = os.path.join(company_upload_dir, original_filename)
+                    
+                    # 임시 파일을 영구 경로로 복사
+                    import shutil
+                    shutil.copy2(file_path, permanent_file_path)
+                    
+                    print(f"[INFO] 파일 저장됨: {permanent_file_path}")
+                    
+                    # DB에 새로운 파일 경로 업데이트 (상대 경로로 저장)
+                    relative_path = os.path.join(company_name, original_filename)
+                    conn.execute('''
+                        UPDATE sb_rcm 
+                        SET original_filename = ?
+                        WHERE rcm_id = ?
+                    ''', (relative_path, rcm_id))
+                    conn.commit()
+                    
+        except Exception as e:
+            print(f"[WARNING] 회사별 폴더 파일 저장 실패: {e}")
+            # 실패해도 계속 진행
+        
         # 세션에서 업로드 정보 삭제 및 임시 파일 삭제
         del session[upload_key]
-        if os.path.exists(file_path):
-            os.unlink(file_path)
+        
+        # 임시 파일 안전하게 삭제
+        try:
+            if os.path.exists(file_path):
+                os.unlink(file_path)
+        except PermissionError as e:
+            print(f"[WARNING] 임시 파일 삭제 실패 (무시됨): {e}")
+            # 파일 삭제 실패는 무시 (시스템이 나중에 정리함)
         
         return jsonify({
             'success': True,
@@ -735,14 +803,14 @@ def admin_rcm_delete():
             # RCM 비활성화 (소프트 삭제)
             conn.execute('''
                 UPDATE sb_rcm 
-                SET is_active = 'N', last_updated = CURRENT_TIMESTAMP
+                SET is_active = 'N'
                 WHERE rcm_id = ?
             ''', (rcm_id,))
             
             # 관련 사용자 권한도 비활성화
             conn.execute('''
                 UPDATE sb_user_rcm 
-                SET is_active = 'N', last_updated = CURRENT_TIMESTAMP
+                SET is_active = 'N'
                 WHERE rcm_id = ?
             ''', (rcm_id,))
             
