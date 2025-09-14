@@ -110,14 +110,14 @@
                 if (data.success) {
                     window.location.href = `/admin/rcm/mapping/${data.rcm_id}`;
                 } else {
-                    alert('업로드 실패: ' + data.message);
+                    alert('[ADMIN-007] 업로드 실패: ' + data.message);
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>업로드 및 매핑';
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('업로드 중 오류가 발생했습니다.');
+                alert('[ADMIN-008] 업로드 중 오류가 발생했습니다.');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>업로드 및 매핑';
             });

@@ -119,17 +119,16 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
                     location.reload();
                 } else {
-                    alert('삭제 실패: ' + data.message);
+                    alert('[ADMIN-005] 삭제 실패: ' + data.message);
                     deleteBtn.disabled = false;
                     deleteBtn.innerHTML = '<i class="fas fa-trash me-1"></i>삭제';
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('RCM 삭제 중 오류가 발생했습니다.');
+                alert('[ADMIN-006] RCM 삭제 중 오류가 발생했습니다.');
                 deleteBtn.disabled = false;
                 deleteBtn.innerHTML = '<i class="fas fa-trash me-1"></i>삭제';
             });

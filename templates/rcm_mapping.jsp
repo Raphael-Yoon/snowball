@@ -349,7 +349,7 @@
         // RCM 통제를 기준통제에 매핑 (자동 저장)
         function mapRcmToStandardControl(rcmControlCode, rcmControlName) {
             if (!selectedStdControlId) {
-                alert('먼저 기준통제를 선택해주세요.');
+                alert('[MAP-001] 먼저 기준통제를 선택해주세요.');
                 return;
             }
             
@@ -406,12 +406,12 @@
                     console.log('매핑 자동 저장 완료:', rcmControlCode, '->', selectedStdControlName);
                 } else {
                     console.error('저장 실패 응답:', result);
-                    alert('매핑 저장 실패: ' + (result.message || '알 수 없는 오류'));
+                    alert('[MAP-002] 매핑 저장 실패: ' + (result.message || '알 수 없는 오류'));
                 }
             })
             .catch(error => {
                 console.error('매핑 저장 오류 상세:', error);
-                alert('매핑 저장 중 오류가 발생했습니다: ' + error.message);
+                alert('[MAP-003] 매핑 저장 중 오류가 발생했습니다: ' + error.message);
             });
         }
         
@@ -470,12 +470,12 @@
                     console.log('📈 진행률 업데이트 시작');
                     updateProgress();
                 } else {
-                    alert('매핑 해제 중 오류가 발생했습니다: ' + data.message);
+                    alert('[MAP-004] 매핑 해제 중 오류가 발생했습니다: ' + data.message);
                 }
             })
             .catch(error => {
                 console.error('매핑 해제 오류:', error);
-                alert('매핑 해제 중 오류가 발생했습니다: ' + error.message);
+                alert('[MAP-005] 매핑 해제 중 오류가 발생했습니다: ' + error.message);
             });
         }
 
@@ -528,12 +528,12 @@
                     console.log('매핑 자동 삭제 완료:', controlCode);
                 } else {
                     console.error('삭제 실패 응답:', result);
-                    alert('매핑 삭제 실패: ' + (result.message || '알 수 없는 오류'));
+                    alert('[MAP-006] 매핑 삭제 실패: ' + (result.message || '알 수 없는 오류'));
                 }
             })
             .catch(error => {
                 console.error('매핑 삭제 오류 상세:', error);
-                alert('매핑 삭제 중 오류가 발생했습니다: ' + error.message);
+                alert('[MAP-007] 매핑 삭제 중 오류가 발생했습니다: ' + error.message);
             });
         }
         

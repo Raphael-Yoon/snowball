@@ -5,6 +5,12 @@ import sys
 import os
 import json
 from werkzeug.utils import secure_filename
+from flask import send_file
+import tempfile
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment
+from openpyxl.styles.colors import Color
 
 bp_link6 = Blueprint('link6', __name__)
 
@@ -158,18 +164,24 @@ def save_design_evaluation_api():
         })
     
     try:
-        # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
         with get_db() as conn:
-            access_check = conn.execute('''
-                SELECT permission_type FROM sb_user_rcm
-                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
-            ''', (user_info['user_id'], rcm_id)).fetchone()
-            
-            if not access_check:
-                return jsonify({
-                    'success': False,
-                    'message': '해당 RCM에 대한 접근 권한이 없습니다.'
-                })
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user accessing RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+                
+                if not access_check:
+                    return jsonify({
+                        'success': False,
+                        'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                    })
         
         # 이미지 파일 저장
         saved_images = []
@@ -271,18 +283,24 @@ def reset_design_evaluations_api():
         })
     
     try:
-        # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
         with get_db() as conn:
-            access_check = conn.execute('''
-                SELECT permission_type FROM sb_user_rcm
-                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
-            ''', (user_info['user_id'], rcm_id)).fetchone()
-            
-            if not access_check:
-                return jsonify({
-                    'success': False,
-                    'message': '해당 RCM에 대한 접근 권한이 없습니다.'
-                })
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user resetting RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+                
+                if not access_check:
+                    return jsonify({
+                        'success': False,
+                        'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                    })
             
             # 해당 사용자의 모든 설계평가 결과 삭제 (Header-Line 구조)
             # 1. 먼저 line 레코드들 삭제
@@ -334,12 +352,21 @@ def get_evaluation_sessions_api(rcm_id):
     user_info = get_user_info()
     
     try:
-        # 권한 체크
-        user_rcms = get_user_rcms(user_info['user_id'])
-        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
-        
-        if rcm_id not in rcm_ids:
-            return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
+        with get_db() as conn:
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user accessing sessions for RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+                
+                if not access_check:
+                    return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
         
         # 평가 세션 목록 조회
         sessions = get_user_evaluation_sessions(rcm_id, user_info['user_id'])
@@ -373,12 +400,21 @@ def load_evaluation_data_api(rcm_id):
     print(f"***** header_id is empty string: {header_id == ''} *****")
     
     try:
-        # 권한 체크
-        user_rcms = get_user_rcms(user_info['user_id'])
-        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
-        
-        if rcm_id not in rcm_ids:
-            return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
+        with get_db() as conn:
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user loading data for RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+                
+                if not access_check:
+                    return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
         
         # 평가 데이터 로드
         if header_id:
@@ -445,11 +481,11 @@ def load_evaluation_data_api(rcm_id):
                 print(f"[DEBUG] No header_id found for control {control_code}")
             
             evaluation_dict[control_code] = {
-                'adequacy': eval_data['description_adequacy'],
-                'improvement': eval_data['improvement_suggestion'],
-                'effectiveness': eval_data['overall_effectiveness'],
-                'rationale': eval_data['evaluation_rationale'],
-                'actions': eval_data['recommended_actions'],
+                'description_adequacy': eval_data['description_adequacy'],
+                'improvement_suggestion': eval_data['improvement_suggestion'],
+                'overall_effectiveness': eval_data['overall_effectiveness'],
+                'evaluation_rationale': eval_data['evaluation_rationale'],
+                'recommended_actions': eval_data['recommended_actions'],
                 'evaluation_date': evaluation_date,
                 'images': saved_images
             }
@@ -471,23 +507,29 @@ def load_evaluation_data_api(rcm_id):
             with get_db() as conn:
                 # header_id가 있으면 해당 header의 completed_date 조회
                 if header_id:
+                    print(f"***** DEBUG: Querying completed_date for header_id={header_id} *****")
                     result = conn.execute('''
                         SELECT completed_date FROM sb_design_evaluation_header
                         WHERE header_id = ?
                     ''', (int(header_id),)).fetchone()
                 elif evaluation_session:
+                    print(f"***** DEBUG: Querying completed_date for rcm_id={rcm_id}, user_id={user_info['user_id']}, session={evaluation_session} *****")
                     result = conn.execute('''
                         SELECT completed_date FROM sb_design_evaluation_header
                         WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
                     ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchone()
                 else:
                     result = None
+                    print("***** DEBUG: No header_id or evaluation_session provided *****")
+                
+                print(f"***** DEBUG: Query result = {result} *****")
                 
                 if result:
                     response_data['header_completed_date'] = result['completed_date']
                     print(f"***** SNOWBALL_LINK6: Including header_completed_date={result['completed_date']} in response *****")
                 else:
                     response_data['header_completed_date'] = None
+                    print("***** SNOWBALL_LINK6: Setting header_completed_date=None in response *****")
         except Exception as e:
             print(f"Error fetching header completed_date: {e}")
             response_data['header_completed_date'] = None
@@ -517,15 +559,24 @@ def delete_evaluation_session_api():
         })
     
     try:
-        # 권한 체크
-        user_rcms = get_user_rcms(user_info['user_id'])
-        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
-        
-        if rcm_id not in rcm_ids:
-            return jsonify({
-                'success': False,
-                'message': '해당 RCM에 대한 접근 권한이 없습니다.'
-            })
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
+        with get_db() as conn:
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user deleting session for RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+                
+                if not access_check:
+                    return jsonify({
+                        'success': False,
+                        'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                    })
         
         # 세션 삭제
         deleted_count = delete_evaluation_session(rcm_id, user_info['user_id'], evaluation_session)
@@ -565,15 +616,24 @@ def create_design_evaluation_api():
         })
     
     try:
-        # 권한 체크
-        user_rcms = get_user_rcms(user_info['user_id'])
-        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
-        
-        if rcm_id not in rcm_ids:
-            return jsonify({
-                'success': False,
-                'message': '해당 RCM에 대한 접근 권한이 없습니다.'
-            })
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
+        with get_db() as conn:
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user creating evaluation for RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+                
+                if not access_check:
+                    return jsonify({
+                        'success': False,
+                        'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                    })
         
         # 중복 세션명 체크
         existing_sessions = get_user_evaluation_sessions(rcm_id, user_info['user_id'])
@@ -612,7 +672,7 @@ def create_design_evaluation_api():
         print(f"평가 생성 오류: {e}")
         return jsonify({
             'success': False,
-            'message': '평가 생성 중 오류가 발생했습니다.'
+            'message': '[EVAL-001] 평가 생성 중 오류가 발생했습니다.'
         })
 
 @bp_link6.route('/api/design-evaluation/complete', methods=['POST'])
@@ -632,15 +692,24 @@ def complete_design_evaluation_api():
         })
     
     try:
-        # 권한 체크
-        user_rcms = get_user_rcms(user_info['user_id'])
-        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
-        
-        if rcm_id not in rcm_ids:
-            return jsonify({
-                'success': False,
-                'message': '해당 RCM에 대한 접근 권한이 없습니다.'
-            })
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
+        with get_db() as conn:
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user completing RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+                
+                if not access_check:
+                    return jsonify({
+                        'success': False,
+                        'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                    })
         
         # header 테이블에서 해당 평가 세션의 완료일시 업데이트
         with get_db() as conn:
@@ -704,15 +773,24 @@ def cancel_design_evaluation_api():
         })
     
     try:
-        # 권한 체크
-        user_rcms = get_user_rcms(user_info['user_id'])
-        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
-        
-        if rcm_id not in rcm_ids:
-            return jsonify({
-                'success': False,
-                'message': '해당 RCM에 대한 접근 권한이 없습니다.'
-            })
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
+        with get_db() as conn:
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user canceling RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+                
+                if not access_check:
+                    return jsonify({
+                        'success': False,
+                        'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                    })
         
         # header 테이블에서 해당 평가 세션의 완료일시를 NULL로 설정
         with get_db() as conn:
@@ -760,3 +838,344 @@ def cancel_design_evaluation_api():
             'success': False,
             'message': '완료 취소 중 오류가 발생했습니다.'
         })
+
+
+@bp_link6.route('/api/design-evaluation/download-excel/<int:rcm_id>')
+@login_required
+def download_evaluation_excel(rcm_id):
+    """설계평가 엑셀 다운로드 - 원본 파일의 Template 시트를 통제별로 복사해서 생성"""
+    user_info = get_user_info()
+    
+    try:
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
+        with get_db() as conn:
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user downloading excel for RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+                
+                if not access_check:
+                    return jsonify({
+                        'success': False,
+                        'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                    }), 403
+
+            # RCM 정보 및 파일 경로 가져오기 (업로드한 사용자의 회사명, 최신 설계평가 세션명 포함)
+            rcm_info = conn.execute('''
+                SELECT r.rcm_name, r.original_filename, u.company_name
+                FROM sb_rcm r
+                LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+                WHERE r.rcm_id = ?
+            ''', (rcm_id,)).fetchone()
+            
+            # 현재 사용자의 가장 최신 설계평가 세션명 조회
+            evaluation_session = None
+            try:
+                session_info = conn.execute('''
+                    SELECT evaluation_session 
+                    FROM sb_design_evaluation_header 
+                    WHERE rcm_id = ? AND user_id = ? 
+                    ORDER BY start_date DESC 
+                    LIMIT 1
+                ''', (rcm_id, user_info['user_id'])).fetchone()
+                
+                if session_info:
+                    evaluation_session = session_info['evaluation_session']
+            except:
+                pass  # 설계평가 세션이 없는 경우 기본값 사용
+            
+            if not rcm_info or not rcm_info['original_filename']:
+                return jsonify({
+                    'success': False,
+                    'message': '원본 엑셀 파일을 찾을 수 없습니다.'
+                }), 404
+            
+            # RCM 상세 정보 가져오기
+            rcm_details = conn.execute('''
+                SELECT detail_id, control_code, control_name, control_frequency, control_type, 
+                       test_procedure, control_description
+                FROM sb_rcm_detail 
+                WHERE rcm_id = ? 
+                ORDER BY detail_id
+            ''', (rcm_id,)).fetchall()
+            
+            if not rcm_details:
+                return jsonify({
+                    'success': False,
+                    'message': 'RCM 상세 정보를 찾을 수 없습니다.'
+                }), 404
+            
+            # 설계평가 데이터 조회 (평가 근거 및 첫부 이미지)
+            evaluation_data = {}
+            if evaluation_session:
+                try:
+                    # 해당 세션의 설계평가 결과 조회 (overall_effectiveness 포함)
+                    eval_results = conn.execute('''
+                        SELECT l.control_code, l.evaluation_rationale, l.overall_effectiveness, h.header_id
+                        FROM sb_design_evaluation_line l
+                        JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
+                        WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ?
+                        ORDER BY l.control_sequence, l.control_code
+                    ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchall()
+                    
+                    print(f"DEBUG: Found {len(eval_results)} evaluation results for session '{evaluation_session}'")
+                    for eval_result in eval_results:
+                        control_code = eval_result['control_code']
+                        rationale = eval_result['evaluation_rationale'] or ''
+                        effectiveness = eval_result['overall_effectiveness'] or ''
+                        header_id = eval_result['header_id']
+                        
+                        # 파일 시스템에서 이미지 경로 찾기
+                        images_info = ''
+                        image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(header_id), control_code)
+                        if os.path.exists(image_dir):
+                            image_files = [f for f in os.listdir(image_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+                            if image_files:
+                                images_info = json.dumps([{'file': f, 'path': os.path.join(image_dir, f)} for f in image_files])
+                        
+                        print(f"DEBUG: {control_code} - rationale: '{rationale}', effectiveness: '{effectiveness}', images_info: '{images_info}'")
+                        evaluation_data[control_code] = {
+                            'rationale': rationale,
+                            'effectiveness': effectiveness,
+                            'images': images_info
+                        }
+                except Exception as e:
+                    print(f"DEBUG: 설계평가 데이터 조회 오류: {e}")
+                    pass
+
+        # 원본 엑셀 파일 로드 (회사별 폴더 구조 지원)
+        # rcm_info['original_filename']이 이미 상대 경로(company_name/filename.xlsx)인 경우와
+        # 기존 방식(filename.xlsx)인 경우 모두 지원
+        if os.path.sep in rcm_info['original_filename'] or '/' in rcm_info['original_filename']:
+            # 이미 회사별 경로가 포함된 경우
+            original_file_path = os.path.join('uploads', rcm_info['original_filename'])
+        else:
+            # 기존 방식 - uploads 루트에서 찾기
+            original_file_path = os.path.join('uploads', rcm_info['original_filename'])
+        
+        if not os.path.exists(original_file_path):
+            return jsonify({
+                'success': False,
+                'message': f'원본 파일이 존재하지 않습니다: {original_file_path}'
+            }), 404
+            
+        workbook = load_workbook(original_file_path)
+        
+        # Template 시트가 있는지 확인
+        if 'Template' not in workbook.sheetnames:
+            return jsonify({
+                'success': False,
+                'message': '원본 파일에 Template 시트가 없습니다.'
+            }), 404
+            
+        template_sheet = workbook['Template']
+        
+        # 각 통제별로 Template 시트를 복사해서 새 시트 생성
+        for detail in rcm_details:
+            control_code = detail['control_code']
+            
+            # Template 시트 복사
+            new_sheet = workbook.copy_worksheet(template_sheet)
+            new_sheet.title = control_code
+            
+            # B3, B5, C7~C11 셀에 정보 입력
+            new_sheet['B3'] = user_info.get('company_name', '')  # 회사명
+            new_sheet['B5'] = user_info.get('user_name', '')  # 사용자명
+            new_sheet['C7'] = detail['control_code']  # 통제코드
+            new_sheet['C8'] = detail['control_name']  # 통제명
+            new_sheet['C9'] = detail['control_frequency']  # 통제주기
+            new_sheet['C10'] = detail['control_type']  # 통제구분
+            new_sheet['C11'] = detail['test_procedure'] or ''  # 테스트 절차
+            
+            # C12에 평가 근거, C13에 첨부 이미지, C14에 효과성 추가
+            eval_info = evaluation_data.get(control_code, {})
+            rationale_value = eval_info.get('rationale', '')
+            effectiveness_value = eval_info.get('effectiveness', '')
+            
+            new_sheet['C12'] = rationale_value  # 평가 근거
+            
+            # 여러 라인 텍스트가 있는 셀들의 높이 자동 조정
+            # C11 (테스트 절차) 셀 설정
+            c11_cell = new_sheet['C11']
+            c11_cell.alignment = Alignment(wrap_text=True, vertical='top')
+            
+            # C12 (평가 근거) 셀 설정  
+            c12_cell = new_sheet['C12']
+            c12_cell.alignment = Alignment(wrap_text=True, vertical='top')
+            
+            # 텍스트 길이에 따라 행 높이 자동 조정
+            test_procedure_text = detail['test_procedure'] or ''
+            rationale_text = rationale_value or ''
+            
+            # 줄바꿈 개수와 텍스트 길이를 기준으로 높이 계산
+            c11_lines = max(1, len(test_procedure_text.split('\n'))) if test_procedure_text else 1
+            c12_lines = max(1, len(rationale_text.split('\n'))) if rationale_text else 1
+            
+            # 긴 텍스트의 경우 줄바꿈이 없어도 자동 줄바꿈으로 인해 여러 줄이 될 수 있음
+            # 약 50자당 1줄로 가정 (엑셀 C열 기준)
+            if test_procedure_text:
+                estimated_c11_lines = max(c11_lines, (len(test_procedure_text) // 50) + 1)
+            else:
+                estimated_c11_lines = c11_lines
+                
+            if rationale_text:
+                estimated_c12_lines = max(c12_lines, (len(rationale_text) // 50) + 1)
+            else:
+                estimated_c12_lines = c12_lines
+            
+            # 최소 높이는 25pt, 최대 높이는 150pt로 제한 (기본 20pt + 줄 수 * 18pt)
+            c11_height = max(25, min(150, 20 + (estimated_c11_lines - 1) * 18))
+            c12_height = max(25, min(150, 20 + (estimated_c12_lines - 1) * 18))
+            
+            new_sheet.row_dimensions[11].height = c11_height
+            new_sheet.row_dimensions[12].height = c12_height
+            
+            # C14에 효과성 및 시트 탭 색상 설정
+            if effectiveness_value == '효과적' or effectiveness_value.lower() == 'effective':
+                new_sheet['C14'] = 'Effective'
+                # 효과적인 경우 시트 탭을 연한 녹색으로 설정
+                new_sheet.sheet_properties.tabColor = Color(rgb="90EE90")  # 연한 녹색
+            elif effectiveness_value == '부분적으로 효과적' or effectiveness_value.lower() == 'partially_effective':
+                new_sheet['C14'] = 'Partially Effective'
+                # 부분적으로 효과적인 경우 시트 탭을 노란색으로 설정
+                new_sheet.sheet_properties.tabColor = Color(rgb="FFD700")  # 금색/노란색
+            else:
+                new_sheet['C14'] = 'Ineffective'
+                # 비효과적인 경우 시트 탭을 연한 빨간색으로 설정
+                new_sheet.sheet_properties.tabColor = Color(rgb="FFA0A0")  # 연한 빨간색
+            
+            # 첫부 이미지 처리 (C13 셀에 이미지 삽입)
+            images_info = eval_info.get('images', '')
+            print(f"DEBUG: {control_code} - images_info: '{images_info}'")
+            if images_info:
+                try:
+                    from openpyxl.drawing.image import Image as ExcelImage
+                    from PIL import Image as PILImage
+                    import io
+                    
+                    # JSON 형태로 저장된 이미지 정보 파싱
+                    if images_info.startswith('['):
+                        image_list = json.loads(images_info)
+                        if image_list and len(image_list) > 0:
+                            first_image_path = image_list[0].get('path', '')
+                            if first_image_path and os.path.exists(first_image_path):
+                                # 이미지를 엑셀에 삽입
+                                img = ExcelImage(first_image_path)
+                                
+                                # 이미지 크기 조정 (셀 크기의 90%로 맞춤)
+                                # C13 셀의 크기 정보 가져오기
+                                cell = new_sheet['C13']
+                                
+                                # 기본 셀 크기 (Excel 기본값 기준)
+                                # 열 너비 (문자 단위를 픽셀로 변환: 1문자 ≈ 7픽셀)
+                                col_width = new_sheet.column_dimensions['C'].width or 8.43  # 기본 열 너비
+                                cell_width_px = int(col_width * 7)  # 픽셀 변환
+                                
+                                # 행 높이 (포인트 단위를 픽셀로 변환: 1pt ≈ 1.33픽셀)
+                                row_height = new_sheet.row_dimensions[13].height or 15  # 기본 행 높이
+                                cell_height_px = int(row_height * 1.33)  # 픽셀 변환
+                                
+                                # 셀 크기의 90%로 최대 크기 설정
+                                max_width = int(cell_width_px * 0.9)
+                                max_height = int(cell_height_px * 0.9)
+                                
+                                # 최소 크기 보장 (너무 작지 않도록)
+                                max_width = max(max_width, 150)
+                                max_height = max(max_height, 150)
+                                
+                                # 원본 이미지 크기 비율 계산
+                                original_width = img.width
+                                original_height = img.height
+                                
+                                # 가로세로 비율 유지하며 크기 조정
+                                width_ratio = max_width / original_width
+                                height_ratio = max_height / original_height
+                                
+                                # 더 작은 비율을 사용해서 셀에 맞게 조정
+                                scale_ratio = min(width_ratio, height_ratio)
+                                
+                                img.width = int(original_width * scale_ratio)
+                                img.height = int(original_height * scale_ratio)
+                                
+                                new_sheet.add_image(img, 'C13')
+                            else:
+                                new_sheet['C13'] = f'이미지 파일 없음: {first_image_path}'
+                    else:
+                        # 단순 문자열 경우
+                        new_sheet['C13'] = images_info
+                except Exception as e:
+                    print(f"DEBUG: 이미지 처리 오류 ({control_code}): {e}")
+                    new_sheet['C13'] = f'이미지 처리 오류: {str(e)}'
+            else:
+                new_sheet['C13'] = ''
+        
+        # 원본 Template 시트 삭제
+        workbook.remove(template_sheet)
+        
+        # downloads 폴더에 파일 저장
+        company_name = rcm_info['company_name'] or '회사명없음'
+        evaluation_name = evaluation_session or '설계평가'
+        safe_filename = f"{company_name}_{evaluation_name}.xlsx"
+        downloads_path = os.path.join('downloads', safe_filename)
+        
+        # 기존 파일이 있으면 삭제
+        if os.path.exists(downloads_path):
+            os.remove(downloads_path)
+            
+        workbook.save(downloads_path)
+        workbook.close()
+        
+        def remove_download_file():
+            try:
+                if os.path.exists(downloads_path):
+                    os.unlink(downloads_path)
+            except:
+                pass
+        
+        # 활동 로그 기록
+        log_user_activity(user_info, 'DESIGN_EVALUATION_DOWNLOAD', 
+                         f'설계평가 엑셀 다운로드 - {rcm_info["rcm_name"]}', 
+                         f'/api/design-evaluation/download-excel/{rcm_id}', 
+                         request.remote_addr, request.headers.get('User-Agent'))
+        
+        # 다운로드 파일 전송
+        response = send_file(
+            downloads_path,
+            as_attachment=True,
+            download_name=safe_filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+        # 요청 완료 후 다운로드 파일 삭제
+        response.call_on_close(remove_download_file)
+        
+        return response
+        
+    except Exception as e:
+        print(f"엑셀 다운로드 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.stderr.write(f"[ERROR] Excel download error: {str(e)}\n")
+        sys.stderr.flush()
+        
+        # 구체적인 오류 메시지 반환
+        error_msg = str(e)
+        if "No such file or directory" in error_msg:
+            error_msg = "원본 RCM 파일을 찾을 수 없습니다."
+        elif "Template" in error_msg:
+            error_msg = "원본 파일에 Template 시트가 없습니다."
+        elif "Permission denied" in error_msg:
+            error_msg = "파일 접근 권한이 없습니다."
+        else:
+            error_msg = f"엑셀 생성 중 오류 발생: {error_msg}"
+            
+        return jsonify({
+            'success': False,
+            'message': error_msg
+        }), 500

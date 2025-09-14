@@ -417,7 +417,7 @@
             })
             .catch(error => {
                 console.error('평가 생성 오류:', error);
-                alert('평가 생성 중 오류가 발생했습니다.');
+                alert('[EVAL-001] 평가 생성 중 오류가 발생했습니다.');
                 
                 // 버튼 복원
                 confirmButton.disabled = false;
@@ -554,17 +554,16 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
-                    // 모달 닫기 (삭제 완료 후 새 모달을 열지 않음)
+                    // 삭제 성공 - 알림 없이 모달만 닫기
                     const modal = bootstrap.Modal.getInstance(document.getElementById('sessionSelectionModal'));
                     modal.hide();
                 } else {
-                    alert('삭제 중 오류가 발생했습니다: ' + data.message);
+                    alert('[EVAL-002] 삭제 중 오류가 발생했습니다: ' + data.message);
                 }
             })
             .catch(error => {
                 console.error('세션 삭제 오류:', error);
-                alert('세션 삭제 중 오류가 발생했습니다.');
+                alert('[EVAL-003] 세션 삭제 중 오류가 발생했습니다.');
             });
         }
     </script>

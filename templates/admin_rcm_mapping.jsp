@@ -47,6 +47,22 @@
                                 <p><strong>업로드일:</strong> {{ rcm_info.upload_date.split(' ')[0] if rcm_info.upload_date else '-' }}</p>
                             </div>
                         </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="headerRow" class="form-label"><strong>헤더 행 선택:</strong></label>
+                                <select class="form-select" id="headerRow" name="header_row">
+                                    <option value="1">1번째 행 (기본값)</option>
+                                    <option value="2">2번째 행</option>
+                                    <option value="3">3번째 행</option>
+                                    <option value="4">4번째 행</option>
+                                    <option value="5">5번째 행</option>
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    컬럼명이 있는 행을 선택하세요.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -81,6 +97,10 @@
                                                 {% endif %}
                                                 <br>
                                                 <small class="text-muted">{{ field.key }}</small>
+                                                {% if field.description %}
+                                                <br>
+                                                <small class="text-info"><i class="fas fa-info-circle me-1"></i>{{ field.description }}</small>
+                                                {% endif %}
                                             </td>
                                             <td>
                                                 <select class="form-select mapping-select" 
@@ -140,6 +160,8 @@
         // 샘플 데이터와 자동 매핑 결과
         const sampleData = {{ sample_data | safe }};
         const autoMapping = {{ auto_mapping | safe }};
+        let currentHeaderRow = 1; // 현재 선택된 헤더 행
+        let currentHeaders = sampleData[0] || []; // 현재 헤더
         
         // 페이지 로드 시 자동 매핑 적용
         document.addEventListener('DOMContentLoaded', function() {
@@ -173,6 +195,49 @@
             }
         });
         
+        // 헤더 행 변경 처리
+        document.getElementById('headerRow').addEventListener('change', function() {
+            const newHeaderRow = parseInt(this.value);
+            currentHeaderRow = newHeaderRow;
+            
+            // 새로운 헤더 추출
+            if (sampleData.length >= newHeaderRow) {
+                currentHeaders = sampleData[newHeaderRow - 1] || [];
+            } else {
+                currentHeaders = [];
+            }
+            
+            // 모든 컬럼 선택 드롭다운 업데이트
+            updateColumnOptions();
+            
+            // 모든 미리보기 업데이트
+            document.querySelectorAll('.mapping-select').forEach(select => {
+                const fieldKey = select.getAttribute('data-field');
+                const columnIndex = select.value;
+                updatePreview(fieldKey, columnIndex);
+            });
+        });
+        
+        // 컬럼 옵션 업데이트 함수
+        function updateColumnOptions() {
+            document.querySelectorAll('.mapping-select').forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">선택 안함</option>';
+                
+                currentHeaders.forEach((header, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = header || `(빈 컬럼 ${index + 1})`;
+                    select.appendChild(option);
+                });
+                
+                // 이전 선택값이 유효하면 유지
+                if (currentValue && currentValue < currentHeaders.length) {
+                    select.value = currentValue;
+                }
+            });
+        }
+        
         // 미리보기 업데이트 함수
         function updatePreview(fieldKey, columnIndex) {
             const previewDiv = document.getElementById('preview_' + fieldKey);
@@ -183,9 +248,14 @@
                 const colIndex = parseInt(columnIndex);
                 let previewHtml = '<small>';
                 
+                // 헤더 행 이후의 데이터만 미리보기에 표시
                 sampleData.forEach((row, index) => {
-                    const value = row[colIndex] || '';
-                    previewHtml += `<div class="mb-1"><span class="badge bg-light text-dark me-1">${index + 1}</span>${value}</div>`;
+                    // 현재 헤더 행 이후의 데이터만 표시
+                    if (index >= currentHeaderRow) {
+                        const value = row[colIndex] || '';
+                        const dataRowNumber = index - currentHeaderRow + 1;
+                        previewHtml += `<div class="mb-1"><span class="badge bg-light text-dark me-1">${dataRowNumber}</span>${value}</div>`;
+                    }
                 });
                 
                 previewHtml += '</small>';
@@ -222,7 +292,7 @@
             });
             
             if (missingRequired.length > 0) {
-                alert('다음 필수 필드를 매핑해주세요:\\n' + missingRequired.join(', '));
+                alert('[ADMIN-001] 다음 필수 필드를 매핑해주세요:\\n' + missingRequired.join(', '));
                 return;
             }
             
@@ -237,15 +307,15 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('RCM 데이터가 성공적으로 저장되었습니다!');
+                    alert('[ADMIN-002] RCM 데이터가 성공적으로 저장되었습니다!');
                     window.location.href = '/admin/rcm';
                 } else {
-                    alert('저장 실패: ' + data.message);
+                    alert('[ADMIN-003] 저장 실패: ' + data.message);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('저장 중 오류가 발생했습니다.');
+                alert('[ADMIN-004] 저장 중 오류가 발생했습니다.');
             })
             .finally(() => {
                 submitBtn.disabled = false;

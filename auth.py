@@ -66,6 +66,7 @@ def init_db():
                 upload_user_id INTEGER NOT NULL,
                 is_active TEXT DEFAULT 'Y',
                 completion_date TIMESTAMP DEFAULT NULL,
+                original_filename TEXT,
                 FOREIGN KEY (upload_user_id) REFERENCES sb_user (user_id)
             )
         ''')
@@ -473,6 +474,15 @@ def init_db():
         except Exception as e:
             print(f"completion_date 컬럼 추가 중 오류 (무시됨): {e}")
         
+        # sb_rcm 테이블에 original_filename 컬럼 추가 (없는 경우)
+        try:
+            rcm_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm)').fetchall()]
+            if 'original_filename' not in rcm_columns:
+                print("sb_rcm 테이블에 original_filename 컬럼 추가")
+                conn.execute('ALTER TABLE sb_rcm ADD COLUMN original_filename TEXT DEFAULT NULL')
+        except Exception as e:
+            print(f"original_filename 컬럼 추가 중 오류 (무시됨): {e}")
+        
         # sb_rcm_detail 테이블에 mapping_status 컬럼 추가 (없는 경우)
         try:
             rcm_detail_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm_detail)').fetchall()]
@@ -766,29 +776,105 @@ def get_ai_review_status(user_email):
 
 # RCM 관리 함수들
 
-def create_rcm(rcm_name, description, upload_user_id):
+def get_unique_filename(filename):
+    """파일명 중복 확인 및 유니크 파일명 생성"""
+    from datetime import datetime
+    import os
+    
+    if not filename:
+        return None
+    
+    with get_db() as conn:
+        # 현재 파일명이 중복되는지 확인
+        existing = conn.execute('''
+            SELECT COUNT(*) FROM sb_rcm 
+            WHERE original_filename = ? AND is_active = 'Y'
+        ''', (filename,)).fetchone()[0]
+        
+        if existing == 0:
+            # 중복이 없으면 원본 파일명 그대로 사용
+            return filename
+        
+        # 중복이 있으면 타임스탬프 추가
+        name, ext = os.path.splitext(filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # 새로운 파일명으로 다시 중복 확인 (무한루프 방지를 위해 최대 5회 시도)
+        for i in range(5):
+            if i == 0:
+                new_filename = f"{name}_{timestamp}{ext}"
+            else:
+                new_filename = f"{name}_{timestamp}_{i}{ext}"
+            
+            existing = conn.execute('''
+                SELECT COUNT(*) FROM sb_rcm 
+                WHERE original_filename = ? AND is_active = 'Y'
+            ''', (new_filename,)).fetchone()[0]
+            
+            if existing == 0:
+                return new_filename
+        
+        # 최후의 수단으로 UUID 추가
+        import uuid
+        unique_id = str(uuid.uuid4())[:8]
+        return f"{name}_{timestamp}_{unique_id}{ext}"
+
+def create_rcm(rcm_name, description, upload_user_id, original_filename=None):
     """RCM 생성"""
     with get_db() as conn:
         cursor = conn.execute('''
-            INSERT INTO sb_rcm (rcm_name, description, upload_user_id)
-            VALUES (?, ?, ?)
-        ''', (rcm_name, description, upload_user_id))
+            INSERT INTO sb_rcm (rcm_name, description, upload_user_id, original_filename)
+            VALUES (?, ?, ?, ?)
+        ''', (rcm_name, description, upload_user_id, original_filename))
         conn.commit()
         return cursor.lastrowid
 
 def get_user_rcms(user_id):
     """사용자가 접근 가능한 RCM 목록 조회"""
     with get_db() as conn:
-        rcms = conn.execute('''
-            SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, 
-                   r.completion_date, ur.permission_type, u.company_name
-            FROM sb_rcm r
-            INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
-            INNER JOIN sb_user u ON r.upload_user_id = u.user_id
-            WHERE ur.user_id = ? AND ur.is_active = 'Y' AND r.is_active = 'Y'
-            ORDER BY r.upload_date DESC
-        ''', (user_id,)).fetchall()
+        # 먼저 사용자가 관리자인지 확인
+        user = conn.execute('SELECT admin_flag FROM sb_user WHERE user_id = ?', (user_id,)).fetchone()
+        is_admin = user and user['admin_flag'] == 'Y'
+        
+        if is_admin:
+            # 관리자는 모든 RCM에 접근 가능
+            rcms = conn.execute('''
+                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, 
+                       r.completion_date, 'admin' as permission_type, u.company_name
+                FROM sb_rcm r
+                INNER JOIN sb_user u ON r.upload_user_id = u.user_id
+                WHERE r.is_active = 'Y'
+                ORDER BY r.upload_date DESC
+            ''').fetchall()
+        else:
+            # 일반 사용자는 권한이 있는 RCM만 접근 가능
+            rcms = conn.execute('''
+                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, 
+                       r.completion_date, ur.permission_type, u.company_name
+                FROM sb_rcm r
+                INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
+                INNER JOIN sb_user u ON r.upload_user_id = u.user_id
+                WHERE ur.user_id = ? AND ur.is_active = 'Y' AND r.is_active = 'Y'
+                ORDER BY r.upload_date DESC
+            ''', (user_id,)).fetchall()
+        
         return [dict(rcm) for rcm in rcms]
+
+def has_rcm_access(user_id, rcm_id):
+    """사용자가 특정 RCM에 접근 권한이 있는지 확인"""
+    with get_db() as conn:
+        # 먼저 사용자가 관리자인지 확인
+        user = conn.execute('SELECT admin_flag FROM sb_user WHERE user_id = ?', (user_id,)).fetchone()
+        if user and user['admin_flag'] == 'Y':
+            return True
+        
+        # 일반 사용자는 권한 테이블 확인
+        access = conn.execute('''
+            SELECT 1 FROM sb_user_rcm 
+            WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+        ''', (user_id, rcm_id)).fetchone()
+        
+        return access is not None
 
 def get_rcm_details(rcm_id):
     """RCM 상세 데이터 조회"""
@@ -835,6 +921,14 @@ def save_rcm_details(rcm_id, rcm_data):
                 data.get('population_count', ''),
                 data.get('test_procedure', '')
             ))
+        
+        # sb_rcm 테이블의 completion_date 업데이트 (매핑 완료 표시)
+        conn.execute('''
+            UPDATE sb_rcm 
+            SET completion_date = CURRENT_TIMESTAMP 
+            WHERE rcm_id = ?
+        ''', (rcm_id,))
+        
         conn.commit()
 
 def grant_rcm_access(user_id, rcm_id, permission_type, granted_by):
@@ -850,7 +944,9 @@ def get_all_rcms():
     """모든 RCM 조회 (관리자용)"""
     with get_db() as conn:
         rcms = conn.execute('''
-            SELECT r.*, u.user_name as upload_user_name, u.company_name
+            SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, 
+                   r.upload_user_id, r.is_active, r.completion_date,
+                   u.user_name as upload_user_name, u.company_name
             FROM sb_rcm r
             LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
             WHERE r.is_active = 'Y'
@@ -899,11 +995,11 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 WHERE line_id = ?
             '''
             update_params = (
-                evaluation_data.get('adequacy'),
-                evaluation_data.get('improvement'),
-                evaluation_data.get('effectiveness'),
-                evaluation_data.get('rationale'),
-                evaluation_data.get('actions'),
+                evaluation_data.get('description_adequacy'),
+                evaluation_data.get('improvement_suggestion'),
+                evaluation_data.get('overall_effectiveness'),
+                evaluation_data.get('evaluation_rationale'),
+                evaluation_data.get('recommended_actions'),
                 line_id
             )
             
@@ -946,11 +1042,11 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
             '''
             insert_params = (
                 header_id, control_code, control_sequence,
-                evaluation_data.get('adequacy'),
-                evaluation_data.get('improvement'),
-                evaluation_data.get('effectiveness'),
-                evaluation_data.get('rationale'),
-                evaluation_data.get('actions')
+                evaluation_data.get('description_adequacy'),
+                evaluation_data.get('improvement_suggestion'),
+                evaluation_data.get('overall_effectiveness'),
+                evaluation_data.get('evaluation_rationale'),
+                evaluation_data.get('recommended_actions')
             )
             
             sys.stderr.write(f"[DEBUG] INSERT Query: {insert_query}\n")
@@ -974,39 +1070,79 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
 
 def create_evaluation_structure(rcm_id, user_id, evaluation_session):
     """평가 시작 시 완전한 Header-Line 구조 생성"""
-    if not evaluation_session or evaluation_session.strip() == '':
-        raise ValueError("평가 세션명이 필요합니다.")
+    print(f"DEBUG: create_evaluation_structure called - rcm_id={rcm_id}, user_id={user_id}, session={evaluation_session}")
     
-    with get_db() as conn:
-        # 1. RCM 상세 정보 조회
-        rcm_details = get_rcm_details(rcm_id)
-        if not rcm_details:
-            raise ValueError(f"RCM ID {rcm_id}에 대한 상세 정보를 찾을 수 없습니다.")
+    try:
+        if not evaluation_session or evaluation_session.strip() == '':
+            raise ValueError("평가 세션명이 필요합니다.")
         
-        total_controls = len(rcm_details)
-        
-        # 2. 헤더 생성
-        cursor = conn.execute('''
-            INSERT INTO sb_design_evaluation_header (
-                rcm_id, user_id, evaluation_session, total_controls,
-                evaluated_controls, progress_percentage, evaluation_status
-            ) VALUES (?, ?, ?, ?, 0, 0.0, 'IN_PROGRESS')
-        ''', (rcm_id, user_id, evaluation_session, total_controls))
-        
-        header_id = cursor.lastrowid
-        
-        # 3. 모든 통제에 대한 빈 라인 생성
-        for idx, control in enumerate(rcm_details, 1):
-            conn.execute('''
-                INSERT INTO sb_design_evaluation_line (
-                    header_id, control_code, control_sequence,
-                    description_adequacy, improvement_suggestion, 
-                    overall_effectiveness, evaluation_rationale, recommended_actions
-                ) VALUES (?, ?, ?, '', '', '', '', '')
-            ''', (header_id, control['control_code'], idx))
-        
-        conn.commit()
-        return header_id
+        with get_db() as conn:
+            # 1. 기존 동일한 세션이 있는지 확인하고 삭제
+            existing_header = conn.execute('''
+                SELECT header_id FROM sb_design_evaluation_header
+                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+            ''', (rcm_id, user_id, evaluation_session)).fetchone()
+            
+            if existing_header:
+                print(f"DEBUG: Found existing header {existing_header['header_id']}, deleting...")
+                conn.execute('DELETE FROM sb_design_evaluation_line WHERE header_id = ?', (existing_header['header_id'],))
+                conn.execute('DELETE FROM sb_design_evaluation_header WHERE header_id = ?', (existing_header['header_id'],))
+            
+            # 2. RCM 상세 정보 조회
+            print(f"DEBUG: Calling get_rcm_details for rcm_id={rcm_id}")
+            rcm_details = get_rcm_details(rcm_id)
+            print(f"DEBUG: get_rcm_details returned {len(rcm_details) if rcm_details else 0} results")
+            
+            if not rcm_details:
+                raise ValueError(f"RCM ID {rcm_id}에 대한 상세 정보를 찾을 수 없습니다.")
+            
+            total_controls = len(rcm_details)
+            
+            # 3. 새 헤더 생성
+            cursor = conn.execute('''
+                INSERT INTO sb_design_evaluation_header (
+                    rcm_id, user_id, evaluation_session, total_controls,
+                    evaluated_controls, progress_percentage, evaluation_status
+                ) VALUES (?, ?, ?, ?, 0, 0.0, 'IN_PROGRESS')
+            ''', (rcm_id, user_id, evaluation_session, total_controls))
+            
+            header_id = cursor.lastrowid
+            print(f"DEBUG: Created new header with ID {header_id}")
+            
+            # 4. 모든 통제에 대한 빈 라인 생성
+            print(f"DEBUG: Creating {len(rcm_details)} evaluation lines")
+            created_lines = 0
+            for idx, control in enumerate(rcm_details, 1):
+                try:
+                    print(f"DEBUG: Creating line {idx} for control {control['control_code']}")
+                    conn.execute('''
+                        INSERT INTO sb_design_evaluation_line (
+                            header_id, control_code, control_sequence,
+                            description_adequacy, improvement_suggestion, 
+                            overall_effectiveness, evaluation_rationale, recommended_actions
+                        ) VALUES (?, ?, ?, '', '', '', '', '')
+                    ''', (header_id, control['control_code'], idx))
+                    created_lines += 1
+                except Exception as line_error:
+                    print(f"DEBUG: Error creating line for control {control['control_code']}: {line_error}")
+                    # 개별 라인 생성 실패는 기록만 하고 계속 진행
+                    continue
+            
+            if created_lines == 0:
+                print("DEBUG: No lines were created, rolling back...")
+                conn.execute('DELETE FROM sb_design_evaluation_header WHERE header_id = ?', (header_id,))
+                raise ValueError("평가 라인을 생성할 수 없습니다.")
+            
+            print(f"DEBUG: Successfully created {created_lines} out of {len(rcm_details)} evaluation lines")
+            conn.commit()
+            return header_id
+            
+    except Exception as e:
+        print(f"ERROR in create_evaluation_structure: {e}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        raise e
 
 def get_or_create_evaluation_header(conn, rcm_id, user_id, evaluation_session):
     """평가 헤더 조회 또는 생성 (레거시 호환용)"""
