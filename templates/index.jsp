@@ -13,6 +13,36 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
+
+    <!-- 커스텀 툴팁 스타일 -->
+    <style>
+        .tooltip-inner {
+            max-width: 350px;
+            text-align: left !important;
+            background-color: #2c3e50;
+            border-radius: 8px;
+            padding: 15px 18px;
+            font-size: 14px;
+            line-height: 1.5;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .tooltip.bs-tooltip-top .tooltip-arrow::before {
+            border-top-color: #2c3e50;
+        }
+
+        .tooltip.bs-tooltip-bottom .tooltip-arrow::before {
+            border-bottom-color: #2c3e50;
+        }
+
+        .tooltip.bs-tooltip-start .tooltip-arrow::before {
+            border-left-color: #2c3e50;
+        }
+
+        .tooltip.bs-tooltip-end .tooltip-arrow::before {
+            border-right-color: #2c3e50;
+        }
+    </style>
 </head>
 <body>
     <!-- 히어로 섹션 -->
@@ -73,7 +103,9 @@
                             <h5 class="feature-title text-center">RCM</h5>
                             <p class="feature-description">신뢰성 중심 유지보수 시스템으로 장비의 안정성과 효율성을 최적화합니다.</p>
                             <div class="text-center">
-                                <a href="/link1" class="feature-link">자세히 보기</a>
+                                <a href="/link1" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 신뢰성 중심 유지보수(RCM) 시스템<br>• 장비의 안정성과 효율성 최적화<br>• 예방적 유지보수 전략 수립<br>• 비용 절감 및 운영 효율성 향상</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -85,7 +117,9 @@
                             <h5 class="feature-title text-center">Interview</h5>
                             <p class="feature-description">전문가와의 인터뷰를 통해 시스템의 현재 상태와 개선점을 파악합니다.</p>
                             <div class="text-center">
-                                <a href="/link2?reset=1" class="feature-link">자세히 보기</a>
+                                <a href="/link2?reset=1" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 전문가와의 체계적 인터뷰 진행<br>• 시스템 현재 상태 및 개선점 파악<br>• 전문적 지식과 경험 공유<br>• 맞춤형 솔루션 도출 및 제안</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -97,7 +131,9 @@
                             <h5 class="feature-title text-center">Operation Test</h5>
                             <p class="feature-description">운영 테스트를 통해 시스템의 실제 운용 상태를 점검합니다.</p>
                             <div class="text-center">
-                                <a href="/link3" class="feature-link">자세히 보기</a>
+                                <a href="/link3" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 실제 운영 환경에서의 시스템 테스트<br>• 운영 상태 점검 및 성능 평가<br>• 잠재적 문제점 사전 식별<br>• 운영 효율성 개선 방안 제시</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -109,20 +145,39 @@
                             <h5 class="feature-title text-center">영상자료</h5>
                             <p class="feature-description">시스템 운영과 관리에 필요한 영상 자료를 제공합니다.</p>
                             <div class="text-center">
-                                <a href="/link4" class="feature-link">자세히 보기</a>
+                                <a href="/link4" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 시스템 운영 및 관리 교육 영상<br>• 단계별 상세 가이드 영상 제공<br>• 베스트 프랙티스 및 사례 연구<br>• 언제든지 접극 가능한 온라인 학습</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
+            <!-- 툴팁 안내 메시지 (기본 서비스용) -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            각 서비스의 <strong>"자세히 보기"</strong> 버튼에 마우스를 올려보세요!
+                        </small>
+                    </div>
+                </div>
+            </div>
+
             <!-- 프리미엄 서비스 -->
-            {% if is_logged_in %}
-            <div class="row g-4 mt-3" id="premium-services">
+            <div class="row g-4 mt-3" id="premium-services" {% if not is_logged_in %}style="opacity: 0.4;"{% endif %}>
                 <div class="col-12">
                     <h3 class="text-center mb-4" style="color: #2c3e50;">
                         <i class="fas fa-crown me-2"></i>프리미엄 서비스
                     </h3>
+                    {% if not is_logged_in %}
+                    <div class="alert alert-info text-center" style="opacity: 1; pointer-events: auto; position: relative; z-index: 10;">
+                        <i class="fas fa-lock me-2"></i>
+                        프리미엄 서비스를 이용하시려면 <a href="/login" class="alert-link">로그인</a>이 필요합니다.
+                    </div>
+                    {% endif %}
                 </div>
                 
                 <!-- RCM 조회 -->
@@ -135,7 +190,9 @@
                             <p class="feature-description">귀하에게 할당된 RCM 데이터를 조회하고 AI를 활용한 통제항목 검토를 수행할 수 있습니다.</p>
                             
                             <div class="text-center mt-auto">
-                                <a href="/user/rcm" class="feature-link">자세히 보기</a>
+                                <a href="/user/rcm" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• AI 기반 자동 검토 및 효과성 분석<br>• 내부통제 전문가 도움 없이도 신속·정확 검토<br>• 통제항목별 상세 리포트 제공</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -148,9 +205,11 @@
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center">설계평가</h5>
-                            <p class="feature-description">통제가 이론적으로 효과적으로 설계되었는지를 평가하는 과정입니다.</p>
+                            <p class="feature-description">통제가 효과적으로 설계되었는지를 평가하는 과정입니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="/user/design-evaluation" class="feature-link">자세히 보기</a>
+                                <a href="/user/design-evaluation" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 통제의 이론적 효과성 평가<br>• 설명 적절성 및 전반적 효과성 검토<br>• 개선사항 및 권고사항 도출<br>• 평가 결과 엑셀 다운로드 지원</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -165,7 +224,9 @@
                             <h5 class="feature-title text-center">운영평가</h5>
                             <p class="feature-description">통제가 실제로 의도된 대로 작동하고 있는지를 평가하는 과정입니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="/user/operation-evaluation" class="feature-link">자세히 보기</a>
+                                <a href="/user/operation-evaluation" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 통제의 실제 운영 효과성 평가<br>• 통제 수행 증거 업로드 및 검증<br>• 실제 운영 상황에서의 효과성 검증<br>• 증거 및 결과 엑셀 다운로드</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -180,14 +241,29 @@
                             <h5 class="feature-title text-center">Contact Us</h5>
                             <p class="feature-description">문의사항이나 지원이 필요하시면 언제든지 연락주세요.</p>
                             <div class="text-center mt-auto">
-                                <a href="/contact" class="feature-link">자세히 보기</a>
+                                <a href="/contact" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 내부통제 시스템 사용 문의<br>• 기술적 지원 및 전문 상담<br>• 최적의 솔루션 제안<br>• 24/7 고객 지원 서비스</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- 툴팁 안내 메시지 (비로그인 상태에서만 표시) -->
+            {% if not is_logged_in %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            각 서비스의 <strong>"자세히 보기"</strong> 버튼에 마우스를 올리시면 상세 설명을 확인하실 수 있습니다.
+                        </small>
+                    </div>
+                </div>
+            </div>
             {% endif %}
-            
+
         </div>
     </section>
 
@@ -206,6 +282,17 @@
     <!-- 세션 관리 및 RCM 기능 -->
     <script>
         window.isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
+
+        // 툴팁 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl, {
+                    delay: { show: 500, hide: 100 },
+                    container: 'body'
+                });
+            });
+        });
         
         
         // 빠른 접근 모달 표시
