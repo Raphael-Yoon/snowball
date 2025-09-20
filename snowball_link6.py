@@ -462,9 +462,13 @@ def load_evaluation_data_api(rcm_id):
             
             if current_header_id:
                 image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(current_header_id), control_code)
-                print(f"[DEBUG] Checking image directory: {image_dir}")
+                print(f"[DEBUG] Checking image directory for control {control_code}: {image_dir}")
+                print(f"[DEBUG] current_header_id={current_header_id}, rcm_id={rcm_id}")
+                
                 if os.path.exists(image_dir):
+                    print(f"[DEBUG] Image directory exists, listing files...")
                     for filename in os.listdir(image_dir):
+                        print(f"[DEBUG] Found file: {filename}")
                         if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
                             relative_path = f"uploads/design_evaluations/{rcm_id}/{current_header_id}/{control_code}/{filename}"
                             saved_images.append({
@@ -472,11 +476,28 @@ def load_evaluation_data_api(rcm_id):
                                 'path': relative_path,
                                 'url': f"/static/{relative_path}"
                             })
+                            print(f"[DEBUG] Added image: {filename} -> {relative_path}")
                     print(f"[DEBUG] Found {len(saved_images)} images for control {control_code}")
-                    for img in saved_images:
-                        print(f"[DEBUG] Image: {img}")
                 else:
                     print(f"[DEBUG] Image directory does not exist: {image_dir}")
+                    # 다른 header_id로 시도해보기
+                    base_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id))
+                    if os.path.exists(base_dir):
+                        print(f"[DEBUG] Checking base directory: {base_dir}")
+                        for folder_name in os.listdir(base_dir):
+                            print(f"[DEBUG] Found folder: {folder_name}")
+                            test_dir = os.path.join(base_dir, folder_name, control_code)
+                            if os.path.exists(test_dir):
+                                print(f"[DEBUG] Found alternative path: {test_dir}")
+                                for filename in os.listdir(test_dir):
+                                    if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
+                                        relative_path = f"uploads/design_evaluations/{rcm_id}/{folder_name}/{control_code}/{filename}"
+                                        saved_images.append({
+                                            'filename': filename,
+                                            'path': relative_path,
+                                            'url': f"/static/{relative_path}"
+                                        })
+                                        print(f"[DEBUG] Added alternative image: {filename} -> {relative_path}")
             else:
                 print(f"[DEBUG] No header_id found for control {control_code}")
             
@@ -844,6 +865,44 @@ def cancel_design_evaluation_api():
 @login_required
 def download_evaluation_excel(rcm_id):
     """설계평가 엑셀 다운로드 - 원본 파일의 Template 시트를 통제별로 복사해서 생성"""
+    # mimetypes 초기화 및 .mpo 오류 방지
+    import mimetypes
+    try:
+        # 강제로 mimetypes 재초기화
+        mimetypes.init()
+        # 여러 방법으로 .mpo 확장자 등록 시도
+        mimetypes.add_type('application/octet-stream', '.mpo')
+        mimetypes.add_type('image/jpeg', '.mpo')  # MPO는 Multi Picture Object 포맷
+        
+        # types_map에 직접 추가
+        if hasattr(mimetypes, 'types_map'):
+            if True in mimetypes.types_map:
+                mimetypes.types_map[True]['.mpo'] = 'image/jpeg'
+            if False in mimetypes.types_map:
+                mimetypes.types_map[False]['.mpo'] = 'image/jpeg'
+        
+        print("[INFO] Successfully configured .mpo mimetype")
+    except Exception as mt_error:
+        print(f"[WARNING] mimetypes config error (ignored): {mt_error}")
+        # 최후의 수단: monkey patch
+        try:
+            import openpyxl.packaging.manifest
+            original_register = openpyxl.packaging.manifest.Manifest._register_mimetypes
+            def patched_register(self, filenames):
+                try:
+                    return original_register(self, filenames)
+                except KeyError as e:
+                    if '.mpo' in str(e):
+                        print(f"[WARNING] Ignoring .mpo mimetype error: {e}")
+                        # .mpo 파일을 제외하고 다시 시도
+                        filtered_filenames = [f for f in filenames if not f.lower().endswith('.mpo')]
+                        return original_register(self, filtered_filenames)
+                    raise
+            openpyxl.packaging.manifest.Manifest._register_mimetypes = patched_register
+            print("[INFO] Applied monkey patch for .mpo issue")
+        except Exception as patch_error:
+            print(f"[WARNING] Monkey patch failed: {patch_error}")
+    
     user_info = get_user_info()
     
     try:
@@ -1056,56 +1115,73 @@ def download_evaluation_excel(rcm_id):
             if images_info:
                 try:
                     from openpyxl.drawing.image import Image as ExcelImage
-                    from PIL import Image as PILImage
-                    import io
                     
                     # JSON 형태로 저장된 이미지 정보 파싱
                     if images_info.startswith('['):
                         image_list = json.loads(images_info)
                         if image_list and len(image_list) > 0:
-                            first_image_path = image_list[0].get('path', '')
-                            if first_image_path and os.path.exists(first_image_path):
-                                # 이미지를 엑셀에 삽입
-                                img = ExcelImage(first_image_path)
-                                
-                                # 이미지 크기 조정 (셀 크기의 90%로 맞춤)
-                                # C13 셀의 크기 정보 가져오기
-                                cell = new_sheet['C13']
-                                
-                                # 기본 셀 크기 (Excel 기본값 기준)
-                                # 열 너비 (문자 단위를 픽셀로 변환: 1문자 ≈ 7픽셀)
-                                col_width = new_sheet.column_dimensions['C'].width or 8.43  # 기본 열 너비
-                                cell_width_px = int(col_width * 7)  # 픽셀 변환
-                                
-                                # 행 높이 (포인트 단위를 픽셀로 변환: 1pt ≈ 1.33픽셀)
-                                row_height = new_sheet.row_dimensions[13].height or 15  # 기본 행 높이
-                                cell_height_px = int(row_height * 1.33)  # 픽셀 변환
-                                
-                                # 셀 크기의 90%로 최대 크기 설정
-                                max_width = int(cell_width_px * 0.9)
-                                max_height = int(cell_height_px * 0.9)
-                                
-                                # 최소 크기 보장 (너무 작지 않도록)
-                                max_width = max(max_width, 150)
-                                max_height = max(max_height, 150)
-                                
-                                # 원본 이미지 크기 비율 계산
-                                original_width = img.width
-                                original_height = img.height
-                                
-                                # 가로세로 비율 유지하며 크기 조정
-                                width_ratio = max_width / original_width
-                                height_ratio = max_height / original_height
-                                
-                                # 더 작은 비율을 사용해서 셀에 맞게 조정
-                                scale_ratio = min(width_ratio, height_ratio)
-                                
-                                img.width = int(original_width * scale_ratio)
-                                img.height = int(original_height * scale_ratio)
-                                
-                                new_sheet.add_image(img, 'C13')
-                            else:
-                                new_sheet['C13'] = f'이미지 파일 없음: {first_image_path}'
+                            # 최대 3개 이미지를 C13, D13, E13에 가로로 배치
+                            target_cells = ['C13', 'D13', 'E13']
+                            max_images = min(len(image_list), 3)
+
+                            # C13 셀 크기 기준으로 통일된 이미지 크기 계산
+                            col_width = new_sheet.column_dimensions['C'].width or 8.43
+                            cell_width_px = int(col_width * 7)  # 문자 단위를 픽셀로 변환
+
+                            row_height = new_sheet.row_dimensions[13].height or 15
+                            cell_height_px = int(row_height * 1.33)  # 포인트를 픽셀로 변환
+
+                            # 셀 크기의 90%로 최대 크기 설정 (모든 이미지에 동일 적용)
+                            uniform_max_width = max(int(cell_width_px * 0.9), 150)
+                            uniform_max_height = max(int(cell_height_px * 0.9), 150)
+
+                            for idx in range(max_images):
+                                image_path = image_list[idx].get('path', '')
+                                if image_path and os.path.exists(image_path):
+                                    try:
+                                        # PIL을 사용해 이미지를 정리한 후 임시 파일로 저장
+                                        from PIL import Image as PILImage
+                                        import tempfile
+
+                                        # 원본 이미지 로드 (메타데이터 제거)
+                                        pil_image = PILImage.open(image_path)
+                                        # RGB로 변환 (EXIF 데이터 제거)
+                                        if pil_image.mode != 'RGB':
+                                            pil_image = pil_image.convert('RGB')
+
+                                        # 임시 파일로 저장 (메타데이터 없이)
+                                        temp_image_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
+                                        temp_image_file.close()
+                                        pil_image.save(temp_image_file.name, 'JPEG', quality=85)
+                                        pil_image.close()
+
+                                        # 정리된 이미지를 엑셀에 삽입
+                                        img = ExcelImage(temp_image_file.name)
+
+                                        # 원본 이미지 크기 비율 계산
+                                        original_width = img.width
+                                        original_height = img.height
+
+                                        # 가로세로 비율 유지하며 통일된 크기로 조정
+                                        width_ratio = uniform_max_width / original_width
+                                        height_ratio = uniform_max_height / original_height
+                                        scale_ratio = min(width_ratio, height_ratio)
+
+                                        img.width = int(original_width * scale_ratio)
+                                        img.height = int(original_height * scale_ratio)
+
+                                        # 해당 셀에 이미지 추가
+                                        new_sheet.add_image(img, target_cells[idx])
+
+                                        # 임시 파일은 나중에 정리
+                                        if not hasattr(workbook, 'temp_files'):
+                                            workbook.temp_files = []
+                                        workbook.temp_files.append(temp_image_file.name)
+
+                                    except Exception as img_error:
+                                        print(f"[ERROR] Image {idx+1} processing failed: {img_error}")
+                                        # 오류 발생시 해당 셀에 메시지 표시
+                                        new_sheet[target_cells[idx]] = f'이미지 {idx+1} 오류'
                     else:
                         # 단순 문자열 경우
                         new_sheet['C13'] = images_info
@@ -1127,8 +1203,54 @@ def download_evaluation_excel(rcm_id):
         # 기존 파일이 있으면 삭제
         if os.path.exists(downloads_path):
             os.remove(downloads_path)
+        
+        # .mpo 파일 문제 해결을 위한 대체 저장 방법
+        try:
+            workbook.save(downloads_path)
+        except Exception as save_error:
+            print(f"[ERROR] Excel save error: {save_error}")
             
-        workbook.save(downloads_path)
+            # 임시 디렉토리에서 작업
+            import tempfile
+            import shutil
+            
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = os.path.join(temp_dir, "evaluation.xlsx")
+                
+                try:
+                    # 임시 경로에 저장 시도
+                    workbook.save(temp_path)
+                    # 성공하면 최종 경로로 복사
+                    shutil.copy2(temp_path, downloads_path)
+                    print("[INFO] Successfully saved Excel file using temporary directory")
+                    
+                except Exception as temp_save_error:
+                    print(f"[ERROR] Temporary save also failed: {temp_save_error}")
+                    
+                    # 최후의 수단: BytesIO를 사용한 메모리 저장
+                    try:
+                        from io import BytesIO
+                        buffer = BytesIO()
+                        workbook.save(buffer)
+                        buffer.seek(0)
+                        
+                        with open(downloads_path, 'wb') as f:
+                            f.write(buffer.read())
+                        print("[INFO] Successfully saved Excel file using BytesIO")
+                        
+                    except Exception as bytesio_error:
+                        print(f"[ERROR] BytesIO save also failed: {bytesio_error}")
+                        raise save_error  # 원래 오류를 다시 발생시킴
+        
+        # 임시 이미지 파일들 정리
+        if hasattr(workbook, 'temp_files'):
+            for temp_file in workbook.temp_files:
+                try:
+                    os.unlink(temp_file)
+                    print(f"[INFO] Cleaned up temp file: {temp_file}")
+                except:
+                    pass  # 임시 파일 삭제 실패 시 무시
+        
         workbook.close()
         
         def remove_download_file():

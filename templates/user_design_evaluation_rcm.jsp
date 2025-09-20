@@ -90,20 +90,20 @@
                         <h5><i class="fas fa-list me-2"></i>통제 설계평가</h5>
                         <div class="d-flex flex-wrap gap-2">
                             {% if user_info.admin_flag == 'Y' %}
-                            <button class="btn btn-sm btn-success" onclick="evaluateAllControls()" title="임시 데이터를 생성하여 화면에만 표시 (실제 저장되지 않음)" data-bs-toggle="tooltip">
+                            <button class="btn btn-sm btn-success" onclick="evaluateAllControls()" title="임시 데이터를 생성하여 화면에만 표시 (실제 저장되지 않음)" data-bs-toggle="tooltip" style="height: 70%; padding: 0.2rem 0.5rem;">
                                 <i class="fas fa-check-double me-1"></i>임시평가
                             </button>
-                            <button class="btn btn-sm btn-primary" onclick="saveAllAsAdequate()" title="모든 통제를 '적정' 값으로 실제 저장" data-bs-toggle="tooltip">
+                            <button class="btn btn-sm btn-primary" onclick="saveAllAsAdequate()" title="모든 통제를 '적정' 값으로 실제 저장" data-bs-toggle="tooltip" style="height: 70%; padding: 0.2rem 0.5rem;">
                                 <i class="fas fa-check-circle me-1"></i>적정저장
                             </button>
                             {% endif %}
-                            <button id="completeEvaluationBtn" class="btn btn-sm btn-success" onclick="completeEvaluation()" style="display: none;" title="설계평가를 완료 처리합니다" data-bs-toggle="tooltip">
+                            <button id="completeEvaluationBtn" class="btn btn-sm btn-success" onclick="completeEvaluation()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;" title="설계평가를 완료 처리합니다" data-bs-toggle="tooltip">
                                 <i class="fas fa-check me-1"></i>완료처리
                             </button>
-                            <button class="btn btn-sm btn-warning" onclick="resetAllEvaluations()">
+                            <button class="btn btn-sm btn-warning" onclick="resetAllEvaluations()" style="height: 70%; padding: 0.2rem 0.5rem;">
                                 <i class="fas fa-undo me-1"></i>초기화
                             </button>
-                            <button id="downloadBtn" class="btn btn-sm btn-outline-primary" onclick="exportEvaluationResult()" style="display: none;">
+                            <button id="downloadBtn" class="btn btn-sm btn-outline-primary" onclick="exportEvaluationResult()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;">
                                 <i class="fas fa-file-excel me-1"></i>다운로드
                             </button>
                         </div>
@@ -1428,6 +1428,8 @@
                 completeBtn.style.display = 'block';
                 completeBtn.innerHTML = '<i class="fas fa-undo me-1"></i>완료취소';
                 completeBtn.className = 'btn btn-sm btn-outline-warning';
+                completeBtn.style.height = '70%';
+                completeBtn.style.padding = '0.2rem 0.5rem';
                 completeBtn.title = '설계평가 완료를 취소합니다';
                 completeBtn.disabled = false;  // 명시적으로 활성화
                 completeBtn.setAttribute('data-bs-toggle', 'tooltip');
@@ -1439,6 +1441,8 @@
                 completeBtn.style.display = 'block';
                 completeBtn.innerHTML = '<i class="fas fa-check me-1"></i>완료처리';
                 completeBtn.className = 'btn btn-sm btn-success';
+                completeBtn.style.height = '70%';
+                completeBtn.style.padding = '0.2rem 0.5rem';
                 completeBtn.title = '설계평가를 완료 처리합니다';
                 completeBtn.disabled = false;  // 명시적으로 활성화
                 completeBtn.setAttribute('data-bs-toggle', 'tooltip');
