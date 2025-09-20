@@ -157,12 +157,6 @@
             <!-- 툴팁 안내 메시지 (기본 서비스용) -->
             <div class="row mt-3">
                 <div class="col-12">
-                    <div class="text-center">
-                        <small class="text-muted">
-                            <i class="fas fa-lightbulb me-1"></i>
-                            각 서비스의 <strong>"자세히 보기"</strong> 버튼에 마우스를 올려보세요!
-                        </small>
-                    </div>
                 </div>
             </div>
 
