@@ -1716,10 +1716,17 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
             ws = wb[control]
             fill_sheet(ws, text_data, answers)
             
-            # 스킵된 통제인 경우 C12셀을 공란으로 처리
+            # 스킵된 통제인 경우 C12셀에 스킵 이유 표시
             if control in skipped_controls:
-                ws['C12'] = ''
-                print(f"🔄 {control} 스킵된 통제이므로 C12셀을 공란으로 처리")
+                # text_data에서 스킵 이유 가져오기 (B2 또는 C2에 있음)
+                skip_reason = text_data.get('C2') or text_data.get('B2') or 'N/A (해당없음)'
+                ws['C12'] = skip_reason
+                # 행 높이도 조정
+                value = str(skip_reason)
+                num_lines = value.count('\n') + 1
+                approx_lines = num_lines + (len(value) // 50)
+                ws.row_dimensions[12].height = 15 * approx_lines
+                print(f"🔄 {control} 스킵된 통제이므로 C12셀에 스킵 이유 표시: {skip_reason[:50]}...")
             
             processed_controls.append(control)
             print(f"✓ {control} 처리 완료")
