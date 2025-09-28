@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
-from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, get_user_evaluation_sessions, delete_evaluation_session, create_evaluation_structure, log_user_activity, get_db, get_or_create_evaluation_header, get_rcm_detail_mappings
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, get_user_evaluation_sessions, delete_evaluation_session, create_evaluation_structure, log_user_activity, get_db, get_or_create_evaluation_header, get_rcm_detail_mappings, archive_design_evaluation_session, unarchive_design_evaluation_session
 from snowball_link5 import get_user_info, is_logged_in
 import sys
 import os
@@ -1301,3 +1301,129 @@ def download_evaluation_excel(rcm_id):
             'success': False,
             'message': error_msg
         }), 500
+
+@bp_link6.route('/api/design-evaluation/archive', methods=['POST'])
+@login_required
+def archive_design_evaluation_api():
+    """설계평가 세션 Archive 처리 API"""
+    user_info = get_user_info()
+    data = request.get_json()
+
+    rcm_id = data.get('rcm_id')
+    evaluation_session = data.get('evaluation_session')
+
+    if not rcm_id or not evaluation_session:
+        return jsonify({
+            'success': False,
+            'message': 'RCM ID와 평가 세션이 필요합니다.'
+        })
+
+    try:
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
+        with get_db() as conn:
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user archiving RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+
+                if not access_check:
+                    return jsonify({
+                        'success': False,
+                        'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                    })
+
+        # 세션 Archive 처리
+        success = archive_design_evaluation_session(rcm_id, user_info['user_id'], evaluation_session)
+
+        if success:
+            # 활동 로그 기록
+            log_user_activity(user_info, 'DESIGN_EVALUATION_ARCHIVE',
+                             f'설계평가 세션 Archive - {evaluation_session}',
+                             f'/api/design-evaluation/archive',
+                             request.remote_addr, request.headers.get('User-Agent'))
+
+            return jsonify({
+                'success': True,
+                'message': f'설계평가 세션 "{evaluation_session}"이 Archive 처리되었습니다.'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': '해당 평가 세션을 찾을 수 없습니다.'
+            })
+
+    except Exception as e:
+        print(f"설계평가 Archive 처리 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'Archive 처리 중 오류가 발생했습니다.'
+        })
+
+@bp_link6.route('/api/design-evaluation/unarchive', methods=['POST'])
+@login_required
+def unarchive_design_evaluation_api():
+    """설계평가 세션 Unarchive 처리 API"""
+    user_info = get_user_info()
+    data = request.get_json()
+
+    rcm_id = data.get('rcm_id')
+    evaluation_session = data.get('evaluation_session')
+
+    if not rcm_id or not evaluation_session:
+        return jsonify({
+            'success': False,
+            'message': 'RCM ID와 평가 세션이 필요합니다.'
+        })
+
+    try:
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
+        with get_db() as conn:
+            # 관리자인지 먼저 확인
+            if user_info.get('admin_flag') == 'Y':
+                sys.stderr.write(f"[DEBUG] Admin user unarchiving RCM {rcm_id}\n")
+                sys.stderr.flush()
+            else:
+                # 일반 사용자는 명시적 권한 확인
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+
+                if not access_check:
+                    return jsonify({
+                        'success': False,
+                        'message': '해당 RCM에 대한 접근 권한이 없습니다.'
+                    })
+
+        # 세션 Unarchive 처리
+        success = unarchive_design_evaluation_session(rcm_id, user_info['user_id'], evaluation_session)
+
+        if success:
+            # 활동 로그 기록
+            log_user_activity(user_info, 'DESIGN_EVALUATION_UNARCHIVE',
+                             f'설계평가 세션 Unarchive - {evaluation_session}',
+                             f'/api/design-evaluation/unarchive',
+                             request.remote_addr, request.headers.get('User-Agent'))
+
+            return jsonify({
+                'success': True,
+                'message': f'설계평가 세션 "{evaluation_session}"이 복원되었습니다.'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': '해당 평가 세션을 찾을 수 없습니다.'
+            })
+
+    except Exception as e:
+        print(f"설계평가 Unarchive 처리 오류: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'Unarchive 처리 중 오류가 발생했습니다.'
+        })

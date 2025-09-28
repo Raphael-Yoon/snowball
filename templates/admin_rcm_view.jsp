@@ -111,21 +111,30 @@
                             <table class="table table-striped table-hover" id="rcmTable">
                                 <thead>
                                     <tr>
-                                        <th width="8%">통제코드</th>
-                                        <th width="15%">통제명</th>
-                                        <th width="25%">통제활동설명</th>
-                                        <th width="8%">핵심통제</th>
+                                        <th width="7%">통제코드</th>
+                                        <th width="7%">핵심통제</th>
+                                        <th width="12%">통제명</th>
+                                        <th width="20%">통제활동설명</th>
                                         <th width="8%">통제주기</th>
                                         <th width="8%">통제유형</th>
                                         <th width="8%">통제구분</th>
-                                        <th width="10%">모집단</th>
-                                        <th width="10%">테스트절차</th>
+                                        <th width="12%">모집단</th>
+                                        <th width="18%">테스트절차</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for detail in rcm_details %}
                                     <tr>
                                         <td><code>{{ detail.control_code }}</code></td>
+                                        <td class="text-center">
+                                            {% if detail.key_control and detail.key_control.upper() == 'Y' %}
+                                                <span class="badge bg-danger">핵심</span>
+                                            {% elif detail.key_control %}
+                                                <span class="badge bg-secondary">일반</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">미설정</span>
+                                            {% endif %}
+                                        </td>
                                         <td>
                                             <span class="text-truncate-custom" title="{{ detail.control_name }}">
                                                 <strong>{{ detail.control_name }}</strong>
@@ -135,15 +144,6 @@
                                             {% if detail.control_description %}
                                                 <span class="text-truncate-custom" title="{{ detail.control_description }}">
                                                     {{ detail.control_description }}
-                                                </span>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if detail.key_control %}
-                                                <span class="badge bg-{{ 'danger' if detail.key_control.upper() == 'Y' else 'secondary' }}">
-                                                    {{ '핵심' if detail.key_control.upper() == 'Y' else '일반' }}
                                                 </span>
                                             {% else %}
                                                 <span class="text-muted">-</span>
