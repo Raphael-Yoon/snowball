@@ -478,26 +478,48 @@
                             </div>
                             <div class="modal-body">
                                 <p class="text-muted mb-3">RCM: <strong>${rcmName}</strong></p>
-                                ${sessions.length > 0 ? 
+                                ${sessions.length > 0 ?
                                     sessions.map(session => `
-                                        <div class="card mb-3">
+                                        <div class="card mb-3 ${session.evaluation_status === 'ARCHIVED' ? 'border-secondary' : (session.completed_date ? 'border-success' : 'border-warning')}">
                                             <div class="card-body">
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <div>
-                                                        <h6 class="mb-1">${session.evaluation_session}</h6>
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <h6 class="mb-0 me-2">${session.evaluation_session}</h6>
+                                                            ${session.evaluation_status === 'ARCHIVED' ?
+                                                                '<span class="badge bg-secondary"><i class="fas fa-archive me-1"></i>Archive</span>' :
+                                                                (session.completed_date ?
+                                                                    '<span class="badge bg-success"><i class="fas fa-check me-1"></i>완료</span>' :
+                                                                    '<span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>진행중</span>')
+                                                            }
+                                                        </div>
                                                         <small class="text-muted">
-                                                            시작: ${new Date(session.start_date).toLocaleDateString()} | 
-                                                            최종 수정: ${new Date(session.last_updated).toLocaleDateString()} | 
+                                                            시작: ${new Date(session.start_date).toLocaleDateString()} |
+                                                            최종 수정: ${new Date(session.last_updated).toLocaleDateString()} |
                                                             평가된 통제: ${session.evaluated_controls}개
+                                                            ${session.completed_date ?
+                                                                ` | 완료일: ${new Date(session.completed_date).toLocaleDateString()}` :
+                                                                ` | 진행률: ${session.progress_percentage.toFixed(1)}%`
+                                                            }
                                                         </small>
                                                     </div>
                                                     <div class="btn-group">
-                                                        <button class="btn btn-sm btn-primary" onclick="resumeEvaluation(${rcmId}, '${session.evaluation_session}', ${session.header_id})">
-                                                            <i class="fas fa-play me-1"></i>이어하기
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteEvaluationSession(${rcmId}, '${session.evaluation_session}')">
-                                                            <i class="fas fa-trash me-1"></i>삭제
-                                                        </button>
+                                                        ${session.evaluation_status === 'ARCHIVED' ?
+                                                            `<button class="btn btn-sm btn-outline-secondary" onclick="unarchiveEvaluationSession(${rcmId}, '${session.evaluation_session}')">
+                                                                <i class="fas fa-undo me-1"></i>복원
+                                                            </button>` :
+                                                            (session.completed_date ?
+                                                                `<button class="btn btn-sm btn-success" onclick="resumeEvaluation(${rcmId}, '${session.evaluation_session}', ${session.header_id})">
+                                                                    <i class="fas fa-eye me-1"></i>보기
+                                                                </button>` :
+                                                                `<button class="btn btn-sm btn-primary" onclick="resumeEvaluation(${rcmId}, '${session.evaluation_session}', ${session.header_id})">
+                                                                    <i class="fas fa-play me-1"></i>이어하기
+                                                                </button>`)
+                                                        }
+                                                        ${session.evaluation_status !== 'ARCHIVED' ?
+                                                            `<button class="btn btn-sm btn-outline-danger" onclick="deleteEvaluationSession(${rcmId}, '${session.evaluation_session}')">
+                                                                <i class="fas fa-trash me-1"></i>삭제
+                                                            </button>` : ''}
                                                     </div>
                                                 </div>
                                             </div>
@@ -564,6 +586,38 @@
             .catch(error => {
                 console.error('세션 삭제 오류:', error);
                 alert('[EVAL-003] 세션 삭제 중 오류가 발생했습니다.');
+            });
+        }
+
+        // Archive된 평가 세션 복원
+        function unarchiveEvaluationSession(rcmId, sessionName) {
+            if (!confirm(`"${sessionName}" 세션을 복원하시겠습니까?\n\n복원하면 다시 일반 설계평가 목록에 표시됩니다.`)) {
+                return;
+            }
+
+            fetch('/api/design-evaluation/unarchive', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    rcm_id: rcmId,
+                    evaluation_session: sessionName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('세션이 복원되었습니다.');
+                    // 모달 새로고침을 위해 세션 목록 다시 로드
+                    showSessionSelection(rcmId, ''); // rcmName은 비워도 됨
+                } else {
+                    alert('[EVAL-004] 복원 중 오류가 발생했습니다: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('세션 복원 오류:', error);
+                alert('[EVAL-005] 세션 복원 중 오류가 발생했습니다.');
             });
         }
     </script>

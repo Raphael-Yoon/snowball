@@ -33,9 +33,10 @@
                     </div>
                     <div class="card-body">
                         <p class="card-text">
-                            <strong>운영평가(Operating Effectiveness Testing)</strong>는 통제가 실제로 의도된 대로 작동하고 있는지를 평가하는 과정입니다.
+                            <strong>운영평가(Operating Effectiveness Testing)</strong>는 설계평가가 완료된 통제가 실제로 의도된 대로 작동하고 있는지를 평가하는 과정입니다.
                         </p>
                         <ul>
+                            <li><strong>전제조건:</strong> 설계평가가 완료되어 통제 설계가 적정하다고 평가된 통제만 대상</li>
                             <li><strong>목적:</strong> 통제가 일정 기간 동안 일관되게 효과적으로 운영되고 있는지 검증</li>
                             <li><strong>범위:</strong> 통제의 실행, 모니터링, 예외 처리 등 운영 현황 전반</li>
                             <li><strong>결과:</strong> 운영 효과성 결론 및 운영상 개선점 도출</li>
@@ -45,48 +46,69 @@
             </div>
         </div>
 
-        <!-- 운영평가 기능들 -->
-        <div class="row g-4">
-            <!-- 표본 기반 운영평가 -->
-            <div class="col-lg-6 col-md-12">
-                <div class="card h-100">
+        <!-- 접근 가능한 RCM 목록 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
                     <div class="card-header">
-                        <h6><i class="fas fa-chart-bar me-2"></i>표본 기반 운영평가</h6>
+                        <h6><i class="fas fa-folder-open me-2"></i>보유 RCM 목록</h6>
                     </div>
                     <div class="card-body">
-                        <p>통계적 표본 추출을 통한 체계적인 운영평가를 수행합니다.</p>
-                        <ul class="list-unstyled">
-                            <li><i class="fas fa-check text-warning me-2"></i>표본 크기 결정</li>
-                            <li><i class="fas fa-check text-warning me-2"></i>무작위 표본 추출</li>
-                            <li><i class="fas fa-check text-warning me-2"></i>통계적 결론 도출</li>
-                        </ul>
-                        <div class="d-grid">
-                            <a href="/user/operation-evaluation/sampling" class="btn btn-warning">
-                                <i class="fas fa-chart-line me-1"></i>표본 평가 시작
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                        {% if user_rcms %}
+                        <div class="row g-3">
+                            {% for rcm in user_rcms %}
+                            <div class="col-lg-6 col-md-12">
+                                <div class="card {% if rcm.design_evaluation_completed %}border-warning{% else %}border-secondary{% endif %} h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-truncate" title="{{ rcm.rcm_name }}">
+                                            <i class="fas fa-file-alt me-2 {% if rcm.design_evaluation_completed %}text-warning{% else %}text-muted{% endif %}"></i>{{ rcm.rcm_name }}
+                                        </h6>
+                                        <p class="card-text">
+                                            <small class="text-muted">
+                                                <i class="fas fa-building me-1"></i>{{ rcm.company_name }}<br>
+                                                <i class="fas fa-calendar me-1"></i>{{ rcm.created_date.strftime('%Y-%m-%d') if rcm.created_date else '-' }}
+                                            </small>
+                                        </p>
 
-            <!-- 전수 검사 운영평가 -->
-            <div class="col-lg-6 col-md-12">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h6><i class="fas fa-list-check me-2"></i>전수 검사 운영평가</h6>
-                    </div>
-                    <div class="card-body">
-                        <p>모든 거래나 사건에 대한 전수 검사를 통한 운영평가입니다.</p>
-                        <ul class="list-unstyled">
-                            <li><i class="fas fa-check text-danger me-2"></i>100% 검사 수행</li>
-                            <li><i class="fas fa-check text-danger me-2"></i>완전한 결론 도출</li>
-                            <li><i class="fas fa-check text-danger me-2"></i>예외사항 완전 식별</li>
-                        </ul>
-                        <div class="d-grid">
-                            <a href="/user/operation-evaluation/full" class="btn btn-danger">
-                                <i class="fas fa-tasks me-1"></i>전수 평가 시작
-                            </a>
+                                        {% if rcm.design_evaluation_completed %}
+                                        <div class="mb-3">
+                                            <small class="text-muted fw-bold">완료된 설계평가 세션:</small>
+                                            {% for session in rcm.completed_design_sessions %}
+                                            <div class="d-grid mt-2">
+                                                <form method="POST" action="/operation-evaluation/rcm/{{ rcm.rcm_id }}" style="display: inline;">
+                                                    <input type="hidden" name="design_evaluation_session" value="{{ session.evaluation_session }}">
+                                                    <button type="submit" class="btn {% if session.operation_completed_count > 0 %}btn-warning{% else %}btn-outline-warning{% endif %} btn-sm w-100">
+                                                        <i class="fas fa-chart-line me-1"></i>{{ session.evaluation_session }}
+                                                        <small class="ms-2 text-muted">({{ session.completed_date[:10] if session.completed_date else '-' }})</small>
+                                                        {% if session.operation_completed_count > 0 %}
+                                                        <br><small class="text-dark">진행중: {{ session.operation_completed_count }}/{{ rcm.key_control_count }}</small>
+                                                        {% else %}
+                                                        <br><small class="text-muted">시작하기</small>
+                                                        {% endif %}
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% else %}
+                                        <div class="d-grid">
+                                            <button class="btn btn-secondary btn-sm" disabled title="설계평가 완료 후 이용 가능">
+                                                <i class="fas fa-lock me-1"></i>설계평가 필요
+                                            </button>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                            <p class="text-muted">접근 가능한 RCM이 없습니다.</p>
+                            <small class="text-muted">관리자에게 RCM 접근 권한을 요청하세요.</small>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

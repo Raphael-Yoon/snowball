@@ -117,11 +117,12 @@
                                 <thead>
                                     <tr>
                                         <th width="10%">통제코드</th>
-                                        <th width="18%">통제명</th>
-                                        <th width="25%">통제활동 설명</th>
-                                        <th width="8%">통제주기</th>
-                                        <th width="8%">통제유형</th>
-                                        <th width="8%">통제구분</th>
+                                        <th width="16%">통제명</th>
+                                        <th width="22%">통제활동 설명</th>
+                                        <th width="7%">통제주기</th>
+                                        <th width="7%">통제유형</th>
+                                        <th width="7%">통제구분</th>
+                                        <th width="6%">핵심통제</th>
                                         <th width="11%">모집단</th>
                                         <th width="12%">테스트절차</th>
                                     </tr>
@@ -158,6 +159,13 @@
                                             <span class="text-truncate-custom" title="{{ detail.control_nature or '-' }}">
                                                 {{ detail.control_nature or '-' }}
                                             </span>
+                                        </td>
+                                        <td>
+                                            {% if detail.key_control and detail.key_control.upper() == 'Y' %}
+                                                핵심
+                                            {% else %}
+                                                비핵심
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <span class="text-truncate-custom" title="{{ detail.population or '-' }}">

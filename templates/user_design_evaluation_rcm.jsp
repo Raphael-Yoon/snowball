@@ -100,6 +100,9 @@
                             <button id="completeEvaluationBtn" class="btn btn-sm btn-success" onclick="completeEvaluation()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;" title="설계평가를 완료 처리합니다" data-bs-toggle="tooltip">
                                 <i class="fas fa-check me-1"></i>완료처리
                             </button>
+                            <button id="archiveEvaluationBtn" class="btn btn-sm btn-secondary" onclick="archiveEvaluation()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;" title="완료된 설계평가를 Archive 처리합니다" data-bs-toggle="tooltip">
+                                <i class="fas fa-archive me-1"></i>Archive
+                            </button>
                             <button class="btn btn-sm btn-warning" onclick="resetAllEvaluations()" style="height: 70%; padding: 0.2rem 0.5rem;">
                                 <i class="fas fa-undo me-1"></i>초기화
                             </button>
@@ -116,13 +119,14 @@
                                     <tr>
                                         <th width="6%">통제코드</th>
                                         <th width="12%">통제명</th>
-                                        <th width="25%">통제활동설명</th>
+                                        <th width="23%">통제활동설명</th>
                                         <th width="7%">통제주기</th>
                                         <th width="7%">통제유형</th>
+                                        <th width="6%">핵심통제</th>
                                         <th width="8%">기준통제 매핑</th>
                                         <th width="8%">설계평가</th>
                                         <th width="9%">평가결과</th>
-                                        <th width="18%">조치사항</th>
+                                        <th width="14%">조치사항</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -139,6 +143,15 @@
                                         </td>
                                         <td>{{ detail.control_frequency or '-' }}</td>
                                         <td>{{ detail.control_type or '-' }}</td>
+                                        <td>
+                                            {% if detail.key_control and detail.key_control.upper() == 'Y' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-star me-1"></i>핵심
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">일반</span>
+                                            {% endif %}
+                                        </td>
                                         <td>
                                             {% if mapping_info %}
                                                 <span class="badge bg-success" title="{{ mapping_info.std_control_name }}" data-bs-toggle="tooltip">
@@ -1416,12 +1429,13 @@
             // 상태 업데이트
             const statusElement = document.getElementById('evaluationStatus');
             const completeBtn = document.getElementById('completeEvaluationBtn');
+            const archiveBtn = document.getElementById('archiveEvaluationBtn');
             const downloadBtn = document.getElementById('downloadBtn');
-            
+
             // 상태 표시 및 버튼 표시 로직
             statusElement.textContent = statusText;
             statusElement.className = `badge ${statusClass}`;
-            
+
             // 버튼 표시 및 텍스트 설정
             if (isCompleted) {
                 // 완료 상태면 완료취소 버튼 표시
@@ -1433,8 +1447,9 @@
                 completeBtn.title = '설계평가 완료를 취소합니다';
                 completeBtn.disabled = false;  // 명시적으로 활성화
                 completeBtn.setAttribute('data-bs-toggle', 'tooltip');
-                
-                // 완료 상태에서만 다운로드 버튼 표시
+
+                // 완료 상태에서만 Archive 버튼과 다운로드 버튼 표시
+                archiveBtn.style.display = 'block';
                 downloadBtn.style.display = 'block';
             } else if (evaluatedCount === totalControls) {
                 // 모든 개별 평가가 완료되었지만 헤더 완료가 안된 경우
@@ -1446,11 +1461,13 @@
                 completeBtn.title = '설계평가를 완료 처리합니다';
                 completeBtn.disabled = false;  // 명시적으로 활성화
                 completeBtn.setAttribute('data-bs-toggle', 'tooltip');
-                
-                // 아직 완료되지 않았으므로 다운로드 버튼 숨김
+
+                // 아직 완료되지 않았으므로 Archive 버튼과 다운로드 버튼 숨김
+                archiveBtn.style.display = 'none';
                 downloadBtn.style.display = 'none';
             } else {
                 completeBtn.style.display = 'none';
+                archiveBtn.style.display = 'none';
                 downloadBtn.style.display = 'none';
             }
         }
@@ -1769,7 +1786,65 @@
                 });
             }
         }
-        
+
+        // 평가 Archive 처리
+        function archiveEvaluation() {
+            const currentSession = sessionStorage.getItem('currentEvaluationSession');
+            if (!currentSession) {
+                alert('[DESIGN-018] 평가 세션 정보를 찾을 수 없습니다.');
+                return;
+            }
+
+            const headerCompletedDate = sessionStorage.getItem('headerCompletedDate');
+            const isCompleted = headerCompletedDate && headerCompletedDate !== 'null' && headerCompletedDate !== null && headerCompletedDate.trim() !== '';
+
+            if (!isCompleted) {
+                alert('[DESIGN-019] 완료된 설계평가만 Archive 처리할 수 있습니다.');
+                return;
+            }
+
+            if (!confirm(`설계평가 세션 "${currentSession}"을 Archive 처리하시겠습니까?\n\nArchive 처리하면 해당 세션이 목록에서 숨겨지며,\n필요시 복원할 수 있습니다.`)) {
+                return;
+            }
+
+            const archiveBtn = document.getElementById('archiveEvaluationBtn');
+            const originalText = archiveBtn.innerHTML;
+            archiveBtn.disabled = true;
+            archiveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>처리 중...';
+
+            fetch('/api/design-evaluation/archive', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    rcm_id: {{ rcm_id }},
+                    evaluation_session: currentSession
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Archive 처리가 완료되었습니다.');
+                    // 설계평가 목록 페이지로 이동
+                    window.location.href = '/user/design-evaluation';
+                } else {
+                    alert('[DESIGN-020] Archive 처리 중 오류가 발생했습니다: ' + data.message);
+                    // 버튼 원복
+                    archiveBtn.disabled = false;
+                    archiveBtn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Archive 처리 오류:', error);
+                alert('[DESIGN-021] Archive 처리 중 오류가 발생했습니다: ' + error.message);
+                // 버튼 원복
+                archiveBtn.disabled = false;
+                archiveBtn.innerHTML = originalText;
+            });
+        }
+
         // 서버에 평가 결과 저장 (전체 평가용)
         function saveEvaluationToServer(controlIndex, evaluation) {
             const currentSession = sessionStorage.getItem('currentEvaluationSession');
