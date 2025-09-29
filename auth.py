@@ -462,21 +462,24 @@ def init_db():
             if 'completion_date' not in rcm_columns:
                 conn.execute('ALTER TABLE sb_rcm ADD COLUMN completion_date TIMESTAMP DEFAULT NULL')
         except Exception as e:
-        
+            pass
+
         # sb_rcm 테이블에 original_filename 컬럼 추가 (없는 경우)
         try:
             rcm_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm)').fetchall()]
             if 'original_filename' not in rcm_columns:
                 conn.execute('ALTER TABLE sb_rcm ADD COLUMN original_filename TEXT DEFAULT NULL')
         except Exception as e:
-        
+            pass
+
         # sb_rcm_detail 테이블에 mapping_status 컬럼 추가 (없는 경우)
         try:
             rcm_detail_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm_detail)').fetchall()]
             if 'mapping_status' not in rcm_detail_columns:
                 conn.execute('ALTER TABLE sb_rcm_detail ADD COLUMN mapping_status TEXT DEFAULT NULL')  # NULL, 'no_mapping', 'mapped'
         except Exception as e:
-        
+            pass
+
         conn.commit()
 
 def generate_otp():
@@ -686,6 +689,7 @@ def log_user_activity(user_info, action_type, page_name, url_path, ip_address, u
             ))
             conn.commit()
     except Exception as e:
+        pass
 
 def get_user_activity_logs(limit=100, offset=0, user_id=None):
     """사용자 활동 로그 조회"""

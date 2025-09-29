@@ -600,6 +600,7 @@ def admin_rcm_save_mapping():
                     
         except Exception as e:
             # 실패해도 계속 진행
+            pass
         
         # 세션에서 업로드 정보 삭제 및 임시 파일 삭제
         del session[upload_key]
@@ -610,6 +611,7 @@ def admin_rcm_save_mapping():
                 os.unlink(file_path)
         except PermissionError as e:
             # 파일 삭제 실패는 무시 (시스템이 나중에 정리함)
+            pass
         
         return jsonify({
             'success': True,
