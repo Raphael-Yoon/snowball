@@ -151,6 +151,7 @@ def user_operation_evaluation_rcm():
 
             conn.commit()
     except Exception as e:
+        pass
 
     # 기존 운영평가 내역 불러오기 (Header-Line 구조)
     try:

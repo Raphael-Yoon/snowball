@@ -410,7 +410,8 @@ def load_evaluation_data_api(rcm_id):
                         if result:
                             current_header_id = result['header_id']
                 except Exception as e:
-            
+                    pass
+
             if current_header_id:
                 image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(current_header_id), control_code)
                 
@@ -439,7 +440,8 @@ def load_evaluation_data_api(rcm_id):
                                             'url': f"/static/{relative_path}"
                                         })
             else:
-            
+                pass
+
             evaluation_dict[control_code] = {
                 'description_adequacy': eval_data['description_adequacy'],
                 'improvement_suggestion': eval_data['improvement_suggestion'],
@@ -816,7 +818,8 @@ def download_evaluation_excel(rcm_id):
                     raise
             openpyxl.packaging.manifest.Manifest._register_mimetypes = patched_register
         except Exception as patch_error:
-    
+            pass
+
     user_info = get_user_info()
     
     try:

@@ -132,46 +132,8 @@ def reset_interview_session():
     print("인터뷰 세션이 초기화되었습니다 (로그인 세션 보존)")
 
 
-def log_session_info(route_name):
-    """세션 정보를 콘솔에 출력하는 디버깅 함수"""
-    try:
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        print(f"\n=== [{timestamp}] {route_name} 접근 ===")
-        print(f"IP: {request.remote_addr}")
-        print(f"User-Agent: {request.headers.get('User-Agent', 'Unknown')[:50]}...")
-        
-        if 'user_id' in session:
-            try:
-                current_user = get_current_user()
-                if current_user:
-                    print(f"로그인 상태: ✓")
-                    print(f"사용자 ID: {session['user_id']}")
-                    print(f"사용자 이름: {current_user['user_name']}")
-                    print(f"이메일: {current_user['user_email']}")
-                    print(f"세션 로그인 시간: {session.get('login_time', 'N/A')}")
-                    print(f"세션 마지막 활동: {session.get('last_activity', 'N/A')}")
-                    print(f"DB 마지막 로그인: {current_user.get('last_login_date', 'N/A')}")
-                    print(f"세션 영구 설정: {session.permanent}")
-                else:
-                    print(f"로그인 상태: ✗ (세션은 있으나 사용자 정보 없음)")
-            except Exception as e:
-                print(f"사용자 정보 조회 오류: {e}")
-                print(f"세션 사용자 ID: {session.get('user_id', 'N/A')}")
-        else:
-            print(f"로그인 상태: ✗ (세션 없음)")
-        
-        print(f"세션 키: {list(session.keys())}")
-        print("=" * 50)
-    except Exception as e:
-        print(f"log_session_info 전체 오류: {e}")
-        import traceback
-        traceback.print_exc()
-
 @app.route('/')
 def index():
-    log_session_info("메인 페이지")
     
     # 자동 로그인 로직 제거됨 (수동 로그인으로 변경)
     
@@ -195,7 +157,6 @@ def login():
     try:
         from datetime import datetime  # datetime import 추가
         print("로그인 페이지 접근 시작")
-        # log_session_info("로그인 페이지")  # 일시적으로 비활성화
         action = None
         if request.method == 'POST':
             action = request.form.get('action')
@@ -373,7 +334,6 @@ def login():
 
 @app.route('/logout')
 def logout():
-    log_session_info("로그아웃")
     session.clear()
     return redirect(url_for('index'))
 
@@ -387,49 +347,6 @@ def extend_session():
         return jsonify({'success': True, 'message': '세션이 연장되었습니다.'})
     return jsonify({'success': False, 'message': '로그인이 필요합니다.'})
 
-@app.route('/debug_info')
-def debug_info():
-    """운영서버 디버깅 정보"""
-    host = request.headers.get('Host', '')
-    
-    # 운영서버에서만 접근 가능
-    if not host.startswith('snowball.pythonanywhere.com'):
-        return "디버그 정보는 운영서버에서만 확인 가능합니다.", 403
-    
-    debug_data = {
-        'host': host,
-        'remote_addr': request.remote_addr,
-        'user_agent': request.headers.get('User-Agent'),
-        'pythonanywhere_auth_code': PYTHONANYWHERE_AUTH_CODE,
-        'session_data': dict(session),
-        'session_config': {
-            'secure': app.config.get('SESSION_COOKIE_SECURE'),
-            'httponly': app.config.get('SESSION_COOKIE_HTTPONLY'),
-            'samesite': app.config.get('SESSION_COOKIE_SAMESITE'),
-            'max_age': app.config.get('SESSION_COOKIE_MAX_AGE')
-        },
-        'environment': {
-            'PYTHONANYWHERE_DOMAIN': os.getenv('PYTHONANYWHERE_DOMAIN'),
-            'SERVER_NAME': os.getenv('SERVER_NAME'),
-            'is_production': is_production
-        }
-    }
-    
-    # 사용자 정보 확인
-    try:
-        user = find_user_by_email('snowball2727@naver.com')
-        debug_data['user_exists'] = user is not None
-        if user:
-            debug_data['user_info'] = {
-                'user_id': user.get('user_id'),
-                'user_name': user.get('user_name'),
-                'user_email': user.get('user_email'),
-                'admin_flag': user.get('admin_flag')
-            }
-    except Exception as e:
-        debug_data['user_check_error'] = str(e)
-    
-    return f"<pre>{json.dumps(debug_data, indent=2, ensure_ascii=False)}</pre>"
 
 @app.route('/health')
 def health_check():
@@ -488,7 +405,6 @@ def link0():
 
 @app.route('/link1')
 def link1():
-    log_session_info("RCM 페이지")
     print("RCM Function")
     user_info = get_user_info()
     users = user_info['user_name'] if user_info else "Guest"
@@ -513,7 +429,6 @@ def link1():
 
 @app.route('/link2', methods=['GET', 'POST'])
 def link2():
-    log_session_info("Interview 페이지")
     print("Interview Function")
     
     user_info = get_user_info()
@@ -659,11 +574,6 @@ def link2():
     if current_question is None:
         current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
     
-    # 9번 질문 디버깅 추가
-    if current_question['index'] == 9:
-    
-    # 13번 질문 디버깅 추가
-    if current_question['index'] == 13:
 
     user_info = get_user_info()
     users = user_info['user_name'] if user_info else "User List"
@@ -701,10 +611,6 @@ def save_to_excel():
     session_ai_review = session.get('enable_ai_review', False)
     enable_ai_review = env_ai_review or session_ai_review
     
-    print(f"  - 환경변수 ENABLE_AI_REVIEW: {os.getenv('ENABLE_AI_REVIEW', 'false')} -> {env_ai_review}")
-    print(f"  - 세션 enable_ai_review: {session_ai_review}")
-    print(f"  - 최종 enable_ai_review: {enable_ai_review}")
-    print(f"  - OPENAI_API_KEY 설정 여부: {'설정됨' if os.getenv('OPENAI_API_KEY') else '설정되지 않음'}")
     
     # 로그인한 사용자의 AI 검토 횟수 확인
     if is_logged_in():
@@ -731,7 +637,6 @@ def save_to_excel():
 
 @app.route('/link3')
 def link3():
-    log_session_info("Operation Test 페이지")
     print("Paper Function")
     user_info = get_user_info()
     
@@ -747,7 +652,6 @@ def link3():
 
 @app.route('/link4')
 def link4():
-    log_session_info("영상자료 페이지")
     print("Video Function")
     user_info = get_user_info()
     
@@ -763,7 +667,6 @@ def link4():
 
 @app.route('/link5', methods=['GET'])
 def link5():
-    log_session_info("AI 페이지")
     return render_template('link5.jsp', 
                          is_logged_in=is_logged_in(),
                          user_info=get_user_info(),
@@ -771,7 +674,6 @@ def link5():
 
 @app.route('/link6', methods=['GET'])
 def link6():
-    log_session_info("AI Interview 페이지")
     return render_template('link6.jsp', 
                          is_logged_in=is_logged_in(),
                          user_info=get_user_info(),
@@ -779,7 +681,6 @@ def link6():
 
 @app.route('/link9')
 def link9():
-    log_session_info("기타 기능 페이지")
     print("ETC Function")
     return render_template('link9.jsp', 
                          is_logged_in=is_logged_in(),

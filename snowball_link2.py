@@ -86,6 +86,7 @@ def get_progress_status(task_id):
                 data = json.load(f)
                 return data
         except (IOError, json.JSONDecodeError) as e:
+            pass
     return {
         'percentage': 0,
         'current_task': 'AI 검토를 준비하고 있습니다...',
@@ -133,6 +134,7 @@ def reset_progress(task_id):
         if os.path.exists(progress_file):
             os.unlink(progress_file)
     except IOError as e:
+        pass
 
 # ITGC 통제 정의 (반복 코드 제거를 위한 데이터 구조)
 ITGC_CONTROLS = {
@@ -431,7 +433,8 @@ def get_conditional_questions(answers):
     
     # 4번 답변 디버깅 정보 출력
     if len(answers) > 4:
-    
+        pass
+
     # Cloud 스킵 조건: 4번 클라우드 타입 + 5번 SOC1 Report 발행 여부 (Y)
     has_soc1_report = len(answers) > 5 and answers[5] and str(answers[5]).upper() == 'Y'
     
@@ -590,6 +593,11 @@ def clear_skipped_answers(answers, textarea_answers):
                 textarea_answers[i] = ''
     
     for start, end in skip_ranges:
+        for i in range(start, end + 1):
+            if i < len(answers):
+                answers[i] = ''
+            if i < len(textarea_answers):
+                textarea_answers[i] = ''
 
 def set_sheet_tab_color_for_skipped_controls(wb, answers):
     """
@@ -604,7 +612,8 @@ def set_sheet_tab_color_for_skipped_controls(wb, answers):
                 # 시트 탭을 회색으로 설정 (RGB: 808080)
                 ws.sheet_properties.tabColor = "808080"
             except Exception as e:
-    
+                pass
+
 
 # --- 통제별 검토 기준 정의 (수기 수정 가능) ---
 # 공통 감사기준 (엄격한 전문 접근)
@@ -1651,6 +1660,7 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         if control_needs_ai_review and 'AI_Review' in text_data and isinstance(text_data['AI_Review'], dict):
             summary_ai_reviews[control] = text_data['AI_Review']
         elif control_needs_ai_review:
+            pass
 
         # AI 검토 결과가 있는 경우와 없는 경우에 따라 C14 처리 (선택된 통제만)
         ai_review_processed = False
@@ -1692,9 +1702,11 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
     # 처리 결과 요약 출력
     if failed_controls:
         for control, error in failed_controls:
-    
+            pass
+
     # 4. Summary 시트 처리
     for control in summary_ai_reviews.keys():
+        pass
     
     if enable_ai_review and summary_ai_reviews:
         # AI 검토가 활성화된 경우 Summary 시트 생성
@@ -1818,12 +1830,14 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                     
         except Exception as e:
             # Summary 시트 오류가 발생해도 전체 프로세스는 계속 진행
+            pass
     else:
         # AI 검토가 비활성화된 경우 기존 Summary 시트 삭제
         if 'Summary' in wb.sheetnames:
             try:
                 wb.remove(wb['Summary'])
             except Exception as e:
+                pass
 
     # 메모리 버퍼에 저장 (안전한 방식) - 한글 처리 개선
     excel_stream = BytesIO()
@@ -1984,7 +1998,8 @@ def test_conditional_questions():
         skipped_indices = [idx for idx in all_indices if idx not in conditional_indices]
         
         if skipped_indices:
-    
+            pass
+
     # 통제별 N/A 처리 테스트
     
     # 3번 답변이 N인 경우 PC 통제들 테스트
@@ -2025,14 +2040,18 @@ def test_ai_review_feature():
     if 'AI_Review' in result:
         ai_review = result['AI_Review']
         if isinstance(ai_review, dict):
+            pass
         else:
+            pass
 
     # 직접 AI 검토 함수 테스트
     test_content = "사용자 권한 부여 이력이 시스템에 기록되지 않아 모집단 확보가 불가합니다. 새로운 권한 요청 시 승인 절차가 없습니다."
     direct_ai_result = get_ai_review(test_content, 'APD01')
 
     if isinstance(direct_ai_result, dict):
+        pass
     else:
+        pass
 
     return result
 
