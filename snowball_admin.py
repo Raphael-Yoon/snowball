@@ -508,8 +508,6 @@ def admin_rcm_save_mapping():
         
         # 세션에서 업로드 정보 가져오기
         upload_key = f'rcm_upload_{rcm_id}'
-        print(f"[DEBUG] Looking for session key: {upload_key}")
-        print(f"[DEBUG] Available session keys: {list(session.keys())}")
         
         if upload_key not in session:
             return jsonify({'success': False, 'message': f'업로드 정보를 찾을 수 없습니다. 키: {upload_key}, 세션 키들: {list(session.keys())}'})
@@ -590,7 +588,6 @@ def admin_rcm_save_mapping():
                     import shutil
                     shutil.copy2(file_path, permanent_file_path)
                     
-                    print(f"[INFO] 파일 저장됨: {permanent_file_path}")
                     
                     # DB에 새로운 파일 경로 업데이트 (상대 경로로 저장)
                     relative_path = os.path.join(company_name, original_filename)
@@ -602,7 +599,6 @@ def admin_rcm_save_mapping():
                     conn.commit()
                     
         except Exception as e:
-            print(f"[WARNING] 회사별 폴더 파일 저장 실패: {e}")
             # 실패해도 계속 진행
         
         # 세션에서 업로드 정보 삭제 및 임시 파일 삭제
@@ -613,7 +609,6 @@ def admin_rcm_save_mapping():
             if os.path.exists(file_path):
                 os.unlink(file_path)
         except PermissionError as e:
-            print(f"[WARNING] 임시 파일 삭제 실패 (무시됨): {e}")
             # 파일 삭제 실패는 무시 (시스템이 나중에 정리함)
         
         return jsonify({

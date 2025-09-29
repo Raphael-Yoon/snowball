@@ -50,26 +50,39 @@ def user_operation_evaluation():
                          user_rcms=user_rcms,
                          remote_addr=request.remote_addr)
 
-@bp_link7.route('/operation-evaluation/rcm/<int:rcm_id>', methods=['GET', 'POST'])
+@bp_link7.route('/operation-evaluation/rcm', methods=['GET', 'POST'])
 @login_required
-def user_operation_evaluation_rcm(rcm_id):
+def user_operation_evaluation_rcm():
     """RCM별 운영평가 페이지 (설계평가 세션 기반)"""
     user_info = get_user_info()
 
-    # POST로 전달된 설계평가 세션 정보 받기
+    # POST로 전달된 RCM ID와 설계평가 세션 정보 받기
     if request.method == 'POST':
+        rcm_id = request.form.get('rcm_id')
         design_evaluation_session = request.form.get('design_evaluation_session')
+
+
+        if not rcm_id:
+            flash('RCM 정보가 없습니다.', 'error')
+            return redirect(url_for('link7.user_operation_evaluation'))
         if not design_evaluation_session:
             flash('설계평가 세션 정보가 없습니다.', 'error')
             return redirect(url_for('link7.user_operation_evaluation'))
+
         # 세션에 저장
+        session['current_operation_rcm_id'] = int(rcm_id)
         session['current_design_evaluation_session'] = design_evaluation_session
-    else:
-        # GET 요청인 경우 세션에서 가져오기
-        design_evaluation_session = session.get('current_design_evaluation_session')
-        if not design_evaluation_session:
-            flash('운영평가 세션 정보가 없습니다. 설계평가 세션을 선택해주세요.', 'warning')
-            return redirect(url_for('link7.user_operation_evaluation'))
+
+    # POST든 GET이든 세션에서 정수형 rcm_id를 가져옴
+    rcm_id = session.get('current_operation_rcm_id')
+    design_evaluation_session = session.get('current_design_evaluation_session')
+
+    if not rcm_id:
+        flash('RCM 정보가 없습니다. 다시 선택해주세요.', 'error')
+        return redirect(url_for('link7.user_operation_evaluation'))
+    if not design_evaluation_session:
+        flash('설계평가 세션 정보가 없습니다. 다시 선택해주세요.', 'error')
+        return redirect(url_for('link7.user_operation_evaluation'))
 
     # 사용자가 해당 RCM에 접근 권한이 있는지 확인
     user_rcms = get_user_rcms(user_info['user_id'])
@@ -79,8 +92,10 @@ def user_operation_evaluation_rcm(rcm_id):
         flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
         return redirect(url_for('link7.user_operation_evaluation'))
 
+
     # 해당 설계평가 세션이 완료되었는지 확인
     completed_sessions = get_completed_design_evaluation_sessions(rcm_id, user_info['user_id'])
+
     session_found = False
     for session_item in completed_sessions:
         if session_item['evaluation_session'] == design_evaluation_session:
@@ -136,7 +151,6 @@ def user_operation_evaluation_rcm(rcm_id):
 
             conn.commit()
     except Exception as e:
-        print(f"운영평가 데이터 초기화 오류: {e}")
 
     # 기존 운영평가 내역 불러오기 (Header-Line 구조)
     try:
@@ -154,9 +168,8 @@ def user_operation_evaluation_rcm(rcm_id):
             }
     except Exception as e:
         evaluation_dict = {}
-        print(f"운영평가 데이터 로드 오류: {e}")
 
-    log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 운영평가', f'/operation-evaluation/rcm/{rcm_id}',
+    log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 운영평가', '/operation-evaluation/rcm',
                      request.remote_addr, request.headers.get('User-Agent'))
 
     return render_template('user_operation_evaluation_rcm.jsp',
@@ -233,7 +246,6 @@ def save_operation_evaluation_api():
         })
         
     except Exception as e:
-        print(f"운영평가 저장 오류: {e}")
         return jsonify({
             'success': False,
             'message': '저장 중 오류가 발생했습니다.'
@@ -273,7 +285,6 @@ def load_operation_evaluation(rcm_id, design_evaluation_session):
         return jsonify({'success': True, 'evaluations': evaluation_dict})
 
     except Exception as e:
-        print(f"운영평가 데이터 로드 오류: {e}")
         return jsonify({'success': False, 'message': '데이터 로드 중 오류가 발생했습니다.'}), 500
 
 @bp_link7.route('/api/operation-evaluation/reset', methods=['POST'])
@@ -340,7 +351,6 @@ def reset_operation_evaluations_api():
         })
         
     except Exception as e:
-        print(f"운영평가 초기화 오류: {e}")
         return jsonify({
             'success': False,
             'message': '초기화 중 오류가 발생했습니다.'

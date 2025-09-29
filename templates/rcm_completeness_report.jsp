@@ -1162,7 +1162,7 @@
                         </tr>
                         <tr>
                             <th class="text-muted">통제 유형:</th>
-                            <td>${rcmControl.control_type || '<span class="text-muted">미분류</span>'}</td>
+                            <td>${rcmControl.control_type_name || control_type || '<span class="text-muted">미분류</span>'}</td>
                         </tr>
                         <tr>
                             <th class="text-muted">담당자:</th>

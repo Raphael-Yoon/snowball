@@ -405,8 +405,19 @@
                     const modal = bootstrap.Modal.getInstance(document.getElementById('evaluationNameModal'));
                     modal.hide();
                     
-                    // 설계평가 페이지로 이동
-                    window.location.href = `/design-evaluation/rcm/${rcmId}`;
+                    // 설계평가 페이지로 POST 방식으로 이동
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/design-evaluation/rcm';
+
+                    const rcmInput = document.createElement('input');
+                    rcmInput.type = 'hidden';
+                    rcmInput.name = 'rcm_id';
+                    rcmInput.value = rcmId;
+
+                    form.appendChild(rcmInput);
+                    document.body.appendChild(form);
+                    form.submit();
                 } else {
                     alert(data.message);
                     
@@ -553,8 +564,19 @@
             const modal = bootstrap.Modal.getInstance(document.getElementById('sessionSelectionModal'));
             modal.hide();
             
-            // 설계평가 페이지로 이동
-            window.location.href = `/design-evaluation/rcm/${rcmId}`;
+            // 설계평가 페이지로 POST 방식으로 이동
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/design-evaluation/rcm';
+
+            const rcmInput = document.createElement('input');
+            rcmInput.type = 'hidden';
+            rcmInput.name = 'rcm_id';
+            rcmInput.value = rcmId;
+
+            form.appendChild(rcmInput);
+            document.body.appendChild(form);
+            form.submit();
         }
         
         // 평가 세션 삭제

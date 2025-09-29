@@ -119,13 +119,11 @@ def init_db():
             for col_name, col_type in detail_columns:
                 try:
                     conn.execute(f'ALTER TABLE sb_rcm_detail ADD COLUMN {col_name} {col_type}')
-                    print(f"sb_rcm_detail 테이블에 {col_name} 컬럼을 추가했습니다.")
                 except:
                     # 컬럼이 이미 존재하는 경우 무시
                     pass
                     
         except Exception as e:
-            print(f"sb_rcm_detail 컬럼 추가 중 오류 (무시됨): {e}")
             pass
         
         # 사용자-RCM 매핑 테이블 생성 (N:M 관계)
@@ -369,13 +367,11 @@ def init_db():
                 pass  # sb_rcm_detail 테이블에서 불필요한 컬럼들이 제거되었습니다.
                 
         except Exception as e:
-            print(f"테이블/컬럼 정리 중 오류 (무시됨): {e}")
             pass
         
         # 기준통제 테이블에 ai_review_prompt 컬럼 추가 (기존 테이블에 없는 경우)
         try:
             conn.execute('ALTER TABLE sb_standard_control ADD COLUMN ai_review_prompt TEXT')
-            print("sb_standard_control 테이블에 ai_review_prompt 컬럼을 추가했습니다.")
         except:
             # 컬럼이 이미 존재하거나 테이블이 없는 경우 무시
             pass
@@ -411,7 +407,6 @@ def init_db():
             pass  # sb_standard_control 테이블에서 불필요한 컬럼들을 삭제했습니다.
         except Exception as e:
             # 테이블 재구성 실패 시 무시 (이미 올바른 구조일 수 있음)
-            print(f"테이블 재구성 중 오류 (무시됨): {e}")
             pass
         
         # 기존 테이블이 있는지 확인하고 데이터 마이그레이션
@@ -425,7 +420,6 @@ def init_db():
             
             # enabled_flag가 여전히 존재하는지 확인 (마이그레이션이 필요한지 체크)
             if 'enabled_flag' in columns:
-                print("기존 sb_user 테이블을 발견했습니다. 데이터 마이그레이션을 수행합니다.")
                 
                 # 기존 데이터를 새 테이블로 복사 (enabled_flag 제외, 없는 컬럼은 기본값 사용)
                 admin_flag_col = 'admin_flag' if 'admin_flag' in columns else "'N'"
@@ -455,41 +449,33 @@ def init_db():
                 # 기존 테이블 삭제하고 새 테이블 이름 변경
                 conn.execute('DROP TABLE sb_user')
                 conn.execute('ALTER TABLE sb_user_new RENAME TO sb_user')
-                print("데이터 마이그레이션이 완료되었습니다. enabled_flag 컬럼이 제거되었습니다.")
             else:
                 # 이미 마이그레이션된 테이블인 경우 임시 테이블 삭제
                 conn.execute('DROP TABLE sb_user_new')
         else:
             # 기존 테이블이 없으면 새 테이블을 sb_user로 이름 변경
             conn.execute('ALTER TABLE sb_user_new RENAME TO sb_user')
-            print("새로운 sb_user 테이블이 생성되었습니다.")
         
         # sb_rcm 테이블에 completion_date 컬럼 추가 (없는 경우)
         try:
             rcm_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm)').fetchall()]
             if 'completion_date' not in rcm_columns:
-                print("sb_rcm 테이블에 completion_date 컬럼 추가")
                 conn.execute('ALTER TABLE sb_rcm ADD COLUMN completion_date TIMESTAMP DEFAULT NULL')
         except Exception as e:
-            print(f"completion_date 컬럼 추가 중 오류 (무시됨): {e}")
         
         # sb_rcm 테이블에 original_filename 컬럼 추가 (없는 경우)
         try:
             rcm_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm)').fetchall()]
             if 'original_filename' not in rcm_columns:
-                print("sb_rcm 테이블에 original_filename 컬럼 추가")
                 conn.execute('ALTER TABLE sb_rcm ADD COLUMN original_filename TEXT DEFAULT NULL')
         except Exception as e:
-            print(f"original_filename 컬럼 추가 중 오류 (무시됨): {e}")
         
         # sb_rcm_detail 테이블에 mapping_status 컬럼 추가 (없는 경우)
         try:
             rcm_detail_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm_detail)').fetchall()]
             if 'mapping_status' not in rcm_detail_columns:
-                print("sb_rcm_detail 테이블에 mapping_status 컬럼 추가")
                 conn.execute('ALTER TABLE sb_rcm_detail ADD COLUMN mapping_status TEXT DEFAULT NULL')  # NULL, 'no_mapping', 'mapped'
         except Exception as e:
-            print(f"mapping_status 컬럼 추가 중 오류 (무시됨): {e}")
         
         conn.commit()
 
@@ -556,13 +542,11 @@ SnowBall 시스템
         send_gmail(email, subject, body)
         return True, "인증 코드가 이메일로 전송되었습니다."
     except Exception as e:
-        print(f"이메일 발송 실패: {e}")
         return False, "이메일 발송에 실패했습니다."
 
 def send_otp_sms(phone_number, otp_code):
     """SMS로 OTP 발송 (테스트 모드)"""
     # 테스트 모드: 콘솔과 로그 파일에 OTP 코드 저장
-    print(f"[SMS 테스트] {phone_number}로 인증코드 {otp_code} 발송")
     
     # 테스트용: OTP 코드를 파일에 저장 (실제 운영에서는 제거 필요)
     try:
@@ -647,7 +631,6 @@ def set_user_effective_period(user_email, start_date, end_date):
             WHERE user_email = ?
         ''', (start_date, end_date, user_email))
         conn.commit()
-        print(f"사용자 {user_email}의 활성화 기간이 {start_date} ~ {end_date}로 설정되었습니다.")
 
 def disable_user_temporarily(user_email, disable_until_date):
     """사용자 임시 비활성화 (특정 날짜까지)"""
@@ -664,7 +647,6 @@ def enable_user_permanently(user_email):
             WHERE user_email = ?
         ''', (current_time, user_email))
         conn.commit()
-        print(f"사용자 {user_email}이 영구 활성화되었습니다.")
 
 def is_user_active(user_email):
     """사용자 활성 상태 확인"""
@@ -704,7 +686,6 @@ def log_user_activity(user_info, action_type, page_name, url_path, ip_address, u
             ))
             conn.commit()
     except Exception as e:
-        print(f"로그 기록 중 오류 발생: {e}")
 
 def get_user_activity_logs(limit=100, offset=0, user_id=None):
     """사용자 활동 로그 조회"""
@@ -879,10 +860,11 @@ def get_rcm_details(rcm_id):
     """RCM 상세 데이터 조회"""
     with get_db() as conn:
         details = conn.execute('''
-            SELECT * FROM sb_rcm_detail
+            SELECT *
+            FROM v_rcm_detail_with_lookup
             WHERE rcm_id = ?
-            ORDER BY 
-                CASE 
+            ORDER BY
+                CASE
                     WHEN control_code LIKE 'PWC%' THEN 1
                     WHEN control_code LIKE 'APD%' THEN 2
                     WHEN control_code LIKE 'PC%' THEN 3
@@ -899,7 +881,8 @@ def get_key_rcm_details(rcm_id):
     """핵심통제만 조회하는 RCM 상세 데이터 조회 (운영평가용)"""
     with get_db() as conn:
         details = conn.execute('''
-            SELECT * FROM sb_rcm_detail
+            SELECT *
+            FROM v_rcm_detail_with_lookup
             WHERE rcm_id = ? AND (key_control = 'Y' OR key_control = 'y' OR UPPER(key_control) = 'Y')
             ORDER BY
                 CASE
@@ -976,21 +959,10 @@ def get_all_rcms():
 def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evaluation_session=None):
     """설계평가 결과 저장 (Header-Line 구조)"""
     import sys
-    sys.stderr.write(f"[DEBUG] save_design_evaluation called with:\n")
-    sys.stderr.write(f"[DEBUG]   rcm_id: {rcm_id} (type: {type(rcm_id)})\n")
-    sys.stderr.write(f"[DEBUG]   control_code: {control_code}\n")
-    sys.stderr.write(f"[DEBUG]   user_id: {user_id}\n")
-    sys.stderr.write(f"[DEBUG]   evaluation_data: {evaluation_data}\n")
-    sys.stderr.write(f"[DEBUG]   evaluation_session: {evaluation_session}\n")
-    sys.stderr.flush()
     
     with get_db() as conn:
         # 1. Header 존재 확인 및 생성
-        sys.stderr.write(f"[DEBUG] Getting or creating evaluation header...\n")
-        sys.stderr.flush()
         header_id = get_or_create_evaluation_header(conn, rcm_id, user_id, evaluation_session)
-        sys.stderr.write(f"[DEBUG] Header ID: {header_id}\n")
-        sys.stderr.flush()
         
         # 2. Line 데이터 저장/업데이트 (UPSERT 방식)
         # 먼저 해당 line_id 찾기
@@ -1002,8 +974,6 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
         if line_record:
             # 기존 레코드 UPDATE
             line_id = line_record['line_id']
-            sys.stderr.write(f"[DEBUG] Updating existing line record with line_id: {line_id}\n")
-            sys.stderr.flush()
             
             update_query = '''
                 UPDATE sb_design_evaluation_line SET
@@ -1022,17 +992,10 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 line_id
             )
             
-            sys.stderr.write(f"[DEBUG] UPDATE Query: {update_query}\n")
-            sys.stderr.write(f"[DEBUG] UPDATE Params: {update_params}\n")
-            sys.stderr.flush()
             
             cursor = conn.execute(update_query, update_params)
-            sys.stderr.write(f"[DEBUG] UPDATE executed, rowcount: {cursor.rowcount}\n")
-            sys.stderr.flush()
         else:
             # 레코드가 없으면 INSERT 수행
-            sys.stderr.write(f"[DEBUG] No existing line record found, creating new one\n")
-            sys.stderr.flush()
             
             # RCM 상세에서 control_sequence 찾기
             rcm_details = get_rcm_details(rcm_id)
@@ -1042,13 +1005,9 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                     control_sequence = idx
                     break
             
-            sys.stderr.write(f"[DEBUG] Found control_sequence: {control_sequence} for control_code: {control_code}\n")
-            sys.stderr.flush()
             
             if control_sequence is None:
                 error_msg = f"통제 코드({control_code})를 RCM에서 찾을 수 없습니다."
-                sys.stderr.write(f"[ERROR] {error_msg}\n")
-                sys.stderr.flush()
                 raise ValueError(error_msg)
             
             insert_query = '''
@@ -1068,28 +1027,16 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 evaluation_data.get('recommended_actions')
             )
             
-            sys.stderr.write(f"[DEBUG] INSERT Query: {insert_query}\n")
-            sys.stderr.write(f"[DEBUG] INSERT Params: {insert_params}\n")
-            sys.stderr.flush()
             
             cursor = conn.execute(insert_query, insert_params)
-            sys.stderr.write(f"[DEBUG] INSERT executed, rowcount: {cursor.rowcount}\n")
-            sys.stderr.flush()
         
         # 3. Header 진행률 업데이트
-        sys.stderr.write(f"[DEBUG] Updating evaluation progress for header_id: {header_id}\n")
-        sys.stderr.flush()
         update_evaluation_progress(conn, header_id)
         
-        sys.stderr.write(f"[DEBUG] Committing transaction...\n")
-        sys.stderr.flush()
         conn.commit()
-        sys.stderr.write(f"[DEBUG] Transaction committed successfully\n")
-        sys.stderr.flush()
 
 def create_evaluation_structure(rcm_id, user_id, evaluation_session):
     """평가 시작 시 완전한 Header-Line 구조 생성"""
-    print(f"DEBUG: create_evaluation_structure called - rcm_id={rcm_id}, user_id={user_id}, session={evaluation_session}")
     
     try:
         if not evaluation_session or evaluation_session.strip() == '':
@@ -1103,14 +1050,11 @@ def create_evaluation_structure(rcm_id, user_id, evaluation_session):
             ''', (rcm_id, user_id, evaluation_session)).fetchone()
             
             if existing_header:
-                print(f"DEBUG: Found existing header {existing_header['header_id']}, deleting...")
                 conn.execute('DELETE FROM sb_design_evaluation_line WHERE header_id = ?', (existing_header['header_id'],))
                 conn.execute('DELETE FROM sb_design_evaluation_header WHERE header_id = ?', (existing_header['header_id'],))
             
             # 2. RCM 상세 정보 조회
-            print(f"DEBUG: Calling get_rcm_details for rcm_id={rcm_id}")
             rcm_details = get_rcm_details(rcm_id)
-            print(f"DEBUG: get_rcm_details returned {len(rcm_details) if rcm_details else 0} results")
             
             if not rcm_details:
                 raise ValueError(f"RCM ID {rcm_id}에 대한 상세 정보를 찾을 수 없습니다.")
@@ -1126,14 +1070,11 @@ def create_evaluation_structure(rcm_id, user_id, evaluation_session):
             ''', (rcm_id, user_id, evaluation_session, total_controls))
             
             header_id = cursor.lastrowid
-            print(f"DEBUG: Created new header with ID {header_id}")
             
             # 4. 모든 통제에 대한 빈 라인 생성
-            print(f"DEBUG: Creating {len(rcm_details)} evaluation lines")
             created_lines = 0
             for idx, control in enumerate(rcm_details, 1):
                 try:
-                    print(f"DEBUG: Creating line {idx} for control {control['control_code']}")
                     conn.execute('''
                         INSERT INTO sb_design_evaluation_line (
                             header_id, control_code, control_sequence,
@@ -1143,22 +1084,17 @@ def create_evaluation_structure(rcm_id, user_id, evaluation_session):
                     ''', (header_id, control['control_code'], idx))
                     created_lines += 1
                 except Exception as line_error:
-                    print(f"DEBUG: Error creating line for control {control['control_code']}: {line_error}")
                     # 개별 라인 생성 실패는 기록만 하고 계속 진행
                     continue
             
             if created_lines == 0:
-                print("DEBUG: No lines were created, rolling back...")
                 conn.execute('DELETE FROM sb_design_evaluation_header WHERE header_id = ?', (header_id,))
                 raise ValueError("평가 라인을 생성할 수 없습니다.")
             
-            print(f"DEBUG: Successfully created {created_lines} out of {len(rcm_details)} evaluation lines")
             conn.commit()
             return header_id
             
     except Exception as e:
-        print(f"ERROR in create_evaluation_structure: {e}")
-        print(f"Error type: {type(e).__name__}")
         import traceback
         traceback.print_exc()
         raise e
@@ -1213,7 +1149,6 @@ def update_evaluation_progress(conn, header_id):
 
 def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
     """특정 RCM의 사용자별 설계평가 결과 조회 (Header-Line 구조)"""
-    print(f"get_design_evaluations called: rcm_id={rcm_id}, user_id={user_id}, evaluation_session='{evaluation_session}'")
     
     try:
         with get_db() as conn:
@@ -1232,10 +1167,7 @@ def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
                 ORDER BY l.control_sequence, l.control_code
                 '''
                 params = (rcm_id, user_id, evaluation_session, rcm_id, user_id, evaluation_session)
-                print(f"Executing query with session: {query}")
-                print(f"Parameters: rcm_id={rcm_id}, user_id={user_id}, evaluation_session='{evaluation_session}'")
                 final_query = query.replace('?', '{}').format(rcm_id, user_id, f"'{evaluation_session}'", rcm_id, user_id, f"'{evaluation_session}'")
-                print(f"***** FINAL QUERY WITH PARAMS: {final_query} *****")
                 evaluations = conn.execute(query, params).fetchall()
             else:
                 # 가장 최근 세션의 결과 조회
@@ -1252,35 +1184,25 @@ def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
                     ORDER BY l.control_sequence, l.control_code
                 '''
                 params = (rcm_id, user_id, rcm_id, user_id)
-                print(f"Executing query without session: {query}")
-                print(f"Parameters: rcm_id={rcm_id}, user_id={user_id}")
                 final_query = query.replace('?', '{}').format(rcm_id, user_id, rcm_id, user_id)
-                print(f"***** FINAL QUERY WITH PARAMS: {final_query} *****")
                 evaluations = conn.execute(query, params).fetchall()
             
-        print(f"Found {len(evaluations)} evaluation records")
         if evaluations:
-            print(f"Sample evaluation columns: {list(evaluations[0].keys())}")
             # 각 레코드의 evaluation_date 값 출력
             for i, eval_record in enumerate(evaluations):
                 eval_dict = dict(eval_record)
-                print(f"Record {i+1}: header_id={eval_dict.get('header_id')}, line_id={eval_dict.get('line_id')}, control_code={eval_dict.get('control_code')}, evaluation_date={eval_dict.get('evaluation_date')} (type: {type(eval_dict.get('evaluation_date'))})")
                 if i >= 2:  # 처음 3개만 출력
-                    print("... (showing first 3 records only)")
                     break
         
         return [dict(eval) for eval in evaluations]
     
     except Exception as e:
-        print(f"Error in get_design_evaluations: {e}")
-        print(f"Error type: {type(e).__name__}")
         import traceback
         traceback.print_exc()
         return []
 
 def get_design_evaluations_by_header_id(rcm_id, user_id, header_id):
     """특정 header_id의 설계평가 결과 조회"""
-    print(f"get_design_evaluations_by_header_id called: rcm_id={rcm_id}, user_id={user_id}, header_id={header_id}")
     
     try:
         with get_db() as conn:
@@ -1303,30 +1225,18 @@ def get_design_evaluations_by_header_id(rcm_id, user_id, header_id):
             ORDER BY l.control_sequence, l.control_code
             """
             
-            print("="*80)
-            print("📋 EXECUTING SQL QUERY:")
-            print("="*80)
-            print(final_query.strip())
-            print("="*80)
             evaluations = conn.execute(query, params).fetchall()
             
-        print(f"Found {len(evaluations)} evaluation records for header_id={header_id}")
-        print(f"***** QUERY EXECUTED: header_id filter applied *****")
         if evaluations:
-            print(f"Sample evaluation columns: {list(evaluations[0].keys())}")
             # 각 레코드의 evaluation_date 값 출력
             for i, eval_record in enumerate(evaluations):
                 eval_dict = dict(eval_record)
-                print(f"Record {i+1}: header_id={eval_dict.get('header_id')}, line_id={eval_dict.get('line_id')}, control_code={eval_dict.get('control_code')}, evaluation_date={eval_dict.get('evaluation_date')} (type: {type(eval_dict.get('evaluation_date'))})")
                 if i >= 2:  # 처음 3개만 출력
-                    print("... (showing first 3 records only)")
                     break
         
         return [dict(eval) for eval in evaluations]
     
     except Exception as e:
-        print(f"Error in get_design_evaluations_by_header_id: {e}")
-        print(f"Error type: {type(e).__name__}")
         import traceback
         traceback.print_exc()
         return []
@@ -1462,21 +1372,28 @@ def count_design_evaluations(rcm_id, user_id):
         ''', (rcm_id, user_id)).fetchone()[0]
         return count
 
-def count_operation_evaluations(rcm_id, user_id, evaluation_session, design_evaluation_session=None):
+def count_operation_evaluations(rcm_id, user_id, evaluation_session=None, design_evaluation_session=None):
     """특정 RCM의 사용자별 운영평가 완료된 통제 수량 조회 (세션별, Header-Line 구조)"""
     with get_db() as conn:
-        if design_evaluation_session:
+        if evaluation_session and design_evaluation_session:
             count = conn.execute('''
                 SELECT COUNT(*) FROM sb_operation_evaluation_line l
                 JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
                 WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ? AND h.design_evaluation_session = ?
             ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchone()[0]
-        else:
+        elif evaluation_session:
             count = conn.execute('''
                 SELECT COUNT(*) FROM sb_operation_evaluation_line l
                 JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
                 WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ?
             ''', (rcm_id, user_id, evaluation_session)).fetchone()[0]
+        else:
+            # 전체 운영평가 수량 조회 (세션 구분 없음)
+            count = conn.execute('''
+                SELECT COUNT(*) FROM sb_operation_evaluation_line l
+                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                WHERE h.rcm_id = ? AND h.user_id = ?
+            ''', (rcm_id, user_id)).fetchone()[0]
         return count
 
 def get_completed_design_evaluation_sessions(rcm_id, user_id):
@@ -1556,7 +1473,6 @@ def unarchive_design_evaluation_session(rcm_id, user_id, evaluation_session):
 
 def initialize_standard_controls():
     """기준통제 초기 데이터 삽입 (빈 함수 - 수동으로 데이터 삽입 예정)"""
-    print("기준통제 데이터는 수동으로 삽입해주세요.")
 
 def get_standard_controls():
     """기준통제 목록 조회"""
@@ -1702,7 +1618,6 @@ def save_rcm_mapping(rcm_id, detail_id, std_control_id, user_id):
             return True
             
     except Exception as e:
-        print(f"매핑 저장 오류: {e}")
         import traceback
         traceback.print_exc()
         raise
@@ -1735,7 +1650,6 @@ def delete_rcm_mapping(rcm_id, detail_id, user_id):
             return True
             
     except Exception as e:
-        print(f"매핑 삭제 오류: {e}")
         import traceback
         traceback.print_exc()
         raise
@@ -1784,7 +1698,6 @@ def save_rcm_ai_review(rcm_id, detail_id, recommendation, user_id):
             return True
             
     except Exception as e:
-        print(f"AI 검토 저장 오류: {e}")
         import traceback
         traceback.print_exc()
         raise
@@ -1826,7 +1739,6 @@ def get_control_review_result(rcm_id, detail_id):
             return None
             
     except Exception as e:
-        print(f"통제 검토 결과 조회 오류: {e}")
         import traceback
         traceback.print_exc()
         raise
@@ -1854,7 +1766,6 @@ def save_control_review_result(rcm_id, detail_id, std_control_id, ai_review_reco
             return True
             
     except Exception as e:
-        print(f"통제 검토 결과 저장 오류: {e}")
         import traceback
         traceback.print_exc()
         raise
@@ -1920,7 +1831,6 @@ def get_rcm_review_result(rcm_id):
             }
                 
     except Exception as e:
-        print(f"RCM 검토 결과 조회 오류: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -1944,7 +1854,6 @@ def clear_rcm_review_result(rcm_id):
             return True
             
     except Exception as e:
-        print(f"RCM 검토 결과 초기화 오류: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -1984,7 +1893,6 @@ def get_rcm_review_status_summary():
             return summary_list
             
     except Exception as e:
-        print(f"RCM 검토 상태 요약 조회 오류: {e}")
         import traceback
         traceback.print_exc()
         return []
@@ -2022,9 +1930,7 @@ def clear_rcm_completion(rcm_id):
                 WHERE rcm_id = ?
             ''', (rcm_id,))
             conn.commit()
-            print(f"RCM {rcm_id} 완료 상태가 해제되었습니다.")
             return True
     except Exception as e:
-        print(f"RCM 완료 상태 해제 오류: {e}")
         return False
 

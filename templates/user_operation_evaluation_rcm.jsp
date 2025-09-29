@@ -114,7 +114,6 @@
                                         <th width="7%">통제구분</th>
                                         <th width="10%">운영평가</th>
                                         <th width="10%">평가결과</th>
-                                        <th width="15%">테스트절차</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -128,21 +127,24 @@
                                                 {{ detail.control_description or '-' }}
                                             </div>
                                         </td>
-                                        <td>{{ detail.control_frequency or '-' }}</td>
-                                        <td>{{ detail.control_type or '-' }}</td>
-                                        <td>{{ detail.control_nature or '-' }}</td>
+                                        <td>{{ detail.control_frequency_name or detail.control_frequency or '-' }}</td>
+                                        <td>{{ detail.control_type_name or detail.control_type or '-' }}</td>
+                                        <td>{{ detail.control_nature_name or detail.control_nature or '-' }}</td>
                                         <td>
-                                            <button class="btn btn-warning btn-sm w-100" onclick="openOperationEvaluationModal('{{ detail.control_code }}', '{{ detail.control_name }}', {{ loop.index }})">
+                                            <button class="btn btn-warning btn-sm w-100"
+                                                    data-control-code="{{ detail.control_code }}"
+                                                    data-control-name="{{ detail.control_name }}"
+                                                    data-control-frequency="{{ detail.control_frequency_name or detail.control_frequency|e }}"
+                                                    data-control-type="{{ detail.control_type_name or detail.control_type|e }}"
+                                                    data-control-nature="{{ detail.control_nature_name or detail.control_nature|e }}"
+                                                    data-test-procedure="{{ detail.test_procedure|e }}"
+                                                    data-row-index="{{ loop.index }}"
+                                                    onclick="openOperationEvaluationModal(this)">
                                                 <i class="fas fa-edit me-1"></i>평가
                                             </button>
                                         </td>
                                         <td>
                                             <span id="evaluation-result-{{ loop.index }}" class="badge bg-secondary">미평가</span>
-                                        </td>
-                                        <td>
-                                            <div style="font-size: 0.85em; max-height: 60px; overflow-y: auto;" title="{{ detail.test_procedure or '-' }}">
-                                                {{ detail.test_procedure or '-' }}
-                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -177,11 +179,33 @@
                         <label class="form-label fw-bold">통제 정보</label>
                         <div class="p-3 bg-light rounded">
                             <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <strong>통제코드:</strong> <span id="modal-control-code"></span>
                                 </div>
-                                <div class="col-md-8">
+                                <div class="col-md-3">
+                                    <strong>통제주기:</strong> <span id="modal-control-frequency" class="text-muted">-</span>
+                                </div>
+                                <div class="col-md-6">
                                     <strong>통제명:</strong> <span id="modal-control-name"></span>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-3">
+                                    <strong>통제유형:</strong> <span id="modal-control-type" class="text-muted">-</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>통제구분:</strong> <span id="modal-control-nature" class="text-muted">-</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <!-- 빈 공간 또는 추가 정보용 -->
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <strong>테스트절차:</strong>
+                                    <div class="mt-1 p-2 border rounded bg-white" style="max-height: 120px; overflow-y: auto;">
+                                        <span id="modal-test-procedure" class="text-muted">-</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -203,7 +227,10 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="sample_size" class="form-label fw-bold">표본 크기</label>
-                                    <input type="number" class="form-control" id="sample_size" name="sample_size" min="1" placeholder="예: 25">
+                                    <input type="number" class="form-control" id="sample_size" name="sample_size" min="1" placeholder="통제주기에 따라 자동 설정">
+                                    <div class="form-text">
+                                        <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1)</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -273,13 +300,44 @@
             });
         }
 
+        // 통제주기에 따른 기본 표본수 매핑 (코드값 기준)
+        function getDefaultSampleSize(controlFrequency, controlType) {
+            // 통제주기 코드에서 첫 글자만 추출 (lookup_name이 올 수도 있음)
+            const frequencyCode = controlFrequency ? controlFrequency.charAt(0).toUpperCase() : '';
+
+            const frequencyMapping = {
+                'A': 1,  // 연간
+                'Q': 2,  // 분기
+                'M': 2,  // 월
+                'W': 5,  // 주
+                'D': 20, // 일
+                'O': 1,  // 기타 (자동통제 포함)
+                'N': 1   // 필요시
+            };
+
+            return frequencyMapping[frequencyCode] || 1;
+        }
+
+
         // 운영평가 모달 열기
-        function openOperationEvaluationModal(controlCode, controlName, rowIndex) {
+        function openOperationEvaluationModal(buttonElement) {
+            const controlCode = buttonElement.getAttribute('data-control-code');
+            const controlName = buttonElement.getAttribute('data-control-name');
+            const controlFrequency = buttonElement.getAttribute('data-control-frequency');
+            const controlType = buttonElement.getAttribute('data-control-type');
+            const controlNature = buttonElement.getAttribute('data-control-nature');
+            const testProcedure = buttonElement.getAttribute('data-test-procedure');
+            const rowIndex = parseInt(buttonElement.getAttribute('data-row-index'));
+
             currentControlCode = controlCode;
             currentRowIndex = rowIndex;
 
             document.getElementById('modal-control-code').textContent = controlCode;
             document.getElementById('modal-control-name').textContent = controlName;
+            document.getElementById('modal-control-frequency').textContent = controlFrequency || '-';
+            document.getElementById('modal-control-type').textContent = controlType || '-';
+            document.getElementById('modal-control-nature').textContent = controlNature || '-';
+            document.getElementById('modal-test-procedure').textContent = testProcedure || '-';
 
             // 기존 평가 데이터 로드
             if (evaluationDict[controlCode]) {
@@ -293,6 +351,15 @@
             } else {
                 // 폼 초기화
                 document.getElementById('operationEvaluationForm').reset();
+
+                // 예외 발견 수 기본값 0으로 설정
+                document.getElementById('exception_count').value = 0;
+            }
+
+            // 기존 평가 데이터가 없거나 표본수가 비어있는 경우 자동 설정
+            if (!evaluationDict[controlCode] || !evaluationDict[controlCode].sample_size) {
+                const defaultSampleSize = getDefaultSampleSize(controlFrequency, controlType);
+                document.getElementById('sample_size').value = defaultSampleSize;
             }
 
             // 모달 표시

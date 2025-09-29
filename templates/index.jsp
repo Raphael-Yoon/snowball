@@ -93,19 +93,19 @@
     <!-- 기능 섹션 -->
     <section id="features" class="py-4">
         <div class="container">
-            <h2 class="section-title">주요 기능</h2>
+            <h2 class="section-title"><i class="fas fa-globe me-2"></i>Public</h2>
             <div class="row g-4">
                 <!-- 기본 4개 카드 -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/rcm.jpg')}}" class="feature-img" alt="RCM">
                         <div class="card-body p-4">
-                            <h5 class="feature-title text-center">RCM</h5>
-                            <p class="feature-description">신뢰성 중심 유지보수 시스템으로 장비의 안정성과 효율성을 최적화합니다.</p>
+                            <h5 class="feature-title text-center">RCM 생성</h5>
+                            <p class="feature-description">회사 정보를 입력하여 맞춤형 위험통제매트릭스(RCM)를 생성합니다.</p>
                             <div class="text-center">
                                 <a href="/link1" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 신뢰성 중심 유지보수(RCM) 시스템<br>• 장비의 안정성과 효율성 최적화<br>• 예방적 유지보수 전략 수립<br>• 비용 절감 및 운영 효율성 향상</div>">자세히 보기</a>
+                                   title="<div>• 회사 정보 입력으로 맞춤형 RCM 템플릿 생성<br>• 회사 규모와 업종에 따른 통제 항목 구성<br>• 엑셀 파일로 즉시 다운로드 가능<br>• 이메일 발송으로 편리한 공유</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -114,12 +114,12 @@
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/interview.jpg')}}" class="feature-img" alt="Interview">
                         <div class="card-body p-4">
-                            <h5 class="feature-title text-center">Interview</h5>
-                            <p class="feature-description">전문가와의 인터뷰를 통해 시스템의 현재 상태와 개선점을 파악합니다.</p>
+                            <h5 class="feature-title text-center">인터뷰/설계평가</h5>
+                            <p class="feature-description">AI와의 대화형 인터뷰를 통해 RCM을 분석하고 통제 설계를 평가합니다.</p>
                             <div class="text-center">
                                 <a href="/link2?reset=1" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 전문가와의 체계적 인터뷰 진행<br>• 시스템 현재 상태 및 개선점 파악<br>• 전문적 지식과 경험 공유<br>• 맞춤형 솔루션 도출 및 제안</div>">자세히 보기</a>
+                                   title="<div>• AI 기반 대화형 RCM 분석 및 검토<br>• 업로드한 RCM 파일의 통제 설계 평가<br>• 통제 효과성 및 적절성 자동 분석<br>• 개선 방안 및 리포트 자동 생성</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -128,12 +128,12 @@
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/testing.jpg')}}" class="feature-img" alt="Operation Test">
                         <div class="card-body p-4">
-                            <h5 class="feature-title text-center">Operation Test</h5>
-                            <p class="feature-description">운영 테스트를 통해 시스템의 실제 운용 상태를 점검합니다.</p>
+                            <h5 class="feature-title text-center">운영평가</h5>
+                            <p class="feature-description">내부통제의 운영 효과성을 평가하고 실제 운용 상태를 점검합니다.</p>
                             <div class="text-center">
                                 <a href="/link3" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 실제 운영 환경에서의 시스템 테스트<br>• 운영 상태 점검 및 성능 평가<br>• 잠재적 문제점 사전 식별<br>• 운영 효율성 개선 방안 제시</div>">자세히 보기</a>
+                                   title="<div>• 내부통제의 운영 효과성 평가<br>• 통제 활동의 실제 수행 상태 점검<br>• 운영상 결함 및 예외사항 식별<br>• 개선 방안 및 권고사항 제시</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -142,12 +142,12 @@
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/video.jpg')}}" class="feature-img" alt="교육자료">
                         <div class="card-body p-4">
-                            <h5 class="feature-title text-center">영상자료</h5>
-                            <p class="feature-description">시스템 운영과 관리에 필요한 영상 자료를 제공합니다.</p>
+                            <h5 class="feature-title text-center">가이드</h5>
+                            <p class="feature-description">시스템 운영과 관리에 필요한 가이드 및 교육 자료를 제공합니다.</p>
                             <div class="text-center">
                                 <a href="/link4" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 시스템 운영 및 관리 교육 영상<br>• 단계별 상세 가이드 영상 제공<br>• 베스트 프랙티스 및 사례 연구<br>• 언제든지 접극 가능한 온라인 학습</div>">자세히 보기</a>
+                                   title="<div>• 시스템 운영 및 관리 교육 가이드<br>• 단계별 상세 사용법 및 영상 제공<br>• 베스트 프랙티스 및 사례 연구<br>• 언제든지 접근 가능한 온라인 학습</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -160,16 +160,14 @@
                 </div>
             </div>
 
-            <!-- 프리미엄 서비스 -->
-            <div class="row g-4 mt-3" id="premium-services" {% if not is_logged_in %}style="opacity: 0.4;"{% endif %}>
+            <!-- Private 서비스 -->
+            <div class="row g-4 mt-3" id="private-services" {% if not is_logged_in %}style="opacity: 0.4;"{% endif %}>
                 <div class="col-12">
-                    <h3 class="text-center mb-4" style="color: #2c3e50;">
-                        <i class="fas fa-crown me-2"></i>프리미엄 서비스
-                    </h3>
+                    <h2 class="section-title"><i class="fas fa-lock me-2"></i>Private</h2>
                     {% if not is_logged_in %}
                     <div class="alert alert-info text-center" style="opacity: 1; pointer-events: auto; position: relative; z-index: 10;">
                         <i class="fas fa-lock me-2"></i>
-                        프리미엄 서비스를 이용하시려면 <a href="/login" class="alert-link">로그인</a>이 필요합니다.
+                        Private 서비스를 이용하시려면 <a href="/login" class="alert-link">로그인</a>이 필요합니다.
                     </div>
                     {% endif %}
                 </div>
@@ -225,11 +223,34 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Contact Us -->
+
+                <!-- 내부평가 -->
                 <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-danger h-100">
+                        <img src="{{ url_for('static', filename='img/internal_assessment.jpg')}}" class="feature-img" alt="내부평가"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center">내부평가</h5>
+                            <p class="feature-description">RCM평가부터 운영평가까지 전체 프로세스를 순차적으로 진행하는 통합 워크플로우입니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/user/internal-assessment" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• RCM 평가 → 설계평가 → 운영평가 순차 진행<br>• 전체 내부통제 평가 프로세스 관리<br>• 단계별 진행상황 추적 및 관리<br>• 통합 평가 결과 리포트 생성</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Contact Us (로그인 불필요) -->
+            <div class="row g-4 mt-3">
+                <div class="col-12">
+                    <h2 class="section-title"><i class="fas fa-envelope me-2"></i>Support</h2>
+                </div>
+                <div class="col-lg-3 col-md-6 mx-auto">
                     <div class="feature-card border-info h-100">
-                        <img src="{{ url_for('static', filename='img/contact_us.jpg')}}" class="feature-img" alt="Contact Us" 
+                        <img src="{{ url_for('static', filename='img/contact_us.jpg')}}" class="feature-img" alt="Contact Us"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center">Contact Us</h5>

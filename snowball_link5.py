@@ -118,7 +118,6 @@ def user_rcm_status():
         })
         
     except Exception as e:
-        print(f"RCM 현황 조회 오류: {e}")
         return jsonify({'success': False, 'message': '현황 조회 중 오류가 발생했습니다.'}), 500
 
 @bp_link5.route('/api/rcm-list')
@@ -132,7 +131,6 @@ def user_rcm_list():
         return jsonify({'success': True, 'rcms': user_rcms})
         
     except Exception as e:
-        print(f"RCM 목록 조회 오류: {e}")
         return jsonify({'success': False, 'message': '목록 조회 중 오류가 발생했습니다.'}), 500
 
 # RCM 완성도 평가 관련 API
@@ -151,7 +149,6 @@ def init_standard_controls():
         initialize_standard_controls()
         return jsonify({'success': True, 'message': '기준통제 초기 데이터가 성공적으로 삽입되었습니다.'})
     except Exception as e:
-        print(f"기준통제 초기화 오류: {e}")
         return jsonify({'success': False, 'message': '초기화 중 오류가 발생했습니다.'}), 500
 
 @bp_link5.route('/api/standard-controls')
@@ -162,7 +159,6 @@ def get_standard_controls_api():
         controls = get_standard_controls()
         return jsonify({'success': True, 'controls': controls})
     except Exception as e:
-        print(f"기준통제 조회 오류: {e}")
         return jsonify({'success': False, 'message': '기준통제 조회 중 오류가 발생했습니다.'}), 500
 
 @bp_link5.route('/api/rcm/<int:rcm_id>/mapping', methods=['GET', 'POST', 'DELETE'])
@@ -184,7 +180,6 @@ def rcm_mapping_api(rcm_id):
             mappings = get_rcm_detail_mappings(rcm_id)
             return jsonify({'success': True, 'mappings': mappings})
         except Exception as e:
-            print(f"매핑 조회 오류: {e}")
             return jsonify({'success': False, 'message': '매핑 조회 중 오류가 발생했습니다.'}), 500
     
     elif request.method == 'POST':
@@ -219,7 +214,6 @@ def rcm_mapping_api(rcm_id):
             return jsonify({'success': True, 'message': '매핑이 저장되었습니다.'})
             
         except Exception as e:
-            print(f"매핑 저장 오류: {e}")
             import traceback
             traceback.print_exc()
             return jsonify({'success': False, 'message': f'매핑 저장 중 오류가 발생했습니다: {str(e)}'}), 500
@@ -263,7 +257,6 @@ def rcm_mapping_api(rcm_id):
             return jsonify({'success': True, 'message': '매핑이 삭제되었습니다.'})
             
         except Exception as e:
-            print(f"매핑 삭제 오류: {e}")
             import traceback
             traceback.print_exc()
             return jsonify({'success': False, 'message': f'매핑 삭제 중 오류가 발생했습니다: {str(e)}'}), 500
@@ -282,20 +275,15 @@ def evaluate_completeness_api(rcm_id):
         return jsonify({'success': False, 'message': '해당 RCM에 대한 접근 권한이 없습니다.'}), 403
     
     try:
-        print(f"[DEBUG] 평가 시작: RCM ID {rcm_id}, User ID {user_info['user_id']}")
         
         # 단계별 디버깅
         rcm_details = get_rcm_details(rcm_id)
-        print(f"[DEBUG] RCM 상세 데이터 개수: {len(rcm_details)}")
         
         standard_controls = get_standard_controls()
-        print(f"[DEBUG] 기준통제 개수: {len(standard_controls)}")
         
         mappings = get_rcm_standard_mappings(rcm_id)
-        print(f"[DEBUG] 기존 매핑 개수: {len(mappings)}")
         
         eval_result = evaluate_rcm_completeness(rcm_id, user_info['user_id'])
-        print(f"[DEBUG] 평가 결과: {eval_result}")
         
         log_user_activity(user_info, 'RCM_COMPLETENESS_EVAL', f'RCM 완성도 평가 실행', 
                          f'/api/rcm/{rcm_id}/evaluate-completeness', 
@@ -309,7 +297,6 @@ def evaluate_completeness_api(rcm_id):
         })
         
     except Exception as e:
-        print(f"완성도 평가 오류: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'완성도 평가 중 오류가 발생했습니다: {str(e)}'}), 500
@@ -381,7 +368,6 @@ def completeness_report(rcm_id):
     try:
         eval_result = evaluate_rcm_completeness(rcm_id, user_info['user_id'])
     except Exception as e:
-        print(f"완성도 평가 오류: {e}")
         eval_result = {
             'completeness_score': 0.0,
             'total_controls': 0,
@@ -443,7 +429,6 @@ def toggle_rcm_completion(rcm_id):
                 return jsonify({'success': True, 'message': 'RCM 검토 완료가 해제되었습니다.'})
                 
     except Exception as e:
-        print(f"RCM 완료 상태 변경 오류: {e}")
         return jsonify({'success': False, 'message': f'오류가 발생했습니다: {str(e)}'})
 
 # RCM 검토 결과 저장/조회 API
@@ -480,7 +465,6 @@ def control_review_api(rcm_id, detail_id):
                 })
                 
         except Exception as e:
-            print(f"통제 검토 결과 조회 오류: {e}")
             return jsonify({'success': False, 'message': '통제 검토 결과 조회 중 오류가 발생했습니다.'}), 500
     
     elif request.method == 'POST':
@@ -510,7 +494,6 @@ def control_review_api(rcm_id, detail_id):
             })
             
         except Exception as e:
-            print(f"통제 검토 결과 저장 오류: {e}")
             return jsonify({'success': False, 'message': '통제 검토 결과 저장 중 오류가 발생했습니다.'}), 500
 
 @bp_link5.route('/api/rcm/<int:rcm_id>/review/auto-save', methods=['POST'])
@@ -544,7 +527,6 @@ def rcm_review_auto_save(rcm_id):
         })
         
     except Exception as e:
-        print(f"자동 저장 오류: {e}")
         return jsonify({'success': False, 'message': '자동 저장 실패'}), 500
 
 @bp_link5.route('/api/rcm/<int:rcm_id>/detail/<int:detail_id>/ai-review', methods=['POST'])
@@ -620,7 +602,6 @@ def control_ai_review(rcm_id, detail_id):
         })
         
     except Exception as e:
-        print(f"AI 검토 저장 오류: {e}")
         return jsonify({'success': False, 'message': 'AI 검토 저장 실패'}), 500
 
 @bp_link5.route('/api/rcm/<int:rcm_id>/detail/<int:detail_id>/mapping', methods=['POST', 'DELETE'])
@@ -671,7 +652,6 @@ def control_mapping(rcm_id, detail_id):
             })
         
     except Exception as e:
-        print(f"매핑 처리 오류: {e}")
         return jsonify({'success': False, 'message': '매핑 처리 실패'}), 500
 
 @bp_link5.route('/api/rcm/<int:rcm_id>/standard-control/<int:std_control_id>/mappings', methods=['DELETE'])
@@ -716,7 +696,6 @@ def delete_standard_control_mappings(rcm_id, std_control_id):
         })
         
     except Exception as e:
-        print(f"기준통제 매핑 해제 오류: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'매핑 해제 중 오류가 발생했습니다: {str(e)}'}), 500
@@ -1307,5 +1286,4 @@ def get_rcm_ai_review(control_content, std_control_name=None):
         return ai_response
         
     except Exception as e:
-        print(f"AI 검토 오류: {e}")
         return f"AI 검토 중 오류가 발생했습니다: {str(e)}"
