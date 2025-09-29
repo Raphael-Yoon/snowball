@@ -22,28 +22,33 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a href="/link1" class="nav-link">
-                            <i class="fas fa-clipboard-list me-1"></i>RCM
+                            <i class="fas fa-clipboard-list me-1"></i>RCM 생성
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="/link2?reset=1" class="nav-link">
-                            <i class="fas fa-user-tie me-1"></i>Interview
+                            <i class="fas fa-user-tie me-1"></i>인터뷰/설계평가
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="/link3" class="nav-link">
-                            <i class="fas fa-cogs me-1"></i>Operation
+                            <i class="fas fa-cogs me-1"></i>운영평가
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="/link4" class="nav-link">
-                            <i class="fas fa-film me-1"></i>Video
+                            <i class="fas fa-film me-1"></i>가이드
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('link9.contact') }}" class="nav-link">
+                            <i class="fas fa-envelope me-1"></i>Contact Us
                         </a>
                     </li>
                     {% if is_logged_in %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="premiumServicesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-crown me-1"></i>프리미엄 서비스
+                            <i class="fas fa-lock me-1"></i>Private
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="premiumServicesDropdown">
                             <li><a class="dropdown-item" href="{{ url_for('link5.user_rcm') }}">
@@ -55,12 +60,8 @@
                             <li><a class="dropdown-item" href="{{ url_for('link7.user_operation_evaluation') }}">
                                 <i class="fas fa-cogs me-2"></i>운영평가
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link9.internal_assessment') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('link8.internal_assessment') }}">
                                 <i class="fas fa-tasks me-2"></i>내부평가
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link8.contact') }}">
-                                <i class="fas fa-envelope me-2"></i>Contact Us
                             </a></li>
                         </ul>
                     </li>

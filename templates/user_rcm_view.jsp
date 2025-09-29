@@ -146,18 +146,18 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <span class="text-truncate-custom" title="{{ detail.control_frequency or '-' }}">
-                                                {{ detail.control_frequency or '-' }}
+                                            <span class="text-truncate-custom" title="{{ detail.control_frequency_name or detail.control_frequency or '-' }}">
+                                                {{ detail.control_frequency_name or detail.control_frequency or '-' }}
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="text-truncate-custom" title="{{ detail.control_type or '-' }}">
-                                                {{ detail.control_type or '-' }}
+                                            <span class="text-truncate-custom" title="{{ detail.control_type_name or detail.control_type or '-' }}">
+                                                {{ detail.control_type_name or detail.control_type or '-' }}
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="text-truncate-custom" title="{{ detail.control_nature or '-' }}">
-                                                {{ detail.control_nature or '-' }}
+                                            <span class="text-truncate-custom" title="{{ detail.control_nature_name or detail.control_nature or '-' }}">
+                                                {{ detail.control_nature_name or detail.control_nature or '-' }}
                                             </span>
                                         </td>
                                         <td>

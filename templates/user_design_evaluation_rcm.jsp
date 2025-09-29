@@ -141,8 +141,8 @@
                                                 {{ detail.control_description or '-' }}
                                             </div>
                                         </td>
-                                        <td>{{ detail.control_frequency or '-' }}</td>
-                                        <td>{{ detail.control_type or '-' }}</td>
+                                        <td>{{ detail.control_frequency_name or detail.control_frequency or '-' }}</td>
+                                        <td>{{ detail.control_type_name or detail.control_type or '-' }}</td>
                                         <td>
                                             {% if detail.key_control and detail.key_control.upper() == 'Y' %}
                                                 <span class="badge bg-success">
@@ -978,7 +978,7 @@
             // RCM 세부 데이터에서 통제구분 찾기
             {% for detail in rcm_details %}
             if ({{ loop.index }} === index) {
-                document.getElementById('modalControlNature').textContent = '{{ detail.control_nature or "-" }}';
+                document.getElementById('modalControlNature').textContent = '{{ detail.control_nature_name or detail.control_nature or "-" }}';
             }
             {% endfor %}
             

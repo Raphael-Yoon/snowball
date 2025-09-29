@@ -22,7 +22,7 @@
                     <h2 class="mb-4 text-primary"><i class="fas fa-snowflake me-2"></i>SnowBall 소개</h2>
                     <p style="font-size:1.1rem;">
                         SnowBall은 내부통제 평가와 IT감사 대응을 전문적으로 하고 있습니다.<br><br>
-                        <b>주요 분야</b><br>
+                        <b>서비스 분야</b><br>
                         - ITGC RCM 구축<br>
                         - ITGC 설계 및 운영평가(PA)<br>
                         - ITGC 설명 및 교육<br>
@@ -39,20 +39,45 @@
                 {% elif success is defined and not success %}
                     <div class="alert alert-danger text-center">문의 접수에 실패했습니다.<br>{{ error }}</div>
                 {% endif %}
-                <form method="post" action="/contact" class="mx-auto" style="max-width: 400px;">
+                <form method="post" action="/contact" class="mx-auto" style="width: 80%;">
+                    <div class="mb-3">
+                        <label for="company_name" class="form-label">회사명 *</label>
+                        {% if is_logged_in %}
+                        <input type="text" class="form-control" id="company_name" name="company_name" value="{{ user_info.company_name if user_info.company_name else '' }}" readonly style="background-color: #f8f9fa;" required>
+                        <small class="text-muted">로그인된 계정의 회사명이 자동으로 설정됩니다.</small>
+                        {% else %}
+                        <input type="text" class="form-control" id="company_name" name="company_name" placeholder="회사명을 입력하세요" required>
+                        <small class="text-muted">소속 회사명을 입력해주세요.</small>
+                        {% endif %}
+                    </div>
                     <div class="mb-3">
                         <label for="name" class="form-label">이름</label>
-                        <input type="text" class="form-control" id="name" name="name" value="{{ user_info.user_name if user_info.user_name else '' }}" readonly style="background-color: #f8f9fa;" required>
+                        {% if is_logged_in %}
+                        <input type="text" class="form-control" id="name" name="name" value="{{ user_info.user_name }}" readonly style="background-color: #f8f9fa;">
                         <small class="text-muted">로그인된 계정의 사용자 이름이 자동으로 설정됩니다.</small>
+                        {% else %}
+                        <input type="text" class="form-control" id="name" name="name" placeholder="이름을 입력하세요 (선택사항)">
+                        <small class="text-muted">문의하시는 분의 이름을 입력해주세요. (선택사항)</small>
+                        {% endif %}
                     </div>
                     <div class="mb-3">
-                        <label for="email" class="form-label">이메일</label>
-                        <input type="email" class="form-control" id="email" name="email" value="{{ user_info.user_email if user_info.user_email else '' }}" readonly style="background-color: #f8f9fa;">
+                        <label for="email" class="form-label">이메일 *</label>
+                        {% if is_logged_in %}
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user_info.user_email }}" readonly style="background-color: #f8f9fa;" required>
                         <small class="text-muted">로그인된 계정의 이메일 주소가 자동으로 설정됩니다.</small>
+                        {% else %}
+                        <input type="email" class="form-control" id="email" name="email" placeholder="이메일 주소를 입력하세요" required>
+                        <small class="text-muted">답변을 받으실 이메일 주소를 입력해주세요.</small>
+                        {% endif %}
                     </div>
                     <div class="mb-3">
-                        <label for="message" class="form-label">문의 내용</label>
-                        <textarea class="form-control" id="message" name="message" rows="6" required></textarea>
+                        <label for="message" class="form-label">문의 내용 *</label>
+                        <small class="text-muted d-block mb-2">
+                            💡 서비스 이용, 기술적 문제, 가입 문의 등 언제든지 편하게 문의해주세요.
+                        </small>
+                        <textarea class="form-control" id="message" name="message" rows="8" required placeholder="예시) 로그인이 안 됩니다 / RCM 파일 업로드 시 오류가 발생합니다 / 평가 결과를 어떻게 해석해야 하나요? / 서비스 가입 절차를 알고 싶습니다
+
+문의하실 내용을 자세히 입력해주세요."></textarea>
                     </div>
                     <div class="text-center">
                         <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-paper-plane me-1"></i>문의하기</button>

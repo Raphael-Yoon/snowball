@@ -75,7 +75,8 @@
                                             <small class="text-muted fw-bold">완료된 설계평가 세션:</small>
                                             {% for session in rcm.completed_design_sessions %}
                                             <div class="d-grid mt-2">
-                                                <form method="POST" action="/operation-evaluation/rcm/{{ rcm.rcm_id }}" style="display: inline;">
+                                                <form method="POST" action="/operation-evaluation/rcm" style="display: inline;">
+                                                    <input type="hidden" name="rcm_id" value="{{ rcm.rcm_id }}">
                                                     <input type="hidden" name="design_evaluation_session" value="{{ session.evaluation_session }}">
                                                     <button type="submit" class="btn {% if session.operation_completed_count > 0 %}btn-warning{% else %}btn-outline-warning{% endif %} btn-sm w-100">
                                                         <i class="fas fa-chart-line me-1"></i>{{ session.evaluation_session }}

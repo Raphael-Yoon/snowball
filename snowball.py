@@ -661,18 +661,9 @@ def link2():
     
     # 9번 질문 디버깅 추가
     if current_question['index'] == 9:
-        print(f"[DEBUG] 9번 질문 표시됨")
-        print(f"[DEBUG] 현재 세션 답변[9]: '{session['answer'][9] if len(session['answer']) > 9 else '없음'}'")
-        print(f"[DEBUG] 전체 답변 개수: {len(session['answer'])}")
-        print(f"[DEBUG] 답변 내용 (0~15): {session['answer'][:16] if len(session['answer']) >= 16 else session['answer']}")
     
     # 13번 질문 디버깅 추가
     if current_question['index'] == 13:
-        print(f"[DEBUG] 13번 질문 표시됨")
-        print(f"[DEBUG] 현재 세션 답변[13]: '{session['answer'][13] if len(session['answer']) > 13 else '없음'}'")
-        print(f"[DEBUG] 13번 질문 텍스트: {current_question['text']}")
-        print(f"[DEBUG] 전체 답변 개수: {len(session['answer'])}")
-        print(f"[DEBUG] 답변 내용 (10~20): {session['answer'][10:21] if len(session['answer']) >= 21 else session['answer'][10:]}")
 
     user_info = get_user_info()
     users = user_info['user_name'] if user_info else "User List"
@@ -710,7 +701,6 @@ def save_to_excel():
     session_ai_review = session.get('enable_ai_review', False)
     enable_ai_review = env_ai_review or session_ai_review
     
-    print(f"[DEBUG] AI 검토 설정 확인:")
     print(f"  - 환경변수 ENABLE_AI_REVIEW: {os.getenv('ENABLE_AI_REVIEW', 'false')} -> {env_ai_review}")
     print(f"  - 세션 enable_ai_review: {session_ai_review}")
     print(f"  - 최종 enable_ai_review: {enable_ai_review}")
@@ -1090,11 +1080,7 @@ def user_design_evaluation():
     """설계평가 페이지 - link6으로 리디렉션"""
     return redirect(url_for('link6.user_design_evaluation'))
 
-@app.route('/user/design-evaluation/rcm/<int:rcm_id>')
-@login_required
-def user_design_evaluation_rcm(rcm_id):
-    """RCM 기반 설계평가 페이지 - link6으로 리디렉션"""
-    return redirect(url_for('link6.user_design_evaluation_rcm', rcm_id=rcm_id))
+# 이 라우트는 snowball_link6.py로 이전됨 - RCM ID는 POST 방식으로 처리
 
 # 이 함수는 snowball_link6.py로 이전됨 - 전체 주석 처리
 # @app.route('/api/design-evaluation/save', methods=['POST'])
@@ -1321,6 +1307,12 @@ def upload_control_sample():
 def user_operation_evaluation():
     """운영평가 페이지 - link7로 리디렉션"""
     return redirect(url_for('link7.user_operation_evaluation'))
+
+@app.route('/user/internal-assessment')
+@login_required
+def user_internal_assessment():
+    """내부평가 페이지 - link8로 리디렉션"""
+    return redirect(url_for('link8.internal_assessment'))
 
 # === API 엔드포인트 ===
 @app.route('/api/user/rcm-status')

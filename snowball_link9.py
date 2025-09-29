@@ -1,8 +1,11 @@
-from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
-from auth import login_required, get_current_user, get_user_rcms, log_user_activity, get_db
-import sqlite3
-from datetime import datetime
-import json
+from flask import Blueprint, request, render_template, redirect, url_for, session
+from snowball_mail import send_gmail
+
+bp_link9 = Blueprint('link9', __name__)
+
+def is_logged_in():
+    """로그인 상태 확인"""
+    return 'user_id' in session
 
 def get_user_info():
     """현재 로그인한 사용자 정보 반환 (세션 우선)"""
@@ -12,281 +15,201 @@ def get_user_info():
         if 'user_info' in session:
             return session['user_info']
         # 없으면 데이터베이스에서 조회
-        return get_current_user()
+        from auth import get_current_user
+        db_user_info = get_current_user()
+        return db_user_info
     return None
 
-def is_logged_in():
-    """로그인 상태 확인"""
-    from snowball import is_logged_in as main_is_logged_in
-    return main_is_logged_in()
+# Contact Us 관련 기능들
 
-bp_link9 = Blueprint('link9', __name__)
-
-# 내부평가 메인 페이지
-@bp_link9.route('/internal-assessment')
-@login_required
-def internal_assessment():
-    """내부평가 메인 페이지"""
+@bp_link9.route('/contact', methods=['GET', 'POST'])
+def contact():
+    """Contact Us 페이지"""
+    user_logged_in = is_logged_in()
     user_info = get_user_info()
-    
-    # 사용자의 RCM 목록 조회
-    user_rcms = get_user_rcms(user_info['user_id'])
-    
-    # 각 RCM의 내부평가 진행 상황 조회
-    assessment_progress = []
-    db = get_db()
-    
-    for rcm in user_rcms:
-        progress = get_assessment_progress(rcm['rcm_id'], user_info['user_id'])
-        assessment_progress.append({
-            'rcm_info': rcm,
-            'progress': progress
-        })
-    
-    log_user_activity(user_info, 'PAGE_ACCESS', '내부평가 메인 페이지', '/internal-assessment', 
-                     request.remote_addr, request.headers.get('User-Agent'),
-                     {'rcm_count': len(user_rcms)})
-    
-    return render_template('internal_assessment_main.jsp',
-                         assessment_progress=assessment_progress,
-                         is_logged_in=is_logged_in(),
-                         user_info=user_info)
 
-# 특정 RCM의 내부평가 상세 페이지
-@bp_link9.route('/internal-assessment/<int:rcm_id>')
-@login_required  
-def assessment_detail(rcm_id):
-    """특정 RCM의 내부평가 상세 페이지"""
-    user_info = get_user_info()
+    # 디버깅 정보 출력
     
-    # RCM 접근 권한 확인
-    user_rcms = get_user_rcms(user_info['user_id'])
-    rcm_info = next((rcm for rcm in user_rcms if rcm['rcm_id'] == rcm_id), None)
-    
-    if not rcm_info:
-        flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
-        return redirect(url_for('link9.internal_assessment'))
-    
-    # 내부평가 진행 상황 조회
-    progress = get_assessment_progress(rcm_id, user_info['user_id'])
-    
-    # 평가 단계별 데이터 조회
-    assessment_data = get_assessment_data(rcm_id, user_info['user_id'])
-    
-    log_user_activity(user_info, 'PAGE_ACCESS', '내부평가 상세 페이지', f'/internal-assessment/{rcm_id}', 
-                     request.remote_addr, request.headers.get('User-Agent'),
-                     {'rcm_id': rcm_id})
-    
-    return render_template('assessment_detail.jsp',
-                         rcm_info=rcm_info,
-                         progress=progress,
-                         assessment_data=assessment_data,
-                         is_logged_in=is_logged_in(),
-                         user_info=user_info)
+    if request.method == 'POST':
+        name = request.form.get('name')
+        company_name = request.form.get('company_name')
+        email = request.form.get('email')
+        message = request.form.get('message')
 
-# 내부평가 단계별 페이지
-@bp_link9.route('/internal-assessment/<int:rcm_id>/step/<int:step>')
-@login_required
-def assessment_step(rcm_id, step):
-    """내부평가 단계별 페이지"""
-    user_info = get_user_info()
-    
-    # RCM 접근 권한 확인
-    user_rcms = get_user_rcms(user_info['user_id'])
-    rcm_info = next((rcm for rcm in user_rcms if rcm['rcm_id'] == rcm_id), None)
-    
-    if not rcm_info:
-        flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
-        return redirect(url_for('link9.internal_assessment'))
-    
-    # 단계 유효성 검사 (1-6단계)
-    if step < 1 or step > 6:
-        flash('유효하지 않은 평가 단계입니다.', 'error')
-        return redirect(url_for('link9.assessment_detail', rcm_id=rcm_id))
-    
-    # 해당 단계의 데이터 조회
-    step_data = get_step_data(rcm_id, user_info['user_id'], step)
-    
-    # 단계별 템플릿 매핑
-    step_templates = {
-        1: 'assessment_step1_planning.jsp',
-        2: 'assessment_step2_design.jsp', 
-        3: 'assessment_step3_operation.jsp',
-        4: 'assessment_step4_defects.jsp',
-        5: 'assessment_step5_improvement.jsp',
-        6: 'assessment_step6_report.jsp'
-    }
-    
-    template = step_templates.get(step, 'assessment_step_generic.jsp')
-    
-    log_user_activity(user_info, 'PAGE_ACCESS', f'내부평가 {step}단계', 
-                     f'/internal-assessment/{rcm_id}/step/{step}', 
-                     request.remote_addr, request.headers.get('User-Agent'),
-                     {'rcm_id': rcm_id, 'step': step})
-    
-    return render_template(template,
-                         rcm_info=rcm_info,
-                         step=step,
-                         step_data=step_data,
-                         is_logged_in=is_logged_in(),
-                         user_info=user_info)
+        subject = f'Contact Us 문의: {name}'
+        body = f'이름: {name}\n회사명: {company_name}\n이메일: {email}\n문의내용:\n{message}'
+        try:
+            send_gmail(
+                to='snowball1566@gmail.com',
+                subject=subject,
+                body=body
+            )
+            return render_template('contact.jsp', success=True, remote_addr=request.remote_addr,
+                                 is_logged_in=user_logged_in, user_info=user_info)
+        except Exception as e:
+            return render_template('contact.jsp', success=False, error=str(e), remote_addr=request.remote_addr,
+                                 is_logged_in=user_logged_in, user_info=user_info)
+    return render_template('contact.jsp', remote_addr=request.remote_addr,
+                         is_logged_in=user_logged_in, user_info=user_info)
 
-# API: 내부평가 진행 상황 저장
-@bp_link9.route('/api/internal-assessment/<int:rcm_id>/progress', methods=['POST'])
-@login_required
-def save_assessment_progress(rcm_id):
-    """내부평가 진행 상황 저장"""
+@bp_link9.route('/service_inquiry', methods=['POST'])
+def service_inquiry():
+    """서비스 문의 처리"""
     try:
-        user_info = get_user_info()
+        company_name = request.form.get('company_name')
+        contact_name = request.form.get('contact_name')
+        contact_email = request.form.get('contact_email')
+        
+        
+        subject = f'SnowBall 서비스 가입 문의: {company_name}'
+        body = f'''SnowBall 서비스 가입 문의가 접수되었습니다.
+
+회사명: {company_name}
+담당자명: {contact_name}
+이메일: {contact_email}
+
+내부통제 평가 및 ITGC 관련 서비스에 관심을 보여주셔서 감사합니다.
+빠른 시일 내에 담당자가 연락드리겠습니다.'''
+        
+        send_gmail(
+            to=f'{contact_email}, snowball1566@gmail.com',
+            subject=subject,
+            body=body
+        )
+        
+        # 성공 메시지를 포함하여 로그인 페이지로 리다이렉트
+        return render_template('login.jsp', 
+                             service_inquiry_success=True,
+                             remote_addr=request.remote_addr)
+    except Exception as e:
+        return render_template('login.jsp', 
+                             service_inquiry_error=str(e),
+                             remote_addr=request.remote_addr)
+
+@bp_link9.route('/api/contact/send', methods=['POST'])
+def send_contact_message():
+    """Contact 메시지 전송 API"""
+    try:
         data = request.get_json()
+        name = data.get('name')
+        email = data.get('email')
+        subject = data.get('subject', '일반 문의')
+        message = data.get('message')
         
-        step = data.get('step')
-        progress_data = data.get('data', {})
-        status = data.get('status', 'in_progress')  # pending, in_progress, completed
+        if not all([name, email, message]):
+            return {
+                'success': False,
+                'message': '필수 정보가 누락되었습니다.'
+            }, 400
         
-        # 데이터베이스에 저장
-        db = get_db()
-        cursor = db.cursor()
+        # 이메일 전송
+        email_subject = f'[SnowBall] {subject} - {name}'
+        email_body = f'''SnowBall 웹사이트를 통해 문의가 접수되었습니다.
+
+■ 문의자 정보
+이름: {name}
+이메일: {email}
+문의 유형: {subject}
+
+■ 문의 내용
+{message}
+
+■ 기타 정보
+접수 시간: {request.remote_addr}
+IP 주소: {request.remote_addr}
+User-Agent: {request.headers.get('User-Agent', 'Unknown')}
+'''
         
-        # 기존 데이터 확인 후 업데이트 또는 삽입
-        cursor.execute('''
-            SELECT assessment_id FROM sb_internal_assessment 
-            WHERE rcm_id = ? AND user_id = ? AND step = ?
-        ''', (rcm_id, user_info['user_id'], step))
+        send_gmail(
+            to='snowball1566@gmail.com',
+            subject=email_subject,
+            body=email_body
+        )
         
-        existing = cursor.fetchone()
+        # 자동 응답 메일 (문의자에게)
+        auto_reply_subject = '[SnowBall] 문의 접수 완료'
+        auto_reply_body = f'''안녕하세요, {name}님.
+
+SnowBall 서비스에 문의해 주셔서 감사합니다.
+고객님의 문의가 정상적으로 접수되었습니다.
+
+■ 접수된 문의 내용
+문의 유형: {subject}
+접수 내용: {message[:100]}{'...' if len(message) > 100 else ''}
+
+담당자 검토 후 빠른 시일 내에 회신드리겠습니다.
+일반적으로 1-2일 이내에 답변드리고 있습니다.
+
+문의해 주셔서 다시 한 번 감사합니다.
+
+SnowBall Team
+snowball1566@gmail.com
+'''
         
-        if existing:
-            # 업데이트
-            cursor.execute('''
-                UPDATE sb_internal_assessment 
-                SET progress_data = ?, status = ?, updated_date = ?
-                WHERE assessment_id = ?
-            ''', (json.dumps(progress_data), status, datetime.now(), existing[0]))
-        else:
-            # 신규 삽입
-            cursor.execute('''
-                INSERT INTO sb_internal_assessment 
-                (rcm_id, user_id, step, progress_data, status, created_date, updated_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (rcm_id, user_info['user_id'], step, json.dumps(progress_data), 
-                  status, datetime.now(), datetime.now()))
+        send_gmail(
+            to=email,
+            subject=auto_reply_subject,
+            body=auto_reply_body
+        )
         
-        db.commit()
-        
-        log_user_activity(user_info, 'DATA_SAVE', f'내부평가 {step}단계 저장', 
-                         f'/api/internal-assessment/{rcm_id}/progress',
-                         request.remote_addr, request.headers.get('User-Agent'),
-                         {'rcm_id': rcm_id, 'step': step, 'status': status})
-        
-        return jsonify({
+        return {
             'success': True,
-            'message': f'{step}단계 진행상황이 저장되었습니다.'
-        })
+            'message': '문의가 성공적으로 전송되었습니다. 빠른 시일 내에 답변드리겠습니다.'
+        }
         
     except Exception as e:
-        print(f"내부평가 진행상황 저장 오류: {e}")
-        return jsonify({
+        return {
             'success': False,
-            'message': f'저장 중 오류가 발생했습니다: {str(e)}'
-        }), 500
+            'message': '메시지 전송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+        }, 500
 
-# 헬퍼 함수들
-def get_assessment_progress(rcm_id, user_id):
-    """특정 RCM의 내부평가 진행 상황 조회"""
-    db = get_db()
-    cursor = db.cursor()
-    
-    # 각 단계별 상태 조회
-    cursor.execute('''
-        SELECT step, status, updated_date 
-        FROM sb_internal_assessment 
-        WHERE rcm_id = ? AND user_id = ?
-        ORDER BY step
-    ''', (rcm_id, user_id))
-    
-    steps_data = cursor.fetchall()
-    
-    # 6단계 진행상황 초기화
-    progress = {
-        'steps': [
-            {'step': 1, 'name': '평가 계획 수립', 'status': 'pending'},
-            {'step': 2, 'name': '통제 설계 평가', 'status': 'pending'},
-            {'step': 3, 'name': '운영 효과성 평가', 'status': 'pending'},
-            {'step': 4, 'name': '결함 식별 및 평가', 'status': 'pending'},
-            {'step': 5, 'name': '개선 계획 수립', 'status': 'pending'},
-            {'step': 6, 'name': '평가 보고서 작성', 'status': 'pending'}
-        ],
-        'overall_progress': 0,
-        'current_step': 1
-    }
-    
-    # 실제 데이터로 업데이트
-    for step_data in steps_data:
-        step_num, status, updated_date = step_data
-        if 1 <= step_num <= 6:
-            progress['steps'][step_num - 1]['status'] = status
-            progress['steps'][step_num - 1]['updated_date'] = updated_date
-    
-    # 전체 진행률 계산
-    completed_steps = sum(1 for step in progress['steps'] if step['status'] == 'completed')
-    progress['overall_progress'] = int((completed_steps / 6) * 100)
-    
-    # 현재 진행 단계 찾기
-    for i, step in enumerate(progress['steps']):
-        if step['status'] in ['pending', 'in_progress']:
-            progress['current_step'] = i + 1
-            break
-    else:
-        progress['current_step'] = 6  # 모든 단계 완료
-    
-    return progress
-
-def get_assessment_data(rcm_id, user_id):
-    """특정 RCM의 내부평가 데이터 조회"""
-    db = get_db()
-    cursor = db.cursor()
-    
-    cursor.execute('''
-        SELECT step, progress_data, status 
-        FROM sb_internal_assessment 
-        WHERE rcm_id = ? AND user_id = ?
-        ORDER BY step
-    ''', (rcm_id, user_id))
-    
-    data = {}
-    for row in cursor.fetchall():
-        step, progress_data, status = row
-        try:
-            data[step] = {
-                'data': json.loads(progress_data) if progress_data else {},
-                'status': status
-            }
-        except json.JSONDecodeError:
-            data[step] = {'data': {}, 'status': status}
-    
-    return data
-
-def get_step_data(rcm_id, user_id, step):
-    """특정 단계의 데이터 조회"""
-    db = get_db()
-    cursor = db.cursor()
-    
-    cursor.execute('''
-        SELECT progress_data, status 
-        FROM sb_internal_assessment 
-        WHERE rcm_id = ? AND user_id = ? AND step = ?
-    ''', (rcm_id, user_id, step))
-    
-    result = cursor.fetchone()
-    if result:
-        progress_data, status = result
-        try:
+@bp_link9.route('/api/feedback', methods=['POST'])
+def submit_feedback():
+    """사용자 피드백 전송 API"""
+    try:
+        data = request.get_json()
+        feedback_type = data.get('type', '일반 피드백')
+        content = data.get('content')
+        rating = data.get('rating')
+        user_email = data.get('email', '익명')
+        
+        if not content:
             return {
-                'data': json.loads(progress_data) if progress_data else {},
-                'status': status
-            }
-        except json.JSONDecodeError:
-            return {'data': {}, 'status': status}
-    
-    return {'data': {}, 'status': 'pending'}
+                'success': False,
+                'message': '피드백 내용을 입력해주세요.'
+            }, 400
+        
+        # 피드백 이메일 전송
+        email_subject = f'[SnowBall 피드백] {feedback_type}'
+        email_body = f'''SnowBall 서비스에 대한 피드백이 접수되었습니다.
+
+■ 피드백 정보
+유형: {feedback_type}
+평점: {rating}/5 {'★' * int(rating) if rating else 'N/A'}
+이메일: {user_email}
+
+■ 피드백 내용
+{content}
+
+■ 기술 정보
+접수 시간: {request.remote_addr}
+IP 주소: {request.remote_addr}
+User-Agent: {request.headers.get('User-Agent', 'Unknown')}
+'''
+        
+        send_gmail(
+            to='snowball1566@gmail.com',
+            subject=email_subject,
+            body=email_body
+        )
+        
+        return {
+            'success': True,
+            'message': '소중한 피드백 감사합니다. 서비스 개선에 적극 반영하겠습니다.'
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'message': '피드백 전송 중 오류가 발생했습니다.'
+        }, 500

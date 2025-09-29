@@ -72,13 +72,10 @@ PROGRESS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'progres
 if not os.path.exists(PROGRESS_DIR):
     try:
         os.makedirs(PROGRESS_DIR, exist_ok=True)
-        print(f"Created progress directory: {PROGRESS_DIR}")
     except Exception as e:
-        print(f"Error creating progress directory {PROGRESS_DIR}: {e}")
         # 시스템 임시 디렉토리를 대안으로 사용
         PROGRESS_DIR = os.path.join(tempfile.gettempdir(), 'snowball_progress')
         os.makedirs(PROGRESS_DIR, exist_ok=True)
-        print(f"Using fallback progress directory: {PROGRESS_DIR}")
 
 def get_progress_status(task_id):
     """파일에서 진행률 상태 읽기"""
@@ -87,11 +84,8 @@ def get_progress_status(task_id):
         try:
             with open(progress_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                print(f"Progress read for task {task_id}: {data}")  # 디버그 로그
                 return data
         except (IOError, json.JSONDecodeError) as e:
-            print(f"Error reading progress file for task {task_id}: {e}")
-    print(f"Progress file not found for task {task_id}, returning default")
     return {
         'percentage': 0,
         'current_task': 'AI 검토를 준비하고 있습니다...',
@@ -111,9 +105,7 @@ def set_progress_status(task_id, status):
         
         # 원자적으로 파일 이동
         os.replace(temp_file, progress_file)
-        print(f"Progress written for task {task_id}: {status}")  # 디버그 로그
     except IOError as e:
-        print(f"Error writing progress file for task {task_id}: {e}")
         # 임시 파일이 남아있으면 삭제
         try:
             if os.path.exists(temp_file):
@@ -133,7 +125,6 @@ def update_progress(task_id, percentage, task_description):
         'timestamp': datetime.now().isoformat()  # 타임스탬프 추가
     }
     set_progress_status(task_id, status)
-    print(f"Progress Update (Task {task_id}): {percentage}% - {task_description}")
 
 def reset_progress(task_id):
     """진행률 파일 삭제 함수"""
@@ -141,9 +132,7 @@ def reset_progress(task_id):
     try:
         if os.path.exists(progress_file):
             os.unlink(progress_file)
-            print(f"Progress file deleted for task {task_id}")
     except IOError as e:
-        print(f"Error deleting progress file for task {task_id}: {e}")
 
 # ITGC 통제 정의 (반복 코드 제거를 위한 데이터 구조)
 ITGC_CONTROLS = {
@@ -429,10 +418,8 @@ def get_conditional_questions(answers):
     """
     답변에 따라 조건부로 질문을 필터링하는 함수
     """
-    print(f"[SKIP DEBUG] get_conditional_questions 호출됨, 답변 수: {len(answers) if answers else 0}")
     
     if not answers or len(answers) < 4:
-        print(f"[SKIP DEBUG] 답변 부족, 전체 질문 반환")
         return s_questions
     
     skip_ranges = []
@@ -441,11 +428,9 @@ def get_conditional_questions(answers):
     if len(answers) > 3 and answers[3] and str(answers[3]).upper() == 'N':
         skip_ranges.append((4, 5))
         skip_ranges.append((47, 47))
-        print(f"[SKIP DEBUG] 3번 답변 'N' (Cloud 미사용) -> 4~5번, 47번 스킵")
     
     # 4번 답변 디버깅 정보 출력
     if len(answers) > 4:
-        print(f"[SKIP DEBUG] 4번 답변 확인: '{answers[4]}' (타입: {type(answers[4])})")
     
     # Cloud 스킵 조건: 4번 클라우드 타입 + 5번 SOC1 Report 발행 여부 (Y)
     has_soc1_report = len(answers) > 5 and answers[5] and str(answers[5]).upper() == 'Y'
@@ -454,45 +439,36 @@ def get_conditional_questions(answers):
     if len(answers) > 4 and answers[4] and str(answers[4]) == 'SaaS' and has_soc1_report:
         skip_ranges.append((11, 11))  # 11번 질문만 생략
         skip_ranges.append((14, 46))  # 14~46번 질문 생략 (마지막까지)
-        print(f"[SKIP DEBUG] 4번 답변 'SaaS' + 5번 답변 'Y' -> 11번, 14~46번 스킵 (인터뷰 종료)")
     
     # 4번 답변이 IaaS이고 5번 답변이 Y이면 22, 29, 44~46번 질문 생략
     elif len(answers) > 4 and answers[4] and str(answers[4]) == 'IaaS' and has_soc1_report:
         skip_ranges.append((22, 22))  # 22번 질문 생략
         skip_ranges.append((29, 29))  # 29번 질문 생략
         skip_ranges.append((44, 46))  # 44~46번 질문 생략
-        print(f"[SKIP DEBUG] 4번 답변 'IaaS' + 5번 답변 'Y' -> 22번, 29번, 44~46번 스킵")
     
     # 4번 답변이 PaaS이고 5번 답변이 Y이면 14~31, 44~46번 질문 생략
     elif len(answers) > 4 and answers[4] and str(answers[4]) == 'PaaS' and has_soc1_report:
         skip_ranges.append((14, 31))  # 14~31번 질문 생략
         skip_ranges.append((44, 46))  # 44~46번 질문 생략
-        print(f"[SKIP DEBUG] 4번 답변 'PaaS' + 5번 답변 'Y' -> 14~31번, 44~46번 스킵")
     
     # 14번 답변이 N이면 15~23번 질문 생략
     if len(answers) > 14 and answers[14] and str(answers[14]).upper() == 'N':
         skip_ranges.append((15, 23))
-        print(f"[SKIP DEBUG] 14번 답변 'N' -> 15~23번 스킵")
     
     # 24번 답변이 N이면 25~30번 질문 생략
     if len(answers) > 24 and answers[24] and str(answers[24]).upper() == 'N':
         skip_ranges.append((25, 30))
-        print(f"[SKIP DEBUG] 24번 답변 'N' -> 25~30번 스킵")
     
     # 31번 답변이 N이면 32~37번 질문 생략
     if len(answers) > 31 and answers[31] and str(answers[31]).upper() == 'N':
         skip_ranges.append((32, 37))
-        print(f"[SKIP DEBUG] 31번 답변 'N' -> 32~37번 스킵")
     
     # 38번 답변이 N이면 39~43번 질문 생략
     if len(answers) > 38 and answers[38] and str(answers[38]).upper() == 'N':
         skip_ranges.append((39, 43))
-        print(f"[SKIP DEBUG] 38번 답변 'N' -> 39~43번 스킵")
     
-    print(f"[SKIP DEBUG] 스킵 범위: {skip_ranges}")
     
     if not skip_ranges:
-        print(f"[SKIP DEBUG] 스킵할 질문 없음, 전체 질문 반환")
         return s_questions
     
     filtered_questions = []
@@ -510,7 +486,6 @@ def get_conditional_questions(answers):
         if not should_skip:
             filtered_questions.append(question)
     
-    print(f"[SKIP DEBUG] {skipped_count}개 질문 스킵됨, 필터링된 질문 수: {len(filtered_questions)}")
     return filtered_questions
 
 def get_conditional_question_count(answers):
@@ -577,8 +552,6 @@ def get_skipped_controls(answers):
     if len(answers) > 38 and answers[38] and str(answers[38]).upper() == 'N':
         skipped_controls.update(['CO01', 'CO02', 'CO03'])
     
-    print(f"[SKIP DEBUG] Cloud 타입: {answers[4] if len(answers) > 4 else 'None'}, SOC1 Report: {answers[5] if len(answers) > 5 else 'None'}")
-    print(f"[SKIP DEBUG] 스킵된 통제 목록: {skipped_controls}")
     return skipped_controls
 
 def clear_skipped_answers(answers, textarea_answers):
@@ -616,9 +589,7 @@ def clear_skipped_answers(answers, textarea_answers):
             if i < len(textarea_answers):
                 textarea_answers[i] = ''
     
-    print(f"[CLEAR DEBUG] 스킵된 질문 범위: {skip_ranges}")
     for start, end in skip_ranges:
-        print(f"[CLEAR DEBUG] {start}~{end}번 답변 공란 처리 완료")
 
 def set_sheet_tab_color_for_skipped_controls(wb, answers):
     """
@@ -632,11 +603,8 @@ def set_sheet_tab_color_for_skipped_controls(wb, answers):
                 ws = wb[sheet_name]
                 # 시트 탭을 회색으로 설정 (RGB: 808080)
                 ws.sheet_properties.tabColor = "808080"
-                print(f"[SHEET COLOR] {sheet_name} 시트를 회색으로 설정했습니다.")
             except Exception as e:
-                print(f"[SHEET COLOR] {sheet_name} 시트 색상 설정 실패: {e}")
     
-    print(f"[SHEET COLOR] 총 {len(skipped_controls)}개 통제 시트를 회색으로 처리했습니다.")
 
 # --- 통제별 검토 기준 정의 (수기 수정 가능) ---
 # 공통 감사기준 (엄격한 전문 접근)
@@ -920,7 +888,6 @@ def ai_improve_interview_answer(question_text, answer_text):
         }
         
     except Exception as e:
-        print(f"답변 개선 중 오류 발생: {e}")
         return {
             'improved_answer': answer_text,
             'suggestions': ""
@@ -1033,7 +1000,6 @@ def ai_improve_answer_consistency(answers, textarea_answers):
         }
         
     except Exception as e:
-        print(f"일관성 체크 중 오류 발생: {e}")
         basic_issues = check_answer_consistency(answers, textarea_answers)
         return {
             'ai_consistency_check': f"AI 일관성 체크 중 오류가 발생했습니다: {str(e)}",
@@ -1435,42 +1401,32 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
         is_skipped = control_number in skipped_controls
         
         if is_skipped:
-            print(f"⏭️ 스킵된 통제이므로 AI 검토 건너뜀: {control_number}")
             result['C2'] = result['B2']
         else:
             # 스킵되지 않은 통제만 AI 검토 수행
             text_length = len(result['B2'])
             should_apply_ai = should_apply_ai_refinement(result['B2'])
-            print(f"🔍 [DEBUG] {control_number} AI 검토 체크: 텍스트 길이={text_length}, should_apply_ai={should_apply_ai}, 스킵 여부={is_skipped}")
             
             if should_apply_ai:
-                print(f"🤖 AI 다듬기 시작: {control_number}")
                 
                 improved_text = ai_improve_interview_answer("", result['B2'])  # 질문 텍스트 제거로 토큰 절약
                 if improved_text and improved_text.get('improved_answer'):
                     result['C2'] = improved_text['improved_answer']
-                    print(f"📝 AI 다듬기 완료: {control_number}")
                 else:
                     result['C2'] = result['B2']
                 
                 # AI 검토 수행
-                print(f"🔍 AI 검토 시작: {control_number}")
                 ai_review = get_ai_review(result['C2'], control_number, answers)
                 result['AI_Review'] = ai_review
                 result['AI_Summary'] = ai_review
-                print(f"✅ AI 검토 완료: {control_number}")
             else:
-                print(f"⏭️ AI 다듬기 건너뜀 (길이 {text_length}자, 범위: {TEXT_LENGTH_LIMITS['min_length']}~{TEXT_LENGTH_LIMITS['max_length']}자): {control_number}")
                 result['C2'] = result['B2']
                 
                 # 길이 제한 때문에 AI 다듬기는 건너뛰지만, 스킵되지 않은 통제는 Summary용 AI 검토 수행
-                print(f"🔍 Summary용 AI 검토 시작: {control_number}")
                 ai_review = get_ai_review(result['B2'], control_number, answers)
                 result['AI_Review'] = ai_review
                 result['AI_Summary'] = ai_review
-                print(f"✅ Summary용 AI 검토 완료: {control_number}")
     else:
-        print(f"⏭️ [DEBUG] AI 검토 건너뜀: enable_ai_review={enable_ai_review}, B2 존재={bool('B2' in result and result['B2'])}")
         result['C2'] = result['B2']
 
     return result
@@ -1478,164 +1434,126 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
 # link2_prev의 핵심 로직만 분리 (세션 객체는 snowball.py에서 전달)
 def link2_prev_logic(session):
     question_index = session.get('question_index', 0)
-    print(f"[PREV DEBUG] 현재 question_index: {question_index}")
     
     if question_index > 0:
         # 조건부 질문 생략 로직 (역방향)
         if question_index == 24:  # 24번 질문에서 이전으로 갈 때 (OS서버 접속)
             # 17번 답변 확인 (DB 접속 가능 여부)
             answer_17 = session.get('answer', [])[17] if len(session.get('answer', [])) > 17 else ''
-            print(f"[PREV DEBUG] 24번에서 이전, 17번 답변: {answer_17}")
             if answer_17 == 'N':
                 # 17번 답변이 'N'이면 17번으로 이동 (18~23번 스킵)
                 session['question_index'] = 17
-                print(f"[PREV DEBUG] 17번으로 이동 (18~23번 스킵)")
             else:
                 # 아니면 23번으로 이동
                 session['question_index'] = 23
-                print(f"[PREV DEBUG] 23번으로 이동")
         elif question_index == 31: # 31번 질문에서 이전으로 갈 때 (프로그램 수정 가능 여부)
             # 24번 답변 확인 (OS서버 접속 가능 여부)
             answer_24 = session.get('answer', [])[24] if len(session.get('answer', [])) > 24 else ''
-            print(f"[PREV DEBUG] 31번에서 이전, 24번 답변: {answer_24}")
             if answer_24 == 'N':
                 # 24번 답변이 'N'이면 24번으로 이동 (25~30번 스킵)
                 session['question_index'] = 24
-                print(f"[PREV DEBUG] 24번으로 이동 (25~30번 스킵)")
             else:
                 # 아니면 30번으로 이동
                 session['question_index'] = 30
-                print(f"[PREV DEBUG] 30번으로 이동")
         elif question_index == 38:  # 38번 질문에서 이전으로 갈 때 (배치 스케줄 유무)
             # 31번 답변 확인 (프로그램 수정 가능 여부)
             answer_31 = session.get('answer', [])[31] if len(session.get('answer', [])) > 31 else ''
-            print(f"[PREV DEBUG] 38번에서 이전, 31번 답변: {answer_31}")
             if answer_31 == 'N':
                 # 31번 답변이 'N'이면 31번으로 이동 (32~37번 스킵)
                 session['question_index'] = 31
-                print(f"[PREV DEBUG] 31번으로 이동 (32~37번 스킵)")
             else:
                 # 아니면 37번으로 이동
                 session['question_index'] = 37
-                print(f"[PREV DEBUG] 37번으로 이동")
         elif question_index == 6:  # 6번 질문에서 이전으로 갈 때 (사용자 권한부여 이력)
             # 4번, 5번 답변 확인 (Cloud 타입 + SOC1 Report)
             answer_4 = session.get('answer', [])[4] if len(session.get('answer', [])) > 4 else ''
             answer_5 = session.get('answer', [])[5] if len(session.get('answer', [])) > 5 else ''
             answer_3 = session.get('answer', [])[3] if len(session.get('answer', [])) > 3 else ''
-            print(f"[PREV DEBUG] 6번에서 이전, 3번 답변: {answer_3}, 4번 답변: {answer_4}, 5번 답변: {answer_5}")
             
             if answer_4 == 'SaaS' and answer_5 == 'Y':
                 # SaaS + SOC1 Report 발행이면 5번으로 이동 (6번 이후 대부분 스킵됨)
                 session['question_index'] = 5
-                print(f"[PREV DEBUG] SaaS + SOC1 Report 발행이므로 5번으로 이동")
             elif answer_4 == 'PaaS' and answer_5 == 'Y':
                 # PaaS + SOC1 Report 발행이면 13번으로 이동 (14~31번 스킵)
                 session['question_index'] = 13
-                print(f"[PREV DEBUG] PaaS + SOC1 Report 발행이므로 13번으로 이동")
             elif answer_3 == 'N':
                 # Cloud 서비스를 사용하지 않으면 3번으로 이동 (4~5번 스킵)
                 session['question_index'] = 3
-                print(f"[PREV DEBUG] 3번으로 이동 (4~5번 스킵)")
             else:
                 # Cloud 서비스를 사용하면 5번으로 이동
                 session['question_index'] = 5
-                print(f"[PREV DEBUG] 5번으로 이동")
         elif question_index in [4, 5]:  # 4~5번 질문에서 이전으로 갈 때 (Cloud 관련)
             # 모두 3번으로 이동 (Cloud 서비스 사용 여부)
             session['question_index'] = 3
-            print(f"[PREV DEBUG] {question_index}번에서 3번으로 이동")
         elif question_index in [18, 19, 20, 21, 22, 23]:  # 18~23번 질문에서 이전으로 갈 때 (DB 관련)
             # IaaS인 경우 22번은 스킵되므로 특별 처리
             if question_index == 23:
                 answer_4 = session.get('answer', [])[4] if len(session.get('answer', [])) > 4 else ''
-                print(f"[PREV DEBUG] 23번에서 이전, 4번 답변: {answer_4}")
                 if answer_4 == 'IaaS':
                     # IaaS이면 21번으로 이동 (22번 스킵)
                     session['question_index'] = 21
-                    print(f"[PREV DEBUG] IaaS이므로 21번으로 이동 (22번 스킵)")
                 else:
                     # 일반적으로 17번으로 이동
                     session['question_index'] = 17
-                    print(f"[PREV DEBUG] 17번으로 이동")
             else:
                 # 18~22번은 모두 17번으로 이동 (DB 접속 가능 여부)
                 session['question_index'] = 17
-                print(f"[PREV DEBUG] {question_index}번에서 17번으로 이동")
         elif question_index in [25, 26, 27, 28, 29, 30]:  # 25~30번 질문에서 이전으로 갈 때 (OS 관련)
             # IaaS인 경우 29번은 스킵되므로 특별 처리
             if question_index == 30:
                 answer_4 = session.get('answer', [])[4] if len(session.get('answer', [])) > 4 else ''
-                print(f"[PREV DEBUG] 30번에서 이전, 4번 답변: {answer_4}")
                 if answer_4 == 'IaaS':
                     # IaaS이면 28번으로 이동 (29번 스킵)
                     session['question_index'] = 28
-                    print(f"[PREV DEBUG] IaaS이므로 28번으로 이동 (29번 스킵)")
                 else:
                     # 일반적으로 24번으로 이동
                     session['question_index'] = 24
-                    print(f"[PREV DEBUG] 24번으로 이동")
             else:
                 # 25~29번은 모두 24번으로 이동 (OS서버 접속 가능 여부)
                 session['question_index'] = 24
-                print(f"[PREV DEBUG] {question_index}번에서 24번으로 이동")
         elif question_index == 32:  # 32번 질문에서 이전으로 갈 때 (프로그램 변경 이력)
             # PaaS + SOC1 Report 여부 확인
             answer_4 = session.get('answer', [])[4] if len(session.get('answer', [])) > 4 else ''
             answer_5 = session.get('answer', [])[5] if len(session.get('answer', [])) > 5 else ''
-            print(f"[PREV DEBUG] 32번에서 이전, 4번 답변: {answer_4}, 5번 답변: {answer_5}")
             if answer_4 == 'PaaS' and answer_5 == 'Y':
                 # PaaS + SOC1 Report 발행이면 13번으로 이동 (14~31번 스킵)
                 session['question_index'] = 13
-                print(f"[PREV DEBUG] PaaS + SOC1 Report 발행이므로 13번으로 이동 (14~31번 스킵)")
             else:
                 # 일반적으로 31번으로 이동
                 session['question_index'] = 31
-                print(f"[PREV DEBUG] 31번으로 이동")
         elif question_index in [33, 34, 35, 36, 37]:  # 33~37번 질문에서 이전으로 갈 때 (PC 관련)
             # 모두 31번으로 이동 (프로그램 수정 가능 여부)
             session['question_index'] = 31
-            print(f"[PREV DEBUG] {question_index}번에서 31번으로 이동")
         elif question_index in [39, 40, 41, 42, 43]:  # 39~43번 질문에서 이전으로 갈 때 (배치 관련)
             # 모두 38번으로 이동 (배치 스케줄 유무)
             session['question_index'] = 38
-            print(f"[PREV DEBUG] {question_index}번에서 38번으로 이동")
         elif question_index in [44, 45, 46]:  # 44~46번 질문에서 이전으로 갈 때 (CO04~06)
             # SaaS, PaaS, IaaS + SOC1 Report 여부 및 38번 배치 스케줄 답변 확인
             answer_4 = session.get('answer', [])[4] if len(session.get('answer', [])) > 4 else ''
             answer_5 = session.get('answer', [])[5] if len(session.get('answer', [])) > 5 else ''
             answer_38 = session.get('answer', [])[38] if len(session.get('answer', [])) > 38 else ''
-            print(f"[PREV DEBUG] {question_index}번에서 이전, 4번 답변: {answer_4}, 5번 답변: {answer_5}, 38번 답변: {answer_38}")
             
             if answer_4 == 'SaaS' and answer_5 == 'Y':
                 # SaaS + SOC1 Report 발행이면 13번으로 이동 (14~46번 모두 스킵)
                 session['question_index'] = 13
-                print(f"[PREV DEBUG] SaaS + SOC1 Report 발행이므로 13번으로 이동 (14~46번 스킵)")
             elif answer_4 == 'PaaS' and answer_5 == 'Y':
                 # PaaS + SOC1 Report 발행이면 43번으로 이동 (44~46번 스킵)
                 session['question_index'] = 43
-                print(f"[PREV DEBUG] PaaS + SOC1 Report 발행이므로 43번으로 이동 (44~46번 스킵)")
             elif answer_4 == 'IaaS' and answer_5 == 'Y':
                 # IaaS + SOC1 Report 발행이면 43번으로 이동 (44~46번 스킵)
                 session['question_index'] = 43
-                print(f"[PREV DEBUG] IaaS + SOC1 Report 발행이므로 43번으로 이동 (44~46번 스킵)")
             elif answer_38 == 'N':
                 # 배치 스케줄이 없으면 38번으로 이동 (39~43번 스킵)
                 session['question_index'] = 38
-                print(f"[PREV DEBUG] 38번으로 이동 (39~43번 스킵)")
             else:
                 # 배치 스케줄이 있으면 이전 질문으로 이동
                 if question_index == 44:
                     session['question_index'] = 43
-                    print(f"[PREV DEBUG] 43번으로 이동")
                 else:
                     session['question_index'] = question_index - 1
-                    print(f"[PREV DEBUG] {question_index - 1}번으로 이동")
         else:
             session['question_index'] = question_index - 1
-            print(f"[PREV DEBUG] 일반 이전: {question_index} -> {question_index - 1}")
     
-    print(f"[PREV DEBUG] 최종 question_index: {session['question_index']}")
     return session
 
 def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fill_sheet, is_ineffective, send_gmail_with_attachment, enable_ai_review=False, progress_callback=None):
@@ -1688,12 +1606,10 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         if is_logged_in():
             # 로그인 상태: 스킵되지 않은 모든 통제 검토
             ai_review_controls = set(c for c in control_list if c not in skipped_controls)
-            print(f"👤 로그인 사용자 - AI 검토 대상 통제 ({len(ai_review_controls)}개): 전체 통제")
         else:
             # 비로그인 상태: APD01, APD02, APD03만 검토 (스킵되지 않은 것만)
             limited_controls = ['APD01', 'APD02', 'APD03']
             ai_review_controls = set(c for c in limited_controls if c not in skipped_controls)
-            print(f"🔒 비로그인 사용자 - AI 검토 대상 통제 ({len(ai_review_controls)}개): {sorted(ai_review_controls)}")
     
     total_controls = len(control_list)
     processed_controls = []
@@ -1726,20 +1642,15 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                 num_lines = value.count('\n') + 1
                 approx_lines = num_lines + (len(value) // 50)
                 ws.row_dimensions[12].height = 15 * approx_lines
-                print(f"🔄 {control} 스킵된 통제이므로 C12셀에 스킵 이유 표시: {skip_reason[:50]}...")
             
             processed_controls.append(control)
-            print(f"✓ {control} 처리 완료")
         except Exception as e:
             failed_controls.append((control, str(e)))
-            print(f"✗ {control} 처리 실패: {str(e)}")
 
         # AI 검토 결과가 있는 경우 Summary 시트용 데이터 수집 (선택된 통제만)
         if control_needs_ai_review and 'AI_Review' in text_data and isinstance(text_data['AI_Review'], dict):
             summary_ai_reviews[control] = text_data['AI_Review']
-            print(f"📊 {control} AI 검토 결과 Summary 수집 완료")
         elif control_needs_ai_review:
-            print(f"⚠️ {control} AI_Review 데이터 없음: keys={list(text_data.keys()) if hasattr(text_data, 'keys') else 'N/A'}")
 
         # AI 검토 결과가 있는 경우와 없는 경우에 따라 C14 처리 (선택된 통제만)
         ai_review_processed = False
@@ -1779,16 +1690,11 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         #    ws['C13'] = '화면 증빙을 첨부해주세요'
 
     # 처리 결과 요약 출력
-    print(f"\n📋 처리 완료: {len(processed_controls)}개 통제")
-    print(f"❌ 처리 실패: {len(failed_controls)}개 통제")
     if failed_controls:
         for control, error in failed_controls:
-            print(f"  - {control}: {error}")
     
     # 4. Summary 시트 처리
-    print(f"\n📊 Summary 시트 데이터: {len(summary_ai_reviews)}개 통제")
     for control in summary_ai_reviews.keys():
-        print(f"  - {control}")
     
     if enable_ai_review and summary_ai_reviews:
         # AI 검토가 활성화된 경우 Summary 시트 생성
@@ -1802,11 +1708,9 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
         try:
             # Summary 시트 확인 (템플릿에 이미 있어야 함)
             if 'Summary' not in wb.sheetnames:
-                print("⚠️ 템플릿에 Summary 시트가 없습니다. Summary 기능을 건너뜁니다.")
                 return wb, processed_controls, failed_controls
             
             summary_ws = wb['Summary']
-            print(f"✅ 기존 Summary 시트를 사용합니다.")
             
             # 스킵된 통제 목록 가져오기
             skipped_controls = get_skipped_controls(answers)
@@ -1864,13 +1768,11 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                         break
                 
                 if not found_row:
-                    print(f"⚠️ Summary 시트에서 {control} 통제를 찾을 수 없습니다.")
                     continue
                 
                 if control in summary_ai_reviews and isinstance(summary_ai_reviews[control], dict):
                     # AI 검토를 받은 통제: 검토 결과 작성
                     ai_review = summary_ai_reviews[control]
-                    print(f"📝 Summary 시트 {found_row}행에서 {control} 통제 AI 검토결과 업데이트")
                     
                     # C열: 검토결과
                     review_result = ai_review.get('review_result', '')
@@ -1887,11 +1789,9 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                         improvements = improvements[:32760] + "..."
                     summary_ws[f'E{found_row}'] = improvements
                     
-                    print(f"✅ {control} 통제 AI 검토 결과 Summary 시트에 업데이트 완료")
                 
                 elif control in skipped_controls:
                     # 스킵된 통제: 스킵 사유에 맞는 메시지 작성
-                    print(f"📝 Summary 시트 {found_row}행에서 {control} 통제 스킵 메시지 작성")
                     
                     # 스킵 사유에 맞는 메시지 동적 생성
                     skip_message = get_skip_reason_message(control, answers)
@@ -1916,18 +1816,14 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                     else:
                         summary_ws[f'E{found_row}'] = ''
                     
-                    print(f"✅ {control} 통제 스킵 메시지 Summary 시트에 작성 완료")
         except Exception as e:
-            print(f"Summary 시트 작성 중 오류 발생: {str(e)}")
             # Summary 시트 오류가 발생해도 전체 프로세스는 계속 진행
     else:
         # AI 검토가 비활성화된 경우 기존 Summary 시트 삭제
         if 'Summary' in wb.sheetnames:
             try:
                 wb.remove(wb['Summary'])
-                print("AI 검토 미사용으로 Summary 시트를 삭제했습니다.")
             except Exception as e:
-                print(f"Summary 시트 삭제 중 오류 발생: {str(e)}")
 
     # 메모리 버퍼에 저장 (안전한 방식) - 한글 처리 개선
     excel_stream = BytesIO()
@@ -2026,7 +1922,6 @@ def test_conditional_questions():
     """
     조건부 질문 생략 로직을 테스트하는 함수
     """
-    print("=== 조건부 질문 생략 로직 테스트 ===")
     
     # 테스트 케이스들
     test_cases = [
@@ -2078,14 +1973,10 @@ def test_conditional_questions():
     ]
     
     for test_case in test_cases:
-        print(f"\n--- {test_case['name']} ---")
         conditional_questions = get_conditional_questions(test_case['answers'])
         actual_count = len(conditional_questions)
         expected_count = test_case['expected_count']
         
-        print(f"예상 질문 수: {expected_count}")
-        print(f"실제 질문 수: {actual_count}")
-        print(f"결과: {'✅ 통과' if actual_count == expected_count else '❌ 실패'}")
         
         # 생략된 질문들 확인
         all_indices = [q['index'] for q in s_questions]
@@ -2093,10 +1984,8 @@ def test_conditional_questions():
         skipped_indices = [idx for idx in all_indices if idx not in conditional_indices]
         
         if skipped_indices:
-            print(f"생략된 질문 인덱스: {skipped_indices}")
     
     # 통제별 N/A 처리 테스트
-    print(f"\n=== 통제별 N/A 처리 테스트 ===")
     
     # 3번 답변이 N인 경우 PC 통제들 테스트
     test_answers = ['test@example.com', 'Test System', 'Y', 'N', 'Y', 'Y', 'Y', 'Y'] + ['N'] * 40
@@ -2104,7 +1993,6 @@ def test_conditional_questions():
     
     for control in pc_controls:
         result = get_text_itgc(test_answers, control)
-        print(f"{control}: {result.get('B2', 'N/A')[:50]}...")
     
     # 4번 답변이 N인 경우 DB 관련 통제들 테스트
     test_answers = ['test@example.com', 'Test System', 'Y', 'Y', 'N', 'Y', 'Y', 'Y'] + ['N'] * 40
@@ -2112,7 +2000,6 @@ def test_conditional_questions():
     
     for control in db_controls:
         result = get_text_itgc(test_answers, control)
-        print(f"{control}: {result.get('B2', 'N/A')[:50]}...")
     
     # 7번 답변이 N인 경우 Cloud 관련 통제들 테스트
     test_answers = ['test@example.com', 'Test System', 'Y', 'Y', 'Y', 'Y', 'Y', 'N'] + ['N'] * 40
@@ -2120,7 +2007,6 @@ def test_conditional_questions():
     
     for control in cloud_controls:
         result = get_text_itgc(test_answers, control)
-        print(f"{control}: {result.get('B2', 'N/A')[:50]}...")
     
     return True
 
@@ -2135,34 +2021,18 @@ def test_ai_review_feature():
     # AI 검토 기능 활성화로 테스트
     result = get_text_itgc(test_answers, 'APD01', test_textarea_answers, enable_ai_review=True)
 
-    print("=== AI 검토 기능 테스트 (Summary 시트 포함) ===")
-    print(f"Control: APD01")
-    print(f"B1: {result.get('B1', 'N/A')}")
-    print(f"B2: {result.get('B2', 'N/A')}")
-    print(f"AI Review 존재 여부: {'AI_Review' in result}")
-    print(f"AI Summary 존재 여부: {'AI_Summary' in result}")
 
     if 'AI_Review' in result:
         ai_review = result['AI_Review']
         if isinstance(ai_review, dict):
-            print(f"\n=== Summary 시트용 AI 검토 결과 ===")
-            print(f"검토결과 (C열): {ai_review.get('review_result', 'N/A')}")
-            print(f"결론 (D열): {ai_review.get('conclusion', 'N/A')}")
-            print(f"개선필요사항 (E열): {ai_review.get('improvements', 'N/A')}")
         else:
-            print(f"\n기존 형식 AI 검토 결과:\n{ai_review}")
 
     # 직접 AI 검토 함수 테스트
     test_content = "사용자 권한 부여 이력이 시스템에 기록되지 않아 모집단 확보가 불가합니다. 새로운 권한 요청 시 승인 절차가 없습니다."
     direct_ai_result = get_ai_review(test_content, 'APD01')
 
-    print(f"\n=== 직접 AI 검토 함수 테스트 ===")
     if isinstance(direct_ai_result, dict):
-        print(f"검토결과: {direct_ai_result.get('review_result', 'N/A')}")
-        print(f"결론: {direct_ai_result.get('conclusion', 'N/A')}")
-        print(f"개선필요사항: {direct_ai_result.get('improvements', 'N/A')}")
     else:
-        print(f"오류 또는 예상치 못한 형식: {direct_ai_result}")
 
     return result
 

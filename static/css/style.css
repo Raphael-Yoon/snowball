@@ -400,7 +400,7 @@ h2 {
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 80px;
+    width: 120px;
     height: 4px;
     background: linear-gradient(90deg, #3498db, #2c3e50);
     border-radius: 2px;

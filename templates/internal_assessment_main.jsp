@@ -158,18 +158,32 @@
                                 </div>
                             </div>
 
-                            <!-- 액션 버튼 -->
+                            <!-- 순차적 워크플로우 액션 버튼 -->
                             <div class="d-grid gap-2">
-                                <a href="{{ url_for('link9.assessment_detail', rcm_id=item.rcm_info.rcm_id) }}" 
-                                   class="btn btn-primary">
-                                    <i class="fas fa-chart-line me-1"></i>평가 진행하기
-                                </a>
-                                {% if item.progress.overall_progress > 0 %}
-                                <a href="{{ url_for('link9.assessment_detail', rcm_id=item.rcm_info.rcm_id) }}" 
-                                   class="btn btn-outline-info btn-sm">
-                                    <i class="fas fa-eye me-1"></i>진행 상황 보기
-                                </a>
+                                <!-- 현재 단계에 따른 버튼 표시 -->
+                                {% if item.progress.current_step == 1 %}
+                                    <a href="/user/rcm?highlight={{ item.rcm_info.rcm_id }}" class="btn btn-primary">
+                                        <i class="fas fa-list me-1"></i>1단계: RCM 평가 시작
+                                    </a>
+                                {% elif item.progress.current_step == 2 %}
+                                    <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}" class="btn btn-success">
+                                        <i class="fas fa-clipboard-check me-1"></i>2단계: 설계평가 시작
+                                    </a>
+                                {% elif item.progress.current_step == 3 %}
+                                    <a href="/user/operation-evaluation" class="btn btn-warning">
+                                        <i class="fas fa-cogs me-1"></i>3단계: 운영평가 시작
+                                    </a>
+                                {% else %}
+                                    <button class="btn btn-outline-success" disabled>
+                                        <i class="fas fa-check-circle me-1"></i>모든 단계 완료
+                                    </button>
                                 {% endif %}
+
+                                <!-- 진행 상황 보기 버튼 -->
+                                <a href="{{ url_for('link8.assessment_detail', rcm_id=item.rcm_info.rcm_id) }}"
+                                   class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-eye me-1"></i>상세 진행 상황 보기
+                                </a>
                             </div>
                         </div>
                     </div>

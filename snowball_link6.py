@@ -30,26 +30,60 @@ def user_design_evaluation():
                          user_info=user_info,
                          remote_addr=request.remote_addr)
 
-@bp_link6.route('/design-evaluation/rcm/<int:rcm_id>')
-@login_required  
-def user_design_evaluation_rcm(rcm_id):
+@bp_link6.route('/design-evaluation/rcm', methods=['GET', 'POST'])
+@login_required
+def user_design_evaluation_rcm():
     """사용자 디자인 평가 페이지 (RCM별)"""
     user_info = get_user_info()
-    
-    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
-    user_rcms = get_user_rcms(user_info['user_id'])
-    rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
-    
-    if rcm_id not in rcm_ids:
-        flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
-        return redirect(url_for('link6.user_design_evaluation'))
+
+    # POST로 전달된 RCM ID 받기 또는 세션에서 가져오기
+    if request.method == 'POST':
+        rcm_id = request.form.get('rcm_id')
+        if not rcm_id:
+            flash('RCM 정보가 없습니다.', 'error')
+            return redirect(url_for('link6.user_design_evaluation'))
+
+        # 세션에 저장
+        session['current_design_rcm_id'] = int(rcm_id)
+    else:
+        # GET 요청인 경우 세션에서 가져오기
+        rcm_id = session.get('current_design_rcm_id')
+        if not rcm_id:
+            flash('RCM 정보가 없습니다. 다시 선택해주세요.', 'error')
+            return redirect(url_for('link6.user_design_evaluation'))
+
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
+    if user_info.get('admin_flag') != 'Y':
+        user_rcms = get_user_rcms(user_info['user_id'])
+        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+
+        if rcm_id not in rcm_ids:
+            flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
+            return redirect(url_for('link6.user_design_evaluation'))
+    else:
+        # 관리자는 모든 RCM에 접근 가능
+        user_rcms = get_user_rcms(user_info['user_id'])
     
     # RCM 정보 조회
     rcm_info = None
-    for rcm in user_rcms:
-        if rcm['rcm_id'] == rcm_id:
-            rcm_info = rcm
-            break
+    if user_info.get('admin_flag') == 'Y':
+        # 관리자인 경우 모든 RCM 정보를 조회
+        with get_db() as conn:
+            rcm_data = conn.execute('''
+                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, r.upload_user_id,
+                       u.user_name as upload_user_name, u.company_name, 'admin' as permission_type
+                FROM sb_rcm r
+                LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+                WHERE r.rcm_id = ?
+            ''', (rcm_id,)).fetchone()
+            if rcm_data:
+                rcm_info = dict(rcm_data)
+    else:
+        # 일반 사용자인 경우 권한이 있는 RCM 중에서 조회
+        for rcm in user_rcms:
+            if rcm['rcm_id'] == rcm_id:
+                rcm_info = rcm
+                break
     
     # RCM 세부 데이터 조회
     rcm_details = get_rcm_details(rcm_id)
@@ -57,7 +91,7 @@ def user_design_evaluation_rcm(rcm_id):
     # 매핑 정보 조회
     rcm_mappings = get_rcm_detail_mappings(rcm_id)
     
-    log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 디자인 평가', f'/user/design-evaluation/rcm/{rcm_id}',
+    log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 디자인 평가', '/design-evaluation/rcm',
                      request.remote_addr, request.headers.get('User-Agent'))
     
     return render_template('user_design_evaluation_rcm.jsp',
@@ -75,35 +109,17 @@ def save_design_evaluation_api():
     """설계평가 결과 저장 API"""
     user_info = get_user_info()
     
-    # 요청 정보 로깅
-    sys.stderr.write(f"[DEBUG] === SAVE API CALLED ===\n")
-    sys.stderr.write(f"[DEBUG] Content-Type: {request.content_type}\n")
-    sys.stderr.write(f"[DEBUG] User info: {user_info}\n")
-    sys.stderr.write(f"[DEBUG] Request method: {request.method}\n")
-    sys.stderr.write(f"[DEBUG] Request form keys: {list(request.form.keys())}\n")
-    sys.stderr.write(f"[DEBUG] Request files keys: {list(request.files.keys())}\n")
-    sys.stderr.flush()
     
     # FormData와 JSON 모두 처리
     if request.content_type and 'multipart/form-data' in request.content_type:
         # FormData 처리 (이미지 포함)
-        sys.stderr.write(f"[DEBUG] Processing FormData request\n")
         rcm_id = request.form.get('rcm_id')
         control_code = request.form.get('control_code')
         evaluation_data_str = request.form.get('evaluation_data')
         evaluation_session = request.form.get('evaluation_session')
-        
-        sys.stderr.write(f"[DEBUG] FormData values:\n")
-        sys.stderr.write(f"[DEBUG]   rcm_id: {rcm_id} (type: {type(rcm_id)})\n")
-        sys.stderr.write(f"[DEBUG]   control_code: {control_code}\n")
-        sys.stderr.write(f"[DEBUG]   evaluation_session: {evaluation_session}\n")
-        sys.stderr.write(f"[DEBUG]   evaluation_data_str: {evaluation_data_str}\n")
-        sys.stderr.flush()
-        
+
         # JSON 문자열을 파싱
         evaluation_data = json.loads(evaluation_data_str) if evaluation_data_str else None
-        sys.stderr.write(f"[DEBUG] Parsed evaluation_data: {evaluation_data}\n")
-        sys.stderr.flush()
         
         # 이미지 파일 처리
         uploaded_images = []
@@ -112,40 +128,16 @@ def save_design_evaluation_api():
                 file = request.files[key]
                 if file and file.filename:
                     uploaded_images.append(file)
-        
-        sys.stderr.write(f"[DEBUG] FormData request - images: {len(uploaded_images)}\n")
     else:
         # 기존 JSON 처리
-        sys.stderr.write(f"[DEBUG] Processing JSON request\n")
         data = request.get_json()
-        sys.stderr.write(f"[DEBUG] JSON data: {data}\n")
         rcm_id = data.get('rcm_id') if data else None
         control_code = data.get('control_code') if data else None
         evaluation_data = data.get('evaluation_data') if data else None
         evaluation_session = data.get('evaluation_session') if data else None
         uploaded_images = []
-        sys.stderr.write(f"[DEBUG] Extracted values from JSON:\n")
-        sys.stderr.write(f"[DEBUG]   rcm_id: {rcm_id}\n")
-        sys.stderr.write(f"[DEBUG]   control_code: {control_code}\n")
-        sys.stderr.write(f"[DEBUG]   evaluation_session: {evaluation_session}\n")
-        sys.stderr.write(f"[DEBUG]   evaluation_data: {evaluation_data}\n")
-        sys.stderr.flush()
-    
-    sys.stderr.write(f"[DEBUG] Raw request data received\n")
-    sys.stderr.write(f"[DEBUG] User info: {user_info}\n")
-    sys.stderr.flush()
-    
-    # 디버깅용 로그
-    sys.stderr.write(f"[DEBUG] Design evaluation save request: rcm_id={rcm_id}, control_code={control_code}, evaluation_session='{evaluation_session}'\n")
-    sys.stderr.flush()
-    
+
     # 필수 데이터 검증
-    sys.stderr.write(f"[DEBUG] Validating required fields:\n")
-    sys.stderr.write(f"[DEBUG]   rcm_id: {rcm_id} (valid: {bool(rcm_id)})\n")
-    sys.stderr.write(f"[DEBUG]   control_code: {control_code} (valid: {bool(control_code)})\n")
-    sys.stderr.write(f"[DEBUG]   evaluation_data: {evaluation_data} (valid: {bool(evaluation_data)})\n")
-    sys.stderr.write(f"[DEBUG]   evaluation_session: {evaluation_session} (valid: {bool(evaluation_session)})\n")
-    sys.stderr.flush()
     
     if not all([rcm_id, control_code, evaluation_data, evaluation_session]):
         missing_fields = []
@@ -155,8 +147,6 @@ def save_design_evaluation_api():
         if not evaluation_session: missing_fields.append('세션명')
         
         error_msg = f'필수 데이터가 누락되었습니다: {", ".join(missing_fields)}'
-        sys.stderr.write(f"[ERROR] {error_msg}\n")
-        sys.stderr.flush()
         
         return jsonify({
             'success': False,
@@ -168,8 +158,7 @@ def save_design_evaluation_api():
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user accessing RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -197,20 +186,16 @@ def save_design_evaluation_api():
             for i, image_file in enumerate(uploaded_images):
                 if image_file and image_file.filename:
                     # 디버깅 로그
-                    sys.stderr.write(f"[DEBUG] Original filename: '{image_file.filename}'\n")
                     
                     # 확장자를 먼저 분리
                     original_name, original_ext = os.path.splitext(image_file.filename)
-                    sys.stderr.write(f"[DEBUG] Original split - name: '{original_name}', ext: '{original_ext}'\n")
                     
                     # 안전한 파일명 생성 (확장자 제외)
                     safe_name = secure_filename(original_name)
-                    sys.stderr.write(f"[DEBUG] Secure name: '{safe_name}'\n")
                     
                     # secure_filename이 빈 문자열을 반환하면 기본 이름 사용
                     if not safe_name or safe_name.strip() == '' or safe_name == '_':
                         safe_name = 'evaluation_image'
-                        sys.stderr.write(f"[DEBUG] Using default name because secure_filename returned empty or underscore\n")
                     
                     # 중복 방지를 위해 타임스탬프 추가
                     import time
@@ -218,8 +203,6 @@ def save_design_evaluation_api():
                     
                     # 최종 파일명: 안전한이름_타임스탬프_인덱스.확장자
                     safe_filename = f"{safe_name}_{timestamp}_{i}{original_ext.lower()}"
-                    sys.stderr.write(f"[DEBUG] Final safe filename: '{safe_filename}'\n")
-                    sys.stderr.flush()
                     
                     # 파일 저장
                     file_path = os.path.join(upload_dir, safe_filename)
@@ -235,14 +218,9 @@ def save_design_evaluation_api():
             evaluation_data['images'].extend(saved_images)
         
         # 설계평가 결과 저장
-        sys.stderr.write(f"[DEBUG] Calling save_design_evaluation with: rcm_id={rcm_id}, control_code={control_code}, user_id={user_info['user_id']}, evaluation_session={evaluation_session}\n")
-        sys.stderr.write(f"[DEBUG] Evaluation data: {evaluation_data}\n")
-        sys.stderr.flush()
         
         save_design_evaluation(rcm_id, control_code, user_info['user_id'], evaluation_data, evaluation_session)
         
-        sys.stderr.write(f"[DEBUG] save_design_evaluation completed successfully\n")
-        sys.stderr.flush()
         
         # 활동 로그 기록
         log_user_activity(user_info, 'DESIGN_EVALUATION', f'설계평가 저장 - {control_code}', 
@@ -257,11 +235,6 @@ def save_design_evaluation_api():
     except Exception as e:
         import traceback
         error_traceback = traceback.format_exc()
-        print(f"설계평가 저장 오류: {e}")
-        print(f"오류 상세: {error_traceback}")
-        sys.stderr.write(f"[ERROR] 설계평가 저장 오류: {e}\n")
-        sys.stderr.write(f"[ERROR] 오류 상세: {error_traceback}\n")
-        sys.stderr.flush()
         return jsonify({
             'success': False,
             'message': f'저장 중 오류가 발생했습니다: {str(e)}'
@@ -287,8 +260,7 @@ def reset_design_evaluations_api():
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user resetting RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -333,7 +305,6 @@ def reset_design_evaluations_api():
         })
         
     except Exception as e:
-        print(f"설계평가 초기화 오류: {e}")
         return jsonify({
             'success': False,
             'message': '초기화 중 오류가 발생했습니다.'
@@ -356,8 +327,7 @@ def get_evaluation_sessions_api(rcm_id):
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user accessing sessions for RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -378,34 +348,23 @@ def get_evaluation_sessions_api(rcm_id):
         })
         
     except Exception as e:
-        print(f"평가 세션 조회 오류: {e}")
         return jsonify({'success': False, 'message': '세션 조회 중 오류가 발생했습니다.'}), 500
 
 @bp_link6.route('/api/design-evaluation/load/<int:rcm_id>')
 @login_required
 def load_evaluation_data_api(rcm_id):
     """특정 평가 세션의 데이터 로드 API"""
-    print("***** SNOWBALL_LINK6: load_evaluation_data_api CALLED *****")
     user_info = get_user_info()
     evaluation_session = request.args.get('session')
     header_id = request.args.get('header_id')
-    print(f"***** SNOWBALL_LINK6: rcm_id={rcm_id}, header_id={header_id}, session={evaluation_session} *****")
     
-    print(f"Load evaluation data API called: rcm_id={rcm_id}, session='{evaluation_session}', header_id={header_id}, user_info={user_info}")
-    print(f"***** REQUEST URL: {request.url} *****")
-    print(f"***** RCM_ID from URL parameter: {rcm_id} (type: {type(rcm_id)}) *****")
-    print(f"***** REQUEST ARGS: {dict(request.args)} *****")
-    print(f"***** header_id type: {type(header_id)}, value: '{header_id}' *****")
-    print(f"***** header_id is None: {header_id is None} *****")
-    print(f"***** header_id is empty string: {header_id == ''} *****")
     
     try:
         # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자 권한 포함)
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user loading data for RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -418,20 +377,14 @@ def load_evaluation_data_api(rcm_id):
         
         # 평가 데이터 로드
         if header_id:
-            print(f"***** SNOWBALL_LINK6: Using get_design_evaluations_by_header_id with header_id={header_id} *****")
-            print(f"***** SNOWBALL_LINK6: Parameters - rcm_id={rcm_id}, user_id={user_info['user_id']}, header_id={int(header_id)} *****")
             evaluations = get_design_evaluations_by_header_id(rcm_id, user_info['user_id'], int(header_id))
-            print(f"***** SNOWBALL_LINK6: Returned {len(evaluations)} evaluations *****")
         else:
-            print(f"***** SNOWBALL_LINK6: Using get_design_evaluations with session='{evaluation_session}' *****")
             evaluations = get_design_evaluations(rcm_id, user_info['user_id'], evaluation_session)
-            print(f"***** SNOWBALL_LINK6: Returned {len(evaluations)} evaluations *****")
             
             # 세션명으로 로드할 때 실제 header_id를 찾아서 반환
             if evaluations and evaluation_session:
                 # 첫 번째 평가 데이터에서 header_id 추출
                 actual_header_id = evaluations[0].get('header_id')
-                print(f"***** SNOWBALL_LINK6: Found actual header_id={actual_header_id} for session='{evaluation_session}' *****")
         
         # 통제별로 정리
         evaluation_dict = {}
@@ -440,7 +393,6 @@ def load_evaluation_data_api(rcm_id):
             evaluation_date = eval_data.get('evaluation_date')
             
             # 디버깅용 로그 추가
-            print(f"Control {control_code}: evaluation_date = {evaluation_date} (type: {type(evaluation_date)})")
             
             # 해당 통제의 이미지 파일 찾기
             saved_images = []
@@ -458,17 +410,12 @@ def load_evaluation_data_api(rcm_id):
                         if result:
                             current_header_id = result['header_id']
                 except Exception as e:
-                    print(f"Error finding header_id: {e}")
             
             if current_header_id:
                 image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(current_header_id), control_code)
-                print(f"[DEBUG] Checking image directory for control {control_code}: {image_dir}")
-                print(f"[DEBUG] current_header_id={current_header_id}, rcm_id={rcm_id}")
                 
                 if os.path.exists(image_dir):
-                    print(f"[DEBUG] Image directory exists, listing files...")
                     for filename in os.listdir(image_dir):
-                        print(f"[DEBUG] Found file: {filename}")
                         if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
                             relative_path = f"uploads/design_evaluations/{rcm_id}/{current_header_id}/{control_code}/{filename}"
                             saved_images.append({
@@ -476,19 +423,13 @@ def load_evaluation_data_api(rcm_id):
                                 'path': relative_path,
                                 'url': f"/static/{relative_path}"
                             })
-                            print(f"[DEBUG] Added image: {filename} -> {relative_path}")
-                    print(f"[DEBUG] Found {len(saved_images)} images for control {control_code}")
                 else:
-                    print(f"[DEBUG] Image directory does not exist: {image_dir}")
                     # 다른 header_id로 시도해보기
                     base_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id))
                     if os.path.exists(base_dir):
-                        print(f"[DEBUG] Checking base directory: {base_dir}")
                         for folder_name in os.listdir(base_dir):
-                            print(f"[DEBUG] Found folder: {folder_name}")
                             test_dir = os.path.join(base_dir, folder_name, control_code)
                             if os.path.exists(test_dir):
-                                print(f"[DEBUG] Found alternative path: {test_dir}")
                                 for filename in os.listdir(test_dir):
                                     if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
                                         relative_path = f"uploads/design_evaluations/{rcm_id}/{folder_name}/{control_code}/{filename}"
@@ -497,9 +438,7 @@ def load_evaluation_data_api(rcm_id):
                                             'path': relative_path,
                                             'url': f"/static/{relative_path}"
                                         })
-                                        print(f"[DEBUG] Added alternative image: {filename} -> {relative_path}")
             else:
-                print(f"[DEBUG] No header_id found for control {control_code}")
             
             evaluation_dict[control_code] = {
                 'description_adequacy': eval_data['description_adequacy'],
@@ -521,46 +460,35 @@ def load_evaluation_data_api(rcm_id):
         if evaluations and evaluation_session and not header_id:
             actual_header_id = evaluations[0].get('header_id')
             response_data['header_id'] = actual_header_id
-            print(f"***** SNOWBALL_LINK6: Including header_id={actual_header_id} in response *****")
         
         # header의 completed_date 정보도 포함
         try:
             with get_db() as conn:
                 # header_id가 있으면 해당 header의 completed_date 조회
                 if header_id:
-                    print(f"***** DEBUG: Querying completed_date for header_id={header_id} *****")
                     result = conn.execute('''
                         SELECT completed_date FROM sb_design_evaluation_header
                         WHERE header_id = ?
                     ''', (int(header_id),)).fetchone()
                 elif evaluation_session:
-                    print(f"***** DEBUG: Querying completed_date for rcm_id={rcm_id}, user_id={user_info['user_id']}, session={evaluation_session} *****")
                     result = conn.execute('''
                         SELECT completed_date FROM sb_design_evaluation_header
                         WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
                     ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchone()
                 else:
                     result = None
-                    print("***** DEBUG: No header_id or evaluation_session provided *****")
                 
-                print(f"***** DEBUG: Query result = {result} *****")
                 
                 if result:
                     response_data['header_completed_date'] = result['completed_date']
-                    print(f"***** SNOWBALL_LINK6: Including header_completed_date={result['completed_date']} in response *****")
                 else:
                     response_data['header_completed_date'] = None
-                    print("***** SNOWBALL_LINK6: Setting header_completed_date=None in response *****")
         except Exception as e:
-            print(f"Error fetching header completed_date: {e}")
             response_data['header_completed_date'] = None
         
         return jsonify(response_data)
         
     except Exception as e:
-        print(f"평가 데이터 로드 오류: {e}")
-        print(f"Error type: {type(e).__name__}")
-        print(f"Error details: rcm_id={rcm_id}, evaluation_session='{evaluation_session}', user_info={user_info}")
         return jsonify({'success': False, 'message': f'데이터 로드 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @bp_link6.route('/api/design-evaluation/delete-session', methods=['POST'])
@@ -584,8 +512,7 @@ def delete_evaluation_session_api():
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user deleting session for RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -614,7 +541,6 @@ def delete_evaluation_session_api():
         })
         
     except Exception as e:
-        print(f"평가 세션 삭제 오류: {e}")
         return jsonify({
             'success': False,
             'message': '삭제 중 오류가 발생했습니다.'
@@ -641,8 +567,7 @@ def create_design_evaluation_api():
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user creating evaluation for RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -684,13 +609,11 @@ def create_design_evaluation_api():
         })
         
     except ValueError as ve:
-        print(f"평가 생성 검증 오류: {ve}")
         return jsonify({
             'success': False,
             'message': str(ve)
         })
     except Exception as e:
-        print(f"평가 생성 오류: {e}")
         return jsonify({
             'success': False,
             'message': '[EVAL-001] 평가 생성 중 오류가 발생했습니다.'
@@ -717,8 +640,7 @@ def complete_design_evaluation_api():
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user completing RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -771,7 +693,6 @@ def complete_design_evaluation_api():
         })
         
     except Exception as e:
-        print(f"평가 완료 처리 오류: {e}")
         return jsonify({
             'success': False,
             'message': '완료 처리 중 오류가 발생했습니다.'
@@ -798,8 +719,7 @@ def cancel_design_evaluation_api():
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user canceling RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -854,7 +774,6 @@ def cancel_design_evaluation_api():
         })
         
     except Exception as e:
-        print(f"평가 완료 취소 오류: {e}")
         return jsonify({
             'success': False,
             'message': '완료 취소 중 오류가 발생했습니다.'
@@ -881,9 +800,7 @@ def download_evaluation_excel(rcm_id):
             if False in mimetypes.types_map:
                 mimetypes.types_map[False]['.mpo'] = 'image/jpeg'
         
-        print("[INFO] Successfully configured .mpo mimetype")
     except Exception as mt_error:
-        print(f"[WARNING] mimetypes config error (ignored): {mt_error}")
         # 최후의 수단: monkey patch
         try:
             import openpyxl.packaging.manifest
@@ -893,15 +810,12 @@ def download_evaluation_excel(rcm_id):
                     return original_register(self, filenames)
                 except KeyError as e:
                     if '.mpo' in str(e):
-                        print(f"[WARNING] Ignoring .mpo mimetype error: {e}")
                         # .mpo 파일을 제외하고 다시 시도
                         filtered_filenames = [f for f in filenames if not f.lower().endswith('.mpo')]
                         return original_register(self, filtered_filenames)
                     raise
             openpyxl.packaging.manifest.Manifest._register_mimetypes = patched_register
-            print("[INFO] Applied monkey patch for .mpo issue")
         except Exception as patch_error:
-            print(f"[WARNING] Monkey patch failed: {patch_error}")
     
     user_info = get_user_info()
     
@@ -910,8 +824,7 @@ def download_evaluation_excel(rcm_id):
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user downloading excel for RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -983,7 +896,6 @@ def download_evaluation_excel(rcm_id):
                         ORDER BY l.control_sequence, l.control_code
                     ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchall()
                     
-                    print(f"DEBUG: Found {len(eval_results)} evaluation results for session '{evaluation_session}'")
                     for eval_result in eval_results:
                         control_code = eval_result['control_code']
                         rationale = eval_result['evaluation_rationale'] or ''
@@ -998,14 +910,12 @@ def download_evaluation_excel(rcm_id):
                             if image_files:
                                 images_info = json.dumps([{'file': f, 'path': os.path.join(image_dir, f)} for f in image_files])
                         
-                        print(f"DEBUG: {control_code} - rationale: '{rationale}', effectiveness: '{effectiveness}', images_info: '{images_info}'")
                         evaluation_data[control_code] = {
                             'rationale': rationale,
                             'effectiveness': effectiveness,
                             'images': images_info
                         }
                 except Exception as e:
-                    print(f"DEBUG: 설계평가 데이터 조회 오류: {e}")
                     pass
 
         # 원본 엑셀 파일 로드 (회사별 폴더 구조 지원)
@@ -1111,7 +1021,6 @@ def download_evaluation_excel(rcm_id):
             
             # 첫부 이미지 처리 (C13 셀에 이미지 삽입)
             images_info = eval_info.get('images', '')
-            print(f"DEBUG: {control_code} - images_info: '{images_info}'")
             if images_info:
                 try:
                     from openpyxl.drawing.image import Image as ExcelImage
@@ -1179,14 +1088,12 @@ def download_evaluation_excel(rcm_id):
                                         workbook.temp_files.append(temp_image_file.name)
 
                                     except Exception as img_error:
-                                        print(f"[ERROR] Image {idx+1} processing failed: {img_error}")
                                         # 오류 발생시 해당 셀에 메시지 표시
                                         new_sheet[target_cells[idx]] = f'이미지 {idx+1} 오류'
                     else:
                         # 단순 문자열 경우
                         new_sheet['C13'] = images_info
                 except Exception as e:
-                    print(f"DEBUG: 이미지 처리 오류 ({control_code}): {e}")
                     new_sheet['C13'] = f'이미지 처리 오류: {str(e)}'
             else:
                 new_sheet['C13'] = ''
@@ -1208,7 +1115,6 @@ def download_evaluation_excel(rcm_id):
         try:
             workbook.save(downloads_path)
         except Exception as save_error:
-            print(f"[ERROR] Excel save error: {save_error}")
             
             # 임시 디렉토리에서 작업
             import tempfile
@@ -1222,10 +1128,8 @@ def download_evaluation_excel(rcm_id):
                     workbook.save(temp_path)
                     # 성공하면 최종 경로로 복사
                     shutil.copy2(temp_path, downloads_path)
-                    print("[INFO] Successfully saved Excel file using temporary directory")
                     
                 except Exception as temp_save_error:
-                    print(f"[ERROR] Temporary save also failed: {temp_save_error}")
                     
                     # 최후의 수단: BytesIO를 사용한 메모리 저장
                     try:
@@ -1236,10 +1140,8 @@ def download_evaluation_excel(rcm_id):
                         
                         with open(downloads_path, 'wb') as f:
                             f.write(buffer.read())
-                        print("[INFO] Successfully saved Excel file using BytesIO")
                         
                     except Exception as bytesio_error:
-                        print(f"[ERROR] BytesIO save also failed: {bytesio_error}")
                         raise save_error  # 원래 오류를 다시 발생시킴
         
         # 임시 이미지 파일들 정리
@@ -1247,7 +1149,6 @@ def download_evaluation_excel(rcm_id):
             for temp_file in workbook.temp_files:
                 try:
                     os.unlink(temp_file)
-                    print(f"[INFO] Cleaned up temp file: {temp_file}")
                 except:
                     pass  # 임시 파일 삭제 실패 시 무시
         
@@ -1280,11 +1181,8 @@ def download_evaluation_excel(rcm_id):
         return response
         
     except Exception as e:
-        print(f"엑셀 다운로드 오류: {e}")
         import traceback
         traceback.print_exc()
-        sys.stderr.write(f"[ERROR] Excel download error: {str(e)}\n")
-        sys.stderr.flush()
         
         # 구체적인 오류 메시지 반환
         error_msg = str(e)
@@ -1323,8 +1221,7 @@ def archive_design_evaluation_api():
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user archiving RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -1359,7 +1256,6 @@ def archive_design_evaluation_api():
             })
 
     except Exception as e:
-        print(f"설계평가 Archive 처리 오류: {e}")
         return jsonify({
             'success': False,
             'message': 'Archive 처리 중 오류가 발생했습니다.'
@@ -1386,8 +1282,7 @@ def unarchive_design_evaluation_api():
         with get_db() as conn:
             # 관리자인지 먼저 확인
             if user_info.get('admin_flag') == 'Y':
-                sys.stderr.write(f"[DEBUG] Admin user unarchiving RCM {rcm_id}\n")
-                sys.stderr.flush()
+                pass  # 관리자는 모든 RCM에 접근 가능
             else:
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
@@ -1422,7 +1317,6 @@ def unarchive_design_evaluation_api():
             })
 
     except Exception as e:
-        print(f"설계평가 Unarchive 처리 오류: {e}")
         return jsonify({
             'success': False,
             'message': 'Unarchive 처리 중 오류가 발생했습니다.'
