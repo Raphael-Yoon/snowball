@@ -143,11 +143,11 @@
                         <img src="{{ url_for('static', filename='img/video.jpg')}}" class="feature-img" alt="교육자료">
                         <div class="card-body p-4">
                             <h5 class="feature-title text-center">가이드</h5>
-                            <p class="feature-description">시스템 운영과 관리에 필요한 가이드 및 교육 자료를 제공합니다.</p>
+                            <p class="feature-description">ITGC를 포함한 내부통제에 관련된 교육 영상 및 자료를 제공합니다.</p>
                             <div class="text-center">
                                 <a href="/link4" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 시스템 운영 및 관리 교육 가이드<br>• 단계별 상세 사용법 및 영상 제공<br>• 베스트 프랙티스 및 사례 연구<br>• 언제든지 접근 가능한 온라인 학습</div>">자세히 보기</a>
+                                   title="<div>• ITGC(IT일반통제) 교육 영상<br>• 내부통제 기본 개념 및 실무 가이드<br>• 통제 설계 및 평가 방법론<br>• 실무 사례 및 베스트 프랙티스</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
