@@ -75,9 +75,9 @@
                         <small class="text-muted d-block mb-2">
                             💡 서비스 이용, 기술적 문제, 가입 문의 등 언제든지 편하게 문의해주세요.
                         </small>
-                        <textarea class="form-control" id="message" name="message" rows="8" required placeholder="예시) 로그인이 안 됩니다 / RCM 파일 업로드 시 오류가 발생합니다 / 평가 결과를 어떻게 해석해야 하나요? / 서비스 가입 절차를 알고 싶습니다
+                        <textarea class="form-control" id="message" name="message" rows="8" required placeholder="문의하실 내용을 자세히 입력해주세요.
 
-문의하실 내용을 자세히 입력해주세요."></textarea>
+예시) 로그인이 안 됩니다 / RCM 파일 업로드 시 오류가 발생합니다 / 평가 결과를 어떻게 해석해야 하나요? / 서비스 가입 절차를 알고 싶습니다"></textarea>
                     </div>
                     <div class="text-center">
                         <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-paper-plane me-1"></i>문의하기</button>
