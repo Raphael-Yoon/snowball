@@ -75,19 +75,24 @@
                                             <small class="text-muted fw-bold">완료된 설계평가 세션:</small>
                                             {% for session in rcm.completed_design_sessions %}
                                             <div class="d-grid mt-2">
-                                                <form method="POST" action="/operation-evaluation/rcm" style="display: inline;">
-                                                    <input type="hidden" name="rcm_id" value="{{ rcm.rcm_id }}">
-                                                    <input type="hidden" name="design_evaluation_session" value="{{ session.evaluation_session }}">
-                                                    <button type="submit" class="btn {% if session.operation_completed_count > 0 %}btn-warning{% else %}btn-outline-warning{% endif %} btn-sm w-100">
-                                                        <i class="fas fa-chart-line me-1"></i>{{ session.evaluation_session }}
-                                                        <small class="ms-2 text-muted">({{ session.completed_date[:10] if session.completed_date else '-' }})</small>
-                                                        {% if session.operation_completed_count > 0 %}
-                                                        <br><small class="text-dark">진행중: {{ session.operation_completed_count }}/{{ rcm.key_control_count }}</small>
-                                                        {% else %}
-                                                        <br><small class="text-muted">시작하기</small>
-                                                        {% endif %}
-                                                    </button>
-                                                </form>
+                                                {% if session.eligible_control_count > 0 %}
+                                                <button type="button" class="btn {% if session.operation_completed_count > 0 %}btn-warning{% else %}btn-outline-warning{% endif %} btn-sm w-100"
+                                                        onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count }}, {{ session.eligible_control_count }})">
+                                                    <i class="fas fa-chart-line me-1"></i>{{ session.evaluation_session }}
+                                                    <small class="ms-2 text-muted">({{ session.completed_date[:10] if session.completed_date else '-' }})</small>
+                                                    {% if session.operation_completed_count > 0 %}
+                                                    <br><small class="text-dark">진행중: {{ session.operation_completed_count }}/{{ session.eligible_control_count }}</small>
+                                                    {% else %}
+                                                    <br><small class="text-muted">대상 {{ session.eligible_control_count }}개 통제</small>
+                                                    {% endif %}
+                                                </button>
+                                                {% else %}
+                                                <button type="button" class="btn btn-secondary btn-sm w-100" disabled>
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>{{ session.evaluation_session }}
+                                                    <small class="ms-2 text-muted">({{ session.completed_date[:10] if session.completed_date else '-' }})</small>
+                                                    <br><small class="text-muted">설계평가 '적정' 핵심통제 없음</small>
+                                                </button>
+                                                {% endif %}
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -183,6 +188,112 @@
         </div>
     </div>
 
+    <!-- 운영평가 시작 옵션 모달 -->
+    <div class="modal fade" id="operationStartModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="fas fa-chart-line me-2"></i>운영평가 시작</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3"><strong id="modalSessionName"></strong> 세션의 운영평가를 시작합니다.</p>
+                    <div id="existingSessionInfo" class="alert alert-info" style="display:none;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="existingSessionText"></span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-primary" id="continueExistingBtn" style="display:none;" onclick="continueExisting()">
+                            <i class="fas fa-play-circle me-2"></i>기존 데이터로 계속하기
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="startNew()">
+                            <i class="fas fa-plus-circle me-2"></i>신규로 시작하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentRcmId, currentDesignSession;
+
+        function showOperationStartModal(rcmId, designSession, operationCount, totalCount) {
+            currentRcmId = rcmId;
+            currentDesignSession = designSession;
+
+            document.getElementById('modalSessionName').textContent = designSession;
+
+            if (operationCount > 0) {
+                // 기존 데이터가 있는 경우
+                document.getElementById('existingSessionInfo').style.display = 'block';
+                document.getElementById('existingSessionText').textContent =
+                    `진행중인 운영평가가 있습니다 (${operationCount}/${totalCount})`;
+                document.getElementById('continueExistingBtn').style.display = 'block';
+            } else {
+                // 기존 데이터가 없는 경우
+                document.getElementById('existingSessionInfo').style.display = 'none';
+                document.getElementById('continueExistingBtn').style.display = 'none';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('operationStartModal'));
+            modal.show();
+        }
+
+        function continueExisting() {
+            // 기존 데이터로 계속하기
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/operation-evaluation/rcm';
+
+            const rcmInput = document.createElement('input');
+            rcmInput.type = 'hidden';
+            rcmInput.name = 'rcm_id';
+            rcmInput.value = currentRcmId;
+
+            const sessionInput = document.createElement('input');
+            sessionInput.type = 'hidden';
+            sessionInput.name = 'design_evaluation_session';
+            sessionInput.value = currentDesignSession;
+
+            form.appendChild(rcmInput);
+            form.appendChild(sessionInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function startNew() {
+            // 신규 세션명 입력 받기
+            const newSessionName = prompt('새로운 운영평가 세션명을 입력하세요:', currentDesignSession + '_운영평가');
+
+            if (newSessionName && newSessionName.trim()) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/operation-evaluation/rcm';
+
+                const rcmInput = document.createElement('input');
+                rcmInput.type = 'hidden';
+                rcmInput.name = 'rcm_id';
+                rcmInput.value = currentRcmId;
+
+                const designSessionInput = document.createElement('input');
+                designSessionInput.type = 'hidden';
+                designSessionInput.name = 'design_evaluation_session';
+                designSessionInput.value = currentDesignSession;
+
+                const newSessionInput = document.createElement('input');
+                newSessionInput.type = 'hidden';
+                newSessionInput.name = 'new_operation_session';
+                newSessionInput.value = newSessionName.trim();
+
+                form.appendChild(rcmInput);
+                form.appendChild(designSessionInput);
+                form.appendChild(newSessionInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    </script>
 </body>
 </html>

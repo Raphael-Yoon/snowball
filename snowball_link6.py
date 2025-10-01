@@ -754,14 +754,23 @@ def cancel_design_evaluation_api():
                     'success': False,
                     'message': '완료되지 않은 평가입니다.'
                 })
-            
+
+            # 운영평가 진행 여부 확인
+            operation_check = conn.execute('''
+                SELECT COUNT(*) as cnt
+                FROM sb_operation_evaluation_header
+                WHERE design_evaluation_session = ? AND rcm_id = ? AND user_id = ?
+            ''', (evaluation_session, rcm_id, user_info['user_id'])).fetchone()
+
+            has_operation_evaluation = operation_check and operation_check['cnt'] > 0
+
             # completed_date를 NULL로 설정하고 status를 IN_PROGRESS로 변경
             conn.execute('''
                 UPDATE sb_design_evaluation_header
                 SET completed_date = NULL, evaluation_status = 'IN_PROGRESS'
                 WHERE header_id = ?
             ''', (header['header_id'],))
-            
+
             conn.commit()
         
         # 활동 로그 기록
@@ -770,9 +779,14 @@ def cancel_design_evaluation_api():
                          f'/api/design-evaluation/cancel', 
                          request.remote_addr, request.headers.get('User-Agent'))
         
+        message = '설계평가 완료가 취소되었습니다.'
+        if has_operation_evaluation:
+            message += '\n\n⚠️ 참고: 이 설계평가를 기반으로 한 운영평가가 진행중입니다.'
+
         return jsonify({
             'success': True,
-            'message': '설계평가 완료가 취소되었습니다.'
+            'message': message,
+            'has_operation_evaluation': has_operation_evaluation
         })
         
     except Exception as e:

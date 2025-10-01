@@ -1578,13 +1578,11 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
     progress_callback: 진행률 업데이트 콜백 함수
     """
     today = datetime.today().strftime('%Y%m%d')
-    
-    # 한글 파일명 처리 개선 - 유틸리티 함수 사용
-    from korean_filename_utils import convert_korean_to_english_filename, generate_excel_filename
-    
+
+    # 파일명 생성 (한글 파일명 지원)
     if len(answers) > 1 and answers[1]:
         system_name = answers[1].strip()
-        file_name = generate_excel_filename(system_name, "ITGC")
+        file_name = f"{system_name}_ITGC_{today}.xlsx"
     else:
         file_name = f"ITGC_System_{today}.xlsx"
 
@@ -1903,15 +1901,13 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                 progress_callback(90, "메일 전송 중...")
             
             # 한글 파일명을 안전하게 처리하여 메일 첨부
-            from korean_filename_utils import convert_korean_to_english_filename
-            safe_file_name = convert_korean_to_english_filename(file_name.replace('.xlsx', '')) + '.xlsx'
-            
+            # 이메일 전송 (한글 파일명 지원)
             send_gmail_with_attachment(
                 to=user_email,
                 subject=subject,
                 body=body,
                 file_stream=excel_stream_copy,
-                file_name=safe_file_name
+                file_name=file_name
             )
             
             if progress_callback:

@@ -36,10 +36,15 @@ def user_operation_evaluation():
         rcm['completed_design_sessions'] = completed_sessions
         rcm['design_evaluation_completed'] = len(completed_sessions) > 0
 
-        # 핵심통제 개수 조회
+        # 핵심통제 개수 조회 (모든 핵심통제)
         key_controls = get_key_rcm_details(rcm['rcm_id'])
         rcm['key_control_count'] = len(key_controls)
         rcm['has_key_controls'] = len(key_controls) > 0
+
+        # 각 완료된 설계평가 세션에 대해 운영평가 가능한 통제 개수 추가
+        for session in completed_sessions:
+            eligible_controls = get_key_rcm_details(rcm['rcm_id'], user_info['user_id'], session['evaluation_session'])
+            session['eligible_control_count'] = len(eligible_controls)
 
     log_user_activity(user_info, 'PAGE_ACCESS', '운영평가', '/user/operation-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
@@ -60,6 +65,7 @@ def user_operation_evaluation_rcm():
     if request.method == 'POST':
         rcm_id = request.form.get('rcm_id')
         design_evaluation_session = request.form.get('design_evaluation_session')
+        new_operation_session = request.form.get('new_operation_session')  # 신규 운영평가 세션명
 
 
         if not rcm_id:
@@ -72,6 +78,14 @@ def user_operation_evaluation_rcm():
         # 세션에 저장
         session['current_operation_rcm_id'] = int(rcm_id)
         session['current_design_evaluation_session'] = design_evaluation_session
+
+        # 신규 운영평가 세션인 경우
+        if new_operation_session:
+            session['new_operation_session_name'] = new_operation_session
+            flash(f'새로운 운영평가 세션 "{new_operation_session}"을 시작합니다.', 'success')
+        else:
+            # 기존 세션 제거
+            session.pop('new_operation_session_name', None)
 
     # POST든 GET이든 세션에서 정수형 rcm_id를 가져옴
     rcm_id = session.get('current_operation_rcm_id')
@@ -113,45 +127,56 @@ def user_operation_evaluation_rcm():
             rcm_info = rcm
             break
     
-    # RCM 핵심통제 데이터 조회 (운영평가는 핵심통제만 대상)
-    rcm_details = get_key_rcm_details(rcm_id)
+    # RCM 핵심통제 데이터 조회 (운영평가는 핵심통제이면서 설계평가가 '적정'인 통제만 대상)
+    rcm_details = get_key_rcm_details(rcm_id, user_info['user_id'], design_evaluation_session)
 
-    # 핵심통제가 없는 경우 안내 메시지 표시
+    # 핵심통제이면서 설계평가가 '적정'인 통제가 없는 경우 안내 메시지 표시
     if not rcm_details:
-        flash('해당 RCM에 핵심통제가 없어 운영평가를 수행할 수 없습니다.', 'warning')
+        flash('해당 RCM에 설계평가 결과가 "적정"인 핵심통제가 없어 운영평가를 수행할 수 없습니다.', 'warning')
         return redirect(url_for('link7.user_operation_evaluation'))
 
     # 운영평가 세션명 생성 (설계평가 세션 기반)
     operation_evaluation_session = f"OP_{design_evaluation_session}"
 
-    # 운영평가 Header/Line 데이터 초기화 (처음 진입시)
+    # 운영평가 Header/Line 데이터 동기화 (설계평가 결과 변경 반영)
+    sync_messages = []
     try:
         # 기존 운영평가 헤더 확인
         from auth import get_or_create_operation_evaluation_header
         with get_db() as conn:
             header_id = get_or_create_operation_evaluation_header(conn, rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)
 
-            # 각 핵심통제에 대한 Line 데이터 초기화 (없는 경우에만)
-            for idx, detail in enumerate(rcm_details):
-                control_code = detail['control_code']
+            # 현재 대상 통제 코드 목록 (핵심통제 + 설계평가 '적정')
+            current_control_codes = {detail['control_code'] for detail in rcm_details}
 
-                # 기존 Line 데이터 확인
-                existing_line = conn.execute('''
-                    SELECT line_id FROM sb_operation_evaluation_line
-                    WHERE header_id = ? AND control_code = ?
-                ''', (header_id, control_code)).fetchone()
+            # 기존 Line 데이터 조회
+            existing_lines = conn.execute('''
+                SELECT line_id, control_code
+                FROM sb_operation_evaluation_line
+                WHERE header_id = ?
+            ''', (header_id,)).fetchall()
 
-                if not existing_line:
-                    # 새 Line 데이터 생성
-                    conn.execute('''
-                        INSERT INTO sb_operation_evaluation_line (
-                            header_id, control_code, control_sequence
-                        ) VALUES (?, ?, ?)
-                    ''', (header_id, control_code, idx + 1))
+            existing_control_codes = {line['control_code'] for line in existing_lines}
+
+            # 신규 추가된 통제 (설계평가 부적정→적정 변경)
+            new_controls = current_control_codes - existing_control_codes
+            if new_controls:
+                for idx, detail in enumerate(rcm_details):
+                    if detail['control_code'] in new_controls:
+                        conn.execute('''
+                            INSERT INTO sb_operation_evaluation_line (
+                                header_id, control_code, control_sequence
+                            ) VALUES (?, ?, ?)
+                        ''', (header_id, detail['control_code'], idx + 1))
+                sync_messages.append(f"📌 신규 추가: {len(new_controls)}개 (설계평가 부적정→적정)")
 
             conn.commit()
+
+            # 동기화 메시지 표시
+            if sync_messages:
+                flash(' '.join(sync_messages), 'success')
     except Exception as e:
-        pass
+        flash(f"운영평가 데이터 동기화 중 오류 발생: {str(e)}", 'error')
 
     # 기존 운영평가 내역 불러오기 (Header-Line 구조)
     try:

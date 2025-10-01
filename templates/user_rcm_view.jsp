@@ -161,11 +161,7 @@
                                             </span>
                                         </td>
                                         <td>
-                                            {% if detail.key_control and detail.key_control.upper() == 'Y' %}
-                                                핵심
-                                            {% else %}
-                                                비핵심
-                                            {% endif %}
+                                            {{ detail.key_control or '비핵심' }}
                                         </td>
                                         <td>
                                             <span class="text-truncate-custom" title="{{ detail.population or '-' }}">
