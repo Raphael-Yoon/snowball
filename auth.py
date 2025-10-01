@@ -13,8 +13,17 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
-    """사용자 테이블 및 로그 테이블 초기화"""
+# init_db() 함수는 삭제되었습니다.
+# 데이터베이스 초기화는 마이그레이션 시스템을 사용하세요:
+#   python migrate.py upgrade
+
+def init_db_legacy():
+    """
+    레거시 데이터베이스 초기화 함수
+
+    ⚠️ 경고: 이 함수는 더 이상 사용되지 않습니다.
+    마이그레이션 시스템 (migrations/)을 사용하세요.
+    """
     with get_db() as conn:
         # 새로운 스키마 (enabled_flag 제거됨)
         conn.execute('''
@@ -296,6 +305,18 @@ def init_db():
                 FOREIGN KEY (eval_by) REFERENCES sb_user (user_id)
             )
         ''')
+
+        # Lookup 테이블 생성 (통제 유형, 주기 등의 코드값 관리)
+        # 기존 테이블이 있으면 그대로 사용 (lookup_code, lookup_name, description, lookup_type 구조)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS sb_lookup (
+                lookup_code TEXT NOT NULL,
+                lookup_name TEXT NOT NULL,
+                description TEXT,
+                lookup_type TEXT NOT NULL,
+                PRIMARY KEY (lookup_code, lookup_type)
+            )
+        ''')
         
         # 사용하지 않는 테이블 및 컬럼 정리
         try:
@@ -479,6 +500,86 @@ def init_db():
                 conn.execute('ALTER TABLE sb_rcm_detail ADD COLUMN mapping_status TEXT DEFAULT NULL')  # NULL, 'no_mapping', 'mapped'
         except Exception as e:
             pass
+
+        conn.commit()
+
+        # sb_rcm_detail_v 뷰 생성 (sb_lookup 테이블이 생성된 후에 실행)
+        # 기존 뷰 삭제
+        conn.execute('DROP VIEW IF EXISTS sb_rcm_detail_v')
+        conn.execute('DROP VIEW IF EXISTS v_rcm_detail_with_lookup')
+
+        # sb_lookup 테이블이 있는지 확인
+        table_exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='sb_lookup'"
+        ).fetchone()
+
+        if table_exists:
+            # sb_lookup 테이블과 조인하는 뷰 생성
+            conn.execute('''
+                CREATE VIEW sb_rcm_detail_v AS
+                SELECT
+                    d.detail_id,
+                    d.rcm_id,
+                    d.control_code,
+                    d.control_name,
+                    d.control_description,
+                    lk.lookup_name AS key_control,
+                    lf.lookup_name AS control_frequency,
+                    lt.lookup_name AS control_type,
+                    ln.lookup_name AS control_nature,
+                    d.population,
+                    d.population_completeness_check,
+                    d.population_count,
+                    d.test_procedure,
+                    d.mapped_std_control_id,
+                    d.mapped_date,
+                    d.mapped_by,
+                    d.ai_review_status,
+                    d.ai_review_recommendation,
+                    d.ai_reviewed_date,
+                    d.ai_reviewed_by,
+                    d.mapping_status
+                FROM sb_rcm_detail d
+                LEFT JOIN sb_lookup lk ON lk.lookup_type = 'key_control'
+                    AND UPPER(lk.lookup_code) = UPPER(d.key_control)
+                LEFT JOIN sb_lookup lf ON lf.lookup_type = 'control_frequency'
+                    AND UPPER(lf.lookup_code) = UPPER(d.control_frequency)
+                LEFT JOIN sb_lookup lt ON lt.lookup_type = 'control_type'
+                    AND UPPER(lt.lookup_code) = UPPER(d.control_type)
+                LEFT JOIN sb_lookup ln ON ln.lookup_type = 'control_nature'
+                    AND UPPER(ln.lookup_code) = UPPER(d.control_nature)
+            ''')
+        else:
+            # sb_lookup 테이블이 없으면 CASE 문만 사용하는 뷰 생성
+            conn.execute('''
+                CREATE VIEW sb_rcm_detail_v AS
+                SELECT
+                    detail_id,
+                    rcm_id,
+                    control_code,
+                    control_name,
+                    control_description,
+                    CASE
+                        WHEN UPPER(COALESCE(key_control, '')) IN ('Y', 'YES', '핵심', 'KEY', 'KEY CONTROL', '중요') THEN '핵심'
+                        ELSE '비핵심'
+                    END AS key_control,
+                    control_frequency,
+                    control_type,
+                    control_nature,
+                    population,
+                    population_completeness_check,
+                    population_count,
+                    test_procedure,
+                    mapped_std_control_id,
+                    mapped_date,
+                    mapped_by,
+                    ai_review_status,
+                    ai_review_recommendation,
+                    ai_reviewed_date,
+                    ai_reviewed_by,
+                    mapping_status
+                FROM sb_rcm_detail
+            ''')
 
         conn.commit()
 
@@ -865,7 +966,7 @@ def get_rcm_details(rcm_id):
     with get_db() as conn:
         details = conn.execute('''
             SELECT *
-            FROM v_rcm_detail_with_lookup
+            FROM sb_rcm_detail_v
             WHERE rcm_id = ?
             ORDER BY
                 CASE
@@ -881,25 +982,60 @@ def get_rcm_details(rcm_id):
         ''', (rcm_id,)).fetchall()
         return [dict(detail) for detail in details]
 
-def get_key_rcm_details(rcm_id):
-    """핵심통제만 조회하는 RCM 상세 데이터 조회 (운영평가용)"""
+def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None):
+    """핵심통제만 조회하는 RCM 상세 데이터 조회 (운영평가용)
+
+    Args:
+        rcm_id: RCM ID
+        user_id: 사용자 ID (설계평가 필터링용)
+        design_evaluation_session: 설계평가 세션명 (설계평가 필터링용)
+
+    Returns:
+        핵심통제 목록. user_id와 design_evaluation_session이 제공되면 설계평가 결과가 '적정'인 통제만 반환.
+    """
     with get_db() as conn:
-        details = conn.execute('''
-            SELECT *
-            FROM v_rcm_detail_with_lookup
-            WHERE rcm_id = ? AND (key_control = 'Y' OR key_control = 'y' OR UPPER(key_control) = 'Y')
-            ORDER BY
-                CASE
-                    WHEN control_code LIKE 'PWC%' THEN 1
-                    WHEN control_code LIKE 'APD%' THEN 2
-                    WHEN control_code LIKE 'PC%' THEN 3
-                    WHEN control_code LIKE 'CO%' THEN 4
-                    WHEN control_code LIKE 'PD%' THEN 5
-                    WHEN control_code LIKE 'ST%' THEN 6
-                    ELSE 7
-                END,
-                control_code
-        ''', (rcm_id,)).fetchall()
+        if user_id and design_evaluation_session:
+            # 핵심통제이면서 설계평가 결과가 'effective'(적정)인 통제만 조회
+            details = conn.execute('''
+                SELECT DISTINCT d.*
+                FROM sb_rcm_detail_v d
+                INNER JOIN sb_design_evaluation_header h ON d.rcm_id = h.rcm_id
+                INNER JOIN sb_design_evaluation_line l ON h.header_id = l.header_id AND d.control_code = l.control_code
+                WHERE d.rcm_id = ?
+                    AND (d.key_control = 'Y' OR d.key_control = '핵심')
+                    AND h.user_id = ?
+                    AND h.evaluation_session = ?
+                    AND l.overall_effectiveness = 'effective'
+                ORDER BY
+                    CASE
+                        WHEN d.control_code LIKE 'PWC%' THEN 1
+                        WHEN d.control_code LIKE 'APD%' THEN 2
+                        WHEN d.control_code LIKE 'PC%' THEN 3
+                        WHEN d.control_code LIKE 'CO%' THEN 4
+                        WHEN d.control_code LIKE 'PD%' THEN 5
+                        WHEN d.control_code LIKE 'ST%' THEN 6
+                        ELSE 7
+                    END,
+                    d.control_code
+            ''', (rcm_id, user_id, design_evaluation_session)).fetchall()
+        else:
+            # 모든 핵심통제 조회 (기존 동작)
+            details = conn.execute('''
+                SELECT *
+                FROM sb_rcm_detail_v
+                WHERE rcm_id = ? AND (key_control = 'Y' OR key_control = '핵심')
+                ORDER BY
+                    CASE
+                        WHEN control_code LIKE 'PWC%' THEN 1
+                        WHEN control_code LIKE 'APD%' THEN 2
+                        WHEN control_code LIKE 'PC%' THEN 3
+                        WHEN control_code LIKE 'CO%' THEN 4
+                        WHEN control_code LIKE 'PD%' THEN 5
+                        WHEN control_code LIKE 'ST%' THEN 6
+                        ELSE 7
+                    END,
+                    control_code
+            ''', (rcm_id,)).fetchall()
         return [dict(detail) for detail in details]
 
 def save_rcm_details(rcm_id, rcm_data):
@@ -1377,26 +1513,27 @@ def count_design_evaluations(rcm_id, user_id):
         return count
 
 def count_operation_evaluations(rcm_id, user_id, evaluation_session=None, design_evaluation_session=None):
-    """특정 RCM의 사용자별 운영평가 완료된 통제 수량 조회 (세션별, Header-Line 구조)"""
+    """특정 RCM의 사용자별 운영평가 Header 존재 여부 조회 (세션별, Header-Line 구조)
+
+    Note: Header가 존재하면 운영평가 세션이 시작된 것으로 판단
+    Returns: Header 존재 시 1, 없으면 0
+    """
     with get_db() as conn:
         if evaluation_session and design_evaluation_session:
             count = conn.execute('''
-                SELECT COUNT(*) FROM sb_operation_evaluation_line l
-                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
-                WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ? AND h.design_evaluation_session = ?
+                SELECT COUNT(*) FROM sb_operation_evaluation_header
+                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
             ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchone()[0]
         elif evaluation_session:
             count = conn.execute('''
-                SELECT COUNT(*) FROM sb_operation_evaluation_line l
-                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
-                WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ?
+                SELECT COUNT(*) FROM sb_operation_evaluation_header
+                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
             ''', (rcm_id, user_id, evaluation_session)).fetchone()[0]
         else:
             # 전체 운영평가 수량 조회 (세션 구분 없음)
             count = conn.execute('''
-                SELECT COUNT(*) FROM sb_operation_evaluation_line l
-                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
-                WHERE h.rcm_id = ? AND h.user_id = ?
+                SELECT COUNT(*) FROM sb_operation_evaluation_header
+                WHERE rcm_id = ? AND user_id = ?
             ''', (rcm_id, user_id)).fetchone()[0]
         return count
 
@@ -1662,13 +1799,14 @@ def get_rcm_detail_mappings(rcm_id):
     """RCM의 개별 통제 매핑 조회 (sb_rcm_detail 테이블 사용)"""
     with get_db() as conn:
         mappings = conn.execute('''
-            SELECT 
+            SELECT
                 d.detail_id,
                 d.control_code,
                 d.control_name,
                 d.mapped_std_control_id as std_control_id,
                 d.mapped_date,
                 d.mapped_by,
+                sc.control_code as std_control_code,
                 sc.control_name as std_control_name,
                 sc.control_category
             FROM sb_rcm_detail d

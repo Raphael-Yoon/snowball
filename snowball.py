@@ -23,7 +23,7 @@ from snowball_link7 import bp_link7
 from snowball_link8 import bp_link8
 from snowball_link9 import bp_link9
 from snowball_admin import admin_bp
-from auth import init_db, send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations, find_user_by_email
+from auth import send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations, find_user_by_email
 import uuid
 import json
 import re
@@ -67,15 +67,18 @@ PYTHONANYWHERE_AUTH_CODE = os.getenv('PYTHONANYWHERE_AUTH_CODE', '150606')
 print(f"환경 변수 - PYTHONANYWHERE_AUTH_CODE: {PYTHONANYWHERE_AUTH_CODE}")
 
 # 데이터베이스 초기화
-try:
-    print("데이터베이스 초기화 시작")
-    with app.app_context():
-        init_db()
-    print("데이터베이스 초기화 완료")
-except Exception as e:
-    print(f"데이터베이스 초기화 오류: {e}")
-    import traceback
-    traceback.print_exc()
+# 데이터베이스 초기화는 더 이상 서버 시작 시 자동 실행되지 않습니다.
+# 마이그레이션 시스템을 사용하세요: python migrate.py upgrade
+#
+# try:
+#     print("데이터베이스 초기화 시작")
+#     with app.app_context():
+#         init_db()
+#     print("데이터베이스 초기화 완료")
+# except Exception as e:
+#     print(f"데이터베이스 초기화 오류: {e}")
+#     import traceback
+#     traceback.print_exc()
 
 @app.before_request
 def before_request():

@@ -127,10 +127,10 @@
                                     <tr>
                                         <td><code>{{ detail.control_code }}</code></td>
                                         <td class="text-center">
-                                            {% if detail.key_control and detail.key_control.upper() == 'Y' %}
+                                            {% if detail.key_control == '핵심' %}
                                                 <span class="badge bg-danger">핵심</span>
-                                            {% elif detail.key_control %}
-                                                <span class="badge bg-secondary">일반</span>
+                                            {% elif detail.key_control == '비핵심' %}
+                                                <span class="badge bg-secondary">비핵심</span>
                                             {% else %}
                                                 <span class="badge bg-warning">미설정</span>
                                             {% endif %}

@@ -90,11 +90,14 @@
                         <h5><i class="fas fa-list me-2"></i>통제 설계평가</h5>
                         <div class="d-flex flex-wrap gap-2">
                             {% if user_info.admin_flag == 'Y' %}
-                            <button class="btn btn-sm btn-success" onclick="evaluateAllControls()" title="임시 데이터를 생성하여 화면에만 표시 (실제 저장되지 않음)" data-bs-toggle="tooltip" style="height: 70%; padding: 0.2rem 0.5rem;">
-                                <i class="fas fa-check-double me-1"></i>임시평가
+                            <button class="btn btn-sm btn-outline-success" onclick="evaluateAllControls()" title="[관리자 전용] 임시 데이터를 생성하여 화면에만 표시 (실제 저장되지 않음)" data-bs-toggle="tooltip" style="height: 70%; padding: 0.2rem 0.5rem; border: 2px dashed #198754;">
+                                <i class="fas fa-user-shield me-1"></i><i class="fas fa-check-double me-1"></i>임시평가
                             </button>
-                            <button class="btn btn-sm btn-primary" onclick="saveAllAsAdequate()" title="모든 통제를 '적정' 값으로 실제 저장" data-bs-toggle="tooltip" style="height: 70%; padding: 0.2rem 0.5rem;">
-                                <i class="fas fa-check-circle me-1"></i>적정저장
+                            <button class="btn btn-sm btn-outline-primary" onclick="saveAllAsAdequate()" title="[관리자 전용] 모든 통제를 '적정' 값으로 실제 저장" data-bs-toggle="tooltip" style="height: 70%; padding: 0.2rem 0.5rem; border: 2px dashed #0d6efd;">
+                                <i class="fas fa-user-shield me-1"></i><i class="fas fa-check-circle me-1"></i>적정저장
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="resetAllEvaluations()" title="[관리자 전용] 모든 설계평가 데이터 초기화" data-bs-toggle="tooltip" style="height: 70%; padding: 0.2rem 0.5rem; border: 2px dashed #ffc107;">
+                                <i class="fas fa-user-shield me-1"></i><i class="fas fa-undo me-1"></i>초기화
                             </button>
                             {% endif %}
                             <button id="completeEvaluationBtn" class="btn btn-sm btn-success" onclick="completeEvaluation()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;" title="설계평가를 완료 처리합니다" data-bs-toggle="tooltip">
@@ -103,11 +106,11 @@
                             <button id="archiveEvaluationBtn" class="btn btn-sm btn-secondary" onclick="archiveEvaluation()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;" title="완료된 설계평가를 Archive 처리합니다" data-bs-toggle="tooltip">
                                 <i class="fas fa-archive me-1"></i>Archive
                             </button>
-                            <button class="btn btn-sm btn-warning" onclick="resetAllEvaluations()" style="height: 70%; padding: 0.2rem 0.5rem;">
-                                <i class="fas fa-undo me-1"></i>초기화
-                            </button>
                             <button id="downloadBtn" class="btn btn-sm btn-outline-primary" onclick="exportEvaluationResult()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;">
                                 <i class="fas fa-file-excel me-1"></i>다운로드
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="refreshEvaluationList()" style="height: 70%; padding: 0.2rem 0.5rem;" title="평가 목록 새로고침" data-bs-toggle="tooltip">
+                                <i class="fas fa-sync-alt me-1"></i>새로고침
                             </button>
                         </div>
                     </div>
@@ -144,23 +147,17 @@
                                         <td>{{ detail.control_frequency_name or detail.control_frequency or '-' }}</td>
                                         <td>{{ detail.control_type_name or detail.control_type or '-' }}</td>
                                         <td>
-                                            {% if detail.key_control and detail.key_control.upper() == 'Y' %}
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-star me-1"></i>핵심
-                                                </span>
-                                            {% else %}
-                                                <span class="badge bg-secondary">일반</span>
-                                            {% endif %}
+                                            {{ detail.key_control or '비핵심' }}
                                         </td>
                                         <td>
                                             {% if mapping_info %}
-                                                <span class="badge bg-success" title="{{ mapping_info.std_control_name }}" data-bs-toggle="tooltip">
-                                                    <i class="fas fa-link me-1"></i>{{ mapping_info.control_code }}
-                                                </span>
+                                                <a href="/rcm/{{ rcm_id }}/mapping" class="badge bg-success text-white text-decoration-none" title="{{ mapping_info.std_control_name or mapping_info.std_control_code or '기준통제 매핑됨' }}" data-bs-toggle="tooltip">
+                                                    <i class="fas fa-link me-1"></i>매핑
+                                                </a>
                                             {% else %}
-                                                <span class="badge bg-warning text-dark fw-bold" style="border: 2px solid #fd7e14;" title="표준통제와 매핑되지 않음" data-bs-toggle="tooltip">
+                                                <a href="/rcm/{{ rcm_id }}/mapping" class="badge bg-warning text-dark fw-bold text-decoration-none" style="border: 2px solid #fd7e14;" title="클릭하여 기준통제 매핑하기" data-bs-toggle="tooltip">
                                                     <i class="fas fa-exclamation-triangle me-1"></i>미매핑
-                                                </span>
+                                                </a>
                                             {% endif %}
                                         </td>
                                         <td>
@@ -295,24 +292,27 @@
                     </div>
 
                     <!-- 설계 효과성 종합 평가 -->
-                    <div class="card mb-3">
+                    <div class="card mb-3" id="effectivenessSection">
                         <div class="card-header bg-success text-white">
                             <h6 class="mb-0"><i class="fas fa-check-circle me-2"></i>설계 효과성 종합 평가</h6>
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
                                 <label for="overallEffectiveness" class="form-label">실제 통제 설계 효과성 *</label>
-                                <select class="form-select" id="overallEffectiveness" required>
+                                <select class="form-select" id="overallEffectiveness" required disabled>
                                     <option value="">평가 결과 선택</option>
                                     <option value="effective">효과적 - 통제 설계가 적절하고 위험을 효과적으로 완화함</option>
                                     <option value="partially_effective">부분적으로 효과적 - 통제 설계에 일부 보완이 필요함</option>
                                     <option value="ineffective">비효과적 - 통제 설계가 위험을 충분히 완화하지 못함</option>
                                 </select>
+                                <div class="form-text text-muted" id="effectivenessHelpText">
+                                    통제활동 설명 적절성이 "적절함"으로 평가된 경우에만 입력 가능합니다.
+                                </div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="evaluationRationale" class="form-label">평가 근거</label>
-                                <textarea class="form-control" id="evaluationRationale" rows="3" 
+                                <textarea class="form-control" id="evaluationRationale" rows="3" disabled
                                           placeholder="현재 실무 상황을 관찰한 내용이나 담당자 면담 결과 등 구체적인 평가 근거를 기술하세요..."></textarea>
                             </div>
                             
@@ -642,15 +642,54 @@
             });
         }
 
+        // 통제활동 설명 적절성에 따른 효과성 평가 활성화/비활성화
+        function setupAdequacyControl() {
+            const adequacySelect = document.getElementById('descriptionAdequacy');
+            const effectivenessSelect = document.getElementById('overallEffectiveness');
+            const effectivenessSection = document.getElementById('effectivenessSection');
+            const evaluationRationale = document.getElementById('evaluationRationale');
+            const recommendedActionsField = document.getElementById('recommendedActions');
+
+            if (adequacySelect && effectivenessSelect) {
+                // 초기 상태 설정
+                toggleEffectivenessSection(adequacySelect.value);
+
+                // 이벤트 리스너 추가
+                adequacySelect.addEventListener('change', function() {
+                    toggleEffectivenessSection(this.value);
+                });
+            }
+
+            function toggleEffectivenessSection(adequacyValue) {
+                if (adequacyValue === 'adequate') {
+                    // 적절함인 경우 활성화
+                    effectivenessSelect.disabled = false;
+                    evaluationRationale.disabled = false;
+                    effectivenessSection.style.opacity = '1';
+                    document.getElementById('effectivenessHelpText').style.display = 'none';
+                } else {
+                    // 적절함이 아닌 경우 비활성화 및 초기화
+                    effectivenessSelect.disabled = true;
+                    effectivenessSelect.value = '';
+                    evaluationRationale.value = '';
+                    evaluationRationale.disabled = true;
+                    recommendedActionsField.value = '';
+                    recommendedActionsField.disabled = true;
+                    effectivenessSection.style.opacity = '0.5';
+                    document.getElementById('effectivenessHelpText').style.display = 'block';
+                }
+            }
+        }
+
         // 권고 조치사항 필드 조건부 활성화 설정
         function setupRecommendedActionsField() {
             const effectivenessSelect = document.getElementById('overallEffectiveness');
             const recommendedActionsField = document.getElementById('recommendedActions');
-            
+
             if (effectivenessSelect && recommendedActionsField) {
                 // 초기 상태 설정
                 toggleRecommendedActions(effectivenessSelect.value);
-                
+
                 // 이벤트 리스너 추가
                 effectivenessSelect.addEventListener('change', function() {
                     toggleRecommendedActions(this.value);
@@ -779,10 +818,13 @@
             
             // 평가명 화면에 표시
             updateEvaluationNameDisplay();
-            
+
+            // 통제활동 설명 적절성에 따른 효과성 평가 활성화/비활성화 설정
+            setupAdequacyControl();
+
             // 권고 조치사항 필드 조건부 활성화 설정
             setupRecommendedActionsField();
-            
+
             // 개선 제안사항 필드 조건부 활성화 설정
             setupImprovementSuggestionField();
             
@@ -1074,18 +1116,19 @@
                 alert('[DESIGN-004] 통제활동 설명 적절성 평가는 필수 항목입니다.');
                 return;
             }
-            
-            if (!effectiveness) {
+
+            // 적절함인 경우에만 효과성 평가 필수
+            if (adequacy === 'adequate' && !effectiveness) {
                 alert('[DESIGN-005] 종합 설계 효과성 평가는 필수 항목입니다.');
                 return;
             }
             
             const evaluation = {
-                adequacy: adequacy,
-                improvement: document.getElementById('improvementSuggestion').value,
-                effectiveness: effectiveness,
-                rationale: document.getElementById('evaluationRationale').value,
-                actions: document.getElementById('recommendedActions').value
+                description_adequacy: adequacy,
+                improvement_suggestion: document.getElementById('improvementSuggestion').value,
+                overall_effectiveness: effectiveness,
+                evaluation_rationale: document.getElementById('evaluationRationale').value,
+                recommended_actions: document.getElementById('recommendedActions').value
             };
             
             // 서버에 결과 저장
@@ -1222,39 +1265,30 @@
             console.log(`Index ${index} - hasValidEvaluationDate: ${hasValidEvaluationDate}, isTemporaryEvaluation: ${isTemporaryEvaluation}`);
             
             if (hasValidEvaluationDate) {
-                // 결과 표시 (종합 효과성 기준)
+                // 결과 표시
                 let resultClass = '';
                 let resultText = '';
-                switch(evaluation.overall_effectiveness) {
-                    case 'effective':
+
+                // overall_effectiveness가 있으면 표시
+                if (evaluation.overall_effectiveness) {
+                    if (evaluation.overall_effectiveness === 'effective') {
                         resultClass = 'bg-success';
-                        resultText = '효과적';
-                        break;
-                    case 'partially_effective':
-                        resultClass = 'bg-warning';
-                        resultText = '부분적 효과적';
-                        break;
-                    case 'ineffective':
+                        resultText = '적정';
+                    } else {
+                        // partially_effective, ineffective 모두 부적정
                         resultClass = 'bg-danger';
-                        resultText = '비효과적';
-                        break;
-                }
-                
-                // 설명 적절성도 함께 표시
-                let adequacyText = '';
-                switch(evaluation.description_adequacy) {
-                    case 'adequate':
-                        adequacyText = '설명 적절';
-                        break;
-                    case 'partially_adequate':
-                        adequacyText = '설명 부분적';
-                        break;
-                    case 'inadequate':
-                        adequacyText = '설명 부적절';
-                        break;
-                    case 'missing':
-                        adequacyText = '설명 누락';
-                        break;
+                        resultText = '부적정';
+                    }
+                } else if (evaluation.description_adequacy) {
+                    // overall_effectiveness가 없으면 description_adequacy로 판단
+                    if (evaluation.description_adequacy === 'adequate') {
+                        resultClass = 'bg-success';
+                        resultText = '적정';
+                    } else {
+                        // inadequate, missing, partially_adequate 모두 부적정
+                        resultClass = 'bg-danger';
+                        resultText = '부적정';
+                    }
                 }
                 
                 // 이미지가 있는지 확인
@@ -1266,10 +1300,9 @@
                         <a href="#" onclick="showEvaluationImages(${index})" class="text-decoration-none ms-1">보기</a>
                     </small>`;
                 }
-                
+
                 resultElement.innerHTML = `
                     <span class="badge ${resultClass}">${resultText}</span>
-                    <br><small class="text-muted">(${adequacyText})</small>
                     ${imageDisplay}
                 `;
                 
@@ -1311,25 +1344,8 @@
                         break;
                 }
                 
-                let adequacyText = '';
-                switch(evaluation.description_adequacy) {
-                    case 'adequate':
-                        adequacyText = '설명 적절';
-                        break;
-                    case 'partially_adequate':
-                        adequacyText = '설명 부분적';
-                        break;
-                    case 'inadequate':
-                        adequacyText = '설명 부적절';
-                        break;
-                    case 'missing':
-                        adequacyText = '설명 누락';
-                        break;
-                }
-                
                 resultElement.innerHTML = `
                     <span class="badge ${resultClass}" title="임시 데이터 - 저장되지 않음" data-bs-toggle="tooltip">${resultText}</span>
-                    <br><small class="text-muted">(${adequacyText})</small>
                 `;
                 
                 // 조치사항도 (임시) 표시
@@ -1541,7 +1557,7 @@
         
         // 전체 통제를 "적정" 값으로 실제 저장
         function saveAllAsAdequate() {
-            if (!confirm('모든 통제를 다양한 평가 패턴으로 실제 저장하시겠습니까?\n\n⚠️ 주의사항:\n- 이 작업은 실제로 데이터베이스에 저장됩니다\n- 이미 평가된 통제는 덮어쓰여집니다\n- 통제별로 다양한 평가 결과가 적용됩니다\n  (적절함/부분적 적절함, 효과적/부분적 효과적 혼합)')) {
+            if (!confirm('모든 통제를 "적절함 + 효과적"으로 실제 저장하시겠습니까?\n\n⚠️ 주의사항:\n- 이 작업은 실제로 데이터베이스에 저장됩니다\n- 이미 평가된 통제는 덮어쓰여집니다\n- 모든 통제가 "적절함 + 효과적"으로 저장됩니다')) {
                 return;
             }
             
@@ -1562,7 +1578,7 @@
                     if (errors.length > 0) {
                         alert(`[DESIGN-011] 저장 완료!\n성공: ${savedCount}개\n실패: ${errors.length}개\n\n실패 목록:\n${errors.join('\n')}`);
                     } else {
-                        alert(`[DESIGN-012] 모든 통제가 다양한 평가 패턴으로 저장되었습니다!\n총 ${savedCount}개 통제 저장 완료\n\n적용된 패턴:\n- 패턴 1: 적절함 + 효과적\n- 패턴 2: 부분적 적절함 + 부분적 효과적\n- 패턴 3: 적절함 + 부분적 효과적\n- 패턴 4: 부분적 적절함 + 효과적`);
+                        alert(`[DESIGN-012] 모든 통제가 "적절함 + 효과적"으로 저장되었습니다!\n총 ${savedCount}개 통제 저장 완료`);
                     }
                     
                     // UI 업데이트 및 데이터 다시 로드
@@ -1583,46 +1599,14 @@
                     return;
                 }
                 
-                // 다양한 평가 데이터 생성 (적정/부적정 혼합)
-                // 인덱스에 따라 다른 평가 패턴 적용
-                const patterns = [
-                    // 패턴 1: 적절함 + 효과적
-                    {
-                        description_adequacy: 'adequate',
-                        improvement_suggestion: '현재 통제 설계가 적절합니다.',
-                        overall_effectiveness: 'effective',
-                        evaluation_rationale: '통제가 위험을 효과적으로 완화하며 적절하게 설계되었습니다.',
-                        recommended_actions: '현행 유지'
-                    },
-                    // 패턴 2: 부분적으로 적절함 + 부분적으로 효과적
-                    {
-                        description_adequacy: 'partially_adequate',
-                        improvement_suggestion: '통제 문서화가 일부 부족하여 보완이 필요합니다.',
-                        overall_effectiveness: 'partially_effective',
-                        evaluation_rationale: '통제는 기본적으로 작동하고 있으나, 일부 위험 요소에 대한 완화 효과가 제한적입니다.',
-                        recommended_actions: '통제 절차 문서 업데이트 및 주기적 검토 강화'
-                    },
-                    // 패턴 3: 적절함 + 부분적으로 효과적  
-                    {
-                        description_adequacy: 'adequate',
-                        improvement_suggestion: '통제 설계는 적절하나 실행 과정에서 개선이 필요합니다.',
-                        overall_effectiveness: 'partially_effective',
-                        evaluation_rationale: '통제 설계는 적절하나 실제 수행 시 일관성이 부족하여 효과성이 제한적입니다.',
-                        recommended_actions: '통제 수행자 교육 강화 및 모니터링 절차 개선'
-                    },
-                    // 패턴 4: 부분적으로 적절함 + 효과적
-                    {
-                        description_adequacy: 'partially_adequate',
-                        improvement_suggestion: '통제 범위를 확대하여 모든 관련 위험을 포괄하도록 개선 필요합니다.',
-                        overall_effectiveness: 'effective',
-                        evaluation_rationale: '현재 범위 내에서는 효과적으로 작동하고 있으나, 일부 위험 영역이 누락되어 있습니다.',
-                        recommended_actions: '통제 범위 확대 및 추가 통제 절차 도입 검토'
-                    }
-                ];
-                
-                // 인덱스를 기반으로 패턴 선택 (4개 패턴을 순환)
-                const patternIndex = (index - 1) % patterns.length;
-                const evaluationData = patterns[patternIndex];
+                // 모든 통제를 "적절함 + 효과적"으로 저장
+                const evaluationData = {
+                    description_adequacy: 'adequate',
+                    improvement_suggestion: '',
+                    overall_effectiveness: 'effective',
+                    evaluation_rationale: '',
+                    recommended_actions: ''
+                };
                 
                 // 서버에 저장
                 fetch('/api/design-evaluation/save', {
@@ -1640,16 +1624,21 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    console.log(`${controlCode} 저장 결과:`, data);
                     if (data.success) {
                         savedCount++;
                     } else {
-                        errors.push(`${controlCode}: ${data.message}`);
+                        const errorMsg = `${controlCode}: ${data.message || '알 수 없는 오류'}`;
+                        console.error(errorMsg);
+                        errors.push(errorMsg);
                     }
                     // 다음 통제 저장
                     saveNext(index + 1);
                 })
                 .catch(error => {
-                    errors.push(`${controlCode}: 네트워크 오류`);
+                    const errorMsg = `${controlCode}: ${error.message || '네트워크 오류'}`;
+                    console.error('저장 실패:', errorMsg, error);
+                    errors.push(errorMsg);
                     // 다음 통제 저장
                     saveNext(index + 1);
                 });
@@ -1672,15 +1661,15 @@
             const completeBtn = document.getElementById('completeEvaluationBtn');
             
             if (isCompleted) {
-                // 완료취소 처리
+                // 완료취소 처리 - 기본 확인 메시지 (운영평가 여부는 서버에서 확인)
                 if (!confirm('설계평가 완료를 취소하시겠습니까?\n\n완료 취소 후에는 평가 상태가 "진행중"으로 변경됩니다.')) {
                     return;
                 }
-                
+
                 const originalText = completeBtn.innerHTML;
                 completeBtn.disabled = true;
                 completeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>취소 중...';
-                
+
                 fetch('/api/design-evaluation/cancel', {
                     method: 'POST',
                     headers: {
@@ -1695,6 +1684,10 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
+                        // 운영평가가 있는 경우 추가 알림
+                        if (data.has_operation_evaluation) {
+                            alert('⚠️ 참고: 이 설계평가를 기반으로 한 운영평가가 진행중입니다.\n\n설계평가를 다시 완료처리해야 운영평가를 이어서 진행할 수 있습니다.');
+                        }
                         // sessionStorage에서 완료일 제거 (더 확실하게)
                         sessionStorage.removeItem('headerCompletedDate');
                         sessionStorage.setItem('headerCompletedDate', '');
@@ -1718,7 +1711,7 @@
                             }
                         });
                         console.log('완료 취소 후 UI 업데이트 완료');
-                        
+
                     } else {
                         alert('[DESIGN-014] 완료 취소 중 오류가 발생했습니다: ' + data.message);
                         // 버튼 원복
@@ -1734,8 +1727,36 @@
                     completeBtn.innerHTML = originalText;
                 });
             } else {
-                // 완료 처리
-                if (!confirm('설계평가를 완료 처리하시겠습니까?\n\n완료 처리 후에는 평가 상태가 "완료"로 변경되며,\n완료일시가 기록됩니다.')) {
+                // 완료 처리 전 효과적이지 않은 통제 확인
+                const ineffectiveControls = [];
+                Object.keys(evaluationResults).forEach(index => {
+                    const evaluation = evaluationResults[index];
+                    if (evaluation && evaluation.overall_effectiveness) {
+                        if (evaluation.overall_effectiveness === 'partially_effective' ||
+                            evaluation.overall_effectiveness === 'ineffective') {
+                            // 통제 코드 찾기
+                            const controlCode = {% for detail in rcm_details %}
+                                {{ loop.index }} === parseInt(index) ? '{{ detail.control_code }}' :
+                            {% endfor %} null;
+
+                            if (controlCode) {
+                                const effectivenessText = evaluation.overall_effectiveness === 'partially_effective'
+                                    ? '부분적으로 효과적'
+                                    : '비효과적';
+                                ineffectiveControls.push(`${controlCode} (${effectivenessText})`);
+                            }
+                        }
+                    }
+                });
+
+                // 효과적이지 않은 통제가 있는 경우 경고 메시지
+                let confirmMessage = '설계평가를 완료 처리하시겠습니까?\n\n완료 처리 후에는 평가 상태가 "완료"로 변경되며,\n완료일시가 기록됩니다.';
+
+                if (ineffectiveControls.length > 0) {
+                    confirmMessage = `⚠️ 효과적이지 않은 통제가 있습니다:\n\n${ineffectiveControls.join('\n')}\n\n그래도 완료 처리하시겠습니까?`;
+                }
+
+                if (!confirm(confirmMessage)) {
                     return;
                 }
                 
@@ -1976,6 +1997,42 @@
             }, 2000);
         }
         
+
+        // 평가 목록 새로고침
+        function refreshEvaluationList() {
+            console.log('평가 목록 새로고침 시작...');
+
+            // 버튼 찾기
+            const refreshBtn = event.target.closest('button');
+            if (!refreshBtn) {
+                console.error('새로고침 버튼을 찾을 수 없습니다.');
+                return;
+            }
+
+            // 버튼 상태 변경
+            const originalHTML = refreshBtn.innerHTML;
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>로딩 중...';
+
+            // 아이콘 회전 애니메이션
+            const icon = refreshBtn.querySelector('i');
+            if (icon) {
+                icon.classList.add('fa-spin');
+            }
+
+            // 기존 평가 데이터 다시 로드
+            loadExistingEvaluations();
+
+            // 진행률 업데이트
+            updateProgress();
+
+            // 버튼 복원 (1초 후)
+            setTimeout(() => {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = originalHTML;
+                showSuccessMessage('평가 목록이 새로고침되었습니다.');
+            }, 1000);
+        }
 
         // 샘플 업로드 모달 표시 (일괄 업로드용)
         function showSampleUploadModal() {
