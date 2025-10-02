@@ -2075,4 +2075,3 @@ def clear_rcm_completion(rcm_id):
             return True
     except Exception as e:
         return False
-

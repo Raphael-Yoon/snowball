@@ -21,10 +21,7 @@
                             설계평가 세션: <span class="badge bg-warning text-dark">{{ evaluation_session }}</span>
                         </div>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-info" onclick="viewDesignEvaluation()">
-                            <i class="fas fa-drafting-compass me-1"></i>설계평가 보기
-                        </button>
+                    <div>
                         <a href="/user/operation-evaluation" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>목록으로
                         </a>
@@ -140,10 +137,7 @@
                                                     data-control-frequency="{{ detail.control_frequency_name or detail.control_frequency|e }}"
                                                     data-control-type="{{ detail.control_type_name or detail.control_type|e }}"
                                                     data-control-nature="{{ detail.control_nature_name or detail.control_nature|e }}"
-                                                    data-control-nature-code="{{ detail.control_nature|e }}"
                                                     data-test-procedure="{{ detail.test_procedure|e }}"
-                                                    data-std-control-id="{{ detail.mapped_std_control_id|e }}"
-                                                    data-std-control-code="{{ rcm_mappings.get(detail.control_code).std_control_code if rcm_mappings.get(detail.control_code) else '' }}"
                                                     data-row-index="{{ loop.index }}"
                                                     onclick="openOperationEvaluationModal(this)">
                                                 <i class="fas fa-edit me-1"></i>평가
@@ -165,48 +159,6 @@
                         </div>
                         {% endif %}
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 설계평가 보기 모달 -->
-    <div class="modal fade" id="designEvaluationViewModal" tabindex="-1" aria-labelledby="designEvaluationViewModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title" id="designEvaluationViewModalLabel">
-                        <i class="fas fa-drafting-compass me-2"></i>설계평가 결과 ({{ evaluation_session }})
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm">
-                            <thead class="table-light">
-                                <tr>
-                                    <th width="5%">코드</th>
-                                    <th width="20%">이름</th>
-                                    <th width="42%">설명</th>
-                                    <th width="5%">주기</th>
-                                    <th width="5%">핵심</th>
-                                    <th width="5%">구분</th>
-                                    <th width="8%">기준통제</th>
-                                    <th width="7%">결과</th>
-                                </tr>
-                            </thead>
-                            <tbody id="designEvaluationTableBody">
-                                <tr>
-                                    <td colspan="8" class="text-center py-4">
-                                        <i class="fas fa-spinner fa-spin me-2"></i>설계평가 데이터를 불러오는 중...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
                 </div>
             </div>
         </div>
@@ -312,22 +264,6 @@
                             <label for="improvement_plan" class="form-label fw-bold">개선계획</label>
                             <textarea class="form-control" id="improvement_plan" name="improvement_plan" rows="3" placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
                         </div>
-
-                        <!-- 파일 첨부 섹션 -->
-                        <div class="mb-3">
-                            <label for="evaluationImages" class="form-label fw-bold">증빙 자료 (이미지)</label>
-                            <input type="file" class="form-control" id="evaluationImages" accept="image/*" multiple>
-                            <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
-                            <div id="imagePreview" class="mt-2"></div>
-                        </div>
-
-                        <!-- 수동통제 전용: 엑셀 파일 업로드 -->
-                        <div class="mb-3" id="excelUploadSection" style="display: none;">
-                            <label for="sampleExcelFile" class="form-label fw-bold">표본 데이터 (엑셀)</label>
-                            <input type="file" class="form-control" id="sampleExcelFile" accept=".xlsx,.xls,.csv">
-                            <div class="form-text">표본 검토 내역이 포함된 엑셀 파일을 업로드하세요.</div>
-                            <div id="excelPreview" class="mt-2"></div>
-                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -390,43 +326,11 @@
             const controlFrequency = buttonElement.getAttribute('data-control-frequency');
             const controlType = buttonElement.getAttribute('data-control-type');
             const controlNature = buttonElement.getAttribute('data-control-nature');
-            const controlNatureCode = buttonElement.getAttribute('data-control-nature-code');
             const testProcedure = buttonElement.getAttribute('data-test-procedure');
-            const stdControlId = buttonElement.getAttribute('data-std-control-id');
-            const stdControlCode = buttonElement.getAttribute('data-std-control-code');
             const rowIndex = parseInt(buttonElement.getAttribute('data-row-index'));
-
-            console.log('Control Code:', controlCode);
-            console.log('Standard Control Code:', stdControlCode);
-            console.log('Standard Control Code Type:', typeof stdControlCode);
 
             currentControlCode = controlCode;
             currentRowIndex = rowIndex;
-
-            // 표준통제별 UI 분기
-            if (stdControlCode && stdControlCode === 'APD01') {
-                console.log('APD01 detected! Redirecting to APD01 page...');
-                // APD01 전용 UI로 변경
-                showAPD01UI(buttonElement);
-                return;
-            }
-
-            console.log('Not APD01, showing standard modal');
-            
-            // 일반 운영평가 UI
-            // 수동통제인 경우에만 엑셀 업로드 섹션 표시
-            const excelSection = document.getElementById('excelUploadSection');
-            if (controlNatureCode && controlNatureCode.toUpperCase() === 'M') {
-                excelSection.style.display = 'block';
-            } else {
-                excelSection.style.display = 'none';
-            }
-            
-            // 파일 입력 초기화
-            document.getElementById('evaluationImages').value = '';
-            document.getElementById('sampleExcelFile').value = '';
-            document.getElementById('imagePreview').innerHTML = '';
-            document.getElementById('excelPreview').innerHTML = '';
 
             document.getElementById('modal-control-code').textContent = controlCode;
             document.getElementById('modal-control-name').textContent = controlName;
@@ -463,55 +367,9 @@
             modal.show();
         }
 
-        // 이미지 파일 미리보기
-        document.getElementById('evaluationImages').addEventListener('change', function(e) {
-            const preview = document.getElementById('imagePreview');
-            preview.innerHTML = '';
-            
-            const files = e.target.files;
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const div = document.createElement('div');
-                        div.className = 'd-inline-block position-relative me-2 mb-2';
-                        div.innerHTML = `
-                            <img src="${e.target.result}" style="max-width: 100px; max-height: 100px; border: 1px solid #ddd; border-radius: 4px;">
-                            <small class="d-block text-muted text-center" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis;">${file.name}</small>
-                        `;
-                        preview.appendChild(div);
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-        });
-
-        // 엑셀 파일 미리보기
-        document.getElementById('sampleExcelFile').addEventListener('change', function(e) {
-            const preview = document.getElementById('excelPreview');
-            preview.innerHTML = '';
-            
-            const file = e.target.files[0];
-            if (file) {
-                const div = document.createElement('div');
-                div.className = 'alert alert-info d-flex align-items-center';
-                div.innerHTML = `
-                    <i class="fas fa-file-excel fa-2x me-3"></i>
-                    <div>
-                        <strong>${file.name}</strong><br>
-                        <small>크기: ${(file.size / 1024).toFixed(2)} KB</small>
-                    </div>
-                `;
-                preview.appendChild(div);
-            }
-        });
-
         // 운영평가 저장
         function saveOperationEvaluation() {
-            const form = document.getElementById('operationEvaluationForm');
-            const formData = new FormData(form);
-            
+            const formData = new FormData(document.getElementById('operationEvaluationForm'));
             const evaluationData = {
                 operating_effectiveness: formData.get('operating_effectiveness'),
                 sample_size: parseInt(formData.get('sample_size')) || 0,
@@ -527,29 +385,18 @@
                 return;
             }
 
-            // FormData 생성 (파일 포함)
-            const uploadData = new FormData();
-            uploadData.append('rcm_id', currentRcmId);
-            uploadData.append('design_evaluation_session', currentEvaluationSession);
-            uploadData.append('control_code', currentControlCode);
-            uploadData.append('evaluation_data', JSON.stringify(evaluationData));
-            
-            // 이미지 파일 추가
-            const imageFiles = document.getElementById('evaluationImages').files;
-            for (let i = 0; i < imageFiles.length; i++) {
-                uploadData.append('evaluation_image_' + i, imageFiles[i]);
-            }
-            
-            // 엑셀 파일 추가 (수동통제인 경우)
-            const excelFile = document.getElementById('sampleExcelFile').files[0];
-            if (excelFile) {
-                uploadData.append('sample_excel', excelFile);
-            }
-
             // 서버에 저장
             fetch('/api/operation-evaluation/save', {
                 method: 'POST',
-                body: uploadData
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    rcm_id: currentRcmId,
+                    evaluation_session: currentEvaluationSession,
+                    control_code: currentControlCode,
+                    evaluation_data: evaluationData
+                })
             })
             .then(response => response.json())
             .then(data => {
@@ -683,109 +530,6 @@
         // 평가 결과 내보내기
         function exportEvaluationResult() {
             alert('운영평가 결과 내보내기 기능은 추후 구현 예정입니다.');
-        }
-
-        // ===================================================================
-        // 설계평가 보기 함수
-        // ===================================================================
-
-        function viewDesignEvaluation() {
-            // 모달 표시
-            const modal = new bootstrap.Modal(document.getElementById('designEvaluationViewModal'));
-            modal.show();
-
-            // 설계평가 데이터 조회
-            fetch(`/api/design-evaluation/get?rcm_id=${currentRcmId}&evaluation_session=${currentEvaluationSession}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        renderDesignEvaluationTable(data.evaluations);
-                    } else {
-                        document.getElementById('designEvaluationTableBody').innerHTML = `
-                            <tr>
-                                <td colspan="8" class="text-center text-danger py-4">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>${data.message || '설계평가 데이터를 불러올 수 없습니다.'}
-                                </td>
-                            </tr>
-                        `;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('designEvaluationTableBody').innerHTML = `
-                        <tr>
-                            <td colspan="8" class="text-center text-danger py-4">
-                                <i class="fas fa-exclamation-triangle me-2"></i>설계평가 데이터를 불러오는 중 오류가 발생했습니다.
-                            </td>
-                        </tr>
-                    `;
-                });
-        }
-
-        function renderDesignEvaluationTable(evaluations) {
-            const tbody = document.getElementById('designEvaluationTableBody');
-
-            if (!evaluations || evaluations.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="8" class="text-center text-muted py-4">
-                            <i class="fas fa-info-circle me-2"></i>설계평가 데이터가 없습니다.
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            tbody.innerHTML = evaluations.map(item => {
-                const adequacyMap = {
-                    'adequate': { text: '적정', class: 'bg-success' },
-                    'deficient': { text: '미흡', class: 'bg-warning text-dark' },
-                    'inadequate': { text: '부적정', class: 'bg-danger' }
-                };
-                const adequacy = adequacyMap[item.design_adequacy] || { text: item.design_adequacy || '-', class: 'bg-secondary' };
-
-                const stdControl = item.std_control_code
-                    ? `<span class="badge bg-info">${item.std_control_code}</span>`
-                    : '<span class="text-muted">-</span>';
-
-                const isKey = item.key_control || '-';
-
-                return `
-                    <tr>
-                        <td style="font-size: 0.85rem;"><code>${item.control_code || '-'}</code></td>
-                        <td style="font-size: 0.85rem;">${item.control_name || '-'}</td>
-                        <td>
-                            <div style="max-height: 60px; overflow-y: auto; font-size: 0.85rem;">
-                                ${item.control_description || '-'}
-                            </div>
-                        </td>
-                        <td style="font-size: 0.85rem;">${item.control_frequency_name || item.control_frequency || '-'}</td>
-                        <td style="font-size: 0.85rem;">${isKey}</td>
-                        <td style="font-size: 0.85rem;">${item.control_nature_name || item.control_nature || '-'}</td>
-                        <td style="font-size: 0.85rem;">${stdControl}</td>
-                        <td style="font-size: 0.85rem;"><span class="badge ${adequacy.class}">${adequacy.text}</span></td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        // ===================================================================
-        // APD01 표준통제 전용 함수
-        // ===================================================================
-
-        function showAPD01UI(buttonElement) {
-            const controlCode = buttonElement.getAttribute('data-control-code');
-            const controlName = buttonElement.getAttribute('data-control-name');
-            
-            // 새 창으로 APD01 UI 표시 (별도 페이지)
-            const params = new URLSearchParams({
-                rcm_id: currentRcmId,
-                control_code: controlCode,
-                control_name: controlName,
-                design_evaluation_session: currentEvaluationSession
-            });
-            
-            window.location.href = `/operation-evaluation/apd01?${params.toString()}`;
         }
     </script>
 </body>

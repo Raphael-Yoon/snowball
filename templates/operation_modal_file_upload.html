@@ -1,0 +1,16 @@
+
+                        <!-- 파일 첨부 섹션 -->
+                        <div class="mb-3">
+                            <label for="evaluationImages" class="form-label fw-bold">증빙 자료 (이미지)</label>
+                            <input type="file" class="form-control" id="evaluationImages" accept="image/*" multiple>
+                            <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
+                            <div id="imagePreview" class="mt-2"></div>
+                        </div>
+
+                        <!-- 수동통제 전용: 엑셀 파일 업로드 -->
+                        <div class="mb-3" id="excelUploadSection" style="display: none;">
+                            <label for="sampleExcelFile" class="form-label fw-bold">표본 데이터 (엑셀)</label>
+                            <input type="file" class="form-control" id="sampleExcelFile" accept=".xlsx,.xls,.csv">
+                            <div class="form-text">표본 검토 내역이 포함된 엑셀 파일을 업로드하세요.</div>
+                            <div id="excelPreview" class="mt-2"></div>
+                        </div>
