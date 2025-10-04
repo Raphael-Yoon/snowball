@@ -411,7 +411,14 @@
                 return;
             }
 
-            console.log('Not APD01, showing standard modal');
+            if (stdControlCode && stdControlCode === 'APD07') {
+                console.log('APD07 detected! Redirecting to APD07 page...');
+                // APD07 전용 UI로 변경
+                showAPD07UI(buttonElement);
+                return;
+            }
+
+            console.log('Not APD01 or APD07, showing standard modal');
             
             // 일반 운영평가 UI
             // 수동통제인 경우에만 엑셀 업로드 섹션 표시
@@ -777,15 +784,52 @@
             const controlCode = buttonElement.getAttribute('data-control-code');
             const controlName = buttonElement.getAttribute('data-control-name');
             
-            // 새 창으로 APD01 UI 표시 (별도 페이지)
+            // 팝업으로 APD01 UI 표시
             const params = new URLSearchParams({
                 rcm_id: currentRcmId,
                 control_code: controlCode,
                 control_name: controlName,
                 design_evaluation_session: currentEvaluationSession
             });
-            
-            window.location.href = `/operation-evaluation/apd01?${params.toString()}`;
+
+            const popupWidth = 1400;
+            const popupHeight = 900;
+            const left = (window.screen.width - popupWidth) / 2;
+            const top = (window.screen.height - popupHeight) / 2;
+
+            window.open(
+                `/operation-evaluation/apd01?${params.toString()}`,
+                'APD01_Popup',
+                `width=${popupWidth},height=${popupHeight},left=${left},top=${top},scrollbars=yes,resizable=yes`
+            );
+        }
+
+        // ===================================================================
+        // APD07 표준통제 전용 함수
+        // ===================================================================
+
+        function showAPD07UI(buttonElement) {
+            const controlCode = buttonElement.getAttribute('data-control-code');
+            const controlName = buttonElement.getAttribute('data-control-name');
+
+            // 팝업으로 APD07 UI 표시
+            const params = new URLSearchParams({
+                rcm_id: currentRcmId,
+                control_code: controlCode,
+                control_name: controlName,
+                design_evaluation_session: currentEvaluationSession
+            });
+
+            const popupWidth = 1600;
+            const popupHeight = 900;
+            const left = (window.screen.width - popupWidth) / 2;
+            const top = (window.screen.height - popupHeight) / 2;
+
+            window.open(
+                `/operation-evaluation/apd07?${params.toString()}`,
+                'APD07_Popup',
+                `width=${popupWidth},height=${popupHeight},left=${left},top=${top},scrollbars=yes,resizable=yes`
+            );
         }
     </script>
 </body>

@@ -388,7 +388,7 @@ def parse_population_excel(file_path, field_mapping):
 def parse_apd01_population(file_path, field_mapping):
     """
     APD01 모집단 엑셀 파싱 (사용자 권한 부여)
-    
+
     Args:
         file_path: 엑셀 파일 경로
         field_mapping: {
@@ -398,7 +398,7 @@ def parse_apd01_population(file_path, field_mapping):
             'permission': 컬럼_참조,
             'grant_date': 컬럼_참조
         }
-    
+
     Returns:
         dict: {
             'population': [...],  # 모집단 데이터
@@ -409,7 +409,40 @@ def parse_apd01_population(file_path, field_mapping):
     population = parse_population_excel(file_path, field_mapping)
     count = len(population)
     sample_size = calculate_sample_size(count)
-    
+
+    return {
+        'population': population,
+        'count': count,
+        'sample_size': sample_size
+    }
+
+
+def parse_apd07_population(file_path, field_mapping):
+    """
+    APD07 모집단 엑셀 파싱 (데이터 직접변경 승인)
+
+    Args:
+        file_path: 엑셀 파일 경로
+        field_mapping: {
+            'change_id': 컬럼_참조,  # 쿼리(변경내역) - 필수
+            'change_date': 컬럼_참조,  # 변경 일자 - 필수
+            'change_type': 컬럼_참조,  # 변경 유형 (선택)
+            'table_name': 컬럼_참조,  # 테이블명 (선택)
+            'changed_by': 컬럼_참조,  # 변경자 (선택)
+            'approval_date': 컬럼_참조  # 승인 일자 (선택)
+        }
+
+    Returns:
+        dict: {
+            'population': [...],  # 모집단 데이터
+            'count': 100,  # 모집단 수
+            'sample_size': 20  # 계산된 표본 수
+        }
+    """
+    population = parse_population_excel(file_path, field_mapping)
+    count = len(population)
+    sample_size = calculate_sample_size(count)
+
     return {
         'population': population,
         'count': count,

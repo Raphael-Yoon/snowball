@@ -685,9 +685,105 @@ def link6():
 @app.route('/link9')
 def link9():
     print("ETC Function")
-    return render_template('link9.jsp', 
+    return render_template('link9.jsp',
                          is_logged_in=is_logged_in(),
                          user_info=get_user_info(),
+                         remote_addr=request.remote_addr)
+
+def sanitize_text(text, allow_newlines=False):
+    """텍스트 입력값 정제"""
+    if not text:
+        return ""
+    text = text.strip()
+    if not allow_newlines:
+        text = text.replace('\r', '').replace('\n', ' ')
+    return text[:5000]
+
+def is_valid_email(email):
+    """이메일 형식 검증"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+@app.route('/contact', methods=['GET', 'POST'])
+def contact():
+    """서비스 문의 페이지"""
+    user_info = get_user_info()
+    logged_in = is_logged_in()
+
+    if request.method == 'POST':
+        # 입력값 정제
+        company_name = sanitize_text(request.form.get('company_name', ''))
+        name = sanitize_text(request.form.get('name', ''))
+        email = sanitize_text(request.form.get('email', ''))
+        message = sanitize_text(request.form.get('message', ''), allow_newlines=True)
+
+        # 필수 값 확인
+        if not company_name or not email or not message:
+            return render_template('contact.jsp',
+                                 is_logged_in=logged_in,
+                                 user_info=user_info,
+                                 success=False,
+                                 error='필수 항목을 모두 입력해주세요.',
+                                 remote_addr=request.remote_addr)
+
+        # 이메일 형식 검증
+        if not is_valid_email(email):
+            return render_template('contact.jsp',
+                                 is_logged_in=logged_in,
+                                 user_info=user_info,
+                                 success=False,
+                                 error='올바른 이메일 주소를 입력해주세요.',
+                                 remote_addr=request.remote_addr)
+
+        try:
+            # 문의 내용을 관리자 이메일로 전송
+            subject = f"[SnowBall 문의] {company_name} - {name if name else email}"
+            body = f"""
+새로운 서비스 문의가 접수되었습니다.
+
+회사명: {company_name}
+이름: {name if name else '(미입력)'}
+이메일: {email}
+
+문의 내용:
+{message}
+
+---
+발신 IP: {request.remote_addr}
+접수 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+"""
+
+            # 관리자 이메일로 전송
+            admin_email = os.getenv('ADMIN_EMAIL', 'snowball2727@naver.com')
+            send_gmail(admin_email, subject, body)
+
+            # 활동 로그 기록 (로그인된 사용자만)
+            if logged_in:
+                log_user_activity(user_info, 'CONTACT_INQUIRY', f'서비스 문의 - {company_name}',
+                                '/contact', request.remote_addr, request.headers.get('User-Agent'))
+
+            return render_template('contact.jsp',
+                                 is_logged_in=logged_in,
+                                 user_info=user_info,
+                                 success=True,
+                                 remote_addr=request.remote_addr)
+        except Exception as e:
+            print(f"문의 전송 오류: {e}")
+            return render_template('contact.jsp',
+                                 is_logged_in=logged_in,
+                                 user_info=user_info,
+                                 success=False,
+                                 error='문의 전송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+                                 remote_addr=request.remote_addr)
+
+    # GET 요청 - 문의 폼 표시
+    if logged_in:
+        log_user_activity(user_info, 'PAGE_ACCESS', '서비스 문의 페이지', '/contact',
+                         request.remote_addr, request.headers.get('User-Agent'))
+
+    return render_template('contact.jsp',
+                         is_logged_in=logged_in,
+                         user_info=user_info,
                          remote_addr=request.remote_addr)
 
 @app.route('/rcm_generate', methods=['POST'])
