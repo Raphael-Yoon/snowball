@@ -42,7 +42,7 @@
                     </li>
                     <li class="nav-item">
                         <a href="{{ url_for('link9.contact') }}" class="nav-link">
-                            <i class="fas fa-envelope me-1"></i>Contact Us
+                            <i class="fas fa-envelope me-1"></i>서비스 문의
                         </a>
                     </li>
                     {% if is_logged_in %}

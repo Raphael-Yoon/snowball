@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>APD01 운영평가</title>
+    <title>APD07 운영평가</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
@@ -15,8 +15,8 @@
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h2><i class="fas fa-user-shield me-2"></i>APD01 운영평가</h2>
-                        <p class="text-muted mb-0">사용자 권한 부여 승인 테스트</p>
+                        <h2><i class="fas fa-database me-2"></i>APD07 운영평가</h2>
+                        <p class="text-muted mb-0">데이터 직접변경 승인 테스트</p>
                     </div>
                     <div>
                         <button type="button" class="btn btn-secondary" onclick="goBack()">
@@ -50,7 +50,7 @@
                     </div>
                     <div class="card-body">
                         <div class="alert alert-info">
-                            <strong>필수 컬럼:</strong> 사용자ID, 사용자명, 부서명, 권한명, 권한부여일
+                            <strong>필수 컬럼:</strong> 쿼리(변경내역), 변경일자
                         </div>
 
                         <div class="mb-3">
@@ -61,25 +61,13 @@
                         <div id="fieldMappingSection" class="mb-3" style="display: none;">
                             <label class="form-label">필드 매핑 (엑셀 컬럼을 선택하세요)</label>
                             <div class="row g-2">
-                                <div class="col">
-                                    <label class="form-label small">사용자ID</label>
-                                    <select class="form-select form-select-sm" id="col0"></select>
+                                <div class="col-md-6">
+                                    <label class="form-label small">쿼리(변경내역)</label>
+                                    <select class="form-select" id="col0"></select>
                                 </div>
-                                <div class="col">
-                                    <label class="form-label small">사용자명</label>
-                                    <select class="form-select form-select-sm" id="col1"></select>
-                                </div>
-                                <div class="col">
-                                    <label class="form-label small">부서명</label>
-                                    <select class="form-select form-select-sm" id="col2"></select>
-                                </div>
-                                <div class="col">
-                                    <label class="form-label small">권한명</label>
-                                    <select class="form-select form-select-sm" id="col3"></select>
-                                </div>
-                                <div class="col">
-                                    <label class="form-label small">권한부여일</label>
-                                    <select class="form-select form-select-sm" id="col4"></select>
+                                <div class="col-md-6">
+                                    <label class="form-label small">변경일자</label>
+                                    <select class="form-select" id="col1"></select>
                                 </div>
                             </div>
                         </div>
@@ -110,14 +98,10 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>No</th>
-                                        <th>사용자ID</th>
-                                        <th>사용자명</th>
-                                        <th>부서</th>
-                                        <th>권한</th>
-                                        <th>부여일</th>
+                                        <th>쿼리(변경내역)</th>
+                                        <th>변경일자</th>
                                         <th>승인자</th>
-                                        <th>승인부서</th>
-                                        <th>승인일</th>
+                                        <th>승인일(검증)</th>
                                         <th>예외</th>
                                     </tr>
                                 </thead>
@@ -171,7 +155,7 @@
                         excelHeaders = jsonData[0];
 
                         // 드롭다운에 헤더 채우기
-                        const selects = ['col0', 'col1', 'col2', 'col3', 'col4'];
+                        const selects = ['col0', 'col1'];
                         selects.forEach((selectId, idx) => {
                             const select = document.getElementById(selectId);
                             select.innerHTML = '';
@@ -209,15 +193,12 @@
             formData.append('design_evaluation_session', designSession);
 
             const mapping = {
-                user_id: parseInt(document.getElementById('col0').value),
-                user_name: parseInt(document.getElementById('col1').value),
-                department: parseInt(document.getElementById('col2').value),
-                permission: parseInt(document.getElementById('col3').value),
-                grant_date: parseInt(document.getElementById('col4').value)
+                change_id: parseInt(document.getElementById('col0').value),
+                change_date: parseInt(document.getElementById('col1').value)
             };
             formData.append('field_mapping', JSON.stringify(mapping));
 
-            fetch('/api/operation-evaluation/apd01/upload-population', {
+            fetch('/api/operation-evaluation/apd07/upload-population', {
                 method: 'POST',
                 body: formData
             })
@@ -251,14 +232,10 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${i+1}</td>
-                    <td>${d.user_id}</td>
-                    <td>${d.user_name}</td>
-                    <td>${d.department}</td>
-                    <td>${d.permission}</td>
-                    <td>${d.grant_date}</td>
-                    <td><input type="text" class="form-control form-control-sm" id="appr_${i}"></td>
-                    <td><input type="text" class="form-control form-control-sm" id="dept_${i}"></td>
-                    <td><input type="date" class="form-control form-control-sm" id="date_${i}"></td>
+                    <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;" title="${d.change_id || ''}">${d.change_id || ''}</td>
+                    <td>${d.change_date || ''}</td>
+                    <td><input type="text" class="form-control form-control-sm" id="appr_${i}" placeholder="승인자명"></td>
+                    <td><input type="date" class="form-control form-control-sm" id="apprdate_${i}"></td>
                     <td>
                         <select class="form-select form-select-sm" id="exc_${i}">
                             <option value="N">N</option>
@@ -275,12 +252,11 @@
                 sample_index: i,
                 population_data: s.data,
                 approver: document.getElementById(`appr_${i}`).value,
-                approver_department: document.getElementById(`dept_${i}`).value,
-                approve_date: document.getElementById(`date_${i}`).value,
+                approval_date_verified: document.getElementById(`apprdate_${i}`).value,
                 has_exception: document.getElementById(`exc_${i}`).value === 'Y'
             }));
 
-            fetch('/api/operation-evaluation/apd01/save-test-results', {
+            fetch('/api/operation-evaluation/apd07/save-test-results', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({

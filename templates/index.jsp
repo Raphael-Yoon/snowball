@@ -253,7 +253,7 @@
                         <img src="{{ url_for('static', filename='img/contact_us.jpg')}}" class="feature-img" alt="Contact Us"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center">Contact Us</h5>
+                            <h5 class="feature-title text-center">서비스 문의</h5>
                             <p class="feature-description">문의사항이나 지원이 필요하시면 언제든지 연락주세요.</p>
                             <div class="text-center mt-auto">
                                 <a href="/contact" class="feature-link"

@@ -587,20 +587,177 @@ def get_design_evaluation_data():
 def user_operation_evaluation_apd01():
     """APD01 운영평가 페이지"""
     user_info = get_user_info()
-    
+
     rcm_id = request.args.get('rcm_id')
     control_code = request.args.get('control_code')
     control_name = request.args.get('control_name')
     design_evaluation_session = request.args.get('design_evaluation_session')
-    
+
     if not all([rcm_id, control_code, design_evaluation_session]):
         flash('필수 정보가 누락되었습니다.', 'error')
         return redirect(url_for('link7.user_operation_evaluation'))
-    
+
     log_user_activity(user_info, 'PAGE_ACCESS', 'APD01 운영평가', '/operation-evaluation/apd01',
                      request.remote_addr, request.headers.get('User-Agent'))
-    
+
     return render_template('user_operation_evaluation_apd01.jsp',
+                         rcm_id=rcm_id,
+                         control_code=control_code,
+                         control_name=control_name,
+                         design_evaluation_session=design_evaluation_session,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+# ===================================================================
+# APD07 표준통제 테스트 API
+# ===================================================================
+
+@bp_link7.route('/api/operation-evaluation/apd07/upload-population', methods=['POST'])
+@login_required
+def apd07_upload_population():
+    """APD07 모집단 업로드 및 파싱 (데이터 직접변경 승인)"""
+    user_info = get_user_info()
+
+    # 파일 받기
+    if 'population_file' not in request.files:
+        return jsonify({'success': False, 'message': '파일이 없습니다.'})
+
+    file = request.files['population_file']
+    if not file.filename:
+        return jsonify({'success': False, 'message': '파일을 선택해주세요.'})
+
+    # 필드 매핑 정보 받기 (JSON)
+    import json
+    field_mapping_str = request.form.get('field_mapping')
+    if not field_mapping_str:
+        return jsonify({'success': False, 'message': '필드 매핑 정보가 없습니다.'})
+
+    try:
+        field_mapping = json.loads(field_mapping_str)
+    except:
+        return jsonify({'success': False, 'message': '필드 매핑 형식이 올바르지 않습니다.'})
+
+    # RCM 정보
+    rcm_id = request.form.get('rcm_id')
+    control_code = request.form.get('control_code')
+    design_evaluation_session = request.form.get('design_evaluation_session')
+
+    if not all([rcm_id, control_code, design_evaluation_session]):
+        return jsonify({'success': False, 'message': '필수 정보가 누락되었습니다.'})
+
+    try:
+        # 임시 파일로 저장
+        import tempfile
+        import os
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+        file.save(temp_file.name)
+        temp_file.close()
+
+        # 모집단 파싱 (APD07용)
+        result = file_manager.parse_apd07_population(temp_file.name, field_mapping)
+
+        # 표본 선택
+        samples = file_manager.select_random_samples(result['population'], result['sample_size'])
+
+        # 임시 파일 삭제
+        os.unlink(temp_file.name)
+
+        # 세션에 저장 (임시)
+        session_key = f'apd07_test_{rcm_id}_{control_code}'
+        session[session_key] = {
+            'population': result['population'],
+            'samples': samples,
+            'population_count': result['count'],
+            'sample_size': result['sample_size']
+        }
+
+        return jsonify({
+            'success': True,
+            'population_count': result['count'],
+            'sample_size': result['sample_size'],
+            'samples': samples
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'파일 처리 오류: {str(e)}'})
+
+
+@bp_link7.route('/api/operation-evaluation/apd07/save-test-results', methods=['POST'])
+@login_required
+def apd07_save_test_results():
+    """APD07 테스트 결과 저장 (데이터 직접변경 승인)"""
+    user_info = get_user_info()
+    data = request.get_json()
+
+    rcm_id = data.get('rcm_id')
+    control_code = data.get('control_code')
+    design_evaluation_session = data.get('design_evaluation_session')
+    test_results = data.get('test_results')  # 표본별 테스트 결과
+
+    if not all([rcm_id, control_code, design_evaluation_session, test_results]):
+        return jsonify({'success': False, 'message': '필수 데이터가 누락되었습니다.'})
+
+    try:
+        operation_evaluation_session = f"OP_{design_evaluation_session}"
+
+        # 세션에서 모집단/표본 정보 가져오기
+        session_key = f'apd07_test_{rcm_id}_{control_code}'
+        test_data = session.get(session_key)
+
+        if not test_data:
+            return jsonify({'success': False, 'message': '테스트 데이터를 찾을 수 없습니다. 모집단을 다시 업로드해주세요.'})
+
+        # 평가 데이터 구성
+        evaluation_data = {
+            'test_type': 'APD07',
+            'population_count': test_data['population_count'],
+            'sample_size': test_data['sample_size'],
+            'samples': test_data['samples'],
+            'test_results': test_results,
+            'exceptions': [r for r in test_results if r.get('has_exception')],
+            'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency'
+        }
+
+        # 운영평가 저장
+        save_operation_evaluation(rcm_id, control_code, user_info['user_id'],
+                                 operation_evaluation_session, design_evaluation_session, evaluation_data)
+
+        # 세션 정리
+        session.pop(session_key, None)
+
+        log_user_activity(user_info, 'OPERATION_EVALUATION', f'APD07 테스트 저장 - {control_code}',
+                         '/api/operation-evaluation/apd07/save-test-results',
+                         request.remote_addr, request.headers.get('User-Agent'))
+
+        return jsonify({'success': True, 'message': 'APD07 테스트 결과가 저장되었습니다.'})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'저장 오류: {str(e)}'})
+
+@bp_link7.route('/operation-evaluation/apd07')
+@login_required
+def user_operation_evaluation_apd07():
+    """APD07 운영평가 페이지 (데이터 직접변경 승인)"""
+    user_info = get_user_info()
+
+    rcm_id = request.args.get('rcm_id')
+    control_code = request.args.get('control_code')
+    control_name = request.args.get('control_name')
+    design_evaluation_session = request.args.get('design_evaluation_session')
+
+    if not all([rcm_id, control_code, design_evaluation_session]):
+        flash('필수 정보가 누락되었습니다.', 'error')
+        return redirect(url_for('link7.user_operation_evaluation'))
+
+    log_user_activity(user_info, 'PAGE_ACCESS', 'APD07 운영평가', '/operation-evaluation/apd07',
+                     request.remote_addr, request.headers.get('User-Agent'))
+
+    return render_template('user_operation_evaluation_apd07.jsp',
                          rcm_id=rcm_id,
                          control_code=control_code,
                          control_name=control_name,

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact Us - SnowBall</title>
+    <title>서비스 문의 - SnowBall</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -12,6 +12,12 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
+    <style>
+        #message::placeholder {
+            color: #999;
+            opacity: 0.6;
+        }
+    </style>
 </head>
 <body>
     {% include 'navi.jsp' %}
@@ -33,7 +39,7 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <h2 class="mb-4 text-center"><i class="fas fa-envelope me-2"></i>Contact Us</h2>
+                <h2 class="mb-4 text-center"><i class="fas fa-envelope me-2"></i>서비스 문의</h2>
                 {% if success is defined and success %}
                     <div class="alert alert-success text-center">문의가 성공적으로 접수되었습니다. 빠른 시일 내에 답변드리겠습니다.</div>
                 {% elif success is defined and not success %}
