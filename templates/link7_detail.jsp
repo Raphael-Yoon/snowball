@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>RCM 운영평가 - {{ rcm_info.rcm_name }}</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
@@ -94,9 +98,6 @@
                         <div class="d-flex flex-wrap gap-2">
                             <button id="completeEvaluationBtn" class="btn btn-sm btn-warning" onclick="completeEvaluation()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;" title="운영평가를 완료 처리합니다" data-bs-toggle="tooltip">
                                 <i class="fas fa-check me-1"></i>완료처리
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="resetAllEvaluations()" style="height: 70%; padding: 0.2rem 0.5rem;">
-                                <i class="fas fa-undo me-1"></i>초기화
                             </button>
                             <button id="downloadBtn" class="btn btn-sm btn-outline-warning" onclick="exportEvaluationResult()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;">
                                 <i class="fas fa-file-excel me-1"></i>다운로드
@@ -340,7 +341,128 @@
         </div>
     </div>
 
+    <!-- APD01 모달 -->
+    <div class="modal fade" id="apd01Modal" tabindex="-1" aria-labelledby="apd01ModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="apd01ModalLabel">APD01 운영평가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
+                    <iframe id="apd01Iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- APD07 모달 -->
+    <div class="modal fade" id="apd07Modal" tabindex="-1" aria-labelledby="apd07ModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="apd07ModalLabel">APD07 운영평가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
+                    <iframe id="apd07Iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- APD09 모달 -->
+    <div class="modal fade" id="apd09Modal" tabindex="-1" aria-labelledby="apd09ModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="apd09ModalLabel">APD09 운영평가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
+                    <iframe id="apd09Iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- APD12 모달 -->
+    <div class="modal fade" id="apd12Modal" tabindex="-1" aria-labelledby="apd12ModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="apd12ModalLabel">APD12 운영평가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
+                    <iframe id="apd12Iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PC01 모달 -->
+    <div class="modal fade" id="pc01Modal" tabindex="-1" aria-labelledby="pc01ModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pc01ModalLabel">PC01 운영평가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
+                    <iframe id="pc01Iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PC02 모달 -->
+    <div class="modal fade" id="pc02Modal" tabindex="-1" aria-labelledby="pc02ModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pc02ModalLabel">PC02 운영평가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
+                    <iframe id="pc02Iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PC03 모달 -->
+    <div class="modal fade" id="pc03Modal" tabindex="-1" aria-labelledby="pc03ModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pc03ModalLabel">PC03 운영평가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
+                    <iframe id="pc03Iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CO01 모달 -->
+    <div class="modal fade" id="co01Modal" tabindex="-1" aria-labelledby="co01ModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="co01ModalLabel">CO01 운영평가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
+                    <iframe id="co01Iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         // 전역 변수
         let currentRcmId = {{ rcm_id }};
@@ -418,7 +540,85 @@
                 return;
             }
 
-            console.log('Not APD01 or APD07, showing standard modal');
+            // stdControlCode 대신 실제 controlCode로 APD09/APD12 판별
+            if (controlCode && controlCode === 'APD09') {
+                console.log('APD09 detected! Redirecting to APD09 page...');
+                showAPD09UI(buttonElement);
+                return;
+            }
+
+            if (controlCode && controlCode === 'APD12') {
+                console.log('APD12 detected! Redirecting to APD12 page...');
+                showAPD12UI(buttonElement);
+                return;
+            }
+
+            // 매핑된 표준통제코드로도 확인 (보조)
+            if (stdControlCode && stdControlCode === 'APD09') {
+                console.log('APD09 detected by stdControlCode! Redirecting to APD09 page...');
+                showAPD09UI(buttonElement);
+                return;
+            }
+
+            if (stdControlCode && stdControlCode === 'APD12') {
+                console.log('APD12 detected by stdControlCode! Redirecting to APD12 page...');
+                showAPD12UI(buttonElement);
+                return;
+            }
+
+            // PC01 판별
+            if (controlCode && controlCode === 'PC01') {
+                console.log('PC01 detected! Redirecting to PC01 page...');
+                showPC01UI(buttonElement);
+                return;
+            }
+
+            if (stdControlCode && stdControlCode === 'PC01') {
+                console.log('PC01 detected by stdControlCode! Redirecting to PC01 page...');
+                showPC01UI(buttonElement);
+                return;
+            }
+
+            // PC02 판별
+            if (controlCode && controlCode === 'PC02') {
+                console.log('PC02 detected! Redirecting to PC02 page...');
+                showPC02UI(buttonElement);
+                return;
+            }
+
+            if (stdControlCode && stdControlCode === 'PC02') {
+                console.log('PC02 detected by stdControlCode! Redirecting to PC02 page...');
+                showPC02UI(buttonElement);
+                return;
+            }
+
+            // PC03 판별
+            if (controlCode && controlCode === 'PC03') {
+                console.log('PC03 detected! Redirecting to PC03 page...');
+                showPC03UI(buttonElement);
+                return;
+            }
+
+            if (stdControlCode && stdControlCode === 'PC03') {
+                console.log('PC03 detected by stdControlCode! Redirecting to PC03 page...');
+                showPC03UI(buttonElement);
+                return;
+            }
+
+            // CO01 판별
+            if (controlCode && controlCode === 'CO01') {
+                console.log('CO01 detected! Redirecting to CO01 page...');
+                showCO01UI(buttonElement);
+                return;
+            }
+
+            if (stdControlCode && stdControlCode === 'CO01') {
+                console.log('CO01 detected by stdControlCode! Redirecting to CO01 page...');
+                showCO01UI(buttonElement);
+                return;
+            }
+
+            console.log('Not APD01/APD07/APD09/APD12/PC01/PC02/PC03/CO01, showing standard modal');
             
             // 일반 운영평가 UI
             // 수동통제인 경우에만 엑셀 업로드 섹션 표시
@@ -641,46 +841,6 @@
             }
         }
 
-        // 모든 평가 초기화
-        function resetAllEvaluations() {
-            if (!confirm('모든 운영평가 결과를 초기화하시겠습니까?')) {
-                return;
-            }
-
-            fetch('/api/operation-evaluation/reset', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    rcm_id: currentRcmId,
-                    evaluation_session: currentEvaluationSession
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 로컬 데이터 초기화
-                    evaluationDict = {};
-
-                    // UI 초기화
-                    {% for detail in rcm_details %}
-                    document.getElementById('evaluation-result-{{ loop.index }}').textContent = '미평가';
-                    document.getElementById('evaluation-result-{{ loop.index }}').className = 'badge bg-secondary';
-                    document.getElementById('improvement-plan-{{ loop.index }}').textContent = '-';
-                    {% endfor %}
-
-                    updateProgress();
-                    alert('운영평가 결과가 초기화되었습니다.');
-                } else {
-                    alert('초기화 중 오류가 발생했습니다: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('초기화 중 오류가 발생했습니다.');
-            });
-        }
 
         // 평가 완료 처리
         function completeEvaluation() {
@@ -783,8 +943,8 @@
         function showAPD01UI(buttonElement) {
             const controlCode = buttonElement.getAttribute('data-control-code');
             const controlName = buttonElement.getAttribute('data-control-name');
-            
-            // 팝업으로 APD01 UI 표시
+
+            // 모달로 APD01 UI 표시 (Generic 경로 사용)
             const params = new URLSearchParams({
                 rcm_id: currentRcmId,
                 control_code: controlCode,
@@ -792,16 +952,17 @@
                 design_evaluation_session: currentEvaluationSession
             });
 
-            const popupWidth = 1400;
-            const popupHeight = 900;
-            const left = (window.screen.width - popupWidth) / 2;
-            const top = (window.screen.height - popupHeight) / 2;
+            // iframe에 URL 설정 (Generic 경로)
+            document.getElementById('apd01Iframe').src = `/operation-evaluation/manual/APD01?${params.toString()}`;
 
-            window.open(
-                `/operation-evaluation/apd01?${params.toString()}`,
-                'APD01_Popup',
-                `width=${popupWidth},height=${popupHeight},left=${left},top=${top},scrollbars=yes,resizable=yes`
-            );
+            // 모달 열기
+            const modal = new bootstrap.Modal(document.getElementById('apd01Modal'));
+            modal.show();
+
+            // 모달이 닫힐 때 페이지 새로고침
+            document.getElementById('apd01Modal').addEventListener('hidden.bs.modal', function() {
+                location.reload();
+            }, { once: true });
         }
 
         // ===================================================================
@@ -812,7 +973,7 @@
             const controlCode = buttonElement.getAttribute('data-control-code');
             const controlName = buttonElement.getAttribute('data-control-name');
 
-            // 팝업으로 APD07 UI 표시
+            // 모달로 APD07 UI 표시 (Generic 경로 사용)
             const params = new URLSearchParams({
                 rcm_id: currentRcmId,
                 control_code: controlCode,
@@ -820,16 +981,191 @@
                 design_evaluation_session: currentEvaluationSession
             });
 
-            const popupWidth = 1600;
-            const popupHeight = 900;
-            const left = (window.screen.width - popupWidth) / 2;
-            const top = (window.screen.height - popupHeight) / 2;
+            // iframe에 URL 설정 (Generic 경로)
+            document.getElementById('apd07Iframe').src = `/operation-evaluation/manual/APD07?${params.toString()}`;
 
-            window.open(
-                `/operation-evaluation/apd07?${params.toString()}`,
-                'APD07_Popup',
-                `width=${popupWidth},height=${popupHeight},left=${left},top=${top},scrollbars=yes,resizable=yes`
-            );
+            // 모달 열기
+            const modal = new bootstrap.Modal(document.getElementById('apd07Modal'));
+            modal.show();
+
+            // 모달이 닫힐 때 페이지 새로고침
+            document.getElementById('apd07Modal').addEventListener('hidden.bs.modal', function() {
+                location.reload();
+            }, { once: true });
+        }
+
+        // ===================================================================
+        // APD09 표준통제 전용 함수
+        // ===================================================================
+
+        function showAPD09UI(buttonElement) {
+            const controlCode = buttonElement.getAttribute('data-control-code');
+            const controlName = buttonElement.getAttribute('data-control-name');
+
+            // 모달로 APD09 UI 표시 (Generic 경로 사용)
+            const params = new URLSearchParams({
+                rcm_id: currentRcmId,
+                control_code: controlCode,
+                control_name: controlName,
+                design_evaluation_session: currentEvaluationSession
+            });
+
+            // iframe에 URL 설정 (Generic 경로)
+            document.getElementById('apd09Iframe').src = `/operation-evaluation/manual/APD09?${params.toString()}`;
+
+            // 모달 열기
+            const modal = new bootstrap.Modal(document.getElementById('apd09Modal'));
+            modal.show();
+
+            // 모달이 닫힐 때 페이지 새로고침
+            document.getElementById('apd09Modal').addEventListener('hidden.bs.modal', function() {
+                location.reload();
+            }, { once: true });
+        }
+
+        // ===================================================================
+        // APD12 표준통제 전용 함수
+        // ===================================================================
+
+        function showAPD12UI(buttonElement) {
+            const controlCode = buttonElement.getAttribute('data-control-code');
+            const controlName = buttonElement.getAttribute('data-control-name');
+
+            // 모달로 APD12 UI 표시 (Generic 경로 사용)
+            const params = new URLSearchParams({
+                rcm_id: currentRcmId,
+                control_code: controlCode,
+                control_name: controlName,
+                design_evaluation_session: currentEvaluationSession
+            });
+
+            // iframe에 URL 설정 (Generic 경로)
+            document.getElementById('apd12Iframe').src = `/operation-evaluation/manual/APD12?${params.toString()}`;
+
+            // 모달 열기
+            const modal = new bootstrap.Modal(document.getElementById('apd12Modal'));
+            modal.show();
+
+            // 모달이 닫힐 때 페이지 새로고침
+            document.getElementById('apd12Modal').addEventListener('hidden.bs.modal', function() {
+                location.reload();
+            }, { once: true });
+        }
+
+        // ===================================================================
+        // PC01 표준통제 전용 함수
+        // ===================================================================
+
+        function showPC01UI(buttonElement) {
+            const controlCode = buttonElement.getAttribute('data-control-code');
+            const controlName = buttonElement.getAttribute('data-control-name');
+
+            // 모달로 PC01 UI 표시 (Generic 경로 사용)
+            const params = new URLSearchParams({
+                rcm_id: currentRcmId,
+                control_code: controlCode,
+                control_name: controlName,
+                design_evaluation_session: currentEvaluationSession
+            });
+
+            // iframe에 URL 설정 (Generic 경로)
+            document.getElementById('pc01Iframe').src = `/operation-evaluation/manual/PC01?${params.toString()}`;
+
+            // 모달 열기
+            const modal = new bootstrap.Modal(document.getElementById('pc01Modal'));
+            modal.show();
+
+            // 모달이 닫힐 때 페이지 새로고침
+            document.getElementById('pc01Modal').addEventListener('hidden.bs.modal', function() {
+                location.reload();
+            }, { once: true });
+        }
+
+        // ===================================================================
+        // PC02 표준통제 전용 함수
+        // ===================================================================
+
+        function showPC02UI(buttonElement) {
+            const controlCode = buttonElement.getAttribute('data-control-code');
+            const controlName = buttonElement.getAttribute('data-control-name');
+
+            // 모달로 PC02 UI 표시 (Generic 경로 사용)
+            const params = new URLSearchParams({
+                rcm_id: currentRcmId,
+                control_code: controlCode,
+                control_name: controlName,
+                design_evaluation_session: currentEvaluationSession
+            });
+
+            // iframe에 URL 설정 (Generic 경로)
+            document.getElementById('pc02Iframe').src = `/operation-evaluation/manual/PC02?${params.toString()}`;
+
+            // 모달 열기
+            const modal = new bootstrap.Modal(document.getElementById('pc02Modal'));
+            modal.show();
+
+            // 모달이 닫힐 때 페이지 새로고침
+            document.getElementById('pc02Modal').addEventListener('hidden.bs.modal', function() {
+                location.reload();
+            }, { once: true });
+        }
+
+        // ===================================================================
+        // PC03 표준통제 전용 함수
+        // ===================================================================
+
+        function showPC03UI(buttonElement) {
+            const controlCode = buttonElement.getAttribute('data-control-code');
+            const controlName = buttonElement.getAttribute('data-control-name');
+
+            // 모달로 PC03 UI 표시 (Generic 경로 사용)
+            const params = new URLSearchParams({
+                rcm_id: currentRcmId,
+                control_code: controlCode,
+                control_name: controlName,
+                design_evaluation_session: currentEvaluationSession
+            });
+
+            // iframe에 URL 설정 (Generic 경로)
+            document.getElementById('pc03Iframe').src = `/operation-evaluation/manual/PC03?${params.toString()}`;
+
+            // 모달 열기
+            const modal = new bootstrap.Modal(document.getElementById('pc03Modal'));
+            modal.show();
+
+            // 모달이 닫힐 때 페이지 새로고침
+            document.getElementById('pc03Modal').addEventListener('hidden.bs.modal', function() {
+                location.reload();
+            }, { once: true });
+        }
+
+        // ===================================================================
+        // CO01 표준통제 전용 함수
+        // ===================================================================
+
+        function showCO01UI(buttonElement) {
+            const controlCode = buttonElement.getAttribute('data-control-code');
+            const controlName = buttonElement.getAttribute('data-control-name');
+
+            // 모달로 CO01 UI 표시 (Generic 경로 사용)
+            const params = new URLSearchParams({
+                rcm_id: currentRcmId,
+                control_code: controlCode,
+                control_name: controlName,
+                design_evaluation_session: currentEvaluationSession
+            });
+
+            // iframe에 URL 설정 (Generic 경로)
+            document.getElementById('co01Iframe').src = `/operation-evaluation/manual/CO01?${params.toString()}`;
+
+            // 모달 열기
+            const modal = new bootstrap.Modal(document.getElementById('co01Modal'));
+            modal.show();
+
+            // 모달이 닫힐 때 페이지 새로고침
+            document.getElementById('co01Modal').addEventListener('hidden.bs.modal', function() {
+                location.reload();
+            }, { once: true });
         }
     </script>
 </body>

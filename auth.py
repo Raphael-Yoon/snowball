@@ -1439,8 +1439,9 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
             INSERT OR REPLACE INTO sb_operation_evaluation_line (
                 header_id, control_code, operating_effectiveness, sample_size,
                 exception_count, exception_details, conclusion, improvement_plan,
+                population_path, samples_path, test_results_path, population_count,
                 evaluation_date, last_updated
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ''', (
             header_id, control_code,
             evaluation_data.get('operating_effectiveness'),
@@ -1448,7 +1449,11 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
             evaluation_data.get('exception_count'),
             evaluation_data.get('exception_details'),
             evaluation_data.get('conclusion'),
-            evaluation_data.get('improvement_plan')
+            evaluation_data.get('improvement_plan'),
+            evaluation_data.get('population_path'),
+            evaluation_data.get('samples_path'),
+            evaluation_data.get('test_results_path'),
+            evaluation_data.get('population_count')
         ))
 
         # Header의 last_updated 갱신
@@ -1462,6 +1467,8 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
 
 def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_session, design_evaluation_session):
     """운영평가 헤더 생성 또는 조회"""
+    print(f"[DEBUG get_or_create_header] 입력값: rcm_id={rcm_id}, user_id={user_id}, evaluation_session={evaluation_session}, design_evaluation_session={design_evaluation_session}")
+
     # 기존 헤더 조회
     header = conn.execute('''
         SELECT header_id FROM sb_operation_evaluation_header
@@ -1469,6 +1476,7 @@ def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_
     ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchone()
 
     if header:
+        print(f"[DEBUG get_or_create_header] 기존 헤더 발견: header_id={header['header_id']}")
         return header['header_id']
 
     # 새 헤더 생성
@@ -1478,6 +1486,7 @@ def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_
         ) VALUES (?, ?, ?, ?)
     ''', (rcm_id, user_id, evaluation_session, design_evaluation_session))
 
+    print(f"[DEBUG get_or_create_header] 새 헤더 생성: header_id={cursor.lastrowid}")
     return cursor.lastrowid
 
 def get_operation_evaluations(rcm_id, user_id, evaluation_session, design_evaluation_session=None):
