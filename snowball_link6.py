@@ -25,7 +25,7 @@ def user_design_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', '설계평가', '/user/design-evaluation', 
                      request.remote_addr, request.headers.get('User-Agent'))
     
-    return render_template('user_design_evaluation.jsp',
+    return render_template('link6_design_evaluation.jsp',
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          remote_addr=request.remote_addr)
@@ -94,7 +94,7 @@ def user_design_evaluation_rcm():
     log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 디자인 평가', '/design-evaluation/rcm',
                      request.remote_addr, request.headers.get('User-Agent'))
     
-    return render_template('user_design_evaluation_rcm.jsp',
+    return render_template('link6_design_rcm_detail.jsp',
                          rcm_id=rcm_id,
                          rcm_info=rcm_info,
                          rcm_details=rcm_details,
