@@ -37,7 +37,7 @@ def user_rcm():
                      request.remote_addr, request.headers.get('User-Agent'),
                      {'rcm_count': len(user_rcms)})
     
-    return render_template('user_rcm.jsp', 
+    return render_template('link5_rcm_list.jsp',
                          user_rcms=user_rcms,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
@@ -67,7 +67,7 @@ def user_rcm_view(rcm_id):
     # RCM 상세 데이터 조회
     rcm_details = get_rcm_details(rcm_id)
     
-    return render_template('user_rcm_view.jsp',
+    return render_template('link5_rcm_view.jsp',
                          rcm_info=rcm_info,
                          rcm_details=rcm_details,
                          is_logged_in=is_logged_in(),
@@ -331,7 +331,7 @@ def rcm_mapping_page(rcm_id):
     # 기존 매핑 조회 (개별 통제 방식으로 변경)
     existing_mappings = get_rcm_detail_mappings(rcm_id)
     
-    return render_template('rcm_mapping.jsp',
+    return render_template('link5_rcm_mapping.jsp',
                          rcm_info=rcm_info,
                          rcm_details=rcm_details,
                          standard_controls=standard_controls,
@@ -375,7 +375,7 @@ def completeness_report(rcm_id):
             'details': []
         }
     
-    return render_template('rcm_completeness_report.jsp',
+    return render_template('link5_rcm_completeness.jsp',
                          rcm_info=rcm_info,
                          rcm_details=rcm_details,
                          eval_result=eval_result,
