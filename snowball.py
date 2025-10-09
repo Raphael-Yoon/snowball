@@ -23,6 +23,7 @@ from snowball_link7 import bp_link7
 from snowball_link8 import bp_link8
 from snowball_link9 import bp_link9
 from snowball_admin import admin_bp
+from operation_evaluation_generic import bp_generic
 from auth import send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations, find_user_by_email
 import uuid
 import json
@@ -1337,6 +1338,7 @@ app.register_blueprint(bp_link7)
 app.register_blueprint(bp_link8)
 app.register_blueprint(bp_link9)
 app.register_blueprint(admin_bp)
+app.register_blueprint(bp_generic)
 
 if __name__ == '__main__':
     main()

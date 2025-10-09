@@ -1,188 +1,132 @@
 # SnowBall 프로젝트 작업 기록
 
-## 2025-10-05 (토)
+## 현재 상태 (2025-10-09)
 
-### ✅ 완료된 작업
+### 핵심 아키텍처
+- **수동통제 Generic 시스템**: APD01/07/09/12, PC01/02/03, CO01을 단일 구현으로 통합
+  - `control_config.py`: 통제별 설정 (필드, 컬럼, 레이블, 의존성)
+  - `operation_evaluation_generic.py`: 3개 API (페이지/업로드/저장)
+  - `templates/link7_manual_generic.jsp`: 동적 템플릿
+  - 라우트: `/operation-evaluation/manual/{control_code}`
+- **통제 의존성 관리**: PC02/PC03은 PC01 데이터를 자동으로 복사 (`skip_upload: true`)
 
-#### 1. APD01 표준통제 운영평가 기능 구현
-- **파일 위치**: `snowball_link7.py`, `templates/user_operation_evaluation_apd01.jsp`
-- **주요 기능**:
-  - 사용자 권한 부여 승인 테스트 자동화
-  - 엑셀 파일 업로드 → 헤더 자동 인식 → 필드 매핑
-  - 모집단에서 표본 자동 추출 (표본 크기 자동 계산)
-  - 표본 데이터 테이블 표시 및 승인 정보 입력
-  - 팝업 방식으로 구현 (1400x900)
-  - 저장 후 부모 창 자동 새로고침
+### 주요 기능
+1. **운영평가**: 모집단 업로드 → 표본 자동 추출 → 테스트 결과 입력 → 엑셀 저장
+2. **데이터 저장**: 템플릿 기반 엑셀 단일 파일 (Population + Testing Table)
+3. **이어하기**: 기존 데이터 자동 로드, 세션 없이도 저장 가능
+4. **리셋**: 통제별 독립적 초기화
 
-#### 2. APD07 표준통제 운영평가 기능 구현
-- **파일 위치**: `snowball_link7.py`, `templates/user_operation_evaluation_apd07.jsp`
-- **주요 기능**:
-  - 데이터 직접변경 승인 테스트 자동화
-  - 필수 필드 단순화: 쿼리(변경내역), 변경일자만 필수
-  - 선택 필드 제거로 UI 간소화
-  - 팝업 방식 구현 (1600x900)
-
-#### 3. 필드 매핑 UI/UX 개선
-- **개선 내용**:
-  - 엑셀 업로드 시 헤더 자동 읽기 (XLSX.js 라이브러리 활용)
-  - 드롭다운 방식으로 컬럼 선택 (기존: 수동 숫자 입력)
-  - 컬럼명과 위치(A열, B열 등) 함께 표시
-  - 업로드 후 Step2로 자동 스크롤
-
-#### 4. 파일 관리 모듈 확장
-- **파일 위치**: `file_manager.py`
-- **추가 함수**:
-  - `parse_apd01_population()` - APD01 모집단 파싱
-  - `parse_apd07_population()` - APD07 모집단 파싱
-  - `calculate_sample_size()` - 표본 크기 자동 계산
-  - `select_random_samples()` - 무작위 표본 추출
-
-#### 5. 페이지 스타일 통일
-- **변경 내용**:
-  - APD01/APD07 팝업 페이지에 `style.css` 적용
-  - navi.jsp 제거 (팝업이므로 불필요)
-  - 카드 색상 통일: 초록색(통제 정보), 파란색(업로드), 초록색(테스트)
-  - 설계평가 페이지와 동일한 디자인 시스템 적용
-
-#### 6. Contact Us → 서비스 문의 변경
-- **파일 위치**: `templates/navi.jsp`, `templates/index.jsp`, `templates/contact.jsp`, `snowball.py`
-- **주요 변경**:
-  - 메뉴명 한글화
-  - `/contact` 라우트 추가
-  - 서비스 문의 폼 기능 구현
-  - 보안 강화:
-    - 입력값 Sanitization (이메일 injection 방지)
-    - 이메일 형식 검증
-    - 에러 메시지 보안 (내부 정보 노출 방지)
-    - 관리자 이메일 환경변수화
-
-#### 7. 테스트 데이터 생성
-- **파일 위치**: `downloads/APD01_모집단_샘플.xlsx`, `downloads/APD07_모집단_샘플.xlsx`
-- **내용**:
-  - APD01: 30건의 사용자 권한 데이터
-  - APD07: 25건의 데이터 변경 이력
-  - 프로젝트 downloads 폴더에 저장 (.gitignore에 포함됨)
-
-#### 8. 코드 리뷰 및 보안 강화
-- **도구**: code-reviewer agent 활용
-- **적용 사항**:
-  - `/contact` 라우트 보안 강화
-  - XSS 방지, 입력값 검증, 에러 처리 개선
-
----
-
-### 📋 내일(10/06) 작업 예정
-
-#### 1. 파일 기반 저장 방식으로 전환 ⭐ 우선순위 높음
-- **현재 문제**:
-  - 모집단/표본/테스트 결과를 DB에 JSON으로 저장
-  - 대용량 데이터 시 DB 부담
-  - 증빙 자료 관리 어려움
-
-- **개선 방안**:
-  - 파일 기반 저장 구조로 변경
-  - 저장 위치: `/static/uploads/operation_evaluations/{rcm_id}/{design_session}/{control_code}/`
-  - 파일 구성:
-    - `population.xlsx` - 원본 모집단 파일
-    - `samples.json` - 선정된 표본 데이터
-    - `test_results.json` - 입력한 테스트 결과
-  - DB에는 메타데이터만 저장:
-    - 파일 경로들
-    - population_count
-    - sample_size
-    - conclusion (satisfactory/deficiency)
-
-- **작업 목록**:
-  - [ ] `file_manager.py`에 저장/로드 함수 추가
-    - `save_operation_test_data()`
-    - `load_operation_test_data()`
-  - [ ] DB 스키마 수정
-    - `sb_operation_evaluation_line` 테이블에 파일 경로 컬럼 추가
-    - 또는 별도 테이블 생성 검토
-  - [ ] APD01 API 수정 (`snowball_link7.py`)
-    - 업로드 시 파일 저장
-    - 저장 시 파일 경로 DB에 기록
-  - [ ] APD07 API 수정
-  - [ ] 기존 데이터 마이그레이션 고려
-
-#### 2. 운영평가 결과 다운로드 기능 구현
-- **기능 설명**:
-  - 운영평가 완료 후 엑셀 파일로 다운로드
-  - 포함 내용:
-    - 통제 정보
-    - 모집단 데이터
-    - 선정된 표본
-    - 테스트 결과 (승인자, 승인일 등)
-    - 결론 (만족/미비)
-
-- **작업 목록**:
-  - [ ] 다운로드 API 엔드포인트 추가
-  - [ ] 엑셀 생성 함수 작성 (openpyxl 활용)
-  - [ ] UI에 다운로드 버튼 추가
-  - [ ] 템플릿 형식 결정 (감사 증빙용)
-
-#### 3. 추가 표준통제 구현 검토
-- APD08, PC01, CO01 등 다른 준비된 표준통제
-- APD01/APD07 패턴을 참고하여 확장
-
----
-
-### 🗂️ 주요 파일 구조
-
+### 파일 구조
 ```
 snowball/
-├── snowball.py                          # /contact 라우트
-├── snowball_link7.py                    # 운영평가 관련 라우트 및 API
-├── file_manager.py                      # 파일 업로드/다운로드 및 표본 추출
+├── control_config.py              # 통제 설정 (APD/PC/CO 통제 정의)
+├── operation_evaluation_generic.py # Generic API (통합 라우트)
+├── snowball_link7.py              # 운영평가 메인 라우트
+├── file_manager.py                # 파일 처리, 표본 추출
 ├── templates/
-│   ├── navi.jsp                         # 메뉴 (서비스 문의)
-│   ├── contact.jsp                      # 서비스 문의 페이지
-│   ├── user_operation_evaluation.jsp    # 운영평가 목록
-│   ├── user_operation_evaluation_rcm.jsp # RCM별 운영평가
-│   ├── user_operation_evaluation_apd01.jsp # APD01 팝업
-│   └── user_operation_evaluation_apd07.jsp # APD07 팝업
-├── downloads/
-│   ├── APD01_모집단_샘플.xlsx          # 테스트 데이터
-│   └── APD07_모집단_샘플.xlsx          # 테스트 데이터
-└── static/uploads/
-    └── operation_evaluations/           # (내일 생성 예정)
-
+│   ├── link7.jsp                  # 운영평가 메인 (RCM 목록)
+│   ├── link7_detail.jsp           # RCM 통제 목록 상세 페이지
+│   └── link7_manual_generic.jsp   # 통합 평가 팝업 (iframe)
+└── static/
+    ├── paper/Template_manual.xlsx  # 수동통제 템플릿
+    └── uploads/operation_evaluations/{rcm_id}/{header_id}/{control_code}_evaluation.xlsx
 ```
+
+### 최근 해결한 이슈
+- ✅ 기존 데이터 로드 시 화면 표시 안됨 → `samples_data` 구조 수정
+- ✅ 저장 시 세션 오류 → DB에서 `operation_header_id` 조회로 해결
+
+### 새 통제 추가 방법
+1. `control_config.py`의 `MANUAL_CONTROLS`에 설정 추가
+2. `file_manager.py`의 `load_operation_test_data()`에 elif 블록 추가
+3. 완료 (라우트/템플릿/API 모두 자동 적용)
 
 ---
 
-### 📝 참고 사항
+## 작업 히스토리
 
-#### 표본 크기 계산 로직
-```python
-모집단 수     표본 수
-0            0
-1            1
-2-4          2
-5-12         2
-13-52        5
-53-250       20
-251+         25
-```
+### 2025-10-09
+- **PC02/PC03/CO01 통제 구현 완료**
+  - PC02: 사용자 테스트 확인 (PC01 의존)
+  - PC03: 배포 승인 확인 (PC01 의존)
+  - CO01: 배치 스케줄 승인
+- **통제 의존성 시스템 구현**
+  - `skip_upload: true` 옵션으로 PC01 데이터 자동 복사
+  - PC02/PC03 평가 시 자동으로 PC01 모집단 로드
+- **예외 로직 구현**
+  - PC02: 사용자테스트 미수행, 테스트일자 누락, 테스트일자 > 반영일자
+  - PC03: 배포요청자/승인자 동일인, 부서 상이, 승인일자 > 반영일자
+  - CO01: APD 스타일 예외 로직 (부서 상이, 승인자 누락, 승인일자 이후 등)
+- **파일 네이밍 리팩토링**
+  - `user_operation_evaluation.jsp` → `link7.jsp`
+  - `user_operation_evaluation_rcm.jsp` → `link7_detail.jsp`
+  - `operation_evaluation_manual_generic.jsp` → `link7_manual_generic.jsp`
+  - 다른 link 파일들과 일관성 확보
+- **버그 수정**
+  - 필드 ID 불일치 수정 (`appr_${idx}` → `appr_name_${idx}`, `date_${idx}` → `appr_date_${idx}`)
+  - 필수 컬럼 표시 한글화 (`required_fields` → `population_headers`)
+- **UI 개선**
+  - 모든 운영평가 페이지에 파비콘 추가
+  - 리셋 기능 통일 (PC02/PC03은 페이지 새로고침)
 
-#### APD01 필수 필드
-- 사용자ID
-- 사용자명
-- 부서명
-- 권한명
-- 권한부여일
+### 2025-10-07
+- APD01/07/09/12 Generic 리팩토링 (12함수→3함수, 183KB 제거)
+- 세션 없이 저장 기능, 데이터 로드 버그 수정
 
-#### APD07 필수 필드
-- 쿼리(변경내역)
-- 변경일자
+### 2025-10-07 (오전)
+- APD07 완성: 이어하기, 리셋, 날짜 포맷
+- Template_manual.xlsx 수정 (C:쿼리, D:실행일자)
+- UI 개선: 버튼 스타일 통일, 저장 후 모달 유지
+
+### 2025-10-06
+- APD07 모달 구현 (iframe 기반)
+- 엑셀 백업 파일 생성 제거
+- 리셋 시 DB 라인 데이터 삭제
+
+### 2025-10-06 (주요)
+- **템플릿 기반 엑셀 저장 전환**: JSON 제거, 엑셀 단일 소스화
+- `save_operation_test_data()`, `load_operation_test_data()` 구현
+- DB 스키마: `sb_operation_evaluation_line`에 파일 경로 컬럼 추가
+- 저장 구조: `/{rcm_id}/{operation_header_id}/{control_code}_evaluation.xlsx`
+
+### 2025-10-05
+- APD01 운영평가 구현 (팝업, 필드 매핑, 표본 추출)
+- APD07 운영평가 구현 (필수 필드: 쿼리, 변경일자)
+- 필드 매핑 UI: 드롭다운 선택, XLSX.js 활용
+- 기존 데이터 자동 로드 기능
 
 ---
 
-### 🐛 알려진 이슈
-- 없음
+## 참고
 
-### 💡 개선 아이디어
-- [ ] 표본 추출 알고리즘 개선 (계층 추출, 체계 추출 등)
-- [ ] 운영평가 진행률 표시
-- [ ] 일괄 업로드 기능 (여러 통제 동시 처리)
-- [ ] 운영평가 템플릿 자동 생성 기능
+### 표본 크기
+```
+모집단    표본
+1-4       2
+5-12      2
+13-52     5
+53-250    20
+251+      25
+```
+
+### 필수 필드 (모집단)
+- **APD01**: user_id, user_name, department, permission, grant_date
+- **APD07**: change_id, change_date
+- **APD09**: account, grant_date
+- **APD12**: account, grant_date
+- **PC01**: program_name, deploy_date
+- **PC02**: PC01과 동일 (자동 복사)
+- **PC03**: PC01과 동일 (자동 복사)
+- **CO01**: batch_schedule_name, register_date
+
+### 구현된 통제 목록
+| 통제코드 | 통제명 | 모집단 필드 | 평가 필드 | 특이사항 |
+|---------|--------|------------|----------|---------|
+| APD01 | 권한 관리 | 사용자ID, 이름, 부서, 권한, 부여일 | 요청서번호, 요청자, 승인자, 승인일자 등 | - |
+| APD07 | 데이터 변경 승인 | 쿼리, 변경일자 | 요청서번호, 요청자, 승인자, 승인일자 등 | - |
+| APD09 | OS/DB 접근권한 | 계정, 부여일 | 요청서번호, 요청자, 승인자, 승인일자 등 | - |
+| APD12 | 특수권한 관리 | 계정, 부여일 | 요청서번호, 요청자, 승인자, 승인일자 등 | - |
+| PC01 | 프로그램 변경 승인 | 프로그램명, 반영일자 | 요청번호, 요청자, 승인자, 개발담당자, 배포담당자 | - |
+| PC02 | 사용자 테스트 | PC01과 동일 | 변경요청서번호, 테스트유무, 담당자, 일자 | PC01 의존 |
+| PC03 | 배포 승인 | PC01과 동일 | 변경요청서번호, 배포요청자/부서, 승인자/부서, 승인일자 | PC01 의존 |
+| CO01 | 배치 스케줄 승인 | 배치스케줄이름, 등록일자 | 요청번호, 요청자, 승인자, 승인일자 등 | - |
