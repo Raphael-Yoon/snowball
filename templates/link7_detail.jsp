@@ -461,6 +461,43 @@
         </div>
     </div>
 
+    <!-- PC01 선행 조건 알림 모달 -->
+    <div class="modal fade" id="pc01RequiredModal" tabindex="-1" aria-labelledby="pc01RequiredModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="pc01RequiredModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2"></i>선행 조건 필요
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning mb-3" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong id="pc01RequiredControl">PC02</strong>는 <strong>PC01</strong>에서 표본이 추출된 후에 진행할 수 있습니다.
+                    </div>
+                    <div class="bg-light p-3 rounded">
+                        <h6 class="fw-bold mb-2"><i class="fas fa-list-check me-2"></i>진행 순서</h6>
+                        <ol class="mb-0">
+                            <li class="mb-2">PC01 운영평가를 엽니다</li>
+                            <li class="mb-2">모집단 파일을 업로드합니다</li>
+                            <li class="mb-2">표본이 자동으로 추출됩니다</li>
+                            <li>그 후 PC02/PC03 평가를 진행할 수 있습니다</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>닫기
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="goToPC01()">
+                        <i class="fas fa-arrow-right me-1"></i>PC01 평가 시작
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
@@ -476,7 +513,20 @@
             initializeTooltips();
             updateAllEvaluationUI();
             updateProgress();
+
+            // 스크롤 위치 복원
+            const savedScrollPosition = sessionStorage.getItem('operationEvaluationScrollPosition');
+            if (savedScrollPosition) {
+                window.scrollTo(0, parseInt(savedScrollPosition));
+                sessionStorage.removeItem('operationEvaluationScrollPosition');
+            }
         });
+
+        // 스크롤 위치를 저장하고 페이지 새로고침
+        function reloadWithScrollPosition() {
+            sessionStorage.setItem('operationEvaluationScrollPosition', window.scrollY);
+            location.reload();
+        }
 
         // 툴팁 초기화
         function initializeTooltips() {
@@ -959,9 +1009,9 @@
             const modal = new bootstrap.Modal(document.getElementById('apd01Modal'));
             modal.show();
 
-            // 모달이 닫힐 때 페이지 새로고침
+            // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
             document.getElementById('apd01Modal').addEventListener('hidden.bs.modal', function() {
-                location.reload();
+                reloadWithScrollPosition();
             }, { once: true });
         }
 
@@ -988,9 +1038,9 @@
             const modal = new bootstrap.Modal(document.getElementById('apd07Modal'));
             modal.show();
 
-            // 모달이 닫힐 때 페이지 새로고침
+            // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
             document.getElementById('apd07Modal').addEventListener('hidden.bs.modal', function() {
-                location.reload();
+                reloadWithScrollPosition();
             }, { once: true });
         }
 
@@ -1017,9 +1067,9 @@
             const modal = new bootstrap.Modal(document.getElementById('apd09Modal'));
             modal.show();
 
-            // 모달이 닫힐 때 페이지 새로고침
+            // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
             document.getElementById('apd09Modal').addEventListener('hidden.bs.modal', function() {
-                location.reload();
+                reloadWithScrollPosition();
             }, { once: true });
         }
 
@@ -1046,9 +1096,9 @@
             const modal = new bootstrap.Modal(document.getElementById('apd12Modal'));
             modal.show();
 
-            // 모달이 닫힐 때 페이지 새로고침
+            // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
             document.getElementById('apd12Modal').addEventListener('hidden.bs.modal', function() {
-                location.reload();
+                reloadWithScrollPosition();
             }, { once: true });
         }
 
@@ -1075,10 +1125,60 @@
             const modal = new bootstrap.Modal(document.getElementById('pc01Modal'));
             modal.show();
 
-            // 모달이 닫힐 때 페이지 새로고침
+            // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
             document.getElementById('pc01Modal').addEventListener('hidden.bs.modal', function() {
-                location.reload();
+                reloadWithScrollPosition();
             }, { once: true });
+        }
+
+        // ===================================================================
+        // PC01 진행 여부 체크 함수
+        // ===================================================================
+
+        function isPC01Completed() {
+            // evaluationDict에서 표준통제코드가 PC01인 통제를 찾아서 모집단 업로드 여부 확인
+            for (const controlCode in evaluationDict) {
+                const evaluation = evaluationDict[controlCode];
+                // PC01인지 확인 (통제코드 또는 표준통제코드)
+                const button = document.querySelector(`[data-control-code="${controlCode}"]`);
+                if (button) {
+                    const stdControlCode = button.getAttribute('data-std-control-code');
+                    if (stdControlCode === 'PC01' || controlCode === 'PC01') {
+                        // PC01의 모집단이 업로드되었는지 확인 (test_results_path 또는 samples_path가 있으면 진행 중)
+                        if (evaluation && (evaluation.test_results_path || evaluation.samples_path)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // PC01 선행 조건 모달 표시
+        function showPC01RequiredModal(controlName) {
+            document.getElementById('pc01RequiredControl').textContent = controlName;
+            const modal = new bootstrap.Modal(document.getElementById('pc01RequiredModal'));
+            modal.show();
+        }
+
+        // PC01 평가로 이동
+        function goToPC01() {
+            // PC01 버튼 찾기
+            const buttons = document.querySelectorAll('[data-control-code]');
+            for (const button of buttons) {
+                const stdControlCode = button.getAttribute('data-std-control-code');
+                const controlCode = button.getAttribute('data-control-code');
+                if (stdControlCode === 'PC01' || controlCode === 'PC01') {
+                    // 모달 닫기
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('pc01RequiredModal'));
+                    if (modal) modal.hide();
+
+                    // PC01 평가 모달 열기
+                    button.click();
+                    return;
+                }
+            }
+            alert('PC01 통제를 찾을 수 없습니다.');
         }
 
         // ===================================================================
@@ -1086,6 +1186,12 @@
         // ===================================================================
 
         function showPC02UI(buttonElement) {
+            // PC01 진행 여부 체크 (모집단 업로드 및 표본 추출 완료 필요)
+            if (!isPC01Completed()) {
+                showPC01RequiredModal('PC02');
+                return;
+            }
+
             const controlCode = buttonElement.getAttribute('data-control-code');
             const controlName = buttonElement.getAttribute('data-control-name');
 
@@ -1104,9 +1210,9 @@
             const modal = new bootstrap.Modal(document.getElementById('pc02Modal'));
             modal.show();
 
-            // 모달이 닫힐 때 페이지 새로고침
+            // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
             document.getElementById('pc02Modal').addEventListener('hidden.bs.modal', function() {
-                location.reload();
+                reloadWithScrollPosition();
             }, { once: true });
         }
 
@@ -1115,6 +1221,12 @@
         // ===================================================================
 
         function showPC03UI(buttonElement) {
+            // PC01 진행 여부 체크 (모집단 업로드 및 표본 추출 완료 필요)
+            if (!isPC01Completed()) {
+                showPC01RequiredModal('PC03');
+                return;
+            }
+
             const controlCode = buttonElement.getAttribute('data-control-code');
             const controlName = buttonElement.getAttribute('data-control-name');
 
@@ -1133,9 +1245,9 @@
             const modal = new bootstrap.Modal(document.getElementById('pc03Modal'));
             modal.show();
 
-            // 모달이 닫힐 때 페이지 새로고침
+            // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
             document.getElementById('pc03Modal').addEventListener('hidden.bs.modal', function() {
-                location.reload();
+                reloadWithScrollPosition();
             }, { once: true });
         }
 
@@ -1162,9 +1274,9 @@
             const modal = new bootstrap.Modal(document.getElementById('co01Modal'));
             modal.show();
 
-            // 모달이 닫힐 때 페이지 새로고침
+            // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
             document.getElementById('co01Modal').addEventListener('hidden.bs.modal', function() {
-                location.reload();
+                reloadWithScrollPosition();
             }, { once: true });
         }
     </script>

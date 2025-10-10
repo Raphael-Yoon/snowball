@@ -607,13 +607,15 @@
 
             const sameDept = reqDept && apprDept && reqDept === apprDept;
             const hasApprover = apprName && apprName.length > 0;
-            let approvalBeforeGrant = false;
+            const hasApprovalDate = approvalDate && approvalDate.length > 0;
+            // 날짜 비교: 둘 다 있으면 비교
+            let approvalBeforeGrant = true;
             if (approvalDate && grantDate) {
                 approvalBeforeGrant = new Date(approvalDate) <= new Date(grantDate);
             }
             const differentPerson = reqName && apprName && reqName !== apprName;
 
-            const isNormal = sameDept && hasApprover && approvalBeforeGrant && differentPerson;
+            const isNormal = sameDept && hasApprover && hasApprovalDate && approvalBeforeGrant && differentPerson;
 
             const badge = document.getElementById(`exc_${idx}`);
             const notesField = document.getElementById(`notes_${idx}`);
@@ -631,6 +633,7 @@
                 const reasons = [];
                 if (reqDept && apprDept && !sameDept) reasons.push('요청자부서와 승인자부서가 상이');
                 if (!hasApprover) reasons.push('승인자명 누락');
+                if (!hasApprovalDate) reasons.push('승인일자 누락');
                 if (approvalDate && grantDate && !approvalBeforeGrant) reasons.push('승인일자가 권한부여일자 이후');
                 if (reqName && apprName && !differentPerson) reasons.push('요청자와 승인자가 동일');
 

@@ -184,8 +184,11 @@ def upload_manual_population(control_code):
         # 표본 선택
         samples = file_manager.select_random_samples(population_data, sample_size)
 
-        # 임시 파일 삭제
-        os.unlink(temp_file.name)
+        # 임시 파일 삭제 (Windows에서 파일 핸들 문제로 실패할 수 있으므로 무시)
+        try:
+            os.unlink(temp_file.name)
+        except Exception as e:
+            print(f"임시 파일 삭제 실패 (무시됨): {e}")
 
         # 템플릿 기반 엑셀 파일 생성 및 저장
         file_paths = file_manager.save_operation_test_data(

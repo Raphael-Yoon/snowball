@@ -675,9 +675,12 @@ def save_operation_test_data(rcm_id, operation_header_id, control_code, populati
     excel_filename = f"{control_code}_evaluation.xlsx"
     excel_path = os.path.join(base_dir, excel_filename)
 
-    # 기존 파일이 있으면 삭제
+    # 기존 파일이 있으면 삭제 (Windows에서 파일 핸들 문제로 실패할 수 있으므로 무시)
     if os.path.exists(excel_path):
-        os.remove(excel_path)
+        try:
+            os.remove(excel_path)
+        except Exception as e:
+            print(f"기존 파일 삭제 실패 (무시됨): {e}")
 
     # 템플릿 복사
     copyfile(template_path, excel_path)
