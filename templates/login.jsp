@@ -54,17 +54,17 @@
                 <button type="submit" class="btn-primary">인증 코드 발송</button>
             </form>
             
-            <!-- 127.0.0.1에서만 보이는 관리자 로그인 버튼 -->
-            {% if remote_addr == '127.0.0.1' %}
+            <!-- 관리자 로그인 버튼 (로컬호스트 및 pythonanywhere) -->
+            {% if remote_addr == '127.0.0.1' or request.host.startswith('snowball.pythonanywhere.com') %}
             <div class="admin-login-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
                 <form method="POST" action="{{ url_for('login') }}">
                     <input type="hidden" name="action" value="admin_login">
                     <button type="submit" class="btn-outline" style="background-color: #28a745; color: white; border-color: #28a745;">
-                        <i class="fas fa-shield-alt"></i> 관리자 로그인 (개발용)
+                        <i class="fas fa-shield-alt"></i> 관리자 로그인
                     </button>
                 </form>
                 <small style="color: #666; margin-top: 5px; display: block;">
-                    <i class="fas fa-info-circle"></i> 로컬호스트에서만 사용 가능한 관리자 직접 로그인
+                    <i class="fas fa-info-circle"></i> 관리자 직접 로그인
                 </small>
             </div>
             {% endif %}

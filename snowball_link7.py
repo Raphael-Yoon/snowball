@@ -26,14 +26,18 @@ def user_operation_evaluation():
             operation_evaluation_session = f"OP_{session['evaluation_session']}"
 
             # 운영평가 진행 통제 수 조회
-            from auth import count_operation_evaluations
-            completed_count = count_operation_evaluations(
-                rcm['rcm_id'],
-                user_info['user_id'],
-                operation_evaluation_session,
-                session['evaluation_session']
-            )
-            session['operation_completed_count'] = completed_count
+            from auth import count_completed_operation_evaluations
+            with get_db() as conn:
+                header = conn.execute('''
+                    SELECT header_id FROM sb_operation_evaluation_header
+                    WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                ''', (rcm['rcm_id'], user_info['user_id'], operation_evaluation_session, session['evaluation_session'])).fetchone()
+
+            if header:
+                completed_count = count_completed_operation_evaluations(header['header_id'])
+                session['operation_completed_count'] = completed_count
+            else:
+                session['operation_completed_count'] = 0
 
         rcm['completed_design_sessions'] = completed_sessions
         rcm['design_evaluation_completed'] = len(completed_sessions) > 0
@@ -189,19 +193,25 @@ def user_operation_evaluation_rcm():
     # 기존 운영평가 내역 불러오기 (Header-Line 구조)
     try:
         evaluations = get_operation_evaluations(rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)
-        evaluation_dict = {}
-        for eval_data in evaluations:
-            control_code = eval_data['control_code']
-            evaluation_dict[control_code] = {
-                'operating_effectiveness': eval_data['operating_effectiveness'],
-                'sample_size': eval_data['sample_size'],
-                'exception_count': eval_data['exception_count'],
-                'exception_details': eval_data['exception_details'],
-                'conclusion': eval_data['conclusion'],
-                'improvement_plan': eval_data['improvement_plan']
-            }
+
+        # 평가가 완료된 통제만(conclusion 값이 있는 경우) control_code를 키로 하는 딕셔너리로 변환
+        # 중복이 있는 경우 가장 최신(last_updated 또는 evaluation_date 기준) 레코드만 사용
+        evaluated_controls = {}
+        for eval in evaluations:
+            if eval.get('conclusion'):
+                control_code = eval['control_code']
+                # 기존에 없거나, 더 최신 데이터인 경우만 업데이트
+                if control_code not in evaluated_controls:
+                    evaluated_controls[control_code] = eval
+                else:
+                    # last_updated 또는 evaluation_date로 최신 판단
+                    existing_date = evaluated_controls[control_code].get('last_updated') or evaluated_controls[control_code].get('evaluation_date')
+                    new_date = eval.get('last_updated') or eval.get('evaluation_date')
+                    if new_date and existing_date and new_date > existing_date:
+                        evaluated_controls[control_code] = eval
+
     except Exception as e:
-        evaluation_dict = {}
+        evaluated_controls = {}
 
     log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 운영평가', '/operation-evaluation/rcm',
                      request.remote_addr, request.headers.get('User-Agent'))
@@ -214,7 +224,7 @@ def user_operation_evaluation_rcm():
                          rcm_info=rcm_info,
                          rcm_details=rcm_details,
                          rcm_mappings=rcm_mappings,
-                         evaluation_dict=evaluation_dict,
+                         evaluated_controls=evaluated_controls,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          remote_addr=request.remote_addr)
@@ -432,93 +442,10 @@ def apd01_upload_population():
         return jsonify({'success': False, 'message': f'파일 처리 오류: {str(e)}'})
 
 
-@bp_link7.route('/api/operation-evaluation/apd01/save-test-results', methods=['POST'])
-@login_required
-def apd01_save_test_results():
-    """APD01 테스트 결과 저장"""
-    user_info = get_user_info()
-    data = request.get_json()
-
-    rcm_id = data.get('rcm_id')
-    control_code = data.get('control_code')
-    design_evaluation_session = data.get('design_evaluation_session')
-    test_results = data.get('test_results')  # 표본별 테스트 결과
-
-    if not all([rcm_id, control_code, design_evaluation_session, test_results]):
-        return jsonify({'success': False, 'message': '필수 데이터가 누락되었습니다.'})
-
-    try:
-        operation_evaluation_session = f"OP_{design_evaluation_session}"
-
-        # 세션에서 파일 경로 정보 가져오기
-        session_key = f'apd01_test_{rcm_id}_{control_code}'
-        test_data = session.get(session_key)
-
-        if not test_data:
-            return jsonify({'success': False, 'message': '테스트 데이터를 찾을 수 없습니다. 모집단을 다시 업로드해주세요.'})
-
-        # 세션에서 operation_header_id 가져오기
-        operation_header_id = test_data.get('operation_header_id')
-        if not operation_header_id:
-            return jsonify({'success': False, 'message': '운영평가 헤더 ID를 찾을 수 없습니다.'})
-
-
-        # 저장된 파일에서 표본 데이터 로드
-        loaded_data = file_manager.load_operation_test_data(
-            rcm_id=rcm_id,
-            operation_header_id=operation_header_id,
-            control_code=control_code
-        )
-
-        if not loaded_data or not loaded_data['samples_data']:
-            return jsonify({'success': False, 'message': '저장된 표본 데이터를 찾을 수 없습니다.'})
-
-        samples_data = loaded_data['samples_data']
-
-        # 템플릿 기반 엑셀 파일 업데이트 (테스트 결과 추가)
-        file_paths = file_manager.save_operation_test_data(
-            rcm_id=rcm_id,
-            operation_header_id=operation_header_id,
-            control_code=control_code,
-            population_data=loaded_data.get('population_data', []),
-            field_mapping=samples_data.get('field_mapping', {}),
-            samples=samples_data['samples'],
-            test_results_data={
-                'test_results': test_results,
-                'exceptions': [r for r in test_results if r.get('has_exception')],
-                'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency',
-                'test_type': 'APD01'
-            }
-        )
-
-        # 평가 데이터 구성 (메타데이터만 DB에 저장)
-        evaluation_data = {
-            'test_type': 'APD01',
-            'population_count': samples_data['population_count'],
-            'sample_size': samples_data['sample_size'],
-            'population_path': None,  # 템플릿 방식에서는 엑셀에 통합
-            'samples_path': file_paths.get('samples_path'),
-            'test_results_path': file_paths.get('excel_path'),  # 엑셀 파일 경로
-            'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency'
-        }
-
-        # 운영평가 저장
-        save_operation_evaluation(rcm_id, control_code, user_info['user_id'],
-                                 operation_evaluation_session, design_evaluation_session, evaluation_data)
-
-        # 세션 정리 제거 - 다시 저장할 수 있도록 세션 유지
-        # session.pop(session_key, None)
-
-        log_user_activity(user_info, 'OPERATION_EVALUATION', f'APD01 테스트 저장 - {control_code}',
-                         '/api/operation-evaluation/apd01/save-test-results',
-                         request.remote_addr, request.headers.get('User-Agent'))
-
-        return jsonify({'success': True, 'message': 'APD01 테스트 결과가 저장되었습니다.'})
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': f'저장 오류: {str(e)}'})
+# The following routes are deprecated and replaced by the generic implementation
+# in operation_evaluation_generic.py. They are kept here for reference but can be removed.
+# - apd01_save_test_results
+# - user_operation_evaluation_apd01
 
 
 @bp_link7.route('/api/operation-evaluation/reset', methods=['POST'])
@@ -592,6 +519,12 @@ def operation_evaluation_reset():
         return jsonify({'success': False, 'message': f'리셋 오류: {str(e)}'})
 
 
+# The following routes are deprecated and replaced by the generic implementation
+# in operation_evaluation_generic.py. They are kept here for reference but can be removed.
+# - apd01_save_test_results
+# - user_operation_evaluation_apd01
+
+
 @bp_link7.route('/api/design-evaluation/get', methods=['GET'])
 @login_required
 def get_design_evaluation_data():
@@ -647,81 +580,6 @@ def get_design_evaluation_data():
 
     except Exception as e:
         return jsonify({'success': False, 'message': f'조회 오류: {str(e)}'})
-
-@bp_link7.route('/operation-evaluation/apd01')
-@login_required
-def user_operation_evaluation_apd01():
-    """APD01 운영평가 페이지"""
-    user_info = get_user_info()
-
-    rcm_id = request.args.get('rcm_id')
-    control_code = request.args.get('control_code')
-    control_name = request.args.get('control_name')
-    design_evaluation_session = request.args.get('design_evaluation_session')
-
-    if not all([rcm_id, control_code, design_evaluation_session]):
-        flash('필수 정보가 누락되었습니다.', 'error')
-        return redirect(url_for('link7.user_operation_evaluation'))
-
-    # 기존 운영평가 데이터 조회
-    existing_data = None
-    operation_evaluation_session = f"OP_{design_evaluation_session}"
-
-    try:
-        from auth import get_or_create_operation_evaluation_header
-        with get_db() as conn:
-            # 운영평가 헤더 조회 (있으면)
-            header = conn.execute('''
-                SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
-            ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
-
-            if header:
-                operation_header_id = header['header_id']
-
-                # 저장된 파일에서 데이터 로드
-                loaded_data = file_manager.load_operation_test_data(
-                    rcm_id=rcm_id,
-                    operation_header_id=operation_header_id,
-                    control_code=control_code
-                )
-
-                if loaded_data and loaded_data['samples_data']:
-                    existing_data = {
-                        'samples': loaded_data['samples_data'].get('samples', []),
-                        'population_count': loaded_data['samples_data'].get('population_count', 0),
-                        'sample_size': loaded_data['samples_data'].get('sample_size', 0),
-                        'test_results': loaded_data['samples_data'].get('test_results', {}),
-                        'operation_header_id': operation_header_id
-                    }
-
-                    # 세션에 operation_header_id 저장 (저장 시 필요)
-                    session_key = f'apd01_test_{rcm_id}_{control_code}'
-                    session[session_key] = {
-                        'operation_header_id': operation_header_id,
-                        'population_count': existing_data['population_count'],
-                        'sample_size': existing_data['sample_size']
-                    }
-
-    except Exception as e:
-        print(f"기존 데이터 로드 오류: {e}")
-        import traceback
-        traceback.print_exc()
-        # 오류가 발생해도 페이지는 정상적으로 표시
-        pass
-
-    log_user_activity(user_info, 'PAGE_ACCESS', 'APD01 운영평가', '/operation-evaluation/apd01',
-                     request.remote_addr, request.headers.get('User-Agent'))
-
-    return render_template('user_operation_evaluation_apd01.jsp',
-                         rcm_id=rcm_id,
-                         control_code=control_code,
-                         control_name=control_name,
-                         design_evaluation_session=design_evaluation_session,
-                         existing_data=existing_data,
-                         is_logged_in=is_logged_in(),
-                         user_info=user_info,
-                         remote_addr=request.remote_addr)
 
 @bp_link7.route('/operation-evaluation/apd07')
 @login_required
@@ -957,7 +815,7 @@ def apd07_save_test_results():
             test_results_data={
                 'test_results': test_results,
                 'exceptions': [r for r in test_results if r.get('has_exception')],
-                'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency',
+                'conclusion': 'effective' if not any(r.get('has_exception') for r in test_results) else 'exception',
                 'test_type': 'APD07'
             }
         )
@@ -970,7 +828,7 @@ def apd07_save_test_results():
             'population_path': None,  # 템플릿 방식에서는 엑셀에 통합
             'samples_path': file_paths.get('samples_path'),
             'test_results_path': file_paths.get('excel_path'),  # 엑셀 파일 경로
-            'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency'
+            'conclusion': 'effective' if not any(r.get('has_exception') for r in test_results) else 'exception'
         }
 
         # 운영평가 저장
@@ -1219,7 +1077,7 @@ def save_apd09_test_results():
             test_results_data={
                 'test_results': test_results,
                 'exceptions': [r for r in test_results if r.get('has_exception')],
-                'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency',
+                'conclusion': 'effective' if not any(r.get('has_exception') for r in test_results) else 'exception',
                 'test_type': 'APD09'
             }
         )
@@ -1230,7 +1088,7 @@ def save_apd09_test_results():
             'population_path': file_paths.get('population_file'),
             'samples_path': file_paths.get('excel_path'),
             'test_results_path': file_paths.get('excel_path'),  # 엑셀 파일 경로
-            'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency'
+            'conclusion': 'effective' if not any(r.get('has_exception') for r in test_results) else 'exception'
         }
 
         # 운영평가 저장
@@ -1255,101 +1113,6 @@ def save_apd09_test_results():
 # ===================================================================
 # 운영평가 리셋 API
 # ===================================================================
-
-@bp_link7.route('/api/operation-evaluation/reset', methods=['POST'])
-@login_required
-def reset_operation_evaluation():
-    """운영평가 리셋 (모집단 및 테스트 결과 삭제)"""
-    try:
-        user_info = get_user_info()
-        data = request.json
-        rcm_id = data.get('rcm_id')
-        control_code = data.get('control_code')
-        design_evaluation_session = data.get('design_evaluation_session')
-
-        if not all([rcm_id, control_code, design_evaluation_session]):
-            return jsonify({'success': False, 'message': '필수 정보가 누락되었습니다.'})
-
-        # 세션 정리
-        session_keys = [
-            f'apd01_test_{rcm_id}_{control_code}',
-            f'apd07_test_{rcm_id}_{control_code}',
-            f'apd09_test_{rcm_id}_{control_code}',
-            f'apd12_test_{rcm_id}_{control_code}'
-        ]
-        for key in session_keys:
-            session.pop(key, None)
-
-        # DB에서 운영평가 데이터 삭제
-        operation_evaluation_session = f"OP_{design_evaluation_session}"
-
-        # 운영평가 헤더 조회
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            SELECT operation_header_id
-            FROM operation_evaluation_headers
-            WHERE rcm_id = ? AND design_evaluation_session = ? AND operation_evaluation_session = ?
-        ''', (rcm_id, design_evaluation_session, operation_evaluation_session))
-
-        header = cursor.fetchone()
-
-        deleted_db = False
-        deleted_file = False
-
-        if header:
-            operation_header_id = header['operation_header_id']
-
-            # 운영평가 상세 데이터 삭제
-            cursor.execute('''
-                DELETE FROM operation_evaluation_details
-                WHERE operation_header_id = ? AND control_code = ?
-            ''', (operation_header_id, control_code))
-
-            deleted_rows = cursor.rowcount
-            conn.commit()
-            deleted_db = deleted_rows > 0
-
-            # 특정 통제의 엑셀 파일 삭제
-            import os
-            from flask import current_app
-
-            excel_filename = f"{control_code}_evaluation.xlsx"
-            # Flask 앱의 루트 디렉토리 기준으로 절대 경로 생성
-            app_root = os.path.dirname(os.path.abspath(__file__))
-            file_path = os.path.join(app_root, 'static', 'uploads', 'operation_evaluations',
-                                    str(rcm_id), str(operation_header_id), excel_filename)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                    deleted_file = True
-                except Exception as e:
-                    pass
-        else:
-            pass
-
-        conn.close()
-
-        log_user_activity(user_info, 'OPERATION_EVALUATION', f'{control_code} 리셋',
-                         '/api/operation-evaluation/reset',
-                         request.remote_addr, request.headers.get('User-Agent'))
-
-        # 결과 메시지 생성
-        result_msg = []
-        if deleted_db:
-            result_msg.append('DB 데이터 삭제')
-        if deleted_file:
-            result_msg.append('엑셀 파일 삭제')
-
-        message = '리셋 완료: ' + ', '.join(result_msg) if result_msg else '삭제할 데이터가 없습니다.'
-        return jsonify({'success': True, 'message': message})
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': f'리셋 오류: {str(e)}'})
-
 
 # ===================================================================
 # APD12 운영평가 라우트
@@ -1580,7 +1343,7 @@ def save_apd12_test_results():
             test_results_data={
                 'test_results': test_results,
                 'exceptions': [r for r in test_results if r.get('has_exception')],
-                'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency',
+                'conclusion': 'effective' if not any(r.get('has_exception') for r in test_results) else 'exception',
                 'test_type': 'APD12'
             }
         )
@@ -1593,7 +1356,7 @@ def save_apd12_test_results():
             'population_path': None,  # 템플릿 방식에서는 엑셀에 통합
             'samples_path': file_paths.get('samples_path'),
             'test_results_path': file_paths.get('excel_path'),  # 엑셀 파일 경로
-            'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency'
+            'conclusion': 'effective' if not any(r.get('has_exception') for r in test_results) else 'exception'
         }
 
         # 운영평가 저장
@@ -1613,4 +1376,3 @@ def save_apd12_test_results():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'저장 오류: {str(e)}'})
-
