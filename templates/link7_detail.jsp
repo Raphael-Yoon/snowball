@@ -151,7 +151,7 @@
                                             </button>
                                         </td>
                                         <td>
-                                            <span id="evaluation-result-{{ loop.index }}" class="badge bg-secondary">미평가</span>
+                                            <span id="evaluation-result-{{ loop.index }}" class="badge bg-secondary">Not Evaluated</span>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -289,17 +289,22 @@
                                 <div class="mb-3">
                                     <label for="exception_count" class="form-label fw-bold">예외 발견 수</label>
                                     <input type="number" class="form-control" id="exception_count" name="exception_count" min="0" placeholder="예: 0">
+                                    <div class="form-text">
+                                        <small>예외가 1건 이상이면 결론이 자동으로 "Exception"으로 설정됩니다</small>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="conclusion" class="form-label fw-bold">결론</label>
-                                    <select class="form-select" id="conclusion" name="conclusion" required>
-                                        <option value="">선택하세요</option>
-                                        <option value="satisfactory">만족</option>
-                                        <option value="deficiency">결함</option>
-                                        <option value="material_weakness">중요한 결함</option>
+                                    <select class="form-select" id="conclusion" name="conclusion" required disabled>
+                                        <option value="">-</option>
+                                        <option value="effective">Effective</option>
+                                        <option value="exception">Exception</option>
                                     </select>
+                                    <div class="form-text">
+                                        <small>예외 발견 수에 따라 자동 설정됩니다</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -335,6 +340,52 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                     <button type="button" class="btn btn-warning" onclick="saveOperationEvaluation()">
                         <i class="fas fa-save me-1"></i>저장
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 자동통제 확인 모달 -->
+    <div class="modal fade" id="autoControlCheckModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-robot me-2"></i>자동통제 운영평가</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3">
+                        <strong><span id="auto-check-control-code"></span></strong> - <span id="auto-check-control-name"></span>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i><strong>자동통제는 설계평가에서 이미 테스트되었습니다.</strong>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">설계평가 결과</label>
+                        <div id="auto-check-design-result" class="p-3 bg-light rounded"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">운영평가 확인</label>
+                        <select class="form-select" id="auto-check-status">
+                            <option value="">선택하세요</option>
+                            <option value="confirmed">설계평가 결과 확인 완료</option>
+                            <option value="issue_found">운영 중 이상 발견</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="auto-check-issue-section" style="display: none;">
+                        <label class="form-label fw-bold">발견된 이상 내용</label>
+                        <textarea class="form-control" id="auto-check-issue-details" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">메모 (선택)</label>
+                        <textarea class="form-control" id="auto-check-note" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="padding: 0.375rem 0.75rem;">취소</button>
+                    <button type="button" class="btn btn-success" onclick="saveAutoControlCheck()" style="padding: 0.375rem 0.75rem;">
+                        <i class="fas fa-check me-1"></i>확인 완료
                     </button>
                 </div>
             </div>
@@ -498,6 +549,34 @@
         </div>
     </div>
 
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+        <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-check-circle me-2"></i><span id="successToastMessage"></span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+        <div id="errorToast" class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-exclamation-circle me-2"></i><span id="errorToastMessage"></span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+        <div id="warningToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-exclamation-triangle me-2"></i><span id="warningToastMessage"></span>
+                </div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
@@ -506,7 +585,34 @@
         let currentEvaluationSession = '{{ evaluation_session }}';
         let currentControlCode = '';
         let currentRowIndex = 0;
-        let evaluationDict = {{ evaluation_dict | tojson }};
+        let evaluated_controls = {{ evaluated_controls | tojson }};
+
+        // Toast 헬퍼 함수
+        function showToast(type, message) {
+            const toastElement = document.getElementById(`${type}Toast`);
+            const messageElement = document.getElementById(`${type}ToastMessage`);
+
+            if (toastElement && messageElement) {
+                messageElement.textContent = message;
+                const toast = new bootstrap.Toast(toastElement, {
+                    autohide: true,
+                    delay: 3000
+                });
+                toast.show();
+            }
+        }
+
+        function showSuccessToast(message) {
+            showToast('success', message);
+        }
+
+        function showErrorToast(message) {
+            showToast('error', message);
+        }
+
+        function showWarningToast(message) {
+            showToast('warning', message);
+        }
 
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', function() {
@@ -554,6 +660,96 @@
             return frequencyMapping[frequencyCode] || 1;
         }
 
+        // 자동통제 확인 모달 열기 (안전 장치 포함)
+        function openAutoControlCheckModal(controlCode, controlName) {
+            // 모달 요소가 존재하는지 먼저 확인
+            const modal = document.getElementById('autoControlCheckModal');
+            if (!modal) {
+                console.error('autoControlCheckModal not found');
+                return;
+            }
+
+            const codeEl = document.getElementById('auto-check-control-code');
+            const nameEl = document.getElementById('auto-check-control-name');
+            const resultEl = document.getElementById('auto-check-design-result');
+            const statusEl = document.getElementById('auto-check-status');
+            const issueSection = document.getElementById('auto-check-issue-section');
+
+            // 필수 요소들이 모두 있는지 확인
+            if (!codeEl || !nameEl || !resultEl || !statusEl || !issueSection) {
+                console.error('Required elements not found');
+                return;
+            }
+
+            codeEl.textContent = controlCode;
+            nameEl.textContent = controlName;
+            resultEl.innerHTML = '<p class="text-info mb-0"><i class="fas fa-check-circle me-2"></i>설계평가에서 정상 작동 확인됨</p>';
+
+            statusEl.onchange = function() {
+                issueSection.style.display = (this.value === 'issue_found') ? 'block' : 'none';
+            };
+
+            new bootstrap.Modal(modal).show();
+        }
+
+        // 자동통제 확인 저장 (안전 장치 포함)
+        function saveAutoControlCheck() {
+            const statusEl = document.getElementById('auto-check-status');
+            if (!statusEl) return;
+
+            const status = statusEl.value;
+            if (!status) {
+                showWarningToast('확인 상태를 선택해주세요.');
+                return;
+            }
+
+            const issueEl = document.getElementById('auto-check-issue-details');
+            const noteEl = document.getElementById('auto-check-note');
+
+            const data = {
+                control_code: currentControlCode,
+                header_id: {{ header_id | default(0) }},
+                operating_effectiveness: 'evaluated',
+                conclusion: status === 'confirmed' ? 'effective' : 'ineffective',
+                exception_details: issueEl ? issueEl.value : '',
+                improvement_plan: noteEl ? noteEl.value : '',
+                sample_size: 0,
+                exception_count: status === 'issue_found' ? 1 : 0
+            };
+
+            fetch('/api/operation-evaluation/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rcm_id: currentRcmId,
+                    design_evaluation_session: currentEvaluationSession,
+                    control_code: data.control_code,
+                    evaluation_data: {
+                        operating_effectiveness: data.operating_effectiveness,
+                        conclusion: data.conclusion,
+                        exception_details: data.exception_details,
+                        improvement_plan: data.improvement_plan,
+                        sample_size: data.sample_size,
+                        exception_count: data.exception_count
+                    }
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('autoControlCheckModal'));
+                    if (modal) modal.hide();
+                    showSuccessToast('자동통제 확인이 완료되었습니다.');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showErrorToast('저장 실패: ' + (result.message || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                console.error('저장 오류:', error);
+                showErrorToast('저장 중 오류가 발생했습니다. 자세한 내용은 콘솔을 확인하세요.');
+            });
+        }
 
         // 운영평가 모달 열기
         function openOperationEvaluationModal(buttonElement) {
@@ -571,9 +767,17 @@
             console.log('Control Code:', controlCode);
             console.log('Standard Control Code:', stdControlCode);
             console.log('Standard Control Code Type:', typeof stdControlCode);
+            console.log('Control Nature Code:', controlNatureCode);
 
             currentControlCode = controlCode;
             currentRowIndex = rowIndex;
+
+            // 자동통제 판별
+            if (controlNatureCode === 'A' || controlNatureCode === '자동') {
+                console.log('Auto control detected:', controlCode);
+                openAutoControlCheckModal(controlCode, controlName);
+                return;
+            }
 
             // 표준통제별 UI 분기
             if (stdControlCode && stdControlCode === 'APD01') {
@@ -693,8 +897,8 @@
             document.getElementById('modal-test-procedure').textContent = testProcedure || '-';
 
             // 기존 평가 데이터 로드
-            if (evaluationDict[controlCode]) {
-                const data = evaluationDict[controlCode];
+            if (evaluated_controls[controlCode]) {
+                const data = evaluated_controls[controlCode];
                 document.getElementById('operating_effectiveness').value = data.operating_effectiveness || '';
                 document.getElementById('sample_size').value = data.sample_size || '';
                 document.getElementById('exception_count').value = data.exception_count || '';
@@ -710,15 +914,43 @@
             }
 
             // 기존 평가 데이터가 없거나 표본수가 비어있는 경우 자동 설정
-            if (!evaluationDict[controlCode] || !evaluationDict[controlCode].sample_size) {
+            if (!evaluated_controls[controlCode] || !evaluated_controls[controlCode].sample_size) {
                 const defaultSampleSize = getDefaultSampleSize(controlFrequency, controlType);
                 document.getElementById('sample_size').value = defaultSampleSize;
             }
+
+            // 예외 발견 수에 따른 결론 자동 업데이트
+            updateConclusionBasedOnExceptions();
 
             // 모달 표시
             const modal = new bootstrap.Modal(document.getElementById('operationEvaluationModal'));
             modal.show();
         }
+
+        // 예외 발견 수 변경 시 결론 자동 업데이트
+        function updateConclusionBasedOnExceptions() {
+            const exceptionCountInput = document.getElementById('exception_count');
+            const conclusionSelect = document.getElementById('conclusion');
+
+            if (exceptionCountInput && conclusionSelect) {
+                const exceptionCount = parseInt(exceptionCountInput.value) || 0;
+
+                if (exceptionCount > 0) {
+                    conclusionSelect.value = 'exception';
+                } else {
+                    conclusionSelect.value = 'effective';
+                }
+            }
+        }
+
+        // 예외 발견 수 입력 필드에 이벤트 리스너 추가 (페이지 로드 후)
+        document.addEventListener('DOMContentLoaded', function() {
+            const exceptionCountInput = document.getElementById('exception_count');
+            if (exceptionCountInput) {
+                exceptionCountInput.addEventListener('input', updateConclusionBasedOnExceptions);
+                exceptionCountInput.addEventListener('change', updateConclusionBasedOnExceptions);
+            }
+        });
 
         // 이미지 파일 미리보기
         document.getElementById('evaluationImages').addEventListener('change', function(e) {
@@ -768,19 +1000,23 @@
         function saveOperationEvaluation() {
             const form = document.getElementById('operationEvaluationForm');
             const formData = new FormData(form);
-            
+
+            // 예외 발견 수에 따른 결론 자동 설정 (저장 전 재확인)
+            const exceptionCount = parseInt(formData.get('exception_count')) || 0;
+            const autoConclusion = exceptionCount > 0 ? 'exception' : 'effective';
+
             const evaluationData = {
                 operating_effectiveness: formData.get('operating_effectiveness'),
                 sample_size: parseInt(formData.get('sample_size')) || 0,
-                exception_count: parseInt(formData.get('exception_count')) || 0,
+                exception_count: exceptionCount,
                 exception_details: formData.get('exception_details'),
-                conclusion: formData.get('conclusion'),
+                conclusion: autoConclusion,  // 자동 설정된 결론 사용
                 improvement_plan: formData.get('improvement_plan')
             };
 
             // 필수 필드 검증
-            if (!evaluationData.operating_effectiveness || !evaluationData.conclusion) {
-                alert('운영 효과성과 결론은 필수 입력 항목입니다.');
+            if (!evaluationData.operating_effectiveness) {
+                showWarningToast('운영 효과성은 필수 입력 항목입니다.');
                 return;
             }
 
@@ -812,7 +1048,7 @@
             .then(data => {
                 if (data.success) {
                     // 로컬 데이터 업데이트
-                    evaluationDict[currentControlCode] = evaluationData;
+                    evaluated_controls[currentControlCode] = evaluationData;
 
                     // UI 업데이트
                     updateEvaluationUI(currentRowIndex, evaluationData);
@@ -821,14 +1057,14 @@
                     // 모달 닫기
                     bootstrap.Modal.getInstance(document.getElementById('operationEvaluationModal')).hide();
 
-                    alert('운영평가 결과가 저장되었습니다.');
+                    showSuccessToast('운영평가 결과가 저장되었습니다.');
                 } else {
-                    alert('저장 중 오류가 발생했습니다: ' + data.message);
+                    showErrorToast('저장 중 오류가 발생했습니다: ' + data.message);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('저장 중 오류가 발생했습니다.');
+                showErrorToast('저장 중 오류가 발생했습니다.');
             });
         }
 
@@ -836,27 +1072,31 @@
         function updateEvaluationUI(rowIndex, data) {
             // 평가 결과 업데이트
             const resultElement = document.getElementById(`evaluation-result-${rowIndex}`);
-            if (data.conclusion) {
+            if (resultElement && data.conclusion) {
                 const resultMap = {
-                    'satisfactory': { text: '만족', class: 'bg-success' },
-                    'deficiency': { text: '결함', class: 'bg-warning text-dark' },
-                    'material_weakness': { text: '중요한 결함', class: 'bg-danger' }
+                    'effective': { text: 'Effective', class: 'bg-success' },
+                    'exception': { text: 'Exception', class: 'bg-danger' },
+                    'ineffective': { text: 'Ineffective', class: 'bg-danger' }
                 };
                 const result = resultMap[data.conclusion];
-                resultElement.textContent = result.text;
-                resultElement.className = `badge ${result.class}`;
+                if (result) {
+                    resultElement.textContent = result.text;
+                    resultElement.className = `badge ${result.class}`;
+                }
             }
 
             // 개선계획 업데이트
             const improvementElement = document.getElementById(`improvement-plan-${rowIndex}`);
-            improvementElement.textContent = data.improvement_plan || '-';
+            if (improvementElement) {
+                improvementElement.textContent = data.improvement_plan || '-';
+            }
         }
 
         // 모든 평가 UI 업데이트
         function updateAllEvaluationUI() {
             {% for detail in rcm_details %}
-            if (evaluationDict['{{ detail.control_code }}']) {
-                updateEvaluationUI({{ loop.index }}, evaluationDict['{{ detail.control_code }}']);
+            if (evaluated_controls['{{ detail.control_code }}']) {
+                updateEvaluationUI({{ loop.index }}, evaluated_controls['{{ detail.control_code }}']);
             }
             {% endfor %}
         }
@@ -864,7 +1104,7 @@
         // 진행률 업데이트
         function updateProgress() {
             const totalControls = {{ rcm_details|length }};
-            const evaluatedControls = Object.keys(evaluationDict).length;
+            const evaluatedControls = Object.keys(evaluated_controls).length;
             const progress = totalControls > 0 ? Math.round((evaluatedControls / totalControls) * 100) : 0;
 
             document.getElementById('evaluationProgress').style.width = progress + '%';
@@ -1136,9 +1376,9 @@
         // ===================================================================
 
         function isPC01Completed() {
-            // evaluationDict에서 표준통제코드가 PC01인 통제를 찾아서 모집단 업로드 여부 확인
-            for (const controlCode in evaluationDict) {
-                const evaluation = evaluationDict[controlCode];
+            // evaluated_controls에서 표준통제코드가 PC01인 통제를 찾아서 모집단 업로드 여부 확인
+            for (const controlCode in evaluated_controls) {
+                const evaluation = evaluated_controls[controlCode];
                 // PC01인지 확인 (통제코드 또는 표준통제코드)
                 const button = document.querySelector(`[data-control-code="${controlCode}"]`);
                 if (button) {

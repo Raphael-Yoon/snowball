@@ -298,7 +298,7 @@ def save_manual_test_results(control_code):
             test_results_data={
                 'test_results': test_results,
                 'exceptions': [r for r in test_results if r.get('has_exception')],
-                'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency',
+                'conclusion': 'effective' if not any(r.get('has_exception') for r in test_results) else 'exception',
                 'test_type': control_code
             }
         )
@@ -312,7 +312,7 @@ def save_manual_test_results(control_code):
             'population_path': None,
             'samples_path': file_paths.get('samples_path'),
             'test_results_path': file_paths.get('excel_path'),
-            'conclusion': 'satisfactory' if not any(r.get('has_exception') for r in test_results) else 'deficiency'
+            'conclusion': 'effective' if not any(r.get('has_exception') for r in test_results) else 'exception'
         }
 
         save_operation_evaluation(rcm_id, control_code, user_info['user_id'],

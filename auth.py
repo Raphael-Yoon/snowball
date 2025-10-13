@@ -17,572 +17,6 @@ def get_db():
 # 데이터베이스 초기화는 마이그레이션 시스템을 사용하세요:
 #   python migrate.py upgrade
 
-def init_db_legacy():
-    """
-    레거시 데이터베이스 초기화 함수
-
-    ⚠️ 경고: 이 함수는 더 이상 사용되지 않습니다.
-    마이그레이션 시스템 (migrations/)을 사용하세요.
-    """
-    with get_db() as conn:
-        # 새로운 스키마 (enabled_flag 제거됨)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_user_new (
-                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                company_name TEXT,
-                user_name TEXT NOT NULL,
-                user_email TEXT UNIQUE NOT NULL,
-                phone_number TEXT,
-                admin_flag TEXT DEFAULT 'N',
-                effective_start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                effective_end_date TIMESTAMP DEFAULT NULL,
-                creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_login_date TIMESTAMP,
-                otp_code TEXT,
-                otp_expires_at TIMESTAMP,
-                otp_attempts INTEGER DEFAULT 0,
-                otp_method TEXT DEFAULT 'email',
-                ai_review_count INTEGER DEFAULT 0,
-                ai_review_limit INTEGER DEFAULT 3
-            )
-        ''')
-        
-        # 사용자 활동 로그 테이블 생성
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_user_activity_log (
-                log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                user_email TEXT,
-                user_name TEXT,
-                action_type TEXT NOT NULL,
-                page_name TEXT,
-                url_path TEXT,
-                ip_address TEXT,
-                user_agent TEXT,
-                access_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                additional_info TEXT,
-                FOREIGN KEY (user_id) REFERENCES sb_user (user_id)
-            )
-        ''')
-        
-        # RCM 마스터 테이블 생성 (헤더 정보만 관리)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_rcm (
-                rcm_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rcm_name TEXT NOT NULL,
-                description TEXT,
-                upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                upload_user_id INTEGER NOT NULL,
-                is_active TEXT DEFAULT 'Y',
-                completion_date TIMESTAMP DEFAULT NULL,
-                original_filename TEXT,
-                FOREIGN KEY (upload_user_id) REFERENCES sb_user (user_id)
-            )
-        ''')
-        
-        # RCM 상세 데이터 테이블 생성 (매핑 및 AI 검토 정보 포함)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_rcm_detail (
-                detail_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rcm_id INTEGER NOT NULL,
-                control_code TEXT NOT NULL,
-                control_name TEXT NOT NULL,
-                control_description TEXT,
-                key_control TEXT,
-                control_frequency TEXT,
-                control_type TEXT,
-                control_nature TEXT,
-                population TEXT,
-                population_completeness_check TEXT,
-                population_count TEXT,
-                test_procedure TEXT,
-                -- 매핑 관련 컬럼들
-                mapped_std_control_id INTEGER,  -- 매핑된 기준통제 ID
-                mapped_date TIMESTAMP,
-                mapped_by INTEGER,
-                -- AI 검토 관련 컬럼들
-                ai_review_status TEXT DEFAULT 'not_reviewed',  -- 'not_reviewed', 'in_progress', 'completed'
-                ai_review_recommendation TEXT,  -- AI 개선권고사항
-                ai_reviewed_date TIMESTAMP,
-                ai_reviewed_by INTEGER,
-                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
-                FOREIGN KEY (mapped_std_control_id) REFERENCES sb_standard_control (std_control_id),
-                FOREIGN KEY (mapped_by) REFERENCES sb_user (user_id),
-                FOREIGN KEY (ai_reviewed_by) REFERENCES sb_user (user_id),
-                UNIQUE(rcm_id, control_code)
-            )
-        ''')
-        
-        # 기존 sb_rcm_detail 테이블에 새 컬럼들 추가
-        try:
-            detail_columns = [
-                ('mapped_std_control_id', 'INTEGER'),
-                ('mapped_date', 'TIMESTAMP'),
-                ('mapped_by', 'INTEGER'),
-                ('ai_review_status', 'TEXT DEFAULT \'not_reviewed\''),
-                ('ai_review_recommendation', 'TEXT'),
-                ('ai_reviewed_date', 'TIMESTAMP'),
-                ('ai_reviewed_by', 'INTEGER')
-            ]
-            
-            for col_name, col_type in detail_columns:
-                try:
-                    conn.execute(f'ALTER TABLE sb_rcm_detail ADD COLUMN {col_name} {col_type}')
-                except:
-                    # 컬럼이 이미 존재하는 경우 무시
-                    pass
-                    
-        except Exception as e:
-            pass
-        
-        # 사용자-RCM 매핑 테이블 생성 (N:M 관계)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_user_rcm (
-                mapping_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                rcm_id INTEGER NOT NULL,
-                permission_type TEXT DEFAULT 'READ',
-                granted_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                granted_by INTEGER,
-                is_active TEXT DEFAULT 'Y',
-                FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
-                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
-                FOREIGN KEY (granted_by) REFERENCES sb_user (user_id),
-                UNIQUE(user_id, rcm_id)
-            )
-        ''')
-        
-        # 설계평가 헤더 테이블 (평가 세션 정보)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_design_evaluation_header (
-                header_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rcm_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                evaluation_session TEXT NOT NULL,
-                evaluation_status TEXT DEFAULT 'IN_PROGRESS',
-                total_controls INTEGER DEFAULT 0,
-                evaluated_controls INTEGER DEFAULT 0,
-                progress_percentage REAL DEFAULT 0.0,
-                start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_date TIMESTAMP DEFAULT NULL,
-                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
-                FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
-                UNIQUE(rcm_id, user_id, evaluation_session)
-            )
-        ''')
-        
-        # 설계평가 라인 테이블 (개별 통제 평가)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_design_evaluation_line (
-                line_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                header_id INTEGER NOT NULL,
-                control_code TEXT NOT NULL,
-                control_sequence INTEGER DEFAULT 1,
-                description_adequacy TEXT,
-                improvement_suggestion TEXT,
-                overall_effectiveness TEXT,
-                evaluation_rationale TEXT,
-                recommended_actions TEXT,
-                evaluation_date TIMESTAMP DEFAULT NULL,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (header_id) REFERENCES sb_design_evaluation_header (header_id) ON DELETE CASCADE,
-                UNIQUE(header_id, control_code)
-            )
-        ''')
-
-        # 더 이상 사용하지 않는 legacy 테이블 제거
-        conn.execute('DROP TABLE IF EXISTS sb_design_evaluation_legacy')
-
-        # 운영평가 Header 테이블 (세션 정보)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_operation_evaluation_header (
-                header_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rcm_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                evaluation_session TEXT NOT NULL,
-                design_evaluation_session TEXT NOT NULL,
-                start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_date TIMESTAMP DEFAULT NULL,
-                evaluation_status TEXT DEFAULT 'IN_PROGRESS',
-                evaluated_controls INTEGER DEFAULT 0,
-                total_controls INTEGER DEFAULT 0,
-                progress_percentage REAL DEFAULT 0.0,
-                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
-                FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
-                UNIQUE(rcm_id, user_id, evaluation_session, design_evaluation_session)
-            )
-        ''')
-
-        # 운영평가 Line 테이블 (통제별 평가 내용)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_operation_evaluation_line (
-                line_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                header_id INTEGER NOT NULL,
-                control_code TEXT NOT NULL,
-                control_sequence INTEGER DEFAULT 0,
-                operating_effectiveness TEXT,
-                sample_size INTEGER,
-                exception_count INTEGER,
-                exception_details TEXT,
-                conclusion TEXT,
-                improvement_plan TEXT,
-                evaluation_date TIMESTAMP DEFAULT NULL,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (header_id) REFERENCES sb_operation_evaluation_header (header_id) ON DELETE CASCADE,
-                UNIQUE(header_id, control_code)
-            )
-        ''')
-
-        # 더 이상 사용하지 않는 운영평가 legacy 테이블 제거
-        conn.execute('DROP TABLE IF EXISTS sb_operation_evaluation_legacy')
-
-        # 원본 RCM 파일의 key_control 값을 그대로 사용
-        # (강제로 모든 통제를 핵심통제로 설정하지 않음)
-        
-        # 내부평가 진행상황 저장 테이블
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_internal_assessment (
-                assessment_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rcm_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                step INTEGER NOT NULL,  -- 1:계획수립, 2:설계평가, 3:운영평가, 4:결함식별, 5:개선계획, 6:보고서작성
-                progress_data TEXT,  -- JSON 형태의 진행상황 데이터
-                status TEXT DEFAULT 'pending',  -- 'pending', 'in_progress', 'completed'
-                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
-                FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
-                UNIQUE(rcm_id, user_id, step)
-            )
-        ''')
-        
-        # 기준통제 마스터 테이블 생성
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_standard_control (
-                std_control_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                control_category TEXT NOT NULL,
-                control_code TEXT NOT NULL,
-                control_name TEXT NOT NULL,
-                control_description TEXT,
-                ai_review_prompt TEXT,  -- AI 검토시 사용할 프롬프트
-                creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(control_category, control_code)
-            )
-        ''')
-        
-        # RCM과 기준통제 매핑 테이블 생성
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_rcm_standard_mapping (
-                mapping_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rcm_id INTEGER NOT NULL,
-                control_code TEXT NOT NULL,
-                std_control_id INTEGER NOT NULL,
-                mapping_confidence REAL DEFAULT 0.0,  -- 매핑 신뢰도 (0.0 ~ 1.0)
-                mapping_type TEXT DEFAULT 'auto',  -- 'auto', 'manual', 'ai'
-                mapped_by INTEGER,
-                mapping_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                is_active TEXT DEFAULT 'Y',
-                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
-                FOREIGN KEY (std_control_id) REFERENCES sb_standard_control (std_control_id),
-                FOREIGN KEY (mapped_by) REFERENCES sb_user (user_id),
-                UNIQUE(rcm_id, control_code, std_control_id)
-            )
-        ''')
-        
-        
-        # RCM 완성도 평가 결과 테이블 생성 (히스토리 관리)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_rcm_completeness_eval (
-                eval_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rcm_id INTEGER NOT NULL,
-                eval_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completeness_score REAL DEFAULT 0.0,  -- 완성도 점수 (0.0 ~ 100.0)
-                eval_details TEXT,  -- JSON 형태로 상세 평가 결과 저장
-                eval_by INTEGER,
-                FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
-                FOREIGN KEY (eval_by) REFERENCES sb_user (user_id)
-            )
-        ''')
-
-        # Lookup 테이블 생성 (통제 유형, 주기 등의 코드값 관리)
-        # 기존 테이블이 있으면 그대로 사용 (lookup_code, lookup_name, description, lookup_type 구조)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS sb_lookup (
-                lookup_code TEXT NOT NULL,
-                lookup_name TEXT NOT NULL,
-                description TEXT,
-                lookup_type TEXT NOT NULL,
-                PRIMARY KEY (lookup_code, lookup_type)
-            )
-        ''')
-        
-        # 사용하지 않는 테이블 및 컬럼 정리
-        try:
-            # 기존 review 관련 테이블들 제거
-            conn.execute('DROP TABLE IF EXISTS sb_rcm_review_result')
-            conn.execute('DROP TABLE IF EXISTS sb_rcm_review')
-            pass  # 사용하지 않는 review 관련 테이블들을 제거했습니다.
-            
-            # sb_rcm 테이블에서 review 관련 컬럼들 제거 (SQLite는 DROP COLUMN을 지원하지 않으므로 테이블 재생성)
-            # 기존 데이터가 있는지 확인
-            has_review_columns = conn.execute(
-                "SELECT COUNT(*) FROM pragma_table_info('sb_rcm') WHERE name LIKE 'review_%'"
-            ).fetchone()[0]
-            
-            if has_review_columns > 0:
-                pass  # sb_rcm 테이블에서 review 관련 컬럼들을 제거합니다...
-                
-                # 임시 테이블 생성
-                conn.execute('''
-                    CREATE TABLE sb_rcm_temp (
-                        rcm_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        rcm_name TEXT NOT NULL,
-                        description TEXT,
-                        upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        upload_user_id INTEGER NOT NULL,
-                        is_active TEXT DEFAULT 'Y',
-                        FOREIGN KEY (upload_user_id) REFERENCES sb_user (user_id)
-                    )
-                ''')
-                
-                # 기본 데이터만 복사
-                conn.execute('''
-                    INSERT INTO sb_rcm_temp (rcm_id, rcm_name, description, upload_date, upload_user_id, is_active)
-                    SELECT rcm_id, rcm_name, description, upload_date, upload_user_id, is_active
-                    FROM sb_rcm
-                ''')
-                
-                # 기존 테이블 삭제 후 새 테이블로 이름 변경
-                conn.execute('DROP TABLE sb_rcm')
-                conn.execute('ALTER TABLE sb_rcm_temp RENAME TO sb_rcm')
-                
-                pass  # sb_rcm 테이블에서 review 관련 컬럼들이 제거되었습니다.
-            
-            # sb_rcm_detail 테이블에서 불필요한 컬럼들 제거
-            has_unnecessary_columns = conn.execute(
-                "SELECT COUNT(*) FROM pragma_table_info('sb_rcm_detail') WHERE name IN ('mapping_confidence', 'mapping_type', 'ai_review_score')"
-            ).fetchone()[0]
-            
-            if has_unnecessary_columns > 0:
-                pass  # sb_rcm_detail 테이블에서 불필요한 컬럼들을 제거합니다...
-                
-                # 기존 컬럼 목록 조회
-                columns_info = conn.execute("PRAGMA table_info('sb_rcm_detail')").fetchall()
-                
-                # 제거할 컬럼을 제외한 컬럼들만 선택
-                keep_columns = [col[1] for col in columns_info if col[1] not in ('mapping_confidence', 'mapping_type', 'ai_review_score')]
-                columns_str = ', '.join(keep_columns)
-                
-                # 임시 테이블 생성 (필요한 컬럼만)
-                conn.execute(f'''
-                    CREATE TABLE sb_rcm_detail_temp AS 
-                    SELECT {columns_str} FROM sb_rcm_detail
-                ''')
-                
-                # 기존 테이블 삭제 후 새 테이블로 이름 변경
-                conn.execute('DROP TABLE sb_rcm_detail')
-                conn.execute('ALTER TABLE sb_rcm_detail_temp RENAME TO sb_rcm_detail')
-                
-                pass  # sb_rcm_detail 테이블에서 불필요한 컬럼들이 제거되었습니다.
-                
-        except Exception as e:
-            pass
-        
-        # 기준통제 테이블에 ai_review_prompt 컬럼 추가 (기존 테이블에 없는 경우)
-        try:
-            conn.execute('ALTER TABLE sb_standard_control ADD COLUMN ai_review_prompt TEXT')
-        except:
-            # 컬럼이 이미 존재하거나 테이블이 없는 경우 무시
-            pass
-        
-        # 불필요한 컬럼들 삭제 (SQLite는 DROP COLUMN을 지원하지 않으므로 테이블 재생성)
-        try:
-            # 기존 데이터 백업
-            conn.execute('''
-                CREATE TABLE sb_standard_control_new (
-                    std_control_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    control_category TEXT NOT NULL,
-                    control_code TEXT NOT NULL,
-                    control_name TEXT NOT NULL,
-                    control_description TEXT,
-                    ai_review_prompt TEXT,
-                    creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(control_category, control_code)
-                )
-            ''')
-            
-            # 데이터 복사 (필요한 컬럼만)
-            conn.execute('''
-                INSERT INTO sb_standard_control_new 
-                (std_control_id, control_category, control_code, control_name, control_description, ai_review_prompt, creation_date)
-                SELECT std_control_id, control_category, control_code, control_name, control_description, ai_review_prompt, creation_date
-                FROM sb_standard_control
-            ''')
-            
-            # 기존 테이블 삭제 후 새 테이블로 이름 변경
-            conn.execute('DROP TABLE sb_standard_control')
-            conn.execute('ALTER TABLE sb_standard_control_new RENAME TO sb_standard_control')
-            
-            pass  # sb_standard_control 테이블에서 불필요한 컬럼들을 삭제했습니다.
-        except Exception as e:
-            # 테이블 재구성 실패 시 무시 (이미 올바른 구조일 수 있음)
-            pass
-        
-        # 기존 테이블이 있는지 확인하고 데이터 마이그레이션
-        existing_table = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='sb_user'"
-        ).fetchone()
-        
-        if existing_table:
-            # 기존 테이블의 컬럼 정보 확인
-            columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_user)').fetchall()]
-            
-            # enabled_flag가 여전히 존재하는지 확인 (마이그레이션이 필요한지 체크)
-            if 'enabled_flag' in columns:
-                
-                # 기존 데이터를 새 테이블로 복사 (enabled_flag 제외, 없는 컬럼은 기본값 사용)
-                admin_flag_col = 'admin_flag' if 'admin_flag' in columns else "'N'"
-                effective_start_col = 'effective_start_date' if 'effective_start_date' in columns else 'CURRENT_TIMESTAMP'
-                effective_end_col = 'effective_end_date' if 'effective_end_date' in columns else 'NULL'
-                otp_method_col = 'otp_method' if 'otp_method' in columns else "'email'"
-                ai_review_count_col = 'ai_review_count' if 'ai_review_count' in columns else '0'
-                ai_review_limit_col = 'ai_review_limit' if 'ai_review_limit' in columns else '3'
-                
-                conn.execute(f'''
-                    INSERT INTO sb_user_new (
-                        user_id, company_name, user_name, user_email, phone_number,
-                        admin_flag, effective_start_date, effective_end_date,
-                        creation_date, last_login_date, otp_code, otp_expires_at,
-                        otp_attempts, otp_method, ai_review_count, ai_review_limit
-                    )
-                    SELECT 
-                        user_id, company_name, user_name, user_email, phone_number,
-                        {admin_flag_col},
-                        {effective_start_col},
-                        {effective_end_col},
-                        creation_date, last_login_date, otp_code, otp_expires_at,
-                        COALESCE(otp_attempts, 0), {otp_method_col}, {ai_review_count_col}, {ai_review_limit_col}
-                    FROM sb_user
-                ''')
-                
-                # 기존 테이블 삭제하고 새 테이블 이름 변경
-                conn.execute('DROP TABLE sb_user')
-                conn.execute('ALTER TABLE sb_user_new RENAME TO sb_user')
-            else:
-                # 이미 마이그레이션된 테이블인 경우 임시 테이블 삭제
-                conn.execute('DROP TABLE sb_user_new')
-        else:
-            # 기존 테이블이 없으면 새 테이블을 sb_user로 이름 변경
-            conn.execute('ALTER TABLE sb_user_new RENAME TO sb_user')
-        
-        # sb_rcm 테이블에 completion_date 컬럼 추가 (없는 경우)
-        try:
-            rcm_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm)').fetchall()]
-            if 'completion_date' not in rcm_columns:
-                conn.execute('ALTER TABLE sb_rcm ADD COLUMN completion_date TIMESTAMP DEFAULT NULL')
-        except Exception as e:
-            pass
-
-        # sb_rcm 테이블에 original_filename 컬럼 추가 (없는 경우)
-        try:
-            rcm_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm)').fetchall()]
-            if 'original_filename' not in rcm_columns:
-                conn.execute('ALTER TABLE sb_rcm ADD COLUMN original_filename TEXT DEFAULT NULL')
-        except Exception as e:
-            pass
-
-        # sb_rcm_detail 테이블에 mapping_status 컬럼 추가 (없는 경우)
-        try:
-            rcm_detail_columns = [row[1] for row in conn.execute('PRAGMA table_info(sb_rcm_detail)').fetchall()]
-            if 'mapping_status' not in rcm_detail_columns:
-                conn.execute('ALTER TABLE sb_rcm_detail ADD COLUMN mapping_status TEXT DEFAULT NULL')  # NULL, 'no_mapping', 'mapped'
-        except Exception as e:
-            pass
-
-        conn.commit()
-
-        # sb_rcm_detail_v 뷰 생성 (sb_lookup 테이블이 생성된 후에 실행)
-        # 기존 뷰 삭제
-        conn.execute('DROP VIEW IF EXISTS sb_rcm_detail_v')
-        conn.execute('DROP VIEW IF EXISTS v_rcm_detail_with_lookup')
-
-        # sb_lookup 테이블이 있는지 확인
-        table_exists = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='sb_lookup'"
-        ).fetchone()
-
-        if table_exists:
-            # sb_lookup 테이블과 조인하는 뷰 생성
-            conn.execute('''
-                CREATE VIEW sb_rcm_detail_v AS
-                SELECT
-                    d.detail_id,
-                    d.rcm_id,
-                    d.control_code,
-                    d.control_name,
-                    d.control_description,
-                    lk.lookup_name AS key_control,
-                    lf.lookup_name AS control_frequency,
-                    lt.lookup_name AS control_type,
-                    ln.lookup_name AS control_nature,
-                    d.population,
-                    d.population_completeness_check,
-                    d.population_count,
-                    d.test_procedure,
-                    d.mapped_std_control_id,
-                    d.mapped_date,
-                    d.mapped_by,
-                    d.ai_review_status,
-                    d.ai_review_recommendation,
-                    d.ai_reviewed_date,
-                    d.ai_reviewed_by,
-                    d.mapping_status
-                FROM sb_rcm_detail d
-                LEFT JOIN sb_lookup lk ON lk.lookup_type = 'key_control'
-                    AND UPPER(lk.lookup_code) = UPPER(d.key_control)
-                LEFT JOIN sb_lookup lf ON lf.lookup_type = 'control_frequency'
-                    AND UPPER(lf.lookup_code) = UPPER(d.control_frequency)
-                LEFT JOIN sb_lookup lt ON lt.lookup_type = 'control_type'
-                    AND UPPER(lt.lookup_code) = UPPER(d.control_type)
-                LEFT JOIN sb_lookup ln ON ln.lookup_type = 'control_nature'
-                    AND UPPER(ln.lookup_code) = UPPER(d.control_nature)
-            ''')
-        else:
-            # sb_lookup 테이블이 없으면 CASE 문만 사용하는 뷰 생성
-            conn.execute('''
-                CREATE VIEW sb_rcm_detail_v AS
-                SELECT
-                    detail_id,
-                    rcm_id,
-                    control_code,
-                    control_name,
-                    control_description,
-                    CASE
-                        WHEN UPPER(COALESCE(key_control, '')) IN ('Y', 'YES', '핵심', 'KEY', 'KEY CONTROL', '중요') THEN '핵심'
-                        ELSE '비핵심'
-                    END AS key_control,
-                    control_frequency,
-                    control_type,
-                    control_nature,
-                    population,
-                    population_completeness_check,
-                    population_count,
-                    test_procedure,
-                    mapped_std_control_id,
-                    mapped_date,
-                    mapped_by,
-                    ai_review_status,
-                    ai_review_recommendation,
-                    ai_reviewed_date,
-                    ai_reviewed_by,
-                    mapping_status
-                FROM sb_rcm_detail
-            ''')
-
-        conn.commit()
-
 def generate_otp():
     """6자리 OTP 코드 생성"""
     return ''.join(random.choices(string.digits, k=6))
@@ -1434,27 +868,64 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
         # Header 생성 또는 조회
         header_id = get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_session, design_evaluation_session)
 
-        # Line 데이터 저장 또는 업데이트
-        conn.execute('''
-            INSERT OR REPLACE INTO sb_operation_evaluation_line (
-                header_id, control_code, operating_effectiveness, sample_size,
-                exception_count, exception_details, conclusion, improvement_plan,
-                population_path, samples_path, test_results_path, population_count,
-                evaluation_date, last_updated
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ''', (
-            header_id, control_code,
-            evaluation_data.get('operating_effectiveness'),
-            evaluation_data.get('sample_size'),
-            evaluation_data.get('exception_count'),
-            evaluation_data.get('exception_details'),
-            evaluation_data.get('conclusion'),
-            evaluation_data.get('improvement_plan'),
-            evaluation_data.get('population_path'),
-            evaluation_data.get('samples_path'),
-            evaluation_data.get('test_results_path'),
-            evaluation_data.get('population_count')
-        ))
+        # 기존 Line 데이터 확인
+        existing_line = conn.execute('''
+            SELECT line_id FROM sb_operation_evaluation_line
+            WHERE header_id = ? AND control_code = ?
+        ''', (header_id, control_code)).fetchone()
+
+        if existing_line:
+            # 업데이트
+            conn.execute('''
+                UPDATE sb_operation_evaluation_line
+                SET operating_effectiveness = ?,
+                    sample_size = ?,
+                    exception_count = ?,
+                    exception_details = ?,
+                    conclusion = ?,
+                    improvement_plan = ?,
+                    population_path = ?,
+                    samples_path = ?,
+                    test_results_path = ?,
+                    population_count = ?,
+                    evaluation_date = CURRENT_TIMESTAMP,
+                    last_updated = CURRENT_TIMESTAMP
+                WHERE line_id = ?
+            ''', (
+                evaluation_data.get('operating_effectiveness'),
+                evaluation_data.get('sample_size'),
+                evaluation_data.get('exception_count'),
+                evaluation_data.get('exception_details'),
+                evaluation_data.get('conclusion'),
+                evaluation_data.get('improvement_plan'),
+                evaluation_data.get('population_path'),
+                evaluation_data.get('samples_path'),
+                evaluation_data.get('test_results_path'),
+                evaluation_data.get('population_count'),
+                existing_line['line_id']
+            ))
+        else:
+            # 삽입
+            conn.execute('''
+                INSERT INTO sb_operation_evaluation_line (
+                    header_id, control_code, operating_effectiveness, sample_size,
+                    exception_count, exception_details, conclusion, improvement_plan,
+                    population_path, samples_path, test_results_path, population_count,
+                    evaluation_date, last_updated
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ''', (
+                header_id, control_code,
+                evaluation_data.get('operating_effectiveness'),
+                evaluation_data.get('sample_size'),
+                evaluation_data.get('exception_count'),
+                evaluation_data.get('exception_details'),
+                evaluation_data.get('conclusion'),
+                evaluation_data.get('improvement_plan'),
+                evaluation_data.get('population_path'),
+                evaluation_data.get('samples_path'),
+                evaluation_data.get('test_results_path'),
+                evaluation_data.get('population_count')
+            ))
 
         # Header의 last_updated 갱신
         conn.execute('''
@@ -1544,6 +1015,16 @@ def count_operation_evaluations(rcm_id, user_id, evaluation_session=None, design
                 SELECT COUNT(*) FROM sb_operation_evaluation_header
                 WHERE rcm_id = ? AND user_id = ?
             ''', (rcm_id, user_id)).fetchone()[0]
+        return count
+
+def count_completed_operation_evaluations(header_id):
+    """운영평가 헤더에 대해 완료된 통제 개수를 계산합니다."""
+    with get_db() as conn:
+        # conclusion이 NULL이 아닌 라인 수를 계산 (평가 완료의 명확한 지표)
+        count = conn.execute('''
+            SELECT COUNT(*) FROM sb_operation_evaluation_line
+            WHERE header_id = ? AND conclusion IS NOT NULL
+        ''', (header_id,)).fetchone()[0]
         return count
 
 def get_completed_design_evaluation_sessions(rcm_id, user_id):
