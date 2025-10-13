@@ -329,3 +329,135 @@ def save_manual_test_results(control_code):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'저장 오류: {str(e)}'})
+
+
+@bp_generic.route('/api/operation-evaluation/save-no-occurrence', methods=['POST'])
+@login_required
+def save_no_occurrence():
+    """
+    당기 발생사실 없음 저장 API
+    모든 수동통제에 대해 공통으로 사용
+    """
+    user_info = get_user_info()
+
+    try:
+        data = request.get_json()
+        rcm_id = data.get('rcm_id')
+        control_code = data.get('control_code')
+        design_evaluation_session = data.get('design_evaluation_session')
+        no_occurrence_reason = data.get('no_occurrence_reason', '')
+
+        if not all([rcm_id, control_code, design_evaluation_session]):
+            return jsonify({'success': False, 'message': '필수 정보가 누락되었습니다.'})
+
+        # 운영평가 헤더 조회 또는 생성
+        operation_evaluation_session = f"OP_{design_evaluation_session}"
+
+        with get_db() as conn:
+            header = conn.execute('''
+                SELECT header_id FROM sb_operation_evaluation_header
+                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+            ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
+
+            if not header:
+                # 헤더 생성
+                cursor = conn.execute('''
+                    INSERT INTO sb_operation_evaluation_header
+                    (rcm_id, user_id, evaluation_session, design_evaluation_session, created_date)
+                    VALUES (?, ?, ?, ?, datetime('now'))
+                ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session))
+                operation_header_id = cursor.lastrowid
+                conn.commit()
+            else:
+                operation_header_id = header['header_id']
+
+        # 통제 설정 조회
+        config = get_control_config(control_code)
+        if not config:
+            config = get_control_config('GENERIC')  # GENERIC 설정 사용
+
+        # "당기 발생사실 없음" 엑셀 파일 생성
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, PatternFill
+
+        wb = Workbook()
+
+        # Population 시트
+        ws_pop = wb.active
+        ws_pop.title = 'Population'
+
+        # 헤더 스타일
+        header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+        header_font = Font(bold=True, color='FFFFFF')
+
+        # Population 시트에 "당기 발생사실 없음" 메시지
+        ws_pop['A1'] = '당기 발생사실 없음'
+        ws_pop['A1'].font = Font(bold=True, size=14, color='FF0000')
+        ws_pop['A1'].alignment = Alignment(horizontal='center', vertical='center')
+
+        if no_occurrence_reason:
+            ws_pop['A2'] = f'사유: {no_occurrence_reason}'
+            ws_pop['A2'].font = Font(size=11)
+
+        ws_pop.column_dimensions['A'].width = 50
+
+        # Test Table 시트
+        ws_test = wb.create_sheet('Test Table')
+
+        # 헤더 행 작성
+        excel_headers = config['excel_headers']['testing']
+        for col_idx, header in enumerate(excel_headers, 1):
+            cell = ws_test.cell(row=1, column=col_idx, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+
+        # 한 줄의 빈 데이터 행 추가 (No = 1)
+        ws_test.cell(row=2, column=1, value=1)  # No
+        for col_idx in range(2, len(excel_headers) + 1):
+            ws_test.cell(row=2, column=col_idx, value='')
+
+        # 비고 컬럼에 "당기 발생사실 없음" 표시
+        remark_col_idx = len(excel_headers)  # 마지막 컬럼이 비고
+        ws_test.cell(row=2, column=remark_col_idx, value='당기 발생사실 없음')
+
+        # 컬럼 너비 자동 조정
+        for col_idx, header in enumerate(excel_headers, 1):
+            ws_test.column_dimensions[ws_test.cell(row=1, column=col_idx).column_letter].width = 15
+
+        # 엑셀 파일 저장
+        excel_path = file_manager.get_test_results_path(rcm_id, operation_header_id, control_code)
+        os.makedirs(os.path.dirname(excel_path), exist_ok=True)
+        wb.save(excel_path)
+
+        # 운영평가 데이터 저장 (당기 발생사실 없음)
+        evaluation_data = {
+            'operating_effectiveness': 'not_applicable',
+            'sample_size': 0,
+            'exception_count': 0,
+            'exception_details': '',
+            'conclusion': 'not_applicable',
+            'improvement_plan': '',
+            'no_occurrence': True,
+            'no_occurrence_reason': no_occurrence_reason,
+            'population_count': 0,
+            'population_path': None,
+            'samples_path': None,
+            'test_results_path': excel_path
+        }
+
+        from snowball_link7 import save_operation_evaluation
+        save_operation_evaluation(rcm_id, control_code, user_info['user_id'],
+                                 operation_evaluation_session, design_evaluation_session, evaluation_data)
+
+        from auth import log_user_activity
+        log_user_activity(user_info, 'OPERATION_EVALUATION', f'{control_code} 당기 발생사실 없음 저장',
+                         '/api/operation-evaluation/save-no-occurrence',
+                         request.remote_addr, request.headers.get('User-Agent'))
+
+        return jsonify({'success': True, 'message': '당기 발생사실 없음이 저장되었습니다.'})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'저장 오류: {str(e)}'})

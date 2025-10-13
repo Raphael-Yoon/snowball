@@ -261,18 +261,30 @@
                     </div>
 
                     <form id="operationEvaluationForm">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="operating_effectiveness" class="form-label fw-bold">운영 효과성</label>
-                                    <select class="form-select" id="operating_effectiveness" name="operating_effectiveness" required>
-                                        <option value="">선택하세요</option>
-                                        <option value="effective">효과적</option>
-                                        <option value="deficient">미흡</option>
-                                        <option value="ineffective">비효과적</option>
-                                    </select>
-                                </div>
+                        <!-- 당기 발생사실 없음 옵션 -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="no_occurrence" name="no_occurrence">
+                                <label class="form-check-label" for="no_occurrence">
+                                    <strong>당기 발생사실 없음</strong>
+                                    <small class="text-muted d-block">해당 통제활동이 평가 기간 동안 발생하지 않은 경우 체크하세요</small>
+                                </label>
                             </div>
+                        </div>
+
+                        <div id="evaluation-fields">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="operating_effectiveness" class="form-label fw-bold">운영 효과성</label>
+                                        <select class="form-select" id="operating_effectiveness" name="operating_effectiveness" required>
+                                            <option value="">선택하세요</option>
+                                            <option value="effective">효과적</option>
+                                            <option value="deficient">미흡</option>
+                                            <option value="ineffective">비효과적</option>
+                                        </select>
+                                    </div>
+                                </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="sample_size" class="form-label fw-bold">표본 크기</label>
@@ -309,30 +321,45 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="exception_details" class="form-label fw-bold">예외사항 세부내용</label>
-                            <textarea class="form-control" id="exception_details" name="exception_details" rows="3" placeholder="발견된 예외사항의 세부내용을 기록하세요"></textarea>
+                            <div class="mb-3">
+                                <label for="exception_details" class="form-label fw-bold">예외사항 세부내용</label>
+                                <textarea class="form-control" id="exception_details" name="exception_details" rows="3" placeholder="발견된 예외사항의 세부내용을 기록하세요"></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="improvement_plan" class="form-label fw-bold">개선계획</label>
+                                <textarea class="form-control" id="improvement_plan" name="improvement_plan" rows="3" placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
+                            </div>
+
+                            <!-- 파일 첨부 섹션 -->
+                            <div class="mb-3">
+                                <label for="evaluationImages" class="form-label fw-bold">증빙 자료 (이미지)</label>
+                                <input type="file" class="form-control" id="evaluationImages" accept="image/*" multiple>
+                                <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
+                                <div id="imagePreview" class="mt-2"></div>
+                            </div>
+
+                            <!-- 수동통제 전용: 엑셀 파일 업로드 -->
+                            <div class="mb-3" id="excelUploadSection" style="display: none;">
+                                <label for="sampleExcelFile" class="form-label fw-bold">표본 데이터 (엑셀)</label>
+                                <input type="file" class="form-control" id="sampleExcelFile" accept=".xlsx,.xls,.csv">
+                                <div class="form-text">표본 검토 내역이 포함된 엑셀 파일을 업로드하세요.</div>
+                                <div id="excelPreview" class="mt-2"></div>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="improvement_plan" class="form-label fw-bold">개선계획</label>
-                            <textarea class="form-control" id="improvement_plan" name="improvement_plan" rows="3" placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
-                        </div>
-
-                        <!-- 파일 첨부 섹션 -->
-                        <div class="mb-3">
-                            <label for="evaluationImages" class="form-label fw-bold">증빙 자료 (이미지)</label>
-                            <input type="file" class="form-control" id="evaluationImages" accept="image/*" multiple>
-                            <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
-                            <div id="imagePreview" class="mt-2"></div>
-                        </div>
-
-                        <!-- 수동통제 전용: 엑셀 파일 업로드 -->
-                        <div class="mb-3" id="excelUploadSection" style="display: none;">
-                            <label for="sampleExcelFile" class="form-label fw-bold">표본 데이터 (엑셀)</label>
-                            <input type="file" class="form-control" id="sampleExcelFile" accept=".xlsx,.xls,.csv">
-                            <div class="form-text">표본 검토 내역이 포함된 엑셀 파일을 업로드하세요.</div>
-                            <div id="excelPreview" class="mt-2"></div>
+                        <!-- 당기 발생사실 없음 사유 -->
+                        <div class="mb-3" id="no-occurrence-reason-section" style="display: none;">
+                            <label for="no_occurrence_reason" class="form-label fw-bold">
+                                비고 (선택사항)
+                            </label>
+                            <textarea class="form-control" id="no_occurrence_reason" name="no_occurrence_reason" rows="3" placeholder="필요한 경우 추가 설명을 입력하세요&#10;예) 당기 중 신규 직원 채용이 없었음, 시스템 변경이 발생하지 않았음 등"></textarea>
+                            <div class="form-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    발생하지 않은 이유가 명확하거나 추가 설명이 필요한 경우에만 입력하세요
+                                </small>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -358,8 +385,29 @@
                     <div class="alert alert-info mb-3">
                         <strong><span id="auto-check-control-code"></span></strong> - <span id="auto-check-control-name"></span>
                     </div>
-                    <div class="alert alert-warning">
-                        <i class="fas fa-info-circle me-2"></i><strong>자동통제는 설계평가에서 이미 테스트되었습니다.</strong>
+                    <div class="alert alert-warning mb-3">
+                        <div class="mb-2">
+                            <i class="fas fa-info-circle me-2"></i><strong>자동통제는 설계평가에서 이미 테스트되었습니다.</strong>
+                        </div>
+                        <hr class="my-2" style="border-color: rgba(0,0,0,0.1);">
+                        <div class="mt-2" style="font-size: 0.9rem;">
+                            <p class="mb-2"><strong>자동통제란?</strong></p>
+                            <ul class="mb-2 ps-3" style="font-size: 0.85rem;">
+                                <li>시스템이나 프로그램에 의해 자동으로 수행되는 통제</li>
+                                <li>사람의 개입 없이 일관되게 작동하는 통제 활동</li>
+                            </ul>
+                            <p class="mb-2 mt-3"><strong>운영평가가 별도로 필요하지 않은 이유:</strong></p>
+                            <ul class="mb-0 ps-3" style="font-size: 0.85rem;">
+                                <li><strong>일관성:</strong> 설계된 대로 작동하면 운영 기간 내내 동일하게 작동</li>
+                                <li><strong>변동성 없음:</strong> 수동통제와 달리 사람의 실수나 변동성이 없음</li>
+                                <li><strong>설계평가 충분:</strong> 시스템 로직이 적절하게 설계되었는지만 확인하면 됨</li>
+                                <li><strong>효율성:</strong> 매번 샘플을 추출하여 테스트할 필요가 없음</li>
+                            </ul>
+                            <p class="mb-0 mt-3 text-muted" style="font-size: 0.8rem;">
+                                <i class="fas fa-lightbulb me-1"></i>
+                                <em>단, 시스템 변경이나 업그레이드가 있었다면 재평가가 필요할 수 있습니다.</em>
+                            </p>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">설계평가 결과</label>
@@ -507,6 +555,21 @@
                 </div>
                 <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
                     <iframe id="co01Iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic 수동통제 모달 -->
+    <div class="modal fade" id="genericManualModal" tabindex="-1" aria-labelledby="genericManualModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
+            <div class="modal-content" style="height: 100%;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="genericManualModalLabel">수동통제 운영평가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
+                    <iframe id="genericManualIframe" style="width: 100%; height: 100%; border: none;"></iframe>
                 </div>
             </div>
         </div>
@@ -872,16 +935,20 @@
                 return;
             }
 
-            console.log('Not APD01/APD07/APD09/APD12/PC01/PC02/PC03/CO01, showing standard modal');
-            
-            // 일반 운영평가 UI
-            // 수동통제인 경우에만 엑셀 업로드 섹션 표시
-            const excelSection = document.getElementById('excelUploadSection');
-            if (controlNatureCode && controlNatureCode.toUpperCase() === 'M') {
-                excelSection.style.display = 'block';
-            } else {
-                excelSection.style.display = 'none';
+            console.log('Not APD01/APD07/APD09/APD12/PC01/PC02/PC03/CO01, checking if manual control...');
+
+            // 수동통제 판별 (control_nature_code가 'M' 또는 '수동'인 경우)
+            if (controlNatureCode && (controlNatureCode.toUpperCase() === 'M' || controlNatureCode === '수동')) {
+                console.log('Manual control detected! Redirecting to Generic evaluation page...');
+                showGenericManualControlUI(buttonElement);
+                return;
             }
+
+            console.log('Not a manual control, showing standard modal');
+
+            // 일반 운영평가 UI (수동통제가 아닌 경우 - 거의 사용되지 않음)
+            const excelSection = document.getElementById('excelUploadSection');
+            excelSection.style.display = 'none';
             
             // 파일 입력 초기화
             document.getElementById('evaluationImages').value = '';
@@ -899,28 +966,45 @@
             // 기존 평가 데이터 로드
             if (evaluated_controls[controlCode]) {
                 const data = evaluated_controls[controlCode];
-                document.getElementById('operating_effectiveness').value = data.operating_effectiveness || '';
-                document.getElementById('sample_size').value = data.sample_size || '';
-                document.getElementById('exception_count').value = data.exception_count || '';
-                document.getElementById('exception_details').value = data.exception_details || '';
-                document.getElementById('conclusion').value = data.conclusion || '';
-                document.getElementById('improvement_plan').value = data.improvement_plan || '';
+
+                // 당기 발생사실 없음 여부 확인
+                if (data.no_occurrence) {
+                    document.getElementById('no_occurrence').checked = true;
+                    document.getElementById('no_occurrence_reason').value = data.no_occurrence_reason || '';
+                    toggleNoOccurrenceFields();
+                } else {
+                    document.getElementById('no_occurrence').checked = false;
+                    document.getElementById('operating_effectiveness').value = data.operating_effectiveness || '';
+                    document.getElementById('sample_size').value = data.sample_size || '';
+                    document.getElementById('exception_count').value = data.exception_count || '';
+                    document.getElementById('exception_details').value = data.exception_details || '';
+                    document.getElementById('conclusion').value = data.conclusion || '';
+                    document.getElementById('improvement_plan').value = data.improvement_plan || '';
+                }
             } else {
                 // 폼 초기화
                 document.getElementById('operationEvaluationForm').reset();
+                document.getElementById('no_occurrence').checked = false;
 
                 // 예외 발견 수 기본값 0으로 설정
                 document.getElementById('exception_count').value = 0;
+
+                // 필드 표시 초기화
+                document.getElementById('evaluation-fields').style.display = 'block';
+                document.getElementById('no-occurrence-reason-section').style.display = 'none';
+                disableEvaluationFields(false);
             }
 
             // 기존 평가 데이터가 없거나 표본수가 비어있는 경우 자동 설정
-            if (!evaluated_controls[controlCode] || !evaluated_controls[controlCode].sample_size) {
+            if (!evaluated_controls[controlCode] || (!evaluated_controls[controlCode].sample_size && !evaluated_controls[controlCode].no_occurrence)) {
                 const defaultSampleSize = getDefaultSampleSize(controlFrequency, controlType);
                 document.getElementById('sample_size').value = defaultSampleSize;
             }
 
-            // 예외 발견 수에 따른 결론 자동 업데이트
-            updateConclusionBasedOnExceptions();
+            // 예외 발견 수에 따른 결론 자동 업데이트 (발생사실 없음이 아닐 때만)
+            if (!document.getElementById('no_occurrence').checked) {
+                updateConclusionBasedOnExceptions();
+            }
 
             // 모달 표시
             const modal = new bootstrap.Modal(document.getElementById('operationEvaluationModal'));
@@ -950,7 +1034,64 @@
                 exceptionCountInput.addEventListener('input', updateConclusionBasedOnExceptions);
                 exceptionCountInput.addEventListener('change', updateConclusionBasedOnExceptions);
             }
+
+            // 당기 발생사실 없음 체크박스 이벤트 리스너
+            const noOccurrenceCheckbox = document.getElementById('no_occurrence');
+            if (noOccurrenceCheckbox) {
+                noOccurrenceCheckbox.addEventListener('change', toggleNoOccurrenceFields);
+            }
         });
+
+        // 당기 발생사실 없음 체크 시 필드 토글
+        function toggleNoOccurrenceFields() {
+            const noOccurrenceCheckbox = document.getElementById('no_occurrence');
+            const evaluationFields = document.getElementById('evaluation-fields');
+            const noOccurrenceReasonSection = document.getElementById('no-occurrence-reason-section');
+
+            if (noOccurrenceCheckbox.checked) {
+                // 평가 필드 숨기고 비활성화
+                evaluationFields.style.display = 'none';
+                disableEvaluationFields(true);
+
+                // 발생하지 않은 사유 입력란 표시
+                noOccurrenceReasonSection.style.display = 'block';
+            } else {
+                // 평가 필드 표시하고 활성화
+                evaluationFields.style.display = 'block';
+                disableEvaluationFields(false);
+
+                // 발생하지 않은 사유 입력란 숨김
+                noOccurrenceReasonSection.style.display = 'none';
+            }
+        }
+
+        // 평가 필드 활성화/비활성화
+        function disableEvaluationFields(disable) {
+            const fields = [
+                'operating_effectiveness',
+                'sample_size',
+                'exception_count',
+                'exception_details',
+                'improvement_plan',
+                'evaluationImages',
+                'sampleExcelFile'
+            ];
+
+            fields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    if (disable) {
+                        field.disabled = true;
+                        field.removeAttribute('required');
+                    } else {
+                        field.disabled = false;
+                        if (fieldId === 'operating_effectiveness') {
+                            field.setAttribute('required', 'required');
+                        }
+                    }
+                }
+            });
+        }
 
         // 이미지 파일 미리보기
         document.getElementById('evaluationImages').addEventListener('change', function(e) {
@@ -1001,23 +1142,46 @@
             const form = document.getElementById('operationEvaluationForm');
             const formData = new FormData(form);
 
-            // 예외 발견 수에 따른 결론 자동 설정 (저장 전 재확인)
-            const exceptionCount = parseInt(formData.get('exception_count')) || 0;
-            const autoConclusion = exceptionCount > 0 ? 'exception' : 'effective';
+            // 당기 발생사실 없음 체크 확인
+            const noOccurrence = document.getElementById('no_occurrence').checked;
 
-            const evaluationData = {
-                operating_effectiveness: formData.get('operating_effectiveness'),
-                sample_size: parseInt(formData.get('sample_size')) || 0,
-                exception_count: exceptionCount,
-                exception_details: formData.get('exception_details'),
-                conclusion: autoConclusion,  // 자동 설정된 결론 사용
-                improvement_plan: formData.get('improvement_plan')
-            };
+            let evaluationData;
 
-            // 필수 필드 검증
-            if (!evaluationData.operating_effectiveness) {
-                showWarningToast('운영 효과성은 필수 입력 항목입니다.');
-                return;
+            if (noOccurrence) {
+                // 당기 발생사실 없음인 경우
+                const noOccurrenceReason = formData.get('no_occurrence_reason') || '';
+
+                evaluationData = {
+                    operating_effectiveness: 'not_applicable',
+                    sample_size: 0,
+                    exception_count: 0,
+                    exception_details: '',
+                    conclusion: 'not_applicable',
+                    improvement_plan: '',
+                    no_occurrence: true,
+                    no_occurrence_reason: noOccurrenceReason.trim()
+                };
+            } else {
+                // 일반 평가인 경우
+                const exceptionCount = parseInt(formData.get('exception_count')) || 0;
+                const autoConclusion = exceptionCount > 0 ? 'exception' : 'effective';
+
+                evaluationData = {
+                    operating_effectiveness: formData.get('operating_effectiveness'),
+                    sample_size: parseInt(formData.get('sample_size')) || 0,
+                    exception_count: exceptionCount,
+                    exception_details: formData.get('exception_details'),
+                    conclusion: autoConclusion,
+                    improvement_plan: formData.get('improvement_plan'),
+                    no_occurrence: false,
+                    no_occurrence_reason: ''
+                };
+
+                // 필수 필드 검증
+                if (!evaluationData.operating_effectiveness) {
+                    showWarningToast('운영 효과성은 필수 입력 항목입니다.');
+                    return;
+                }
             }
 
             // FormData 생성 (파일 포함)
@@ -1076,7 +1240,8 @@
                 const resultMap = {
                     'effective': { text: 'Effective', class: 'bg-success' },
                     'exception': { text: 'Exception', class: 'bg-danger' },
-                    'ineffective': { text: 'Ineffective', class: 'bg-danger' }
+                    'ineffective': { text: 'Ineffective', class: 'bg-danger' },
+                    'not_applicable': { text: 'N/A (발생사실 없음)', class: 'bg-secondary' }
                 };
                 const result = resultMap[data.conclusion];
                 if (result) {
@@ -1516,6 +1681,38 @@
 
             // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
             document.getElementById('co01Modal').addEventListener('hidden.bs.modal', function() {
+                reloadWithScrollPosition();
+            }, { once: true });
+        }
+
+        // ===================================================================
+        // Generic 수동통제 전용 함수
+        // ===================================================================
+
+        function showGenericManualControlUI(buttonElement) {
+            const controlCode = buttonElement.getAttribute('data-control-code');
+            const controlName = buttonElement.getAttribute('data-control-name');
+
+            // 모달 제목 업데이트
+            document.getElementById('genericManualModalLabel').textContent = `${controlCode} - ${controlName} 운영평가`;
+
+            // 모달로 Generic 수동통제 UI 표시
+            const params = new URLSearchParams({
+                rcm_id: currentRcmId,
+                control_code: controlCode,
+                control_name: controlName,
+                design_evaluation_session: currentEvaluationSession
+            });
+
+            // iframe에 URL 설정 (Generic 경로 - 통제코드를 GENERIC으로 설정)
+            document.getElementById('genericManualIframe').src = `/operation-evaluation/manual/GENERIC?${params.toString()}`;
+
+            // 모달 열기
+            const modal = new bootstrap.Modal(document.getElementById('genericManualModal'));
+            modal.show();
+
+            // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
+            document.getElementById('genericManualModal').addEventListener('hidden.bs.modal', function() {
                 reloadWithScrollPosition();
             }, { once: true });
         }
