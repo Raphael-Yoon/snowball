@@ -57,6 +57,44 @@
             </div>
         </div>
 
+        <!-- 당기 발생사실 없음 옵션 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i>통제 발생 여부</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="noOccurrenceCheckbox" onchange="toggleNoOccurrence()">
+                            <label class="form-check-label" for="noOccurrenceCheckbox">
+                                <strong>당기 발생사실 없음</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="fas fa-info-circle me-1"></i>
+                            해당 통제활동이 평가 기간 동안 발생하지 않은 경우 체크하세요
+                        </small>
+
+                        <!-- 비고 입력란 (발생사실 없음 체크 시 표시) -->
+                        <div id="noOccurrenceReasonSection" class="mt-3" style="display: none;">
+                            <label for="noOccurrenceReason" class="form-label fw-bold">비고 (선택사항)</label>
+                            <textarea class="form-control" id="noOccurrenceReason" rows="3" placeholder="필요한 경우 추가 설명을 입력하세요&#10;예) 당기 중 신규 직원 채용이 없었음, 시스템 변경이 발생하지 않았음 등"></textarea>
+                            <div class="form-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    발생하지 않은 이유가 명확하거나 추가 설명이 필요한 경우에만 입력하세요
+                                </small>
+                            </div>
+                            <button type="button" class="btn btn-success mt-2" onclick="saveNoOccurrence()">
+                                <i class="fas fa-save me-1"></i>저장
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {% if not config.get('skip_upload') %}
         <div class="row mb-4" id="step1">
             <div class="col-12">
@@ -196,6 +234,20 @@
 
             if (existingData) {
                 loadExistingData();
+
+                // 당기 발생사실 없음 체크 여부 확인
+                if (existingData.no_occurrence) {
+                    const checkbox = document.getElementById('noOccurrenceCheckbox');
+                    const reasonTextarea = document.getElementById('noOccurrenceReason');
+
+                    checkbox.checked = true;
+                    if (existingData.no_occurrence_reason) {
+                        reasonTextarea.value = existingData.no_occurrence_reason;
+                    }
+
+                    // 체크박스 상태에 따라 화면 업데이트
+                    toggleNoOccurrence();
+                }
             }
         });
 
@@ -749,6 +801,69 @@
                     toast.style.display = 'none';
                 }, 500);
             }, 2000);
+        }
+
+        // ===================================================================
+        // 당기 발생사실 없음 관련 함수
+        // ===================================================================
+
+        function toggleNoOccurrence() {
+            const checkbox = document.getElementById('noOccurrenceCheckbox');
+            const reasonSection = document.getElementById('noOccurrenceReasonSection');
+            const step1 = document.getElementById('step1');
+            const step2 = document.getElementById('step2');
+            const step3 = document.getElementById('step3');
+
+            if (checkbox.checked) {
+                // 당기 발생사실 없음 체크 시
+                reasonSection.style.display = 'block';
+
+                // 다른 단계들 숨기기
+                if (step1) step1.style.display = 'none';
+                if (step2) step2.style.display = 'none';
+                if (step3) step3.style.display = 'none';
+            } else {
+                // 체크 해제 시
+                reasonSection.style.display = 'none';
+
+                // 다른 단계들 다시 표시
+                if (step1) step1.style.display = 'block';
+                if (step2) step2.style.display = 'block';
+                if (step3) step3.style.display = 'block';
+            }
+        }
+
+        function saveNoOccurrence() {
+            const reason = document.getElementById('noOccurrenceReason').value.trim();
+
+            const data = {
+                rcm_id: rcmId,
+                control_code: controlCode,
+                design_evaluation_session: designEvaluationSession,
+                no_occurrence: true,
+                no_occurrence_reason: reason
+            };
+
+            fetch('/api/operation-evaluation/save-no-occurrence', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showToast();
+                    setTimeout(() => {
+                        window.parent.postMessage({ type: 'reload' }, '*');
+                    }, 1500);
+                } else {
+                    alert('저장 실패: ' + (result.message || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                console.error('저장 오류:', error);
+                alert('저장 중 오류가 발생했습니다.');
+            });
         }
     </script>
 </body>

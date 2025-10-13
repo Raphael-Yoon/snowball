@@ -319,6 +319,44 @@ MANUAL_CONTROLS = {
             {'label': '예외', 'width': 80},
             {'label': '비고', 'width': 300}
         ]
+    },
+
+    'GENERIC': {
+        'name': '일반 수동통제',
+        'description': '범용 수동통제 운영평가',
+
+        # 모집단 필드 (2개 필드만 요구 - 컬럼명은 사용자가 지정)
+        'population_fields': ['field1', 'field2'],
+        'population_headers': ['필드1', '필드2'],
+
+        # 엑셀 헤더
+        'excel_headers': {
+            'population': ['필드1', '필드2'],
+            'testing': ['No', '필드1', '필드2',
+                       '증빙1', '증빙2', '증빙3', '증빙4', '증빙5', '예외', '비고']
+        },
+
+        # 필드 라벨 (사용자 정의)
+        'field_labels': ['주요 필드1', '주요 필드2'],
+        'required_fields': ['주요 필드1', '주요 필드2'],
+
+        # Sticky 컬럼 설정
+        'sticky_columns': [
+            {'width': 50, 'left': 0},      # No
+            {'width': 200, 'left': 50},    # 필드1
+            {'width': 200, 'left': 250}    # 필드2
+        ],
+
+        # 일반 컬럼 설정 (범용 증빙 컬럼)
+        'normal_columns': [
+            {'label': '증빙1', 'width': 200},
+            {'label': '증빙2', 'width': 200},
+            {'label': '증빙3', 'width': 200},
+            {'label': '증빙4', 'width': 200},
+            {'label': '증빙5', 'width': 200},
+            {'label': '예외', 'width': 80},
+            {'label': '비고', 'width': 300}
+        ]
     }
 }
 
