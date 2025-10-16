@@ -27,8 +27,7 @@
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h2><i class="fas fa-server me-2"></i>{{ config.name }}</h2>
-                        <p class="text-muted mb-0">{{ config.description }}</p>
+                        <h2><i class="fas fa-server me-2"></i>{{ control_name }}</h2>
                     </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-outline-warning" id="resetBtn" onclick="resetUpload()" style="display: none;">
@@ -58,7 +57,7 @@
         </div>
 
         <!-- 당기 발생사실 없음 옵션 -->
-        <div class="row mb-4">
+        <div class="row mb-4" id="noOccurrenceSection">
             <div class="col-12">
                 <div class="card border-warning">
                     <div class="card-header bg-warning text-dark">
@@ -86,7 +85,7 @@
                                     발생하지 않은 이유가 명확하거나 추가 설명이 필요한 경우에만 입력하세요
                                 </small>
                             </div>
-                            <button type="button" class="btn btn-success mt-2" onclick="saveNoOccurrence()">
+                            <button type="button" class="btn btn-success mt-2" id="saveNoOccurrenceBtn" onclick="saveNoOccurrence(event)">
                                 <i class="fas fa-save me-1"></i>저장
                             </button>
                         </div>
@@ -220,7 +219,7 @@
         const config = {{ config | tojson | safe }};
         const rcmId = {{ rcm_id }};
         const controlCode = '{{ control_code }}';
-        const designSession = '{{ design_evaluation_session }}';
+        const designEvaluationSession = '{{ design_evaluation_session }}';
 
         let samples = [];
         let excelHeaders = [];
@@ -230,24 +229,43 @@
         const pc01Data = {{ pc01_data | tojson | safe if pc01_data else 'null' }};
 
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== DOMContentLoaded - existingData ===');
+            console.log('existingData:', existingData);
+
             buildTableHeader();
 
             if (existingData) {
+                console.log('existingData.no_occurrence:', existingData.no_occurrence);
+                console.log('existingData.no_occurrence_reason:', existingData.no_occurrence_reason);
+
                 loadExistingData();
 
                 // 당기 발생사실 없음 체크 여부 확인
                 if (existingData.no_occurrence) {
+                    console.log('당기 발생사실 없음 데이터 발견! 체크박스 설정 중...');
+
                     const checkbox = document.getElementById('noOccurrenceCheckbox');
                     const reasonTextarea = document.getElementById('noOccurrenceReason');
 
-                    checkbox.checked = true;
-                    if (existingData.no_occurrence_reason) {
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        console.log('체크박스 체크 완료');
+                    } else {
+                        console.error('noOccurrenceCheckbox 엘리먼트를 찾을 수 없습니다!');
+                    }
+
+                    if (reasonTextarea && existingData.no_occurrence_reason) {
                         reasonTextarea.value = existingData.no_occurrence_reason;
+                        console.log('사유 입력란 설정 완료:', existingData.no_occurrence_reason);
                     }
 
                     // 체크박스 상태에 따라 화면 업데이트
                     toggleNoOccurrence();
+                } else {
+                    console.log('no_occurrence 데이터가 없거나 false입니다');
                 }
+            } else {
+                console.log('existingData가 null 또는 undefined입니다');
             }
         });
 
@@ -289,6 +307,12 @@
             // 처음부터 버튼 표시
             document.getElementById('resetBtn').style.display = 'inline-block';
             document.getElementById('step2').style.display = 'block';
+
+            // 모집단 데이터가 있으면 "당기 발생사실 없음" 섹션 숨기기
+            if (samples && samples.length > 0) {
+                document.getElementById('noOccurrenceSection').style.display = 'none';
+            }
+
             populateTable();
         }
 
@@ -299,6 +323,12 @@
 
             document.getElementById('resetBtn').style.display = 'inline-block';
             document.getElementById('step2').style.display = 'block';
+
+            // PC01 데이터가 있으면 "당기 발생사실 없음" 섹션 숨기기
+            if (samples && samples.length > 0) {
+                document.getElementById('noOccurrenceSection').style.display = 'none';
+            }
+
             populateTable();
         }
 
@@ -346,7 +376,7 @@
             const formData = new FormData();
             formData.append('population_file', file);
             formData.append('rcm_id', rcmId);
-            formData.append('design_evaluation_session', designSession);
+            formData.append('design_evaluation_session', designEvaluationSession);
 
             const mapping = {};
             config.population_fields.forEach((field, idx) => {
@@ -368,6 +398,8 @@
                     document.getElementById('populationCount').textContent = data.population_count;
                     document.getElementById('sampleCount').textContent = data.sample_size;
                     document.getElementById('step2').style.display = 'block';
+                    // 모집단이 업로드되면 "당기 발생사실 없음" 섹션 숨기기
+                    document.getElementById('noOccurrenceSection').style.display = 'none';
                     populateTable();
                 } else {
                     alert(data.message);
@@ -610,7 +642,7 @@
                 body: JSON.stringify({
                     rcm_id: rcmId,
                     control_code: controlCode,
-                    design_evaluation_session: designSession
+                    design_evaluation_session: designEvaluationSession
                 })
             })
             .then(r => r.json())
@@ -753,7 +785,7 @@
                 body: JSON.stringify({
                     rcm_id: rcmId,
                     control_code: controlCode,
-                    design_evaluation_session: designSession,
+                    design_evaluation_session: designEvaluationSession,
                     test_results: results
                 })
             })
@@ -833,37 +865,96 @@
             }
         }
 
-        function saveNoOccurrence() {
-            const reason = document.getElementById('noOccurrenceReason').value.trim();
+        function saveNoOccurrence(event) {
+            try {
+                console.log('saveNoOccurrence 함수 호출됨');
+                console.log('rcmId:', rcmId);
+                console.log('controlCode:', controlCode);
+                console.log('designEvaluationSession:', designEvaluationSession);
 
-            const data = {
-                rcm_id: rcmId,
-                control_code: controlCode,
-                design_evaluation_session: designEvaluationSession,
-                no_occurrence: true,
-                no_occurrence_reason: reason
-            };
-
-            fetch('/api/operation-evaluation/save-no-occurrence', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    showToast();
-                    setTimeout(() => {
-                        window.parent.postMessage({ type: 'reload' }, '*');
-                    }, 1500);
-                } else {
-                    alert('저장 실패: ' + (result.message || '알 수 없는 오류'));
+                // 버튼 가져오기
+                const saveBtn = event ? event.target : document.getElementById('saveNoOccurrenceBtn');
+                if (!saveBtn) {
+                    console.error('저장 버튼을 찾을 수 없습니다');
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('저장 오류:', error);
-                alert('저장 중 오류가 발생했습니다.');
-            });
+
+                const reasonElement = document.getElementById('noOccurrenceReason');
+                if (!reasonElement) {
+                    console.error('noOccurrenceReason 엘리먼트를 찾을 수 없습니다');
+                    alert('입력 필드를 찾을 수 없습니다.');
+                    return;
+                }
+
+                const reason = reasonElement.value.trim();
+
+                const data = {
+                    rcm_id: rcmId,
+                    control_code: controlCode,
+                    design_evaluation_session: designEvaluationSession,
+                    no_occurrence: true,
+                    no_occurrence_reason: reason
+                };
+
+                console.log('전송할 데이터:', data);
+
+                // 버튼 비활성화
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>저장 중...';
+
+                fetch('/api/operation-evaluation/save-no-occurrence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(response => {
+                    console.log('응답 상태:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    console.log('응답 데이터:', result);
+                    if (result.success) {
+                        // 토스트 표시
+                        showToast();
+
+                        // 0.5초 후 부모 창 새로고침 (토스트만 보여주고 바로 새로고침)
+                        setTimeout(() => {
+                            try {
+                                // iframe 안에 있으면 부모 창 새로고침
+                                if (window.parent !== window) {
+                                    window.parent.postMessage({ type: 'reload' }, '*');
+                                    // 부모가 응답하지 않으면 1초 후 직접 새로고침
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 1000);
+                                } else {
+                                    // 일반 페이지면 현재 창 새로고침
+                                    window.location.reload();
+                                }
+                            } catch (e) {
+                                console.error('새로고침 오류:', e);
+                                window.location.reload();
+                            }
+                        }, 500);
+                    } else {
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>저장';
+                        alert('저장 실패: ' + (result.message || '알 수 없는 오류'));
+                    }
+                })
+                .catch(error => {
+                    console.error('저장 오류:', error);
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>저장';
+                    alert('저장 중 오류가 발생했습니다: ' + error.message);
+                });
+            } catch (error) {
+                console.error('saveNoOccurrence 함수 실행 오류:', error);
+                alert('함수 실행 오류: ' + error.message);
+            }
         }
     </script>
 </body>

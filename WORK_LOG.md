@@ -45,6 +45,16 @@ snowball/
 
 ## 작업 히스토리
 
+### 2025-10-14
+- **"당기 발생사실 없음" 표시 개선**
+  - 문제: "Effective (발생사실 없음)" 텍스트가 너무 길게 표시됨
+  - 해결: 아이콘으로 간결하게 표시
+  - 구현: `Effective <i class="fas fa-info-circle"></i>` 형태
+  - 위치: `templates/link7_detail.jsp:1245` - `updateEvaluationUI()` 함수
+  - 배지 색상: 녹색(bg-success) - 일반 Effective와 동일
+  - 툴팁: 아이콘에 마우스 오버 시 "당기 발생사실 없음" 표시
+  - 조건: `conclusion === 'not_applicable' && no_occurrence === true`
+
 ### 2025-10-10
 - **DB 마이그레이션 실행**
   - 운영평가 파일 경로 컬럼 추가 (migration 004)

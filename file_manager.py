@@ -1460,3 +1460,23 @@ def get_operation_test_file_paths(rcm_id, design_session, control_code):
         result['test_results_path'] = f"uploads/operation_evaluations/{rcm_id}/{design_session}/{control_code}/test_results.json"
 
     return result
+
+
+def get_test_results_path(rcm_id, operation_header_id, control_code):
+    """
+    테스트 결과 엑셀 파일 경로 반환 (저장용)
+
+    Args:
+        rcm_id: RCM ID
+        operation_header_id: 운영평가 헤더 ID
+        control_code: 통제 코드
+
+    Returns:
+        str: 테스트 결과 엑셀 파일의 절대 경로
+    """
+    base_dir = os.path.join('static', 'uploads', 'operation_evaluations',
+                            str(rcm_id), str(operation_header_id), control_code)
+
+    # 디렉토리 생성 (여기서는 생성하지 않고 경로만 반환)
+    filename = f'test_results_{control_code}.xlsx'
+    return os.path.join(base_dir, filename)
