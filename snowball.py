@@ -407,6 +407,228 @@ def link0():
     print("Reload")
     return render_template('link0.jsp')
 
+@app.route('/link1')
+def link1():
+    print("RCM Function")
+    user_info = get_user_info()
+    users = user_info['user_name'] if user_info else "Guest"
+    # 로그인된 사용자의 이메일 주소 자동 입력
+    user_email = user_info.get('user_email', '') if user_info else ''
+
+    # 로그인한 사용자만 활동 로그 기록
+    if is_logged_in():
+        log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 페이지', '/link1',
+                         request.remote_addr, request.headers.get('User-Agent'))
+
+    return render_template('link1.jsp',
+                         return_code=0,
+                         users=users,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         user_email=user_email,
+                         remote_addr=request.remote_addr)
+
+@app.route('/link2', methods=['GET', 'POST'])
+def link2():
+    print("Interview Function")
+
+    user_info = get_user_info()
+    # Interview 기능 시작 시에만 로그 기록 (GET 요청이고 reset=1 파라미터가 있거나 최초 진입 시)
+    if is_logged_in() and request.method == 'GET':
+        if request.args.get('reset') == '1' or 'question_index' not in session:
+            log_user_activity(user_info, 'FEATURE_START', 'Interview 기능 시작', '/link2',
+                             request.remote_addr, request.headers.get('User-Agent'))
+
+    if request.method == 'GET':
+        # 쿼리 파라미터로 reset이 있을 때만 인터뷰 세션 초기화 (로그인 세션은 보존)
+        if request.args.get('reset') == '1':
+            reset_interview_session()
+        # 세션에 값이 없으면(최초 진입)만 초기화
+        elif 'question_index' not in session:
+            user_info = get_user_info()
+            if user_info and user_info.get('user_email'):
+                # 로그인된 사용자: 첫 번째 질문에 이메일 자동 입력하고 두 번째 질문부터 시작
+                session['question_index'] = 1
+                session['answer'] = [''] * question_count
+                session['textarea_answer'] = [''] * question_count
+                session['answer'][0] = user_info['user_email']  # 첫 번째 답변에 이메일 설정
+            else:
+                # 비로그인 사용자: 첫 번째 질문부터 시작
+                session['question_index'] = 0
+                session['answer'] = [''] * question_count
+                session['textarea_answer'] = [''] * question_count
+
+        user_info = get_user_info()
+        users = user_info['user_name'] if user_info else "Guest"
+        # 현재 답변을 기반으로 필터링된 질문 목록 가져오기
+        filtered_questions = get_conditional_questions(session.get('answer', []))
+        current_question_index = session['question_index']
+
+        # 현재 질문을 필터링된 목록에서 찾기
+        current_question = None
+        current_filtered_index = 0
+
+        for idx, q in enumerate(filtered_questions):
+            if q['index'] == current_question_index:
+                current_question = q
+                current_filtered_index = idx
+                break
+
+        if current_question is None:
+            # 필터링된 목록에 없으면 원본에서 가져오기 (혹시 모를 상황 대비)
+            current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
+
+        return render_template('link2.jsp',
+                             question=current_question,
+                             question_count=len(filtered_questions),
+                             current_index=current_filtered_index,  # 필터링된 목록에서의 인덱스
+                             actual_question_number=current_question['index'] + 1,  # 실제 질문 번호
+                             remote_addr=request.remote_addr,
+                             users=users,
+                             is_logged_in=is_logged_in(),
+                             user_info=user_info,
+                             answer=session['answer'],
+                             textarea_answer=session['textarea_answer'])
+
+    question_index = session['question_index']
+
+    if request.method == 'POST':
+        form_data = request.form
+
+        # 현재 질문의 filtered index를 구하기
+        filtered_questions_before = get_conditional_questions(session.get('answer', []))
+        current_filtered_index = 0
+        for i, q in enumerate(filtered_questions_before):
+            if q['index'] == question_index:
+                current_filtered_index = i
+                break
+
+        # form 데이터는 current_filtered_index 기반으로 저장됨
+        session['answer'][question_index] = form_data.get(f"a{current_filtered_index}", '')
+        session['textarea_answer'][question_index] = form_data.get(f"a{current_filtered_index}_1", '')
+        if form_data.get('a1_1'):
+            session['System'] = form_data.get('a1_1')
+        if form_data.get('a4_1'):
+            session['Cloud'] = form_data.get('a4_1')
+        if form_data.get('a6_1'):
+            session['OS_Tool'] = form_data.get('a6_1')
+        if form_data.get('a7_1'):
+            session['DB_Tool'] = form_data.get('a7_1')
+        if form_data.get('a8_1'):
+            session['Batch_Tool'] = form_data.get('a8_1')
+
+        # 현재 답변을 기반으로 필터링된 질문 목록 가져오기
+        filtered_questions = get_conditional_questions(session.get('answer', []))
+
+        # 다음 질문 인덱스를 결정하는 로직 (필터링된 질문 기준)
+        current_filtered_index = 0
+        for i, q in enumerate(filtered_questions):
+            if q['index'] == question_index:
+                current_filtered_index = i
+                break
+
+        # 다음 필터링된 질문으로 이동
+        next_filtered_index = current_filtered_index + 1
+        if next_filtered_index < len(filtered_questions):
+            next_question_index = filtered_questions[next_filtered_index]['index']
+        else:
+            next_question_index = question_count  # 마지막 질문 이후
+
+        # 마지막 질문 제출 시 AI 검토 선택 페이지로 이동
+        if next_filtered_index >= len(filtered_questions):
+            print('interview completed - redirecting to AI review selection page')
+            print(f'Current question_index: {question_index}, question_count: {question_count}')
+            print('--- 모든 답변(answers) ---')
+            for idx, ans in enumerate(session.get('answer', [])):
+                print(f"a{idx}: {ans}")
+            print('--- 모든 textarea 답변(textarea_answer) ---')
+            for idx, ans in enumerate(session.get('textarea_answer', [])):
+                print(f"a{idx}_1: {ans}")
+
+            # AI 검토 선택 페이지로 리디렉션
+            return redirect(url_for('ai_review_selection'))
+
+        session['question_index'] = next_question_index
+        print(f"goto {session['question_index']}")
+        print("Answers:", ", ".join(f"{i}: {ans}" for i, ans in enumerate(session['answer'])))
+        print(f"입력받은 값(a{question_index}): {session['answer'][question_index]}")
+        print(f"textarea 값(a{question_index}_1): {session['textarea_answer'][question_index]}")
+
+        if next_question_index >= question_count:
+            # 마지막 질문 이후에는 save_to_excel 호출하지 않음
+            return redirect(url_for('index'))
+
+    # 현재 질문을 렌더링
+    filtered_questions = get_conditional_questions(session.get('answer', []))
+    current_question_index = session['question_index']
+
+    # 현재 질문을 필터링된 목록에서 찾기
+    current_question = None
+    current_filtered_index = 0
+
+    for idx, q in enumerate(filtered_questions):
+        if q['index'] == current_question_index:
+            current_question = q
+            current_filtered_index = idx
+            break
+
+    if current_question is None:
+        current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
+
+
+    user_info = get_user_info()
+    users = user_info['user_name'] if user_info else "User List"
+    return render_template(
+        'link2.jsp',
+        question=current_question,
+        question_count=len(filtered_questions),
+        current_index=current_filtered_index,
+        actual_question_number=current_question['index'] + 1,
+        remote_addr=request.remote_addr,
+        users=users,
+        is_logged_in=is_logged_in(),
+        user_info=user_info,
+        answer=session['answer'],
+        textarea_answer=session['textarea_answer']
+    )
+
+@app.route('/link2/prev')
+def link2_prev():
+    # 세션에서 현재 인덱스 가져오기 및 이전으로 이동 (로직 분리)
+    link2_prev_logic(session)
+    # 다시 질문 페이지로 이동
+    return redirect(url_for('link2'))
+
+@app.route('/link3')
+def link3():
+    print("Paper Function")
+    user_info = get_user_info()
+
+    # 로그인한 사용자만 활동 로그 기록
+    if is_logged_in():
+        log_user_activity(user_info, 'PAGE_ACCESS', 'Operation Test 페이지', '/link3',
+                         request.remote_addr, request.headers.get('User-Agent'))
+
+    return render_template('link3.jsp',
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+@app.route('/link4')
+def link4():
+    print("Video Function")
+    user_info = get_user_info()
+
+    # 로그인한 사용자만 활동 로그 기록
+    if is_logged_in():
+        log_user_activity(user_info, 'PAGE_ACCESS', '영상자료 페이지', '/link4',
+                         request.remote_addr, request.headers.get('User-Agent'))
+
+    return render_template('link4.jsp',
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
 def sanitize_text(text, allow_newlines=False):
     """텍스트 입력값 정제"""
     if not text:
