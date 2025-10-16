@@ -1,0 +1,15 @@
+세션 설정 - Production: False, Secure: False
+Flask 앱 시작 - Secret Key: 150606...
+환경 변수(초기 로드 전) - PYTHONANYWHERE_AUTH_CODE: undefined
+환경 변수 - PYTHONANYWHERE_AUTH_CODE: 150606
+ * Serving Flask app 'snowball'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.45.54:5001
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [16/Oct/2025 21:07:04] "GET /link2?reset=1 HTTP/1.1" 200 -
+127.0.0.1 - - [16/Oct/2025 21:07:13] "GET /link1 HTTP/1.1" 200 -
+127.0.0.1 - - [16/Oct/2025 21:07:29] "GET /link3 HTTP/1.1" 200 -
+127.0.0.1 - - [16/Oct/2025 21:07:44] "GET /link4 HTTP/1.1" 200 -
