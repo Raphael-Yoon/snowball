@@ -445,7 +445,7 @@
         <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
             <div class="modal-content" style="height: 100%;">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="apd01ModalLabel">APD01 운영평가</h5>
+                    <h5 class="modal-title" id="apd01ModalLabel">수동통제 운영평가</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
@@ -460,7 +460,7 @@
         <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
             <div class="modal-content" style="height: 100%;">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="apd07ModalLabel">APD07 운영평가</h5>
+                    <h5 class="modal-title" id="apd07ModalLabel">수동통제 운영평가</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
@@ -475,7 +475,7 @@
         <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
             <div class="modal-content" style="height: 100%;">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="apd09ModalLabel">APD09 운영평가</h5>
+                    <h5 class="modal-title" id="apd09ModalLabel">수동통제 운영평가</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
@@ -490,7 +490,7 @@
         <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
             <div class="modal-content" style="height: 100%;">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="apd12ModalLabel">APD12 운영평가</h5>
+                    <h5 class="modal-title" id="apd12ModalLabel">수동통제 운영평가</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
@@ -505,7 +505,7 @@
         <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
             <div class="modal-content" style="height: 100%;">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="pc01ModalLabel">PC01 운영평가</h5>
+                    <h5 class="modal-title" id="pc01ModalLabel">수동통제 운영평가</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
@@ -520,7 +520,7 @@
         <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
             <div class="modal-content" style="height: 100%;">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="pc02ModalLabel">PC02 운영평가</h5>
+                    <h5 class="modal-title" id="pc02ModalLabel">수동통제 운영평가</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
@@ -535,7 +535,7 @@
         <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
             <div class="modal-content" style="height: 100%;">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="pc03ModalLabel">PC03 운영평가</h5>
+                    <h5 class="modal-title" id="pc03ModalLabel">수동통제 운영평가</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
@@ -550,7 +550,7 @@
         <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
             <div class="modal-content" style="height: 100%;">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="co01ModalLabel">CO01 운영평가</h5>
+                    <h5 class="modal-title" id="co01ModalLabel">수동통제 운영평가</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
@@ -679,6 +679,9 @@
 
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== 페이지 로드 시 evaluated_controls ===');
+            console.log(evaluated_controls);
+
             initializeTooltips();
             updateAllEvaluationUI();
             updateProgress();
@@ -1237,16 +1240,23 @@
             // 평가 결과 업데이트
             const resultElement = document.getElementById(`evaluation-result-${rowIndex}`);
             if (resultElement && data.conclusion) {
-                const resultMap = {
-                    'effective': { text: 'Effective', class: 'bg-success' },
-                    'exception': { text: 'Exception', class: 'bg-danger' },
-                    'ineffective': { text: 'Ineffective', class: 'bg-danger' },
-                    'not_applicable': { text: 'N/A (발생사실 없음)', class: 'bg-secondary' }
-                };
-                const result = resultMap[data.conclusion];
-                if (result) {
-                    resultElement.textContent = result.text;
-                    resultElement.className = `badge ${result.class}`;
+                // not_applicable이면서 no_occurrence가 true인 경우 Effective + 아이콘 표시
+                if (data.conclusion === 'not_applicable' && data.no_occurrence) {
+                    resultElement.innerHTML = 'Effective <i class="fas fa-info-circle ms-1" title="당기 발생사실 없음"></i>';
+                    resultElement.className = 'badge bg-success';
+                    resultElement.title = '당기 발생사실 없음';
+                } else {
+                    const resultMap = {
+                        'effective': { text: 'Effective', class: 'bg-success' },
+                        'exception': { text: 'Exception', class: 'bg-danger' },
+                        'ineffective': { text: 'Ineffective', class: 'bg-danger' },
+                        'not_applicable': { text: 'N/A', class: 'bg-secondary' }
+                    };
+                    const result = resultMap[data.conclusion];
+                    if (result) {
+                        resultElement.textContent = result.text;
+                        resultElement.className = `badge ${result.class}`;
+                    }
                 }
             }
 
@@ -1692,9 +1702,6 @@
         function showGenericManualControlUI(buttonElement) {
             const controlCode = buttonElement.getAttribute('data-control-code');
             const controlName = buttonElement.getAttribute('data-control-name');
-
-            // 모달 제목 업데이트
-            document.getElementById('genericManualModalLabel').textContent = `${controlCode} - ${controlName} 운영평가`;
 
             // 모달로 Generic 수동통제 UI 표시
             const params = new URLSearchParams({

@@ -888,6 +888,8 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     samples_path = ?,
                     test_results_path = ?,
                     population_count = ?,
+                    no_occurrence = ?,
+                    no_occurrence_reason = ?,
                     evaluation_date = CURRENT_TIMESTAMP,
                     last_updated = CURRENT_TIMESTAMP
                 WHERE line_id = ?
@@ -902,6 +904,8 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                 evaluation_data.get('samples_path'),
                 evaluation_data.get('test_results_path'),
                 evaluation_data.get('population_count'),
+                1 if evaluation_data.get('no_occurrence') else 0,
+                evaluation_data.get('no_occurrence_reason'),
                 existing_line['line_id']
             ))
         else:
@@ -911,8 +915,9 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     header_id, control_code, operating_effectiveness, sample_size,
                     exception_count, exception_details, conclusion, improvement_plan,
                     population_path, samples_path, test_results_path, population_count,
+                    no_occurrence, no_occurrence_reason,
                     evaluation_date, last_updated
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ''', (
                 header_id, control_code,
                 evaluation_data.get('operating_effectiveness'),
@@ -924,7 +929,9 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                 evaluation_data.get('population_path'),
                 evaluation_data.get('samples_path'),
                 evaluation_data.get('test_results_path'),
-                evaluation_data.get('population_count')
+                evaluation_data.get('population_count'),
+                1 if evaluation_data.get('no_occurrence') else 0,
+                evaluation_data.get('no_occurrence_reason')
             ))
 
         # Header의 last_updated 갱신

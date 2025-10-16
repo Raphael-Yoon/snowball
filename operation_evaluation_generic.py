@@ -11,6 +11,8 @@ import json
 import tempfile
 import os
 from control_config import get_control_config, is_manual_control
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill
 
 bp_generic = Blueprint('operation_evaluation_generic', __name__)
 
@@ -65,6 +67,41 @@ def manual_control_evaluation(control_code):
 
                 if loaded_data and loaded_data.get('samples_data'):
                     existing_data = loaded_data
+
+                # 데이터베이스에서 no_occurrence 정보 추가 로드
+                if existing_data:
+                    eval_line = conn.execute('''
+                        SELECT operating_effectiveness, conclusion, no_occurrence, no_occurrence_reason
+                        FROM sb_operation_evaluation_line
+                        WHERE header_id = ? AND control_code = ?
+                        ORDER BY line_id DESC
+                        LIMIT 1
+                    ''', (operation_header_id, control_code_param)).fetchone()
+
+                    if eval_line:
+                        existing_data['no_occurrence'] = eval_line['no_occurrence'] if eval_line['no_occurrence'] else False
+                        existing_data['no_occurrence_reason'] = eval_line['no_occurrence_reason'] or ''
+                        existing_data['operating_effectiveness'] = eval_line['operating_effectiveness']
+                        existing_data['conclusion'] = eval_line['conclusion']
+                elif not loaded_data:
+                    # 엑셀 파일은 없지만 DB에 no_occurrence 데이터가 있을 수 있음
+                    eval_line = conn.execute('''
+                        SELECT operating_effectiveness, conclusion, no_occurrence, no_occurrence_reason
+                        FROM sb_operation_evaluation_line
+                        WHERE header_id = ? AND control_code = ?
+                        ORDER BY line_id DESC
+                        LIMIT 1
+                    ''', (operation_header_id, control_code_param)).fetchone()
+
+                    if eval_line and eval_line['no_occurrence']:
+                        existing_data = {
+                            'no_occurrence': True,
+                            'no_occurrence_reason': eval_line['no_occurrence_reason'] or '',
+                            'operating_effectiveness': eval_line['operating_effectiveness'],
+                            'conclusion': eval_line['conclusion'],
+                            'samples_data': None,
+                            'population_data': []
+                        }
 
                 # PC02, PC03인 경우 PC01 데이터도 로드
                 if control_code in ['PC02', 'PC03']:
@@ -377,9 +414,6 @@ def save_no_occurrence():
             config = get_control_config('GENERIC')  # GENERIC 설정 사용
 
         # "당기 발생사실 없음" 엑셀 파일 생성
-        from openpyxl import Workbook
-        from openpyxl.styles import Font, Alignment, PatternFill
-
         wb = Workbook()
 
         # Population 시트
