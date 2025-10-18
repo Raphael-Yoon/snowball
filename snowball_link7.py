@@ -866,7 +866,7 @@ def user_operation_evaluation_apd09():
 
     if not all([rcm_id, control_code, design_evaluation_session]):
         flash('필수 정보가 누락되었습니다.', 'error')
-        return redirect(url_for('bp_link7.user_operation_evaluation_index'))
+        return redirect(url_for('link7.user_operation_evaluation'))
 
     # 기존 운영평가 데이터 조회
     existing_data = None
@@ -1131,7 +1131,7 @@ def user_operation_evaluation_apd12():
 
     if not all([rcm_id, control_code, design_evaluation_session]):
         flash('필수 정보가 누락되었습니다.', 'error')
-        return redirect(url_for('bp_link7.user_operation_evaluation_index'))
+        return redirect(url_for('link7.user_operation_evaluation'))
 
     # 기존 운영평가 데이터 조회
     existing_data = None

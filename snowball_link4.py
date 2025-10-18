@@ -1,5 +1,28 @@
-# link4(동영상/컨텐츠 안내) 관련 데이터 및 함수
+from flask import Blueprint, request, render_template, session
+from auth import log_user_activity
 
+# Blueprint 생성
+bp_link4 = Blueprint('link4', __name__)
+
+
+def get_user_info():
+    """현재 로그인한 사용자 정보 반환 (세션 우선)"""
+    from snowball import is_logged_in
+    from auth import get_current_user
+    if is_logged_in():
+        if 'user_info' in session:
+            return session['user_info']
+        return get_current_user()
+    return None
+
+
+def is_logged_in():
+    """로그인 상태 확인"""
+    from snowball import is_logged_in as main_is_logged_in
+    return main_is_logged_in()
+
+
+# link4(동영상/컨텐츠 안내) 관련 데이터
 video_map = {
     'APD01': {
         'youtube_url': 'https://www.youtube.com/embed/8QqNfcO9NPI?si=x4nMkbfyFRyRi7jI&autoplay=1&mute=1',
@@ -70,6 +93,41 @@ video_map = {
 }
 
 def get_link4_content(content_type):
+    """영상 컨텐츠 데이터 조회"""
     if not content_type or content_type not in video_map:
         return None
-    return video_map[content_type] 
+    return video_map[content_type]
+
+
+# ===== Blueprint 라우트 정의 =====
+
+@bp_link4.route('/link4')
+def link4():
+    """영상자료 페이지"""
+    print("Video Function")
+    user_info = get_user_info()
+
+    # 로그인한 사용자만 활동 로그 기록
+    if is_logged_in():
+        log_user_activity(user_info, 'PAGE_ACCESS', '영상자료 페이지', '/link4',
+                         request.remote_addr, request.headers.get('User-Agent'))
+
+    return render_template('link4.jsp',
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+
+@bp_link4.route('/get_content_link4')
+def get_content_link4_route():
+    """link4 영상 컨텐츠 로드"""
+    content_type = request.args.get('type')
+    data = get_link4_content(content_type)
+    if not data:
+        return '<div style="text-align: center; padding: 20px;"><h3>준비 중입니다</h3><p>해당 항목은 현재 영상제작 중 입니다.</p></div>'
+    return render_template('link4_detail.jsp',
+        youtube_url=data['youtube_url'],
+        img_url=data['img_url'],
+        title=data['title'],
+        desc=data['desc']
+    ) 

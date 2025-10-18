@@ -45,6 +45,48 @@ snowball/
 
 ## 작업 히스토리
 
+### 2025-10-16
+- **ITGC Shield 웹사이트 UI 개선**
+  - CSS 수정: `itgc_shield/css/style.css`, `itgc_shield/css/responsive.css`
+  - HTML 수정: `itgc_shield/index.html`
+  - 반응형 디자인 및 스타일링 업데이트
+- **교육 콘텐츠 비디오 리소스 정리**
+  - 추가: Snowball APD 시연 영상 4개 (APD01~04)
+  - 추가: 내부회계관리제도 팟캐스트 영상
+  - 추가: DDL 변경통제 관련 영상 및 슬라이드
+  - 추가: 데이터변경모니터링 관련 영상 및 슬라이드
+  - 삭제: ITGC 패스워드 관련 기존 영상 파일 (재편집 예정)
+  - 정리: `mov/DDL/`, `mov/데이터변경모니터링/` 디렉토리 생성하여 체계화
+- **MCP (Model Context Protocol) 연구**
+  - 웹 크롤링 테스트 코드 작성: `MCP/test.py`
+    - k-icfr.org Q&A 게시판 데이터 수집 스크립트
+    - BeautifulSoup, pandas 활용
+  - 샘플 코드: `MCP/sample.py`
+- **새 프로젝트 개발**
+  - **our_lotte_day**: 롯데 기념일 웹페이지 프로젝트
+    - HTML, CSS, JavaScript 구현
+    - 이미지 리소스 포함
+  - **stock**: 주식 정보 프로젝트
+    - OpenDART API 연동 (`opendart.py`)
+    - 웹 인터페이스 (`web.py`)
+    - 종목코드 데이터베이스 구축
+  - **yujuduck**: 이미지 기반 프로젝트
+    - 데이터 및 이미지 리소스 관리
+  - **github_test**: GitHub 테스트 저장소
+    - 다양한 언어 테스트 코드 (C++, Java, Python)
+    - Wordcloud 실험
+- **데이터베이스**
+  - `snowball.db` 파일 생성 (SQLite)
+  - Snowball 프로젝트 로컬 DB 구축
+- **개발 환경 설정**
+  - VSCode 디버거 설정 추가: `.vscode/launch.json`
+    - Python 디버거 구성 (debugpy)
+    - 현재 파일 실행 설정
+  - Git 서브모듈 업데이트: `SnowBall`, `TAX`, `macbook_air`
+- **파일 정리**
+  - 삭제: `itgc.txt`, `rule.txt` (불필요한 텍스트 파일 제거)
+  - 프로젝트 구조 재정리 및 최적화
+
 ### 2025-10-14
 - **"당기 발생사실 없음" 표시 개선**
   - 문제: "Effective (발생사실 없음)" 텍스트가 너무 길게 표시됨

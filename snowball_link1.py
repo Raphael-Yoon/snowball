@@ -1,8 +1,30 @@
+from flask import Blueprint, request, render_template, session
 from datetime import datetime
 import os
 from io import BytesIO
 from openpyxl import load_workbook
 from snowball_mail import send_gmail_with_attachment
+from auth import log_user_activity
+
+# Blueprint 생성
+bp_link1 = Blueprint('link1', __name__)
+
+def get_user_info():
+    """현재 로그인한 사용자 정보 반환 (세션 우선)"""
+    from snowball import is_logged_in
+    from auth import get_current_user
+    if is_logged_in():
+        # 세션에 저장된 user_info를 우선 사용
+        if 'user_info' in session:
+            return session['user_info']
+        # 없으면 데이터베이스에서 조회
+        return get_current_user()
+    return None
+
+def is_logged_in():
+    """로그인 상태 확인"""
+    from snowball import is_logged_in as main_is_logged_in
+    return main_is_logged_in()
 
 def generate_and_send_rcm_excel(form_data):
     """
@@ -103,3 +125,42 @@ def generate_and_send_rcm_excel(form_data):
         return True, user_email, None
     except Exception as e:
         return False, user_email, str(e)
+
+
+# ===== Blueprint 라우트 정의 =====
+
+@bp_link1.route('/link1')
+def link1():
+    """RCM 자동생성 페이지"""
+    print("RCM Function")
+    user_info = get_user_info()
+    users = user_info['user_name'] if user_info else "Guest"
+    # 로그인된 사용자의 이메일 주소 자동 입력
+    user_email = user_info.get('user_email', '') if user_info else ''
+
+    # 로그인한 사용자만 활동 로그 기록
+    if is_logged_in():
+        log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 페이지', '/link1',
+                         request.remote_addr, request.headers.get('User-Agent'))
+
+    return render_template('link1.jsp',
+                         return_code=0,
+                         users=users,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         user_email=user_email,
+                         remote_addr=request.remote_addr)
+
+
+@bp_link1.route('/rcm_generate', methods=['POST'])
+def rcm_generate():
+    """RCM 엑셀 생성 및 전송"""
+    form_data = request.form.to_dict()
+    success, user_email, error = generate_and_send_rcm_excel(form_data)
+    if success:
+        return render_template('mail_sent.jsp', user_email=user_email)
+    else:
+        if user_email:
+            return f'<h3>메일 전송에 실패했습니다: {error}</h3>'
+        else:
+            return '<h3>메일 주소가 없습니다. 담당자 정보를 확인해 주세요.</h3>'
