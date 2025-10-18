@@ -446,7 +446,7 @@
                 5: { type: 'radio', value: 'Y' }, // Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까? (스킵되지만 기본값 제공)
                 6: { type: 'radio', value: 'N' }, // 권한부여 이력 미기록
                 7: { type: 'radio', value: 'N' }, // 권한회수 이력 미기록
-                8: { type: 'skip' }, // Cloud 서비스와 무관하므로 자동입력하지 않음
+                8: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 권한 승인 절차 없음
                 9: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 권한 회수 절차 없음
                 10: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 퇴사자 권한 차단 절차 없음
                 11: { type: 'textarea', value: '' }, // Application 관리자

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, redirect, url_for, session, jsonify, flash
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -13,9 +13,10 @@ from email.mime.base import MIMEBase
 from email import encoders
 from io import BytesIO
 from openpyxl import load_workbook
-from snowball_link1 import generate_and_send_rcm_excel
+from snowball_link1 import bp_link1
 from snowball_link2 import export_interview_excel_and_send, s_questions, question_count, is_ineffective, fill_sheet, link2_prev_logic, get_text_itgc, get_conditional_questions, clear_skipped_answers, get_progress_status, set_progress_status, update_progress, reset_progress
-from snowball_link4 import get_link4_content
+from snowball_link3 import bp_link3
+from snowball_link4 import bp_link4
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
@@ -407,26 +408,7 @@ def link0():
     print("Reload")
     return render_template('link0.jsp')
 
-@app.route('/link1')
-def link1():
-    print("RCM Function")
-    user_info = get_user_info()
-    users = user_info['user_name'] if user_info else "Guest"
-    # 로그인된 사용자의 이메일 주소 자동 입력
-    user_email = user_info.get('user_email', '') if user_info else ''
-
-    # 로그인한 사용자만 활동 로그 기록
-    if is_logged_in():
-        log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 페이지', '/link1',
-                         request.remote_addr, request.headers.get('User-Agent'))
-
-    return render_template('link1.jsp',
-                         return_code=0,
-                         users=users,
-                         is_logged_in=is_logged_in(),
-                         user_info=user_info,
-                         user_email=user_email,
-                         remote_addr=request.remote_addr)
+# link1 라우트는 bp_link1 Blueprint로 이동됨
 
 @app.route('/link2', methods=['GET', 'POST'])
 def link2():
@@ -599,35 +581,9 @@ def link2_prev():
     # 다시 질문 페이지로 이동
     return redirect(url_for('link2'))
 
-@app.route('/link3')
-def link3():
-    print("Paper Function")
-    user_info = get_user_info()
+# link3 라우트는 bp_link3 Blueprint로 이동됨
 
-    # 로그인한 사용자만 활동 로그 기록
-    if is_logged_in():
-        log_user_activity(user_info, 'PAGE_ACCESS', 'Operation Test 페이지', '/link3',
-                         request.remote_addr, request.headers.get('User-Agent'))
-
-    return render_template('link3.jsp',
-                         is_logged_in=is_logged_in(),
-                         user_info=user_info,
-                         remote_addr=request.remote_addr)
-
-@app.route('/link4')
-def link4():
-    print("Video Function")
-    user_info = get_user_info()
-
-    # 로그인한 사용자만 활동 로그 기록
-    if is_logged_in():
-        log_user_activity(user_info, 'PAGE_ACCESS', '영상자료 페이지', '/link4',
-                         request.remote_addr, request.headers.get('User-Agent'))
-
-    return render_template('link4.jsp',
-                         is_logged_in=is_logged_in(),
-                         user_info=user_info,
-                         remote_addr=request.remote_addr)
+# link4 라우트는 bp_link4 Blueprint로 이동됨
 
 def sanitize_text(text, allow_newlines=False):
     """텍스트 입력값 정제"""
@@ -643,17 +599,7 @@ def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(pattern, email) is not None
 
-@app.route('/rcm_generate', methods=['POST'])
-def rcm_generate():
-    form_data = request.form.to_dict()
-    success, user_email, error = generate_and_send_rcm_excel(form_data)
-    if success:
-        return render_template('mail_sent.jsp', user_email=user_email)
-    else:
-        if user_email:
-            return f'<h3>메일 전송에 실패했습니다: {error}</h3>'
-        else:
-            return '<h3>메일 주소가 없습니다. 담당자 정보를 확인해 주세요.</h3>'
+# rcm_generate 라우트는 bp_link1 Blueprint로 이동됨
 
 @app.route('/paper_request', methods=['POST'])
 def paper_request():
@@ -670,40 +616,11 @@ def paper_request():
                          user_info=user_info,
                          remote_addr=request.remote_addr)
 
-@app.route('/paper_template_download', methods=['POST'])
-def paper_template_download():
+# paper_template_download 라우트는 bp_link3 Blueprint로 이동됨
+# paper_generate 라우트는 제거됨 (사용되지 않음)
 
-    form_data = request.form.to_dict()
-    # output_path = link3_operation.paper_template_download(form_data) # Removed link3_operation
-    # Placeholder for paper_template_download logic
-    print("Paper Template Download form data:", form_data)
-    param1 = form_data.get('param1')
-    param2 = form_data.get('param2')
-
-    print('output = ', os.path.join("static", "Design_Template.xlsx")) # Use a dummy template
-    if os.path.exists(os.path.join("static", "Design_Template.xlsx")): # Use a dummy template
-        return send_file(os.path.join("static", "Design_Template.xlsx"), as_attachment=True) # Use a dummy template
-    else:
-        return render_template('link3.jsp', return_param1=param1, return_param2=param2)
-
-@app.route('/paper_generate', methods=['POST'])
-@app.route('/get_content_link4')
-def get_content_link4():
-    content_type = request.args.get('type')
-    data = get_link4_content(content_type)
-    if not data:
-        return '<div style="text-align: center; padding: 20px;"><h3>준비 중입니다</h3><p>해당 항목은 현재 영상제작 중 입니다.</p></div>'
-    return render_template('link4_detail.jsp',
-        youtube_url=data['youtube_url'],
-        img_url=data['img_url'],
-        title=data['title'],
-        desc=data['desc']
-    )
-
-@app.route('/get_content_link3')
-def get_content_link3():
-    # 모든 type에 대해 공통 step-card 템플릿 반환
-    return render_template('link3_detail.jsp')
+# get_content_link3 라우트는 bp_link3 Blueprint로 이동됨
+# get_content_link4 라우트는 bp_link4 Blueprint로 이동됨
 
 @app.route('/ai_review_selection')
 def ai_review_selection():
@@ -1150,6 +1067,9 @@ def api_user_rcm_list():
 
 
 
+app.register_blueprint(bp_link1)
+app.register_blueprint(bp_link3)
+app.register_blueprint(bp_link4)
 app.register_blueprint(bp_link5)
 app.register_blueprint(bp_link6)
 app.register_blueprint(bp_link7)
