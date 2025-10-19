@@ -312,7 +312,7 @@ def admin_rcm():
     user_info = get_user_info()
     if not user_info or user_info.get('admin_flag') != 'Y':
         flash('관리자 권한이 필요합니다.')
-        return redirect(url_for('home'))
+        return redirect(url_for('index'))
     
     # 모든 RCM 목록 조회
     rcms = get_all_rcms()
@@ -329,7 +329,7 @@ def admin_rcm_upload():
     user_info = get_user_info()
     if not user_info or user_info.get('admin_flag') != 'Y':
         flash('관리자 권한이 필요합니다.')
-        return redirect(url_for('home'))
+        return redirect(url_for('index'))
     
     # 모든 사용자 목록 조회 (회사별 RCM 업로드용)
     with get_db() as conn:
@@ -446,7 +446,7 @@ def admin_rcm_mapping(rcm_id):
     user_info = get_user_info()
     if not user_info or user_info.get('admin_flag') != 'Y':
         flash('관리자 권한이 필요합니다.')
-        return redirect(url_for('home'))
+        return redirect(url_for('index'))
     
     # 세션에서 업로드 정보 가져오기
     upload_key = f'rcm_upload_{rcm_id}'
@@ -628,7 +628,7 @@ def admin_rcm_view(rcm_id):
     user_info = get_user_info()
     if not user_info or user_info.get('admin_flag') != 'Y':
         flash('관리자 권한이 필요합니다.')
-        return redirect(url_for('home'))
+        return redirect(url_for('index'))
     
     # RCM 기본 정보 조회
     with get_db() as conn:
@@ -659,7 +659,7 @@ def admin_rcm_users(rcm_id):
     user_info = get_user_info()
     if not user_info or user_info.get('admin_flag') != 'Y':
         flash('관리자 권한이 필요합니다.')
-        return redirect(url_for('home'))
+        return redirect(url_for('index'))
     
     # RCM 기본 정보 조회
     with get_db() as conn:

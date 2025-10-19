@@ -148,6 +148,42 @@
                                 {% endfor %}
                             </div>
 
+                            <!-- 상세 진행률 표시 -->
+                            <div class="mb-3">
+                                {% for step in item.progress.steps[:3] %}
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-muted">
+                                            <strong>{{ step.name }}</strong>
+                                            {% if step.details %}
+                                                {% if step.step == 1 %}
+                                                    (매핑: {{ step.details.mapped_controls }}/{{ step.details.total_controls }},
+                                                     검토: {{ step.details.reviewed_controls }}/{{ step.details.total_controls }})
+                                                {% elif step.step == 2 %}
+                                                    (완료: {{ step.details.completed_sessions }}/{{ step.details.total_sessions }}세션)
+                                                {% elif step.step == 3 %}
+                                                    (완료: {{ step.details.completed_controls }}/{{ step.details.total_controls }}통제)
+                                                {% endif %}
+                                            {% endif %}
+                                        </small>
+                                        {% if step.details and step.details.progress is defined %}
+                                        <small class="text-primary"><strong>{{ step.details.progress }}%</strong></small>
+                                        {% endif %}
+                                    </div>
+                                    {% if step.details and step.details.progress is defined %}
+                                    <div class="progress" style="height: 5px;">
+                                        <div class="progress-bar
+                                            {% if step.status == 'completed' %}bg-success
+                                            {% elif step.status == 'in_progress' %}bg-primary
+                                            {% else %}bg-secondary{% endif %}"
+                                            role="progressbar"
+                                            style="width: {{ step.details.progress }}%"></div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+
                             <!-- 현재 진행 단계 -->
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center">
