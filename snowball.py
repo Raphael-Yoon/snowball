@@ -603,18 +603,15 @@ def is_valid_email(email):
 
 @app.route('/paper_request', methods=['POST'])
 def paper_request():
-    print("Paper Request called")
+    """
+    Deprecated: 이 라우트는 더 이상 사용되지 않습니다.
+    기존 코드와의 호환성을 위해 유지되고 있습니다.
+    """
+    print("Paper Request called (Deprecated)")
+    print("Warning: /paper_request is deprecated and should not be used")
 
-    form_data = request.form.to_dict()
-    # output_path = link2_design.paper_request(form_data) # Removed link2_design
-    # Placeholder for paper_request logic
-    print("Paper Request form data:", form_data)
-    user_info = get_user_info()
-    return render_template('link2.jsp', 
-                         return_code=2,
-                         is_logged_in=is_logged_in(),
-                         user_info=user_info,
-                         remote_addr=request.remote_addr)
+    # Link2로 리다이렉트
+    return redirect(url_for('link2'))
 
 # paper_template_download 라우트는 bp_link3 Blueprint로 이동됨
 # paper_generate 라우트는 제거됨 (사용되지 않음)

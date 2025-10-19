@@ -201,3 +201,25 @@ def mock_gmail_send_with_attachment(mocker):
     mock = mocker.patch('snowball_mail.send_gmail_with_attachment')
     mock.return_value = True
     return mock
+
+
+@pytest.fixture(autouse=True)
+def disable_email_sending(mocker):
+    """
+    자동으로 모든 테스트에서 실제 이메일 전송을 차단합니다.
+    테스트 시 실제 메일이 발송되지 않도록 합니다.
+    """
+    # snowball_mail의 모든 이메일 전송 함수를 Mock으로 대체
+    mocker.patch('snowball_mail.send_gmail', return_value=True)
+    mocker.patch('snowball_mail.send_gmail_with_attachment', return_value=None)
+
+    # 혹시 다른 모듈에서 직접 import하는 경우도 대비
+    try:
+        mocker.patch('snowball_link1.send_gmail_with_attachment', return_value=None)
+    except:
+        pass
+
+    try:
+        mocker.patch('snowball_link2.send_gmail_with_attachment', return_value=None)
+    except:
+        pass

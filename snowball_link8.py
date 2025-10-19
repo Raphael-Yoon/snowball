@@ -65,8 +65,8 @@ def assessment_detail(rcm_id):
     
     if not rcm_info:
         flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
-        return redirect(url_for('link9.internal_assessment'))
-    
+        return redirect(url_for('link8.internal_assessment'))
+
     # 내부평가 진행 상황 조회
     progress = get_assessment_progress(rcm_id, user_info['user_id'])
     
@@ -97,12 +97,12 @@ def assessment_step(rcm_id, step):
     
     if not rcm_info:
         flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
-        return redirect(url_for('link9.internal_assessment'))
-    
+        return redirect(url_for('link8.internal_assessment'))
+
     # 단계 유효성 검사 (1-6단계)
     if step < 1 or step > 6:
         flash('유효하지 않은 평가 단계입니다.', 'error')
-        return redirect(url_for('link9.assessment_detail', rcm_id=rcm_id))
+        return redirect(url_for('link8.assessment_detail', rcm_id=rcm_id))
     
     # 해당 단계의 데이터 조회
     step_data = get_step_data(rcm_id, user_info['user_id'], step)
@@ -247,33 +247,100 @@ def update_progress_from_actual_data(rcm_id, user_id, progress):
     from auth import get_completed_design_evaluation_sessions, get_operation_evaluations
 
     try:
-        # 1단계: RCM 평가 - RCM 데이터가 존재하면 완료
         db = get_db()
-        rcm_exists = db.execute('SELECT COUNT(*) FROM sb_rcm_detail WHERE rcm_id = ?', (rcm_id,)).fetchone()[0]
-        if rcm_exists > 0:
-            progress['steps'][0]['status'] = 'completed'
 
-        # 2단계: 설계평가 - 완료된 설계평가 세션이 있으면 완료
+        # 1단계: RCM 평가 (Link5) - 표준통제 매핑 완료율 계산
+        cursor = db.execute('''
+            SELECT COUNT(DISTINCT rd.detail_id) as total_controls,
+                   COUNT(DISTINCT CASE WHEN sm.mapping_id IS NOT NULL THEN rd.detail_id END) as mapped_controls,
+                   COUNT(DISTINCT CASE WHEN ce.eval_id IS NOT NULL THEN rd.detail_id END) as reviewed_controls
+            FROM sb_rcm_detail rd
+            LEFT JOIN sb_rcm_standard_mapping sm ON rd.rcm_id = sm.rcm_id AND rd.control_code = sm.control_code AND sm.is_active = 'Y'
+            LEFT JOIN sb_rcm_completeness_eval ce ON rd.rcm_id = ce.rcm_id
+            WHERE rd.rcm_id = ?
+        ''', (rcm_id,))
+
+        rcm_data = cursor.fetchone()
+        total_controls = rcm_data[0] if rcm_data else 0
+        mapped_controls = rcm_data[1] if rcm_data else 0
+        reviewed_controls = rcm_data[2] if rcm_data else 0
+
+        # RCM 평가 진행률 계산 (매핑 + 검토)
+        if total_controls > 0:
+            mapping_progress = (mapped_controls / total_controls) * 50  # 매핑 50%
+            review_progress = (reviewed_controls / total_controls) * 50  # 검토 50%
+            rcm_progress = int(mapping_progress + review_progress)
+
+            progress['steps'][0]['details'] = {
+                'total_controls': total_controls,
+                'mapped_controls': mapped_controls,
+                'reviewed_controls': reviewed_controls,
+                'progress': rcm_progress
+            }
+
+            if rcm_progress >= 100:
+                progress['steps'][0]['status'] = 'completed'
+            elif rcm_progress > 0:
+                progress['steps'][0]['status'] = 'in_progress'
+
+        # 2단계: 설계평가 (Link6) - 세션별 완료율 계산
         completed_design_sessions = get_completed_design_evaluation_sessions(rcm_id, user_id)
+
+        # 전체 설계평가 세션 수 조회
+        cursor = db.execute('''
+            SELECT COUNT(DISTINCT evaluation_session)
+            FROM sb_design_evaluation
+            WHERE rcm_id = ? AND user_id = ?
+        ''', (rcm_id, user_id))
+        total_sessions = cursor.fetchone()[0] if cursor.fetchone() else 0
+
+        completed_count = len(completed_design_sessions) if completed_design_sessions else 0
+
+        progress['steps'][1]['details'] = {
+            'total_sessions': max(total_sessions, completed_count),
+            'completed_sessions': completed_count,
+            'progress': int((completed_count / max(total_sessions, 1)) * 100) if total_sessions > 0 else 0
+        }
+
         if completed_design_sessions:
             progress['steps'][1]['status'] = 'completed'
-        elif progress['steps'][0]['status'] == 'completed':
+        elif progress['steps'][0]['status'] in ['completed', 'in_progress']:
             progress['steps'][1]['status'] = 'in_progress'
 
-        # 3단계: 운영평가 - 운영평가 데이터가 있으면 완료 (임시로 진행중으로 설정)
+        # 3단계: 운영평가 (Link7) - 통제별 완료율 계산
         if completed_design_sessions:
+            total_operation_controls = 0
+            completed_operation_controls = 0
+
             for session in completed_design_sessions:
                 operation_session = f"OP_{session['evaluation_session']}"
                 operations = get_operation_evaluations(rcm_id, user_id, operation_session, session['evaluation_session'])
-                if operations:
-                    progress['steps'][2]['status'] = 'in_progress'
-                    break
 
-            if progress['steps'][2]['status'] == 'pending' and progress['steps'][1]['status'] == 'completed':
+                if operations:
+                    # 운영평가 대상 통제 수 계산
+                    for op in operations:
+                        total_operation_controls += 1
+                        # conclusion이 있으면 완료로 간주
+                        if op.get('conclusion'):
+                            completed_operation_controls += 1
+
+            progress['steps'][2]['details'] = {
+                'total_controls': total_operation_controls,
+                'completed_controls': completed_operation_controls,
+                'progress': int((completed_operation_controls / max(total_operation_controls, 1)) * 100) if total_operation_controls > 0 else 0
+            }
+
+            if total_operation_controls > 0 and completed_operation_controls == total_operation_controls:
+                progress['steps'][2]['status'] = 'completed'
+            elif total_operation_controls > 0:
+                progress['steps'][2]['status'] = 'in_progress'
+            elif progress['steps'][1]['status'] == 'completed':
                 progress['steps'][2]['status'] = 'in_progress'
 
     except Exception as e:
         print(f"진행상황 업데이트 오류: {e}")
+        import traceback
+        traceback.print_exc()
 
     return progress
 
