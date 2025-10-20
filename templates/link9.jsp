@@ -8,6 +8,9 @@
     		<link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
 		<link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
     <title>snowball</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 </head>
 <body>
     {% include 'navi.jsp' %}

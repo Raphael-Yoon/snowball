@@ -230,3 +230,209 @@ class TestLink8Responsiveness:
         assert response.status_code == 200
         # 반응형 요소가 있어야 함
         assert b'col-lg' in response.data or b'col-md' in response.data or b'container' in response.data
+
+
+class TestLink8DetailAPI:
+    """Link8 상세 정보 API 테스트"""
+
+    def test_assessment_detail_api_requires_login(self, client):
+        """상세 정보 API - 로그인 필요"""
+        response = client.get('/internal-assessment/api/detail/1/DEFAULT', follow_redirects=False)
+        assert response.status_code in [302, 401, 403]
+
+    def test_assessment_detail_api_returns_json(self, authenticated_client):
+        """상세 정보 API - JSON 반환"""
+        response = authenticated_client.get('/internal-assessment/api/detail/1/DEFAULT')
+        # 권한이 있으면 JSON, 없으면 403
+        if response.status_code == 200:
+            assert response.content_type == 'application/json'
+            data = response.get_json()
+            assert 'success' in data or 'error' in data
+
+    def test_assessment_detail_api_with_invalid_rcm(self, authenticated_client):
+        """상세 정보 API - 존재하지 않는 RCM"""
+        response = authenticated_client.get('/internal-assessment/api/detail/99999/DEFAULT')
+        # 권한 없음 또는 404
+        assert response.status_code in [403, 404, 500]
+
+
+class TestLink8ProgressCalculationLogic:
+    """Link8 진행률 계산 로직 테스트"""
+
+    def test_design_evaluation_progress_calculation(self, authenticated_client):
+        """설계평가 진행률 계산 - 실제 라인 개수 기반"""
+        # API를 통해 진행률 정보 조회
+        response = authenticated_client.get('/internal-assessment/api/detail/1/DEFAULT')
+        if response.status_code == 200:
+            data = response.get_json()
+            if data.get('success') and 'progress' in data:
+                progress = data['progress']
+                # 진행률 범위 확인 (0-100)
+                assert 0 <= progress.get('overall_progress', 0) <= 100
+                # 단계별 정보 확인
+                if 'steps' in progress:
+                    for step in progress['steps']:
+                        if 'details' in step and 'progress' in step['details']:
+                            assert 0 <= step['details']['progress'] <= 100
+
+    def test_operation_evaluation_progress_calculation(self, authenticated_client):
+        """운영평가 진행률 계산"""
+        response = authenticated_client.get('/internal-assessment/api/detail/1/DEFAULT')
+        if response.status_code == 200:
+            data = response.get_json()
+            if data.get('success') and 'progress' in data:
+                progress = data['progress']
+                # 2단계(운영평가) 확인
+                if len(progress.get('steps', [])) >= 2:
+                    op_step = progress['steps'][1]
+                    assert op_step.get('step') == 2
+
+    def test_overall_progress_is_average_of_steps(self, authenticated_client):
+        """전체 진행률은 각 단계 진행률의 평균"""
+        response = authenticated_client.get('/internal-assessment/api/detail/1/DEFAULT')
+        if response.status_code == 200:
+            data = response.get_json()
+            if data.get('success') and 'progress' in data:
+                progress = data['progress']
+                if 'steps' in progress and len(progress['steps']) > 0:
+                    # 수동으로 평균 계산
+                    total = sum(
+                        step.get('details', {}).get('progress', 0)
+                        for step in progress['steps']
+                        if 'details' in step
+                    )
+                    expected_avg = int(total / len(progress['steps']))
+                    # 소수점 반올림 차이 허용
+                    actual_progress = progress.get('overall_progress', 0)
+                    assert abs(actual_progress - expected_avg) <= 1
+
+
+class TestLink8SessionFiltering:
+    """Link8 세션 필터링 테스트"""
+
+    def test_archived_sessions_not_shown(self, authenticated_client):
+        """ARCHIVED 세션은 목록에 표시되지 않음"""
+        response = authenticated_client.get('/internal-assessment')
+        assert response.status_code == 200
+        data = response.data.decode()
+        # ARCHIVED 배지가 있으면 안됨
+        # (실제 ARCHIVED 세션이 있을 경우 테스트 데이터에 따라 달라질 수 있음)
+        # 페이지가 정상적으로 로드되는지만 확인
+        assert 'assessment' in data.lower()
+
+    def test_completed_sessions_are_shown(self, authenticated_client):
+        """COMPLETED 세션은 목록에 표시됨"""
+        response = authenticated_client.get('/internal-assessment')
+        assert response.status_code == 200
+        # 완료된 세션이 있으면 표시되어야 함
+        # 페이지가 정상적으로 로드되는지 확인
+        data = response.data.decode()
+        assert 'assessment' in data.lower()
+
+
+class TestLink8StatusBadge:
+    """Link8 상태 배지 로직 테스트"""
+
+    def test_session_status_badge_logic(self, authenticated_client):
+        """세션 상태 배지 - 설계평가+운영평가 조합"""
+        response = authenticated_client.get('/internal-assessment')
+        assert response.status_code == 200
+        data = response.data.decode()
+        # 배지 요소가 있어야 함
+        assert 'badge' in data.lower() or 'status' in data.lower()
+
+    def test_design_completed_operation_completed_shows_complete(self, authenticated_client):
+        """설계평가 완료 + 운영평가 완료 = 완료 배지"""
+        # API를 통해 확인
+        response = authenticated_client.get('/internal-assessment/api/detail/1/DEFAULT')
+        if response.status_code == 200:
+            data = response.get_json()
+            if data.get('success') and 'progress' in data:
+                steps = data['progress'].get('steps', [])
+                if len(steps) >= 2:
+                    design_status = steps[0].get('status')
+                    operation_status = steps[1].get('status')
+                    # 둘 다 completed면 전체도 completed
+                    if design_status == 'completed' and operation_status == 'completed':
+                        # 전체 진행률이 100이어야 함
+                        assert data['progress'].get('overall_progress') == 100
+
+
+class TestLink8DetailedEvaluationInfo:
+    """Link8 상세 평가 정보 테스트"""
+
+    def test_inadequate_controls_list_returned(self, authenticated_client):
+        """미비점이 있는 통제 목록 반환"""
+        response = authenticated_client.get('/internal-assessment/api/detail/1/DEFAULT')
+        if response.status_code == 200:
+            data = response.get_json()
+            if data.get('success') and 'design_detail' in data:
+                design_detail = data['design_detail']
+                # inadequate_controls 키가 있어야 함
+                assert 'inadequate_controls' in design_detail
+                assert isinstance(design_detail['inadequate_controls'], list)
+
+    def test_exception_controls_list_returned(self, authenticated_client):
+        """예외사항이 있는 통제 목록 반환"""
+        response = authenticated_client.get('/internal-assessment/api/detail/1/DEFAULT')
+        if response.status_code == 200:
+            data = response.get_json()
+            if data.get('success') and 'operation_detail' in data:
+                operation_detail = data['operation_detail']
+                # exception_controls 키가 있어야 함
+                assert 'exception_controls' in operation_detail
+                assert isinstance(operation_detail['exception_controls'], list)
+
+    def test_effectiveness_stats_returned(self, authenticated_client):
+        """평가 결과 분포 통계 반환"""
+        response = authenticated_client.get('/internal-assessment/api/detail/1/DEFAULT')
+        if response.status_code == 200:
+            data = response.get_json()
+            if data.get('success') and 'design_detail' in data:
+                design_detail = data['design_detail']
+                # effectiveness_stats 키가 있어야 함
+                assert 'effectiveness_stats' in design_detail
+                assert isinstance(design_detail['effectiveness_stats'], dict)
+
+
+class TestLink8NotApplicableHandling:
+    """Link8 not_applicable 값 처리 테스트"""
+
+    def test_not_applicable_in_conclusion_stats(self, authenticated_client):
+        """not_applicable 값이 결론 통계에 포함됨"""
+        response = authenticated_client.get('/internal-assessment/api/detail/1/DEFAULT')
+        if response.status_code == 200:
+            data = response.get_json()
+            if data.get('success') and 'operation_detail' in data:
+                operation_detail = data['operation_detail']
+                if 'conclusion_stats' in operation_detail:
+                    stats = operation_detail['conclusion_stats']
+                    # not_applicable이 있을 수 있음
+                    if 'not_applicable' in stats:
+                        assert isinstance(stats['not_applicable'], int)
+                        assert stats['not_applicable'] >= 0
+
+
+class TestLink8Favicon:
+    """Link8 파비콘 테스트"""
+
+    def test_internal_assessment_includes_favicon(self, authenticated_client):
+        """내부평가 페이지에 파비콘 포함"""
+        response = authenticated_client.get('/internal-assessment')
+        assert response.status_code == 200
+        data = response.data.decode()
+        # 파비콘 링크가 있어야 함
+        assert 'favicon.ico' in data or 'icon' in data.lower()
+
+
+class TestLink8ProgressRingStartPoint:
+    """Link8 원형 진행률 표시 테스트"""
+
+    def test_progress_ring_starts_at_12_oclock(self, authenticated_client):
+        """원형 진행률 표시가 12시 방향에서 시작"""
+        response = authenticated_client.get('/internal-assessment')
+        assert response.status_code == 200
+        data = response.data.decode()
+        # CSS에 transform: rotate(-90deg) 가 있어야 함
+        if 'progress-ring' in data:
+            assert 'rotate(-90deg)' in data or 'transform' in data

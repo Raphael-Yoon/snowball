@@ -45,6 +45,55 @@ snowball/
 
 ## 작업 히스토리
 
+### 2025-10-19
+- **내부평가 (Link8) 기능 개선 및 버그 수정**
+  - **세션별 진행 상황 표시 개선**
+    - ARCHIVED 세션 필터링: 내부평가 목록에서 제외
+    - 설계평가와 운영평가 상태를 모두 확인하여 세션 표시 여부 결정
+    - 파일: `snowball_link8.py` (세션 조회 쿼리 개선)
+
+  - **세션 상태 배지 로직 수정**
+    - 설계평가 COMPLETED + 운영평가 COMPLETED = "완료"
+    - 설계평가 IN_PROGRESS OR 운영평가 IN_PROGRESS = "진행중"
+    - 그 외 = "대기"
+    - 파일: `templates/internal_assessment_main.jsp`
+
+  - **진행률 계산 정확도 개선**
+    - 설계평가 헤더의 `total_controls` 대신 실제 라인 개수를 집계
+    - 빈 `control_code` 항목 제외 처리
+    - 실제 평가 완료 개수를 라인에서 직접 계산
+    - 파일: `snowball_link8.py` (update_progress_from_actual_data)
+
+  - **운영평가 자동 완료 로직 제거**
+    - 운영평가 데이터 존재 시 설계평가를 자동 완료하던 잘못된 로직 제거
+    - 설계평가 `evaluation_status`만으로 완료 여부 판단
+    - 파일: `snowball_link8.py` (line 368-377 삭제)
+
+  - **버튼 표시 로직 전면 개선**
+    - 설계평가/운영평가 버튼을 항상 표시
+    - 상태에 따라 버튼 텍스트 변경:
+      - COMPLETED: "확인" 버튼 (초록 외곽선)
+      - IN_PROGRESS: "계속" 버튼 (파란/초록)
+      - 미시작: "시작" 버튼
+      - 잠김: 설계평가 미완료 시 운영평가 버튼 비활성화
+    - 파일: `templates/internal_assessment_main.jsp`
+
+  - **카드 높이 통일**
+    - 진행률 정보가 없을 때도 "0%, (시작 전)" 표시하여 카드 높이 동일하게 유지
+    - 버튼 최소 높이 설정 (42px)
+    - 파일: `templates/internal_assessment_main.jsp` (CSS 추가)
+
+  - **현재 단계 표시 개선**
+    - 설계평가 세션 미생성 시: "미진행" (회색 배지)
+    - 진행 중: 실제 단계명 표시
+    - 파일: `templates/internal_assessment_main.jsp`
+
+  - **버튼 활성화 조건 명확화**
+    1. 설계평가 진행중 → 설계평가 계속만 활성화
+    2. 설계평가 완료 → 설계평가 확인 + 운영평가 시작 활성화
+    3. 운영평가 진행중 → 설계평가 확인 + 운영평가 계속 활성화
+    4. 운영평가 완료 → 설계평가 확인 + 운영평가 확인 활성화
+
 ### 2025-10-18
 - **인터뷰 기능 버그 수정 및 개선**
   - **[CRITICAL] Method Not Allowed 에러 수정**
