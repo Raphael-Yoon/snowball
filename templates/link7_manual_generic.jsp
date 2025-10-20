@@ -920,13 +920,17 @@
                         // 토스트 표시
                         showToast();
 
-                        // 0.5초 후 부모 창 새로고침 (토스트만 보여주고 바로 새로고침)
+                        // 0.5초 후 팝업 닫기 또는 새로고침
                         setTimeout(() => {
                             try {
-                                // iframe 안에 있으면 부모 창 새로고침
-                                if (window.parent !== window) {
+                                // 팝업 창으로 열렸는지 확인
+                                if (window.opener) {
+                                    // 팝업 창이면 부모 창 새로고침 후 닫기
+                                    window.opener.location.reload();
+                                    window.close();
+                                } else if (window.parent !== window) {
+                                    // iframe 안에 있으면 부모 창 새로고침
                                     window.parent.postMessage({ type: 'reload' }, '*');
-                                    // 부모가 응답하지 않으면 1초 후 직접 새로고침
                                     setTimeout(() => {
                                         window.location.reload();
                                     }, 1000);

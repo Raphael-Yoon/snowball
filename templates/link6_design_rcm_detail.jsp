@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>RCM 설계평가 - {{ rcm_info.rcm_name }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
@@ -156,7 +159,7 @@
                                                 </a>
                                             {% else %}
                                                 <a href="/rcm/{{ rcm_id }}/mapping" class="badge bg-warning text-dark fw-bold text-decoration-none" style="border: 2px solid #fd7e14;" title="클릭하여 기준통제 매핑하기" data-bs-toggle="tooltip">
-                                                    <i class="fas fa-exclamation-triangle me-1"></i>미매핑
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>매핑안됨
                                                 </a>
                                             {% endif %}
                                         </td>

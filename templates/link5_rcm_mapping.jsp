@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>기준통제 매핑 - {{ rcm_info.rcm_name }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
@@ -257,7 +260,7 @@
                                                 <br>
                                                 <small class="text-warning">매핑할 기준통제 없음</small>
                                             {% else %}
-                                                <span class="badge bg-danger mb-1">미매핑</span>
+                                                <span class="badge bg-danger mb-1">매핑안됨</span>
                                                 <br>
                                                 <small class="text-danger">기준통제와 매핑 필요</small>
                                             {% endif %}
@@ -513,7 +516,7 @@
                     
                     // 배지 업데이트
                     const badge = card.querySelector('.badge');
-                    badge.textContent = '미매핑';
+                    badge.textContent = '매핑안됨';
                     badge.className = 'badge bg-danger mb-1';
                     
                     const statusText = card.querySelector('small');
@@ -568,7 +571,7 @@
                 // 배지 업데이트
                 const badge = card.querySelector('.badge');
                 if (badge) {
-                    badge.textContent = '미매핑';
+                    badge.textContent = '매핑안됨';
                     badge.className = 'badge bg-danger mb-1';
                 }
                 
