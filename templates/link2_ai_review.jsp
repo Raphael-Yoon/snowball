@@ -69,12 +69,6 @@
                                 <br><small><i class="fas fa-info-circle text-info"></i> 회원가입 시 전체 통제 검토가 가능합니다</small>
                             </div>
                             {% endif %}
-                            
-                            {% if is_logged_in and ai_review_count is defined %}
-                            <div class="alert alert-info">
-                                <i class="fas fa-chart-bar"></i> AI 검토 사용 현황: <strong>{{ ai_review_count }}</strong>회 사용
-                            </div>
-                            {% endif %}
                         </div>
                         
                         <div class="row g-3">
@@ -88,7 +82,7 @@
                                             <li><i class="fas fa-check text-success me-2"></i>문장 다듬기 및 문법 교정</li>
                                             <li><i class="fas fa-check text-success me-2"></i>전문적인 검토 의견 제공</li>
                                         </ul>
-                                        <p class="text-muted small">처리 시간: 2-3분</p>
+                                        <p class="text-warning small"><i class="fas fa-clock"></i> <strong>처리 시간: 약 1-2분 소요됩니다</strong></p>
                                     </div>
                                 </div>
                             </div>

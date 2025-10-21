@@ -627,17 +627,11 @@ def ai_review_selection():
         return redirect(url_for('link2', reset=1))  # 세션이 없으면 인터뷰 처음으로
     
     user_info = get_user_info()
-    
-    # 로그인한 사용자만 AI 검토 현황 표시
-    current_count = 0
-    if is_logged_in():
-        current_count, _ = get_ai_review_status(user_email)
-    
-    return render_template('link2_ai_review.jsp', 
+
+    return render_template('link2_ai_review.jsp',
                          user_email=user_email,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
-                         ai_review_count=current_count if is_logged_in() else None,
                          remote_addr=request.remote_addr)
 
 @app.route('/update_session_email', methods=['POST'])
