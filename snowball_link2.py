@@ -9,6 +9,9 @@ from openpyxl.styles import PatternFill
 from openai import OpenAI
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+import time
+from requests.exceptions import RequestException
+import socket
 
 # ================================
 # AI 문장 다듬기 설정 (수기 조정 가능)
@@ -27,10 +30,20 @@ AI_REFINEMENT_PROMPT = """문법교정만 하세요. 내용변경금지.
 
 # OpenAI 모델 설정
 AI_MODEL_CONFIG = {
-    'model': 'gpt-4o-mini',  # 사용할 모델 (gpt-4o-mini는 저렴)
-    'max_tokens': 800,       # 최대 토큰 수
-    'temperature': 0.3       # 창의성 수준 (0.0-1.0, 낮을수록 일관적)
+    'model': 'gpt-4o-mini',     # 사용할 모델
+    'max_tokens': 800,          # 최대 토큰 수
+    'temperature': 0.0          # 창의성 수준 (0.0=완전 일관적, 1.0=다양함)
 }
+
+# API Rate Limiting 설정 (안정성 우선)
+API_RATE_LIMIT = {
+    'requests_per_minute': 300,     # OpenAI 유료 티어 기준
+    'delay_between_requests': 0.2   # 60초 / 300회 = 0.2초
+}
+
+# API 호출 추적용 전역 변수
+_last_api_call_time = 0
+_api_call_lock = threading.Lock()
 
 # 텍스트 길이 제한 (토큰 절약)
 TEXT_LENGTH_LIMITS = {
@@ -830,6 +843,85 @@ def is_ineffective(control, answers):
     }
     return conditions.get(control, False)
 
+def _wait_for_rate_limit():
+    """API Rate Limiting을 위한 대기 함수"""
+    global _last_api_call_time
+    with _api_call_lock:
+        current_time = time.time()
+        time_since_last_call = current_time - _last_api_call_time
+
+        if time_since_last_call < API_RATE_LIMIT['delay_between_requests']:
+            wait_time = API_RATE_LIMIT['delay_between_requests'] - time_since_last_call
+            if wait_time > 1:  # 1초 이상 대기 시 메시지 출력
+                print(f"[INFO] API Rate Limit 준수: {wait_time:.1f}초 대기 중...")
+            time.sleep(wait_time)
+
+        _last_api_call_time = time.time()
+
+def _call_openai_api_with_retry(client, messages, model, max_tokens, temperature, max_retries=5):
+    """OpenAI API 호출 with retry 로직 (안정성 우선)"""
+    for attempt in range(max_retries):
+        try:
+            _wait_for_rate_limit()
+
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature
+            )
+
+            return response.choices[0].message.content
+
+        # 네트워크 예외를 명시적으로 처리
+        except (RequestException, socket.timeout, socket.error, OSError) as network_err:
+            error_name = type(network_err).__name__
+            if attempt < max_retries - 1:
+                wait_time = 10 * (attempt + 1)
+                print(f"[INFO] 네트워크 연결 끊김 감지: {error_name}")
+                print(f"[INFO] {wait_time}초 후 자동 재시도... ({attempt + 1}/{max_retries})")
+                time.sleep(wait_time)
+                continue
+            else:
+                print(f"[ERROR] 네트워크 연결 문제 지속 ({error_name}). 원본 텍스트 사용하여 계속 진행.")
+                return None
+
+        except Exception as e:
+            error_str = str(e)
+
+            # 할당량 초과 에러 처리
+            if '429' in error_str or 'quota' in error_str.lower() or 'rate' in error_str.lower():
+                if attempt < max_retries - 1:
+                    wait_time = 20 * (attempt + 1)  # 20초, 40초, 60초, 80초
+                    print(f"[INFO] API 할당량 초과. {wait_time}초 후 재시도... ({attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    print(f"[ERROR] API 할당량 초과. 최대 재시도 {max_retries}회 도달. 원본 사용.")
+                    return None
+
+            # 네트워크 오류 등 일시적 오류도 재시도
+            elif any(keyword in error_str.lower() for keyword in [
+                'connection', 'timeout', 'network', 'timed out',
+                'connection reset', 'connection refused', 'connection aborted',
+                'dns', 'socket', 'unreachable', 'unavailable',
+                'temporary failure', 'service unavailable', '503', '502', '504'
+            ]):
+                if attempt < max_retries - 1:
+                    wait_time = 10 * (attempt + 1)
+                    print(f"[INFO] 네트워크 연결 문제 감지. {wait_time}초 후 재시도... ({attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    print(f"[ERROR] 네트워크 오류 지속. 최대 재시도 {max_retries}회 도달. 원본 텍스트 사용하여 계속 진행.")
+                    return None
+            else:
+                # 그 외 예상치 못한 에러는 로그 출력 후 None 반환
+                print(f"[ERROR] 예상치 못한 API 오류: {str(e)[:200]}")
+                return None
+
+    return None
+
 def ai_improve_interview_answer(question_text, answer_text):
     """
     AI를 사용하여 인터뷰 답변을 문법적으로 다듬고 일관성 있게 개선합니다.
@@ -839,20 +931,29 @@ def ai_improve_interview_answer(question_text, answer_text):
         if api_key:
             # API 키가 있으면 AI로 개선
             client = OpenAI(api_key=api_key)
-            prompt = AI_REFINEMENT_PROMPT.format(answer_text=answer_text)
             model_name = os.getenv('OPENAI_MODEL', AI_MODEL_CONFIG['model'])
-            
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {"role": "system", "content": "한국어 문서 교정 전문가"},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=AI_MODEL_CONFIG['max_tokens'],
-                temperature=AI_MODEL_CONFIG['temperature']
+
+            prompt = AI_REFINEMENT_PROMPT.format(answer_text=answer_text)
+
+            messages = [
+                {"role": "system", "content": "당신은 한국어 문서 교정 전문가입니다. 문법 오류만 수정하고, 원본 의미와 내용은 절대 변경하지 마세요."},
+                {"role": "user", "content": prompt}
+            ]
+
+            # OpenAI API 호출 (retry 및 rate limiting 포함)
+            result = _call_openai_api_with_retry(
+                client,
+                messages,
+                model_name,
+                AI_MODEL_CONFIG['max_tokens'],
+                AI_MODEL_CONFIG['temperature']
             )
-            
-            result = response.choices[0].message.content.strip()
+
+            # None이 반환되면 원본 사용
+            if result is None:
+                result = answer_text
+            else:
+                result = result.strip()
         else:
             # API 키가 없으면 원본 텍스트 사용
             result = answer_text
@@ -954,12 +1055,13 @@ def ai_improve_answer_consistency(answers, textarea_answers):
                 'consistency_check': "OpenAI API 키가 설정되지 않았습니다.",
                 'suggestions': []
             }
-        
+
         client = OpenAI(api_key=api_key)
-        
+        model_name = os.getenv('OPENAI_MODEL', AI_MODEL_CONFIG['model'])
+
         # 조건부 질문 필터링 적용
         filtered_questions = get_conditional_questions(answers)
-        
+
         # 중요한 답변들만 선별하여 컨텍스트 구성
         key_answers = []
         for question in filtered_questions:
@@ -969,9 +1071,9 @@ def ai_improve_answer_consistency(answers, textarea_answers):
                 if question_index < len(textarea_answers) and textarea_answers[question_index]:
                     answer_text += f" ({textarea_answers[question_index]})"
                 key_answers.append(f"Q{question_index+1}: {question['text']} -> A: {answer_text}")
-        
+
         context = "\n".join(key_answers[:20])  # 처음 20개 질문만 사용
-        
+
         prompt = f"""다음은 ITGC 인터뷰의 질문과 답변들입니다. 답변들 간의 논리적 일관성을 검토하고 개선 제안을 해주세요.
 
 {context}
@@ -986,19 +1088,23 @@ def ai_improve_answer_consistency(answers, textarea_answers):
 일관성 검토: [전체적인 일관성 평가]
 개선 제안: [구체적인 개선 사항들을 번호로 나열]"""
 
-        model_name = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
-        
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": "ITGC 전문가. 답변의 논리적 일관성을 검토하고 개선 제안을 제공합니다."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=600,
-            temperature=0.2
+        messages = [
+            {"role": "system", "content": "당신은 ITGC 전문가입니다. 답변의 논리적 일관성을 검토하고 개선 제안을 제공합니다."},
+            {"role": "user", "content": prompt}
+        ]
+
+        # OpenAI API 호출 (retry 및 rate limiting 포함)
+        result = _call_openai_api_with_retry(
+            client,
+            messages,
+            model_name,
+            600,
+            0.0  # 완전히 일관된 결과
         )
-        
-        result = response.choices[0].message.content
+
+        # None이 반환되면 기본 메시지
+        if result is None:
+            result = "AI 일관성 검토를 완료할 수 없습니다. (API 오류)"
         
         # 기본 일관성 체크도 추가
         basic_issues = check_answer_consistency(answers, textarea_answers)
@@ -1042,17 +1148,7 @@ def get_ai_review(content, control_number=None, answers=None):
                         'conclusion': "Ineffective",
                         'improvements': f"모집단 확보를 위한 시스템 구축 또는 절차 수립이 필요합니다. {control_number} 통제가 효과적으로 운영되기 위해서는 관련 데이터의 완전성과 정확성이 보장되어야 합니다."
                     }
-        
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            return {
-                'review_result': "OpenAI API 키가 설정되지 않았습니다.",
-                'conclusion': "검토 불가",
-                'improvements': "OPENAI_API_KEY 환경변수를 설정해주세요."
-            }
-        
-        client = OpenAI(api_key=api_key)
-        
+
         # 통제별 특정 기준만 가져오기 (토큰 절약)
         specific_criteria = CONTROL_SPECIFIC_CRITERIA.get(control_number, [])
         
@@ -1150,19 +1246,38 @@ def get_ai_review(content, control_number=None, answers=None):
 4. 예시: "ITSM을 통해 요청서 작성 후 팀장 승인을 받아 권한 부여" → 사용자가 직접 작성한 절차 설명이므로 평가 대상
 """
 
-        model_name = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')  # 기본값으로 gpt-4o-mini 사용
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return {
+                'review_result': "OpenAI API 키가 설정되지 않았습니다.",
+                'conclusion': "검토 불가",
+                'improvements': "OPENAI_API_KEY 환경변수를 설정해주세요."
+            }
 
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": "전문적이고 균형잡힌 ITGC 감사 전문가입니다. 명백한 미비점은 정확히 식별하되, 적절히 운영되는 통제는 Effective로 인정하는 합리적 판단을 수행합니다. 모든 검토 의견은 정확한 서술형으로 작성하며, 음슴체는 사용하지 않습니다."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=400,
-            temperature=0.3  # 균형잡힌 전문 판정을 위한 설정 (0=경직, 1=유연)
+        client = OpenAI(api_key=api_key)
+        model_name = os.getenv('OPENAI_MODEL', AI_MODEL_CONFIG['model'])
+
+        messages = [
+            {"role": "system", "content": "당신은 전문적이고 균형잡힌 ITGC 감사 전문가입니다. 명백한 미비점은 정확히 식별하되, 적절히 운영되는 통제는 Effective로 인정하는 합리적 판단을 수행합니다. 모든 검토 의견은 정확한 서술형으로 작성하며, 음슴체는 사용하지 않습니다."},
+            {"role": "user", "content": prompt}
+        ]
+
+        # OpenAI API 호출 (retry 및 rate limiting 포함)
+        ai_response = _call_openai_api_with_retry(
+            client,
+            messages,
+            model_name,
+            400,
+            0.0  # 완전히 일관된 결과 (동일 입력 = 동일 출력)
         )
 
-        ai_response = response.choices[0].message.content
+        # None이 반환되면 기본 응답
+        if ai_response is None:
+            return {
+                'review_result': "AI API 호출 중 오류가 발생했습니다.",
+                'conclusion': "검토 불가",
+                'improvements': "API 연결을 확인하고 재시도하세요."
+            }
 
         # AI 응답을 파싱하여 각 컬럼별로 분리
         result = {
@@ -1196,8 +1311,12 @@ def get_ai_review(content, control_number=None, answers=None):
         return result
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"[DEBUG] OpenAI API Error: {str(e)}")
+        print(f"[DEBUG] Traceback: {error_details}")
         return {
-            'review_result': f"AI 검토 중 오류 발생: {str(e)}",
+            'review_result': f"AI 검토 중 오류 발생: {str(e)}\n\n상세 에러:\n{error_details[:500]}",
             'conclusion': "검토 불가",
             'improvements': "AI 검토 시스템 점검 필요"
         }
