@@ -42,6 +42,13 @@
         .tooltip.bs-tooltip-end .tooltip-arrow::before {
             border-right-color: #2c3e50;
         }
+
+        /* 모바일에서 툴팁 비활성화 */
+        @media (max-width: 768px) {
+            .tooltip {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -54,7 +61,7 @@
                 </div>
                 <div class="col-lg-8 hero-content">
                     <h1 class="hero-title">SnowBall System</h1>
-                    <p class="hero-subtitle">내부통제 평가와 IT감사 대응을 위한 종합 솔루션</p>
+                    <p class="hero-subtitle">내부회계관리제도(ICFR) 평가 및 IT감사 대응 종합 솔루션</p>
                 </div>
                 <div class="col-lg-2 text-end">
                     {% if user_name != 'Guest' %}
@@ -93,8 +100,92 @@
     <!-- 기능 섹션 -->
     <section id="features" class="py-4">
         <div class="container">
+            {% if is_logged_in %}
+            <!-- 로그인 상태: Private 섹션 먼저 표시 -->
+            <div class="row g-4" id="private-services">
+                <div class="col-12">
+                    <h2 class="section-title"><i class="fas fa-lock me-2"></i>Private</h2>
+                </div>
+
+                <!-- RCM -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-primary h-100">
+                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-database me-2"></i>RCM</h5>
+                            <p class="feature-description">위험통제매트릭스(RCM) 데이터를 조회하고 관리할 수 있습니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/user/rcm" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• 통제항목별 상세 정보 확인<br>• 카테고리별 RCM 관리 (ELC/TLC/ITGC)<br>• 엑셀 업로드 및 다운로드 지원</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ELC -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-success h-100">
+                        <img src="{{ url_for('static', filename='img/design_review.jpg')}}" class="feature-img" alt="ELC"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-building me-2"></i>ELC</h5>
+                            <p class="feature-description">전사수준통제 설계평가 및 운영평가를 수행합니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/elc/design-evaluation" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• Entity Level Controls 평가<br>• 설계평가 및 운영평가<br>• 수동통제 중심 평가<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TLC -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-warning h-100">
+                        <img src="{{ url_for('static', filename='img/operational_review.jpg')}}" class="feature-img" alt="TLC"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-exchange-alt me-2"></i>TLC</h5>
+                            <p class="feature-description">거래수준통제 설계평가 및 운영평가를 수행합니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/tlc/design-evaluation" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• Transaction Level Controls 평가<br>• 설계평가 및 운영평가<br>• 자동통제 포함 평가<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ITGC -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-danger h-100">
+                        <img src="{{ url_for('static', filename='img/internal_assessment.jpg')}}" class="feature-img" alt="ITGC"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-server me-2"></i>ITGC</h5>
+                            <p class="feature-description">IT일반통제 설계평가 및 운영평가를 수행합니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/user/design-evaluation" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• IT General Controls 평가<br>• 설계평가 및 운영평가<br>• 자동통제 및 수동통제 평가<br>• 기준통제 매핑 및 리포트 생성</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Public 섹션 (로그인 시 아래로) -->
+            <div class="row g-4 mt-3">
+                <div class="col-12">
+                    <h2 class="section-title"><i class="fas fa-globe me-2"></i>Public</h2>
+                </div>
+            {% else %}
+            <!-- 비로그인 상태: Public 섹션 먼저 표시 -->
             <h2 class="section-title"><i class="fas fa-globe me-2"></i>Public</h2>
             <div class="row g-4">
+            {% endif %}
                 <!-- 기본 4개 카드 -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
@@ -154,33 +245,26 @@
                 </div>
             </div>
 
-            <!-- 툴팁 안내 메시지 (기본 서비스용) -->
-            <div class="row mt-3">
-                <div class="col-12">
-                </div>
-            </div>
-
-            <!-- Private 서비스 -->
-            <div class="row g-4 mt-3" id="private-services" {% if not is_logged_in %}style="opacity: 0.4;"{% endif %}>
+            {% if not is_logged_in %}
+            <!-- 비로그인 상태: Private 섹션 미리보기 (흐리게) -->
+            <div class="row g-4 mt-3" id="private-services" style="opacity: 0.4;">
                 <div class="col-12">
                     <h2 class="section-title"><i class="fas fa-lock me-2"></i>Private</h2>
-                    {% if not is_logged_in %}
                     <div class="alert alert-info text-center" style="opacity: 1; pointer-events: auto; position: relative; z-index: 10;">
                         <i class="fas fa-lock me-2"></i>
                         Private 서비스를 이용하시려면 <a href="/login" class="alert-link">로그인</a>이 필요합니다.
                     </div>
-                    {% endif %}
                 </div>
-                
+
                 <!-- RCM 조회 -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-primary h-100">
-                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM 조회/평가" 
+                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM 조회/평가"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center">RCM 조회/평가</h5>
                             <p class="feature-description">귀하에게 할당된 RCM 데이터를 조회하고 AI를 활용한 통제항목 검토를 수행할 수 있습니다.</p>
-                            
+
                             <div class="text-center mt-auto">
                                 <a href="/user/rcm" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
@@ -189,11 +273,11 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 설계평가 -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-success h-100">
-                        <img src="{{ url_for('static', filename='img/design_review.jpg')}}" class="feature-img" alt="설계평가" 
+                        <img src="{{ url_for('static', filename='img/design_review.jpg')}}" class="feature-img" alt="설계평가"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center">설계평가</h5>
@@ -206,11 +290,11 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 운영평가 -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-warning h-100">
-                        <img src="{{ url_for('static', filename='img/operational_review.jpg')}}" class="feature-img" alt="운영평가" 
+                        <img src="{{ url_for('static', filename='img/operational_review.jpg')}}" class="feature-img" alt="운영평가"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center">운영평가</h5>
@@ -242,6 +326,7 @@
                 </div>
 
             </div>
+            {% endif %}
 
             <!-- Contact Us (로그인 불필요) -->
             <div class="row g-4 mt-3">

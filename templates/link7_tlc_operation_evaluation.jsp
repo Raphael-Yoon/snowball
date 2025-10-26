@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>ITGC 운영평가</title>
+    <title>TLC 운영평가</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -19,7 +19,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><i class="fas fa-server me-2"></i>ITGC 운영평가</h1>
+                    <h1><i class="fas fa-exchange-alt me-2"></i>TLC 운영평가</h1>
                     <a href="/" class="btn btn-secondary">
                         <i class="fas fa-home me-1"></i>홈으로
                     </a>

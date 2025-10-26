@@ -338,13 +338,13 @@ def get_unique_filename(filename):
         unique_id = str(uuid.uuid4())[:8]
         return f"{name}_{timestamp}_{unique_id}{ext}"
 
-def create_rcm(rcm_name, description, upload_user_id, original_filename=None):
+def create_rcm(rcm_name, description, upload_user_id, original_filename=None, control_category='ITGC'):
     """RCM 생성"""
     with get_db() as conn:
         cursor = conn.execute('''
-            INSERT INTO sb_rcm (rcm_name, description, upload_user_id, original_filename)
-            VALUES (?, ?, ?, ?)
-        ''', (rcm_name, description, upload_user_id, original_filename))
+            INSERT INTO sb_rcm (rcm_name, description, upload_user_id, original_filename, control_category)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (rcm_name, description, upload_user_id, original_filename, control_category))
         conn.commit()
         return cursor.lastrowid
 
@@ -358,8 +358,8 @@ def get_user_rcms(user_id):
         if is_admin:
             # 관리자는 모든 RCM에 접근 가능
             rcms = conn.execute('''
-                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, 
-                       r.completion_date, 'admin' as permission_type, u.company_name
+                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date,
+                       r.completion_date, r.control_category, 'admin' as permission_type, u.company_name
                 FROM sb_rcm r
                 INNER JOIN sb_user u ON r.upload_user_id = u.user_id
                 WHERE r.is_active = 'Y'
@@ -368,8 +368,8 @@ def get_user_rcms(user_id):
         else:
             # 일반 사용자는 권한이 있는 RCM만 접근 가능
             rcms = conn.execute('''
-                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, 
-                       r.completion_date, ur.permission_type, u.company_name
+                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date,
+                       r.completion_date, r.control_category, ur.permission_type, u.company_name
                 FROM sb_rcm r
                 INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
                 INNER JOIN sb_user u ON r.upload_user_id = u.user_id
@@ -378,6 +378,17 @@ def get_user_rcms(user_id):
             ''', (user_id,)).fetchall()
         
         return [dict(rcm) for rcm in rcms]
+
+def get_rcm_info(rcm_id):
+    """RCM 기본 정보 조회"""
+    with get_db() as conn:
+        rcm = conn.execute('''
+            SELECT r.*, u.user_name as uploader_name, u.company_name
+            FROM sb_rcm r
+            LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+            WHERE r.rcm_id = ?
+        ''', (rcm_id,)).fetchone()
+        return dict(rcm) if rcm else None
 
 def has_rcm_access(user_id, rcm_id):
     """사용자가 특정 RCM에 접근 권한이 있는지 확인"""

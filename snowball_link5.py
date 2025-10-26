@@ -27,18 +27,26 @@ bp_link5 = Blueprint('link5', __name__)
 @bp_link5.route('/rcm')
 @login_required
 def user_rcm():
-    """사용자 RCM 조회 페이지"""
+    """사용자 RCM 조회 페이지 - 카테고리별 분류"""
     user_info = get_user_info()
-    
+
     # 사용자가 접근 권한을 가진 RCM 목록 조회
-    user_rcms = get_user_rcms(user_info['user_id'])
-    
-    log_user_activity(user_info, 'PAGE_ACCESS', '사용자 RCM 조회', '/user/rcm', 
+    all_rcms = get_user_rcms(user_info['user_id'])
+
+    # 카테고리별로 분류
+    rcms_by_category = {
+        'ELC': [rcm for rcm in all_rcms if rcm.get('control_category') == 'ELC'],
+        'TLC': [rcm for rcm in all_rcms if rcm.get('control_category') == 'TLC'],
+        'ITGC': [rcm for rcm in all_rcms if rcm.get('control_category') == 'ITGC']
+    }
+
+    log_user_activity(user_info, 'PAGE_ACCESS', '사용자 RCM 조회', '/user/rcm',
                      request.remote_addr, request.headers.get('User-Agent'),
-                     {'rcm_count': len(user_rcms)})
-    
+                     {'rcm_count': len(all_rcms)})
+
     return render_template('link5_rcm_list.jsp',
-                         user_rcms=user_rcms,
+                         user_rcms=all_rcms,
+                         rcms_by_category=rcms_by_category,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          remote_addr=request.remote_addr)
@@ -74,6 +82,145 @@ def user_rcm_view(rcm_id):
                          user_info=user_info,
                          remote_addr=request.remote_addr)
 
+# RCM 업로드 기능
+@bp_link5.route('/rcm/upload')
+@login_required
+def rcm_upload():
+    """RCM 업로드 페이지 (관리자 전용)"""
+    user_info = get_user_info()
+
+    # 관리자 권한 확인
+    if user_info.get('admin_flag') != 'Y':
+        flash('관리자만 접근 가능합니다.')
+        return redirect(url_for('link5.user_rcm'))
+
+    # 사용자 목록 조회 (권한 부여용)
+    with get_db() as conn:
+        users = conn.execute('''
+            SELECT user_id, user_name, user_email, company_name
+            FROM sb_user
+            WHERE is_active = 'Y'
+            ORDER BY company_name, user_name
+        ''').fetchall()
+
+    return render_template('link5_rcm_upload.jsp',
+                         users=[dict(u) for u in users],
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info)
+
+@bp_link5.route('/rcm/process_upload', methods=['POST'])
+@login_required
+def rcm_process_upload():
+    """RCM 업로드 처리"""
+    user_info = get_user_info()
+
+    # 관리자 권한 확인
+    if user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자만 업로드 가능합니다.'})
+
+    try:
+        rcm_name = request.form.get('rcm_name', '').strip()
+        control_category = request.form.get('control_category', 'ITGC').strip()
+        description = request.form.get('description', '').strip()
+        access_users = request.form.getlist('access_users')
+
+        # 유효성 검사
+        if not rcm_name:
+            return jsonify({'success': False, 'message': 'RCM명은 필수입니다.'})
+
+        if control_category not in ['ELC', 'TLC', 'ITGC']:
+            return jsonify({'success': False, 'message': '유효한 카테고리를 선택해주세요.'})
+
+        if 'rcm_file' not in request.files:
+            return jsonify({'success': False, 'message': 'Excel 파일을 선택해주세요.'})
+
+        file = request.files['rcm_file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'Excel 파일을 선택해주세요.'})
+
+        if not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'message': 'Excel 파일(.xlsx, .xls)만 업로드 가능합니다.'})
+
+        # RCM 생성
+        from auth import create_rcm, grant_rcm_access
+        rcm_id = create_rcm(
+            rcm_name=rcm_name,
+            description=description,
+            upload_user_id=user_info['user_id'],
+            original_filename=file.filename,
+            control_category=control_category
+        )
+
+        # Excel 파일 파싱
+        import pandas as pd
+        df = pd.read_excel(file)
+
+        # RCM 상세 데이터 저장
+        rcm_details = df.to_dict('records')
+        save_rcm_details(rcm_id, rcm_details)
+
+        # 선택된 사용자들에게 접근 권한 부여
+        for user_id in access_users:
+            if user_id:
+                grant_rcm_access(int(user_id), rcm_id, 'read')
+
+        # 로그 기록
+        log_user_activity(user_info, 'RCM_UPLOAD', f'RCM 업로드 - {rcm_name} ({control_category})',
+                         '/rcm/process_upload', request.remote_addr, request.headers.get('User-Agent'))
+
+        return jsonify({
+            'success': True,
+            'message': f'RCM "{rcm_name}"이(가) 성공적으로 업로드되었습니다.',
+            'rcm_id': rcm_id
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'업로드 중 오류가 발생했습니다: {str(e)}'
+        })
+
+@bp_link5.route('/rcm/<int:rcm_id>/delete', methods=['POST'])
+@login_required
+def rcm_delete(rcm_id):
+    """RCM 삭제 (비활성화) - 관리자 전용"""
+    user_info = get_user_info()
+
+    # 관리자 권한 확인
+    if user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자만 삭제 가능합니다.'})
+
+    try:
+        with get_db() as conn:
+            # RCM 정보 조회
+            rcm = conn.execute('SELECT rcm_name FROM sb_rcm WHERE rcm_id = ?', (rcm_id,)).fetchone()
+            if not rcm:
+                return jsonify({'success': False, 'message': 'RCM을 찾을 수 없습니다.'})
+
+            # Soft delete (is_active를 'N'으로 변경)
+            conn.execute('UPDATE sb_rcm SET is_active = ? WHERE rcm_id = ?', ('N', rcm_id))
+            conn.commit()
+
+            # 로그 기록
+            log_user_activity(user_info, 'RCM_DELETE',
+                            f'RCM 삭제 - {rcm["rcm_name"]} (ID: {rcm_id})',
+                            f'/rcm/{rcm_id}/delete', request.remote_addr,
+                            request.headers.get('User-Agent'))
+
+            return jsonify({
+                'success': True,
+                'message': f'RCM "{rcm["rcm_name"]}"이(가) 삭제되었습니다.'
+            })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'삭제 중 오류가 발생했습니다: {str(e)}'
+        })
 
 
 @bp_link5.route('/api/rcm-status')

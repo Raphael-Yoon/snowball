@@ -7,3 +7,8 @@ credentials.json
 downloads/
 uploads/
 progress_data/
+
+# Test coverage reports
+tests/htmlcov/
+.coverage
+.pytest_cache/

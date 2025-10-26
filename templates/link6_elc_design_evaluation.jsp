@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>ITGC 설계평가</title>
+    <title>설계평가</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -18,7 +18,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><i class="fas fa-server me-2"></i>ITGC 설계평가</h1>
+                    <h1><i class="fas fa-building me-2"></i>ELC 설계평가</h1>
                     <a href="/" class="btn btn-secondary">
                         <i class="fas fa-home me-1"></i>홈으로
                     </a>
@@ -208,27 +208,42 @@
         
         // 평가 가능한 RCM 수 로드
         function loadAvailableRcmCount() {
-            fetch('/api/user/rcm-status')
+            fetch('/api/user/rcm-list')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        document.getElementById('availableRcmCount').textContent = data.total_count || 0;
-                        
+                        // ELC RCM만 필터링하여 카운트
+                        const elcRcms = data.rcms.filter(rcm => rcm.control_category === 'ELC');
+                        const elcCount = elcRcms.length;
+
+                        document.getElementById('availableRcmCount').textContent = elcCount;
+
                         // RCM이 없으면 버튼 비활성화
-                        const button = document.getElementById('startDesignEvalBtn');
-                        if (data.total_count === 0) {
-                            button.disabled = true;
-                            button.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>평가 가능한 RCM 없음';
-                            button.classList.remove('btn-success');
-                            button.classList.add('btn-secondary');
+                        const startButton = document.getElementById('startDesignEvalBtn');
+                        const resumeButton = document.getElementById('resumeDesignEvalBtn');
+                        if (elcCount === 0) {
+                            startButton.disabled = true;
+                            startButton.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>평가 가능한 ELC RCM 없음';
+                            startButton.classList.remove('btn-success');
+                            startButton.classList.add('btn-secondary');
+
+                            resumeButton.disabled = true;
+                            resumeButton.classList.remove('btn-outline-primary');
+                            resumeButton.classList.add('btn-outline-secondary');
                         }
                     } else {
                         document.getElementById('availableRcmCount').textContent = '0';
-                        const button = document.getElementById('startDesignEvalBtn');
-                        button.disabled = true;
-                        button.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>평가 가능한 RCM 없음';
-                        button.classList.remove('btn-success');
-                        button.classList.add('btn-secondary');
+                        const startButton = document.getElementById('startDesignEvalBtn');
+                        const resumeButton = document.getElementById('resumeDesignEvalBtn');
+
+                        startButton.disabled = true;
+                        startButton.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>평가 가능한 ELC RCM 없음';
+                        startButton.classList.remove('btn-success');
+                        startButton.classList.add('btn-secondary');
+
+                        resumeButton.disabled = true;
+                        resumeButton.classList.remove('btn-outline-primary');
+                        resumeButton.classList.add('btn-outline-secondary');
                     }
                 })
                 .catch(error => {
@@ -243,7 +258,13 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.rcms.length > 0) {
-                        showRcmSelectionModal(data.rcms);
+                        // ELC RCM만 필터링
+                        const elcRcms = data.rcms.filter(rcm => rcm.control_category === 'ELC');
+                        if (elcRcms.length > 0) {
+                            showRcmSelectionModal(elcRcms);
+                        } else {
+                            alert('평가할 수 있는 ELC RCM이 없습니다.');
+                        }
                     } else {
                         alert('평가할 수 있는 RCM이 없습니다.');
                     }
@@ -445,7 +466,13 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.rcms.length > 0) {
-                        showRcmSelectionModal(data.rcms, false);
+                        // ELC RCM만 필터링
+                        const elcRcms = data.rcms.filter(rcm => rcm.control_category === 'ELC');
+                        if (elcRcms.length > 0) {
+                            showRcmSelectionModal(elcRcms, false);
+                        } else {
+                            alert('평가할 수 있는 ELC RCM이 없습니다.');
+                        }
                     } else {
                         alert('평가할 수 있는 RCM이 없습니다.');
                     }

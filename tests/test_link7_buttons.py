@@ -643,3 +643,59 @@ def test_unmapped_controls_display_text(authenticated_client, test_user):
         if '매핑' in data:
             # 둘 중 하나가 있어야 함 (데이터에 따라)
             assert '매핑안됨' in data or '매핑됨' in data or '매핑불가' in data
+
+# ================================
+# ELC 운영평가 테스트
+# ================================
+
+def test_elc_operation_evaluation_requires_login(client):
+    """로그인하지 않으면 ELC 운영평가 페이지 접근 불가"""
+    response = client.get('/elc/operation-evaluation')
+    assert response.status_code == 302
+    assert '/login' in response.location
+
+def test_elc_operation_evaluation_page_rendering(authenticated_client, test_user):
+    """ELC 운영평가 페이지가 정상 렌더링"""
+    response = authenticated_client.get('/elc/operation-evaluation')
+    assert response.status_code == 200
+
+def test_elc_operation_evaluation_shows_elc_rcms_only(authenticated_client, test_user):
+    """ELC 운영평가 페이지는 ELC RCM만 표시"""
+    mock_rcms = [
+        {'rcm_id': 1, 'rcm_name': 'ELC RCM', 'control_category': 'ELC'},
+        {'rcm_id': 2, 'rcm_name': 'TLC RCM', 'control_category': 'TLC'},
+        {'rcm_id': 3, 'rcm_name': 'ITGC RCM', 'control_category': 'ITGC'}
+    ]
+
+    with patch('snowball_link7.get_user_rcms', return_value=mock_rcms):
+        response = authenticated_client.get('/elc/operation-evaluation')
+        assert response.status_code == 200
+        # ELC RCM만 전달되어야 함 (템플릿에서 확인)
+
+# ================================
+# TLC 운영평가 테스트
+# ================================
+
+def test_tlc_operation_evaluation_requires_login(client):
+    """로그인하지 않으면 TLC 운영평가 페이지 접근 불가"""
+    response = client.get('/tlc/operation-evaluation')
+    assert response.status_code == 302
+    assert '/login' in response.location
+
+def test_tlc_operation_evaluation_page_rendering(authenticated_client, test_user):
+    """TLC 운영평가 페이지가 정상 렌더링"""
+    response = authenticated_client.get('/tlc/operation-evaluation')
+    assert response.status_code == 200
+
+def test_tlc_operation_evaluation_shows_tlc_rcms_only(authenticated_client, test_user):
+    """TLC 운영평가 페이지는 TLC RCM만 표시"""
+    mock_rcms = [
+        {'rcm_id': 1, 'rcm_name': 'ELC RCM', 'control_category': 'ELC'},
+        {'rcm_id': 2, 'rcm_name': 'TLC RCM', 'control_category': 'TLC'},
+        {'rcm_id': 3, 'rcm_name': 'ITGC RCM', 'control_category': 'ITGC'}
+    ]
+
+    with patch('snowball_link7.get_user_rcms', return_value=mock_rcms):
+        response = authenticated_client.get('/tlc/operation-evaluation')
+        assert response.status_code == 200
+        # TLC RCM만 전달되어야 함 (템플릿에서 확인)

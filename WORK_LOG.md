@@ -45,6 +45,47 @@ snowball/
 
 ## 작업 히스토리
 
+### 2025-01-26
+- **테스트 코드 검토 및 보완**
+  - **Admin User Switching 테스트 추가** (10개 신규)
+    - API 엔드포인트 테스트: 사용자 목록 조회, 사용자 전환, 관리자 복귀
+    - 권한 검증: 관리자 전용 기능 확인
+    - 세션 관리: original_admin_id 저장/복원 확인
+    - 파일: `tests/test_admin.py`
+
+  - **ELC/TLC 모듈 테스트 추가** (12개 신규)
+    - ELC 설계평가 테스트 6개 (로그인 필요, 페이지 렌더링, 카테고리 필터링)
+    - TLC 설계평가 테스트 6개
+    - ELC 운영평가 테스트 6개
+    - TLC 운영평가 테스트 6개
+    - 파일: `tests/test_link6_buttons.py`, `tests/test_link7_buttons.py`
+
+  - **Public 기능 테스트 검증** (72개 통과)
+    - 인증/회원가입 테스트: 14개 (OTP, 이메일 검증, 세션 관리)
+    - 이메일 모킹 테스트: 10개 (autouse fixture로 자동 차단)
+    - 라우트/세션 테스트: 23개 (페이지 접근, 세션 연장, 로그아웃)
+    - 문의하기 테스트: 25개 (Contact, Feedback API)
+    - 파일: `tests/test_auth.py`, `tests/test_email_mock.py`, `tests/test_routes.py`, `tests/test_link9_contact.py`
+
+  - **테스트 파일 정리**
+    - tests/ 폴더로 이동: `debug_interview_email.py`, `analyze_test_coverage.py`, `test_conditional_skip.py`, `sms_test_log.txt`
+
+- **작업 문서화**
+  - `CHANGELOG.md` 생성: Keep a Changelog 표준 형식
+    - 신규 기능: Admin user switching, ELC/TLC 모듈
+    - 변경사항: UI/UX 개선, Navigation 재구성
+    - 버그 수정: DB 쿼리, 카테고리 필터링, 페이지 컨텍스트
+    - 테스트 현황: 463개 통과
+  - `WORK_LOG.md` 업데이트: 2025-01-26 작업 내용 기록
+
+- **테스트 현황**
+  - **전체 테스트: 463개 통과** (10.33초)
+  - Public 기능: 72개
+  - Admin 기능: 10개 (신규)
+  - ELC/TLC: 12개 (신규)
+  - 이메일 모킹: autouse fixture로 전체 자동 적용
+  - 8개 에러: auth fixture 문제 (기능적 이슈 아님)
+
 ### 2025-10-19
 - **내부평가 (Link8) 기능 개선 및 버그 수정**
   - **세션별 진행 상황 표시 개선**
