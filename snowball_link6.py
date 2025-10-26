@@ -1338,3 +1338,46 @@ def unarchive_design_evaluation_api():
             'success': False,
             'message': 'Unarchive 처리 중 오류가 발생했습니다.'
         })
+# ============================================================================
+# ELC 설계평가 (수동통제만, 기준통제 매핑 없음)
+# ============================================================================
+
+@bp_link6.route('/elc/design-evaluation')
+@login_required
+def elc_design_evaluation():
+    """ELC 설계평가 페이지"""
+    user_info = get_user_info()
+    
+    # ELC RCM 목록만 필터링
+    all_rcms = get_user_rcms(user_info['user_id'])
+    elc_rcms = [rcm for rcm in all_rcms if rcm.get('control_category') == 'ELC']
+    
+    log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 설계평가', '/elc/design-evaluation', 
+                     request.remote_addr, request.headers.get('User-Agent'))
+    
+    return render_template('link6_elc_design_evaluation.jsp',
+                         elc_rcms=elc_rcms,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info)
+
+# ============================================================================
+# TLC 설계평가 (자동통제 포함, 기준통제 매핑 없음)
+# ============================================================================
+
+@bp_link6.route('/tlc/design-evaluation')
+@login_required
+def tlc_design_evaluation():
+    """TLC 설계평가 페이지"""
+    user_info = get_user_info()
+
+    # TLC RCM 목록만 필터링
+    all_rcms = get_user_rcms(user_info['user_id'])
+    tlc_rcms = [rcm for rcm in all_rcms if rcm.get('control_category') == 'TLC']
+
+    log_user_activity(user_info, 'PAGE_ACCESS', 'TLC 설계평가', '/tlc/design-evaluation',
+                     request.remote_addr, request.headers.get('User-Agent'))
+
+    return render_template('link6_tlc_design_evaluation.jsp',
+                         tlc_rcms=tlc_rcms,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info)

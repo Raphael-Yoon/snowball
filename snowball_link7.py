@@ -1376,3 +1376,47 @@ def save_apd12_test_results():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'저장 오류: {str(e)}'})
+
+# ============================================================================
+# ELC 운영평가 (수동통제만)
+# ============================================================================
+
+@bp_link7.route('/elc/operation-evaluation')
+@login_required
+def elc_operation_evaluation():
+    """ELC 운영평가 페이지"""
+    user_info = get_user_info()
+
+    # ELC RCM 목록만 필터링
+    all_rcms = get_user_rcms(user_info['user_id'])
+    elc_rcms = [rcm for rcm in all_rcms if rcm.get('control_category') == 'ELC']
+
+    log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 운영평가', '/elc/operation-evaluation',
+                     request.remote_addr, request.headers.get('User-Agent'))
+
+    return render_template('link7_elc_operation_evaluation.jsp',
+                         elc_rcms=elc_rcms,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info)
+
+# ============================================================================
+# TLC 운영평가 (자동통제 포함)
+# ============================================================================
+
+@bp_link7.route('/tlc/operation-evaluation')
+@login_required
+def tlc_operation_evaluation():
+    """TLC 운영평가 페이지"""
+    user_info = get_user_info()
+
+    # TLC RCM 목록만 필터링
+    all_rcms = get_user_rcms(user_info['user_id'])
+    tlc_rcms = [rcm for rcm in all_rcms if rcm.get('control_category') == 'TLC']
+
+    log_user_activity(user_info, 'PAGE_ACCESS', 'TLC 운영평가', '/tlc/operation-evaluation',
+                     request.remote_addr, request.headers.get('User-Agent'))
+
+    return render_template('link7_tlc_operation_evaluation.jsp',
+                         tlc_rcms=tlc_rcms,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info)

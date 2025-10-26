@@ -856,13 +856,111 @@ def admin_switch_back():
     if 'original_admin_id' in session:
         session['user_id'] = session['original_admin_id']
         del session['original_admin_id']
-        
+
         # 세션에 캐시된 user_info 삭제 (관리자 정보로 다시 로드되도록)
         if 'user_info' in session:
             del session['user_info']
-            
+
         flash('관리자 계정으로 돌아왔습니다.')
     else:
         flash('원래 계정 정보를 찾을 수 없습니다.')
-    
-    return redirect(url_for('admin.admin'))
+
+    # 이전 페이지로 돌아가기 (referrer가 없으면 홈으로)
+    return redirect(request.referrer or url_for('index'))
+
+# ============================================================================
+# API 엔드포인트 - 사용자 전환 (네비게이션용)
+# ============================================================================
+
+@admin_bp.route('/api/admin/users', methods=['GET'])
+@login_required
+def api_get_users():
+    """모든 사용자 목록 조회 API (관리자 전용)"""
+    print("\n========== [API] /api/admin/users 호출 ==========")
+    user_info = get_user_info()
+    print(f"[API] user_info: {user_info}")
+
+    # 관리자 권한 확인
+    if user_info.get('admin_flag') != 'Y':
+        print(f"[API] ❌ 관리자 권한 없음 - admin_flag: {user_info.get('admin_flag')}")
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
+
+    print("[API] ✅ 관리자 권한 확인 완료")
+    try:
+        print("[API] DB 조회 시작...")
+        with get_db() as conn:
+            rows = conn.execute('''
+                SELECT user_id, user_email, company_name, admin_flag
+                FROM sb_user
+                WHERE effective_end_date IS NULL OR effective_end_date > datetime('now')
+                ORDER BY company_name
+            ''').fetchall()
+
+            print(f"[API] 조회된 사용자 수: {len(rows)}")
+
+            users = []
+            for row in rows:
+                user_data = {
+                    'user_id': row[0],
+                    'user_email': row[1],
+                    'company_name': row[2],
+                    'admin_flag': row[3]
+                }
+                users.append(user_data)
+                print(f"[API]  - {user_data}")
+
+            print(f"[API] ✅ 성공: {len(users)}명의 사용자 반환")
+            print("=" * 50)
+            return jsonify({'success': True, 'users': users})
+    except Exception as e:
+        print(f"[API] ❌ 오류 발생: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 50)
+        return jsonify({'success': False, 'message': f'사용자 목록 조회 중 오류: {str(e)}'})
+
+@admin_bp.route('/api/admin/switch-user', methods=['POST'])
+@login_required
+def api_switch_user():
+    """사용자 전환 API (관리자 전용)"""
+    user_info = get_user_info()
+
+    # 관리자 권한 확인
+    if user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
+
+    data = request.get_json()
+    target_user_id = data.get('user_id')
+
+    if not target_user_id:
+        return jsonify({'success': False, 'message': '사용자 ID가 필요합니다.'})
+
+    try:
+        with get_db() as conn:
+            # 대상 사용자 확인
+            target_user = conn.execute('''
+                SELECT user_id, company_name
+                FROM sb_user
+                WHERE user_id = ? AND (effective_end_date IS NULL OR effective_end_date > datetime('now'))
+            ''', (target_user_id,)).fetchone()
+
+            if not target_user:
+                return jsonify({'success': False, 'message': '존재하지 않는 사용자입니다.'})
+
+            # 관리자 ID 저장 (아직 저장되지 않은 경우에만)
+            if 'original_admin_id' not in session:
+                session['original_admin_id'] = session['user_id']
+
+            # 사용자 전환
+            session['user_id'] = target_user_id
+
+            # 세션에 캐시된 user_info 삭제 (새 사용자 정보로 다시 로드되도록)
+            if 'user_info' in session:
+                del session['user_info']
+
+            return jsonify({
+                'success': True,
+                'message': f"{target_user[1]} 계정으로 전환되었습니다."
+            })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'사용자 전환 중 오류: {str(e)}'})
