@@ -256,70 +256,69 @@
                     </div>
                 </div>
 
-                <!-- RCM 조회 -->
+                <!-- RCM -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-primary h-100">
-                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM 조회/평가"
+                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center">RCM 조회/평가</h5>
-                            <p class="feature-description">귀하에게 할당된 RCM 데이터를 조회하고 AI를 활용한 통제항목 검토를 수행할 수 있습니다.</p>
-
+                            <h5 class="feature-title text-center"><i class="fas fa-database me-2"></i>RCM</h5>
+                            <p class="feature-description">위험통제매트릭스(RCM) 데이터를 조회하고 관리할 수 있습니다.</p>
                             <div class="text-center mt-auto">
                                 <a href="/user/rcm" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• AI 기반 자동 검토 및 효과성 분석<br>• 내부통제 전문가 도움 없이도 신속·정확 검토<br>• 통제항목별 상세 리포트 제공</div>">자세히 보기</a>
+                                   title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• 통제항목별 상세 정보 확인<br>• 카테고리별 RCM 관리 (ELC/TLC/ITGC)<br>• 엑셀 업로드 및 다운로드 지원</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 설계평가 -->
+                <!-- ELC -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-success h-100">
-                        <img src="{{ url_for('static', filename='img/design_review.jpg')}}" class="feature-img" alt="설계평가"
-                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <img src="{{ url_for('static', filename='img/elc.jpg')}}" class="feature-img" alt="ELC"
+                             onerror="this.src='{{ url_for('static', filename='img/elc.png')}}'">
                         <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center">설계평가</h5>
-                            <p class="feature-description">통제가 효과적으로 설계되었는지를 평가하는 과정입니다.</p>
+                            <h5 class="feature-title text-center"><i class="fas fa-building me-2"></i>ELC</h5>
+                            <p class="feature-description">전사수준통제 설계평가 및 운영평가를 수행합니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/elc/design-evaluation" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• Entity Level Controls 평가<br>• 설계평가 및 운영평가<br>• 수동통제 중심 평가<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TLC -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-warning h-100">
+                        <img src="{{ url_for('static', filename='img/tlc.jpg')}}" class="feature-img" alt="TLC"
+                             onerror="this.src='{{ url_for('static', filename='img/tlc.png')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-exchange-alt me-2"></i>TLC</h5>
+                            <p class="feature-description">거래수준통제 설계평가 및 운영평가를 수행합니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/tlc/design-evaluation" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• Transaction Level Controls 평가<br>• 설계평가 및 운영평가<br>• 자동통제 포함 평가<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ITGC -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-danger h-100">
+                        <img src="{{ url_for('static', filename='img/itgc.jpg')}}" class="feature-img" alt="ITGC"
+                             onerror="this.src='{{ url_for('static', filename='img/itgc.png')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-server me-2"></i>ITGC</h5>
+                            <p class="feature-description">IT일반통제 설계평가 및 운영평가를 수행합니다.</p>
                             <div class="text-center mt-auto">
                                 <a href="/user/design-evaluation" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 통제의 이론적 효과성 평가<br>• 설명 적절성 및 전반적 효과성 검토<br>• 개선사항 및 권고사항 도출<br>• 평가 결과 엑셀 다운로드 지원</div>">자세히 보기</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 운영평가 -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="feature-card border-warning h-100">
-                        <img src="{{ url_for('static', filename='img/operational_review.jpg')}}" class="feature-img" alt="운영평가"
-                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
-                        <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center">운영평가</h5>
-                            <p class="feature-description">통제가 실제로 의도된 대로 작동하고 있는지를 평가하는 과정입니다.</p>
-                            <div class="text-center mt-auto">
-                                <a href="/user/operation-evaluation" class="feature-link"
-                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 통제의 실제 운영 효과성 평가<br>• 통제 수행 증거 업로드 및 검증<br>• 실제 운영 상황에서의 효과성 검증<br>• 증거 및 결과 엑셀 다운로드</div>">자세히 보기</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 내부평가 -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="feature-card border-danger h-100">
-                        <img src="{{ url_for('static', filename='img/internal_assessment.jpg')}}" class="feature-img" alt="내부평가"
-                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
-                        <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center">내부평가</h5>
-                            <p class="feature-description">RCM평가부터 운영평가까지 전체 프로세스를 순차적으로 진행하는 통합 워크플로우입니다.</p>
-                            <div class="text-center mt-auto">
-                                <a href="/user/internal-assessment" class="feature-link"
-                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• RCM 평가 → 설계평가 → 운영평가 순차 진행<br>• 전체 내부통제 평가 프로세스 관리<br>• 단계별 진행상황 추적 및 관리<br>• 통합 평가 결과 리포트 생성</div>">자세히 보기</a>
+                                   title="<div>• IT General Controls 평가<br>• 설계평가 및 운영평가<br>• 자동통제 및 수동통제 평가<br>• 기준통제 매핑 및 리포트 생성</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
