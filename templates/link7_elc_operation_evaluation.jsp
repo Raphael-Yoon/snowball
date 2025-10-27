@@ -19,7 +19,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><i class="fas fa-building me-2"></i>ELC 운영평가</h1>
+                    <h1><img src="{{ url_for('static', filename='img/elc.jpg') }}" alt="ELC" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">ELC 운영평가</h1>
                     <a href="/" class="btn btn-secondary">
                         <i class="fas fa-home me-1"></i>홈으로
                     </a>

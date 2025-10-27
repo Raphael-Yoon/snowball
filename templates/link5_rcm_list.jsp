@@ -18,7 +18,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><i class="fas fa-database me-2"></i>내 RCM 조회/평가</h1>
+                    <h1><img src="{{ url_for('static', filename='img/rcm.jpg') }}" alt="RCM" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">내 RCM 조회/평가</h1>
                     <div>
                         {% if user_info and user_info.get('admin_flag') == 'Y' %}
                         <a href="{{ url_for('link5.rcm_upload') }}" class="btn btn-gradient me-2">

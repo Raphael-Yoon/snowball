@@ -18,7 +18,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><i class="fas fa-server me-2"></i>ITGC 설계평가</h1>
+                    <h1><img src="{{ url_for('static', filename='img/itgc.jpg') }}" alt="ITGC" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">ITGC 설계평가</h1>
                     <a href="/" class="btn btn-secondary">
                         <i class="fas fa-home me-1"></i>홈으로
                     </a>

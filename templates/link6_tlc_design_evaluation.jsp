@@ -18,7 +18,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><i class="fas fa-exchange-alt me-2"></i>TLC 설계평가</h1>
+                    <h1><img src="{{ url_for('static', filename='img/tlc.jpg') }}" alt="TLC" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">TLC 설계평가</h1>
                     <a href="/" class="btn btn-secondary">
                         <i class="fas fa-home me-1"></i>홈으로
                     </a>
