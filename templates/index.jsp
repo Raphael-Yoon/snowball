@@ -127,8 +127,8 @@
                 <!-- ELC -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-success h-100">
-                        <img src="{{ url_for('static', filename='img/design_review.jpg')}}" class="feature-img" alt="ELC"
-                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <img src="{{ url_for('static', filename='img/elc.jpg')}}" class="feature-img" alt="ELC"
+                             onerror="this.src='{{ url_for('static', filename='img/elc.png')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-building me-2"></i>ELC</h5>
                             <p class="feature-description">전사수준통제 설계평가 및 운영평가를 수행합니다.</p>
@@ -144,8 +144,8 @@
                 <!-- TLC -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-warning h-100">
-                        <img src="{{ url_for('static', filename='img/operational_review.jpg')}}" class="feature-img" alt="TLC"
-                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <img src="{{ url_for('static', filename='img/tlc.jpg')}}" class="feature-img" alt="TLC"
+                             onerror="this.src='{{ url_for('static', filename='img/tlc.png')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-exchange-alt me-2"></i>TLC</h5>
                             <p class="feature-description">거래수준통제 설계평가 및 운영평가를 수행합니다.</p>
@@ -161,8 +161,8 @@
                 <!-- ITGC -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-danger h-100">
-                        <img src="{{ url_for('static', filename='img/internal_assessment.jpg')}}" class="feature-img" alt="ITGC"
-                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <img src="{{ url_for('static', filename='img/itgc.jpg')}}" class="feature-img" alt="ITGC"
+                             onerror="this.src='{{ url_for('static', filename='img/itgc.png')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-server me-2"></i>ITGC</h5>
                             <p class="feature-description">IT일반통제 설계평가 및 운영평가를 수행합니다.</p>
