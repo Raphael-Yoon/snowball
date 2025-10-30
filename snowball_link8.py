@@ -26,18 +26,41 @@ bp_link8 = Blueprint('link8', __name__)
 @bp_link8.route('/internal-assessment')
 @login_required
 def internal_assessment():
-    """내부평가 메인 페이지 - RCM별 설계평가 세션 목록 표시"""
+    """내부평가 메인 페이지 - 회사별 카테고리별(ITGC/ELC/TLC) 진행 현황 표시"""
     user_info = get_user_info()
 
     # 사용자의 RCM 목록 조회
     user_rcms = get_user_rcms(user_info['user_id'])
 
-    # 각 RCM별로 설계평가 세션 목록과 진행 상황 조회
-    assessment_progress = []
+    # 회사별로 그룹화
+    companies = {}
     db = get_db()
 
     for rcm in user_rcms:
-        # 해당 RCM의 설계평가 세션 조회 (ARCHIVED만 제외, COMPLETED는 표시)
+        company_name = rcm.get('company_name', '알 수 없음')
+
+        if company_name not in companies:
+            companies[company_name] = {
+                'company_name': company_name,
+                'categories': {
+                    'ITGC': [],
+                    'ELC': [],
+                    'TLC': []
+                }
+            }
+
+        # 해당 RCM의 통제 카테고리별 개수 조회
+        cursor = db.execute('''
+            SELECT control_category, COUNT(*) as count
+            FROM sb_rcm_detail
+            WHERE rcm_id = ?
+            GROUP BY control_category
+        ''', (rcm['rcm_id'],))
+
+        category_counts = {row[0]: row[1] for row in cursor.fetchall()}
+        primary_category = max(category_counts.items(), key=lambda x: x[1])[0] if category_counts else 'ITGC'
+
+        # 해당 RCM의 설계평가 세션 조회
         cursor = db.execute('''
             SELECT DISTINCT
                 dh.evaluation_session,
@@ -58,42 +81,51 @@ def internal_assessment():
         sessions = cursor.fetchall()
 
         if sessions:
-            # 세션별 내부평가 진행 상황 조회 (진행 중인 세션만)
             for session_data in sessions:
                 evaluation_session = session_data[0]
                 evaluation_status = session_data[1]
                 start_date = session_data[2]
                 completed_date = session_data[3]
-                operation_status = session_data[4]  # 운영평가 상태 추가
+                operation_status = session_data[4]
 
                 progress = get_assessment_progress(rcm['rcm_id'], user_info['user_id'], evaluation_session)
-                assessment_progress.append({
+
+                rcm_data = {
                     'rcm_info': rcm,
                     'evaluation_session': evaluation_session,
                     'evaluation_status': evaluation_status,
                     'operation_status': operation_status,
                     'start_date': start_date,
                     'completed_date': completed_date,
-                    'progress': progress
-                })
+                    'progress': progress,
+                    'category_counts': category_counts
+                }
+
+                companies[company_name]['categories'][primary_category].append(rcm_data)
         else:
-            # 설계평가 세션이 없으면 DEFAULT 세션으로 표시
             progress = get_assessment_progress(rcm['rcm_id'], user_info['user_id'], 'DEFAULT')
-            assessment_progress.append({
+
+            rcm_data = {
                 'rcm_info': rcm,
                 'evaluation_session': 'DEFAULT',
                 'evaluation_status': 'NOT_STARTED',
                 'start_date': None,
                 'completed_date': None,
-                'progress': progress
-            })
+                'progress': progress,
+                'category_counts': category_counts
+            }
+
+            companies[company_name]['categories'][primary_category].append(rcm_data)
+
+    # 회사별 데이터를 리스트로 변환
+    companies_list = list(companies.values())
 
     log_user_activity(user_info, 'PAGE_ACCESS', '내부평가 메인 페이지', '/internal-assessment',
                      request.remote_addr, request.headers.get('User-Agent'),
-                     {'rcm_count': len(user_rcms), 'session_count': len(assessment_progress)})
+                     {'company_count': len(companies_list)})
 
     return render_template('internal_assessment_main.jsp',
-                         assessment_progress=assessment_progress,
+                         companies=companies_list,
                          is_logged_in=is_logged_in(),
                          user_info=user_info)
 
@@ -448,6 +480,15 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
     try:
         db = get_db()
 
+        # 통제 카테고리별 통계 조회
+        cursor = db.execute('''
+            SELECT control_category, COUNT(*) as total_count
+            FROM sb_rcm_detail
+            WHERE rcm_id = ?
+            GROUP BY control_category
+        ''', (rcm_id,))
+        category_stats = {row[0]: row[1] for row in cursor.fetchall()}
+
         # 1단계: 설계평가 (Link6) - 특정 세션의 완료율 계산
         cursor = db.execute('''
             SELECT evaluation_status, total_controls, evaluated_controls, progress_percentage, header_id
@@ -478,10 +519,30 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
             # 실제 진행률 재계산
             design_progress = int((evaluated_controls / max(total_controls, 1)) * 100) if total_controls > 0 else 0
 
+            # 카테고리별 설계평가 진행률 계산
+            category_progress = {}
+            for category in category_stats.keys():
+                cursor = db.execute('''
+                    SELECT COUNT(*) as total,
+                           COUNT(CASE WHEN overall_effectiveness IS NOT NULL AND overall_effectiveness != '' THEN 1 END) as evaluated
+                    FROM sb_design_evaluation_line line
+                    JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = ?
+                    WHERE line.header_id = ? AND detail.control_category = ?
+                ''', (rcm_id, header_id, category))
+                cat_data = cursor.fetchone()
+                if cat_data and cat_data[0] > 0:
+                    category_progress[category] = {
+                        'total': cat_data[0],
+                        'evaluated': cat_data[1],
+                        'progress': int((cat_data[1] / cat_data[0]) * 100) if cat_data[0] > 0 else 0
+                    }
+
             progress['steps'][0]['details'] = {
                 'total_controls': total_controls,
                 'evaluated_controls': evaluated_controls,
-                'progress': design_progress
+                'progress': design_progress,
+                'category_progress': category_progress,
+                'category_stats': category_stats
             }
 
             # evaluation_status가 COMPLETED일 때만 완료 처리
@@ -509,10 +570,33 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
 
         # 운영평가 진행 상황 업데이트 (설계평가 완료 후에만)
         if total_operation_controls > 0:
+            # 카테고리별 운영평가 진행률 계산
+            category_progress_op = {}
+            for category in category_stats.keys():
+                cursor = db.execute('''
+                    SELECT COUNT(*) as total,
+                           COUNT(CASE WHEN line.conclusion IS NOT NULL AND line.conclusion != '' THEN 1 END) as completed
+                    FROM sb_operation_evaluation_line line
+                    JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = ?
+                    WHERE line.header_id = (
+                        SELECT header_id FROM sb_operation_evaluation_header
+                        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                    ) AND detail.control_category = ?
+                ''', (rcm_id, rcm_id, user_id, operation_session, category))
+                cat_data = cursor.fetchone()
+                if cat_data and cat_data[0] > 0:
+                    category_progress_op[category] = {
+                        'total': cat_data[0],
+                        'completed': cat_data[1],
+                        'progress': int((cat_data[1] / cat_data[0]) * 100) if cat_data[0] > 0 else 0
+                    }
+
             progress['steps'][1]['details'] = {
                 'total_controls': total_operation_controls,
                 'completed_controls': completed_operation_controls,
-                'progress': int((completed_operation_controls / max(total_operation_controls, 1)) * 100)
+                'progress': int((completed_operation_controls / max(total_operation_controls, 1)) * 100),
+                'category_progress': category_progress_op,
+                'category_stats': category_stats
             }
 
             # 설계평가가 완료되어야만 운영평가 상태 업데이트

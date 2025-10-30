@@ -14,8 +14,8 @@
             height: 100%;
         }
         .progress-ring {
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
         }
         .progress-ring-bg {
             fill: transparent;
@@ -30,58 +30,6 @@
             transition: stroke-dasharray 0.5s ease-in-out;
             transform: rotate(-90deg);
             transform-origin: 50% 50%;
-        }
-        .step-indicator {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.75rem;
-            position: relative;
-        }
-        .step-item {
-            flex: 1;
-            text-align: center;
-            position: relative;
-        }
-        .step-number {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 0.5rem;
-            font-weight: bold;
-            position: relative;
-            z-index: 2;
-            font-size: 1rem;
-        }
-        .step-item.completed .step-number {
-            background-color: #28a745;
-            color: white;
-        }
-        .step-item.in-progress .step-number {
-            background-color: #007bff;
-            color: white;
-        }
-        .step-item.pending .step-number {
-            background-color: #e9ecef;
-            color: #6c757d;
-            border: 2px solid #adb5bd;
-        }
-        .step-connector {
-            position: absolute;
-            top: 18px;
-            left: 50%;
-            right: -50%;
-            height: 3px;
-            background-color: #dee2e6;
-            z-index: 1;
-        }
-        .step-item:last-child .step-connector {
-            display: none;
-        }
-        .step-item.completed .step-connector {
-            background-color: #28a745;
         }
     </style>
 </head>
@@ -109,8 +57,87 @@
                     <h3><i class="fas fa-building me-2 text-primary"></i>{{ company.company_name }}</h3>
                 </div>
 
-                <!-- 3개 카테고리를 가로로 배치: ELC → TLC → ITGC -->
+                <!-- 3개 카테고리를 가로로 배치 -->
                 <div class="row g-3">
+                    <!-- ITGC 카드 -->
+                    <div class="col-md-4">
+                        <div class="card category-card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0"><i class="fas fa-server me-2"></i>IT 일반 통제 (ITGC)</h6>
+                            </div>
+                            <div class="card-body">
+                                {% if company.categories.ITGC %}
+                                    {% set item = company.categories.ITGC[0] %}
+                                    <!-- RCM 정보 -->
+                                    <h6 class="mb-2">{{ item.rcm_info.rcm_name }}</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <small class="text-muted d-block">세션: {{ item.evaluation_session }}</small>
+                                            {% if item.evaluation_status == 'COMPLETED' and item.operation_status == 'COMPLETED' %}
+                                            <span class="badge bg-success">완료</span>
+                                            {% elif item.evaluation_status == 'IN_PROGRESS' or item.operation_status == 'IN_PROGRESS' %}
+                                            <span class="badge bg-primary">진행중</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">대기</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-center">
+                                            <svg class="progress-ring" viewBox="0 0 100 100">
+                                                <circle class="progress-ring-bg" cx="50" cy="50" r="42"></circle>
+                                                <circle class="progress-ring-fill" cx="50" cy="50" r="42"
+                                                        style="stroke-dasharray: {{ (item.progress.overall_progress * 264) / 100 }} 264"></circle>
+                                            </svg>
+                                            <div style="font-size: 0.8rem; margin-top: -8px;">
+                                                <strong class="text-primary">{{ item.progress.overall_progress }}%</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- 버튼 -->
+                                    <div class="d-grid gap-2">
+                                        {% if item.evaluation_status == 'COMPLETED' %}
+                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <i class="fas fa-check-circle"></i> 설계평가 확인
+                                        </a>
+                                        {% elif item.evaluation_status == 'IN_PROGRESS' %}
+                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-clipboard-check"></i> 설계평가 계속
+                                        </a>
+                                        {% else %}
+                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-clipboard-check"></i> 설계평가 시작
+                                        </a>
+                                        {% endif %}
+
+                                        {% if item.evaluation_status == 'COMPLETED' %}
+                                            {% if item.operation_status == 'COMPLETED' %}
+                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                                <i class="fas fa-check-circle"></i> 운영평가 확인
+                                            </a>
+                                            {% elif item.operation_status == 'IN_PROGRESS' %}
+                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-cogs"></i> 운영평가 계속
+                                            </a>
+                                            {% else %}
+                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                                <i class="fas fa-cogs"></i> 운영평가 시작
+                                            </a>
+                                            {% endif %}
+                                        {% else %}
+                                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                                            <i class="fas fa-lock"></i> 운영평가 (잠김)
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <div class="text-center text-muted py-5">
+                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                                        <p class="mb-0">ITGC RCM이 없습니다</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- ELC 카드 -->
                     <div class="col-md-4">
                         <div class="card category-card border-warning">
@@ -263,98 +290,6 @@
                                     <div class="text-center text-muted py-5">
                                         <i class="fas fa-inbox fa-3x mb-3"></i>
                                         <p class="mb-0">TLC RCM이 없습니다</p>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ITGC 카드 (3번째) -->
-                    <div class="col-md-4">
-                        <div class="card category-card border-info">
-                            <div class="card-header bg-info text-white">
-                                <h6 class="mb-0"><i class="fas fa-server me-2"></i>IT 일반 통제 (ITGC)</h6>
-                            </div>
-                            <div class="card-body p-3">
-                                {% if company.categories.ITGC %}
-                                    {% set item = company.categories.ITGC[0] %}
-                                    <h6 class="mb-1">{{ item.rcm_info.rcm_name }}</h6>
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <div>
-                                            <small class="text-muted d-block">{{ item.evaluation_session }}</small>
-                                            {% if item.evaluation_status == 'COMPLETED' and item.operation_status == 'COMPLETED' %}
-                                            <span class="badge bg-success">완료</span>
-                                            {% elif item.evaluation_status == 'IN_PROGRESS' or item.operation_status == 'IN_PROGRESS' %}
-                                            <span class="badge bg-primary">진행중</span>
-                                            {% else %}
-                                            <span class="badge bg-secondary">대기</span>
-                                            {% endif %}
-                                        </div>
-                                        <div class="text-center">
-                                            <svg class="progress-ring" viewBox="0 0 100 100">
-                                                <circle class="progress-ring-bg" cx="50" cy="50" r="42"></circle>
-                                                <circle class="progress-ring-fill" cx="50" cy="50" r="42"
-                                                        style="stroke-dasharray: {{ (item.progress.overall_progress * 264) / 100 }} 264"></circle>
-                                            </svg>
-                                            <div style="font-size: 0.75rem; margin-top: -6px;">
-                                                <strong class="text-primary">{{ item.progress.overall_progress }}%</strong>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- 단계 인디케이터 -->
-                                    <div class="step-indicator mb-3">
-                                        {% for step in item.progress.steps %}
-                                        <div class="step-item {{ step.status }}">
-                                            <div class="step-number">
-                                                {% if step.status == 'completed' %}<i class="fas fa-check"></i>
-                                                {% elif step.status == 'in-progress' %}<i class="fas fa-play"></i>
-                                                {% else %}<i class="fas fa-circle"></i>
-                                                {% endif %}
-                                            </div>
-                                            <div class="step-connector"></div>
-                                            <small class="text-muted" style="font-size: 0.85rem; font-weight: 500;">{{ step.name[:2] }}</small>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                    <!-- 버튼 -->
-                                    <div class="d-grid gap-1">
-                                        {% if item.evaluation_status == 'COMPLETED' %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                            <i class="fas fa-check-circle"></i> 설계평가 확인
-                                        </a>
-                                        {% elif item.evaluation_status == 'IN_PROGRESS' %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-clipboard-check"></i> 설계평가 계속
-                                        </a>
-                                        {% else %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-clipboard-check"></i> 설계평가 시작
-                                        </a>
-                                        {% endif %}
-                                        {% if item.evaluation_status == 'COMPLETED' %}
-                                            {% if item.operation_status == 'COMPLETED' %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-check-circle"></i> 운영평가 확인
-                                            </a>
-                                            {% elif item.operation_status == 'IN_PROGRESS' %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
-                                                <i class="fas fa-cogs"></i> 운영평가 계속
-                                            </a>
-                                            {% else %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-cogs"></i> 운영평가 시작
-                                            </a>
-                                            {% endif %}
-                                        {% else %}
-                                        <button class="btn btn-sm btn-outline-secondary" disabled>
-                                            <i class="fas fa-lock"></i> 운영평가
-                                        </button>
-                                        {% endif %}
-                                    </div>
-                                {% else %}
-                                    <div class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-2x mb-2"></i>
-                                        <p class="mb-0 small">ITGC RCM이 없습니다</p>
                                     </div>
                                 {% endif %}
                             </div>

@@ -647,3 +647,285 @@ def test_is_logged_in_function(authenticated_client, test_user):
         # is_logged_in 함수는 main snowball 모듈의 함수 호출
         # 여기서는 함수 존재 여부만 확인
         assert callable(is_logged_in)
+
+# ================================
+# RCM 업로드 기능 테스트
+# ================================
+
+def test_rcm_upload_page_requires_login(client):
+    """로그인하지 않으면 RCM 업로드 페이지 접근 불가"""
+    response = client.get('/rcm/upload')
+    assert response.status_code == 302
+    assert '/login' in response.location
+
+def test_rcm_upload_page_for_regular_user(authenticated_client, test_user):
+    """일반 사용자도 RCM 업로드 페이지 접근 가능"""
+    with patch('snowball_link5.get_db') as mock_db:
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = [
+            {'user_id': 1, 'user_name': 'Test', 'user_email': 'test@test.com', 'company_name': 'Test Company'}
+        ]
+        mock_db.return_value.__enter__.return_value = mock_conn
+
+        response = authenticated_client.get('/rcm/upload')
+        assert response.status_code == 200
+
+def test_rcm_upload_shows_only_company_users_for_regular_user(authenticated_client, test_user):
+    """일반 사용자는 본인 회사 사용자만 조회"""
+    with patch('snowball_link5.get_db') as mock_db:
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = [
+            {'user_id': 1, 'user_name': 'Test', 'user_email': 'test@test.com', 'company_name': 'Test Company'}
+        ]
+        mock_db.return_value.__enter__.return_value = mock_conn
+
+        response = authenticated_client.get('/rcm/upload')
+        assert response.status_code == 200
+        # SQL에서 company_name 필터링 확인
+        call_args = mock_conn.execute.call_args
+        assert 'company_name = ?' in str(call_args)
+
+def test_rcm_process_upload_validates_file_type(authenticated_client, test_user):
+    """Excel 파일만 업로드 가능"""
+    from io import BytesIO
+
+    with patch('snowball_link5.get_db') as mock_db:
+        response = authenticated_client.post(
+            '/rcm/process_upload',
+            data={
+                'rcm_name': 'Test RCM',
+                'control_category': 'ITGC',
+                'description': 'Test',
+                'rcm_file': (BytesIO(b'test'), 'test.txt')  # 잘못된 파일 형식
+            },
+            content_type='multipart/form-data'
+        )
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'Excel' in data['message']
+
+def test_rcm_process_upload_validates_category(authenticated_client, test_user):
+    """유효한 카테고리만 허용"""
+    from io import BytesIO
+
+    response = authenticated_client.post(
+        '/rcm/process_upload',
+        data={
+            'rcm_name': 'Test RCM',
+            'control_category': 'INVALID',  # 잘못된 카테고리
+            'description': 'Test',
+            'rcm_file': (BytesIO(b'test'), 'test.xlsx')
+        },
+        content_type='multipart/form-data'
+    )
+    data = json.loads(response.data)
+    assert data['success'] is False
+    assert '카테고리' in data['message']
+
+def test_rcm_process_upload_regular_user_company_check(authenticated_client, test_user):
+    """일반 사용자는 다른 회사 사용자에게 권한 부여 불가"""
+    from io import BytesIO
+
+    with patch('snowball_link5.get_db') as mock_db:
+        mock_conn = MagicMock()
+        # 다른 회사 사용자
+        mock_conn.execute.return_value.fetchone.return_value = {'company_name': 'Other Company'}
+        mock_db.return_value.__enter__.return_value = mock_conn
+
+        response = authenticated_client.post(
+            '/rcm/process_upload',
+            data={
+                'rcm_name': 'Test RCM',
+                'control_category': 'ITGC',
+                'description': 'Test',
+                'access_users': ['999'],  # 다른 회사 사용자
+                'rcm_file': (BytesIO(b'test'), 'test.xlsx')
+            },
+            content_type='multipart/form-data'
+        )
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert '본인 회사' in data['message']
+
+def test_rcm_process_upload_grants_admin_permission_to_uploader(authenticated_client, test_user):
+    """업로드한 사용자에게 admin 권한 자동 부여"""
+    from io import BytesIO
+    import pandas as pd
+
+    # 테스트용 Excel 데이터
+    df = pd.DataFrame({'control_code': ['AC-01'], 'control_name': ['Test Control']})
+    excel_buffer = BytesIO()
+    df.to_excel(excel_buffer, index=False)
+    excel_buffer.seek(0)
+
+    with patch('snowball_link5.create_rcm', return_value=123):
+        with patch('snowball_link5.save_rcm_details'):
+            with patch('snowball_link5.grant_rcm_access') as mock_grant:
+                with patch('snowball_link5.log_user_activity'):
+                    response = authenticated_client.post(
+                        '/rcm/process_upload',
+                        data={
+                            'rcm_name': 'Test RCM',
+                            'control_category': 'ITGC',
+                            'description': 'Test',
+                            'rcm_file': (excel_buffer, 'test.xlsx')
+                        },
+                        content_type='multipart/form-data'
+                    )
+                    data = json.loads(response.data)
+                    assert data['success'] is True
+                    # 업로드한 사용자에게 admin 권한 부여 확인
+                    mock_grant.assert_called()
+                    # 첫 번째 호출이 admin 권한 부여인지 확인
+                    first_call = mock_grant.call_args_list[0]
+                    assert first_call[0][2] == 'admin'
+
+# ================================
+# RCM 삭제 기능 테스트 (평가 상태별)
+# ================================
+
+def test_check_ongoing_evaluations_function():
+    """진행 중인 평가 확인 함수 테스트"""
+    from snowball_link5 import check_ongoing_evaluations
+
+    with patch('snowball_link5.get_db') as mock_db:
+        mock_conn = MagicMock()
+        # 설계평가 진행 중
+        design_cursor = MagicMock()
+        design_cursor.fetchall.return_value = [
+            {'evaluation_session': '2024-01', 'evaluation_status': 'IN_PROGRESS'}
+        ]
+        # 운영평가 없음
+        operation_cursor = MagicMock()
+        operation_cursor.fetchall.return_value = []
+
+        mock_conn.execute.side_effect = [design_cursor, operation_cursor]
+        mock_db.return_value.__enter__.return_value = mock_conn
+
+        result = check_ongoing_evaluations(1, 1)
+        assert result['has_design'] is True
+        assert result['has_operation'] is False
+        assert len(result['design_sessions']) == 1
+
+def test_rcm_delete_requires_admin_permission(authenticated_client, test_user):
+    """RCM 삭제는 admin 권한 필요"""
+    with patch('snowball_link5.get_db') as mock_db:
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchone.side_effect = [
+            {'rcm_name': 'Test RCM', 'upload_user_id': 999},  # RCM 정보
+            None  # 권한 없음
+        ]
+        mock_db.return_value.__enter__.return_value = mock_conn
+
+        response = authenticated_client.post('/rcm/1/delete')
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'admin 권한' in data['message']
+
+def test_rcm_delete_blocked_during_operation_evaluation(authenticated_client, test_user):
+    """운영평가 진행 중에는 RCM 삭제 불가"""
+    with patch('snowball_link5.get_db') as mock_db:
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchone.side_effect = [
+            {'rcm_name': 'Test RCM', 'upload_user_id': 1},
+            {'permission_type': 'admin'}  # admin 권한 있음
+        ]
+        mock_db.return_value.__enter__.return_value = mock_conn
+
+        with patch('snowball_link5.check_ongoing_evaluations', return_value={
+            'has_design': False,
+            'has_operation': True,
+            'design_sessions': [],
+            'operation_sessions': [{'evaluation_session': '2024-01'}]
+        }):
+            response = authenticated_client.post(
+                '/rcm/1/delete',
+                data=json.dumps({'force': False}),
+                content_type='application/json'
+            )
+            data = json.loads(response.data)
+            assert data['success'] is False
+            assert '운영평가가 진행 중' in data['message']
+            assert data['ongoing_operation'] is True
+
+def test_rcm_delete_warning_during_design_evaluation(authenticated_client, test_user):
+    """설계평가 진행 중에는 경고 메시지 표시"""
+    with patch('snowball_link5.get_db') as mock_db:
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchone.side_effect = [
+            {'rcm_name': 'Test RCM', 'upload_user_id': 1},
+            {'permission_type': 'admin'}
+        ]
+        mock_db.return_value.__enter__.return_value = mock_conn
+
+        with patch('snowball_link5.check_ongoing_evaluations', return_value={
+            'has_design': True,
+            'has_operation': False,
+            'design_sessions': [{'evaluation_session': '2024-01', 'evaluation_status': 'IN_PROGRESS'}],
+            'operation_sessions': []
+        }):
+            response = authenticated_client.post(
+                '/rcm/1/delete',
+                data=json.dumps({'force': False}),
+                content_type='application/json'
+            )
+            data = json.loads(response.data)
+            assert data['success'] is False
+            assert '진행 중인 설계평가' in data['message']
+            assert data['ongoing_design'] is True
+            assert data['require_confirmation'] is True
+
+def test_rcm_delete_force_with_design_evaluation(authenticated_client, test_user):
+    """force=true로 설계평가 진행 중에도 삭제 가능"""
+    with patch('snowball_link5.get_db') as mock_db:
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchone.side_effect = [
+            {'rcm_name': 'Test RCM', 'upload_user_id': 1},
+            {'permission_type': 'admin'}
+        ]
+        mock_db.return_value.__enter__.return_value = mock_conn
+
+        with patch('snowball_link5.check_ongoing_evaluations', return_value={
+            'has_design': True,
+            'has_operation': False,
+            'design_sessions': [{'evaluation_session': '2024-01', 'evaluation_status': 'IN_PROGRESS'}],
+            'operation_sessions': []
+        }):
+            with patch('snowball_link5.log_user_activity'):
+                response = authenticated_client.post(
+                    '/rcm/1/delete',
+                    data=json.dumps({'force': True}),
+                    content_type='application/json'
+                )
+                data = json.loads(response.data)
+                assert data['success'] is True
+                # 설계평가가 ARCHIVED 상태로 변경되었는지 확인
+                archive_call = [call for call in mock_conn.execute.call_args_list
+                               if 'ARCHIVED' in str(call)]
+                assert len(archive_call) > 0
+
+def test_rcm_delete_success_no_evaluations(authenticated_client, test_user):
+    """진행 중인 평가가 없으면 자유롭게 삭제"""
+    with patch('snowball_link5.get_db') as mock_db:
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchone.side_effect = [
+            {'rcm_name': 'Test RCM', 'upload_user_id': 1},
+            {'permission_type': 'admin'}
+        ]
+        mock_db.return_value.__enter__.return_value = mock_conn
+
+        with patch('snowball_link5.check_ongoing_evaluations', return_value={
+            'has_design': False,
+            'has_operation': False,
+            'design_sessions': [],
+            'operation_sessions': []
+        }):
+            with patch('snowball_link5.log_user_activity'):
+                response = authenticated_client.post(
+                    '/rcm/1/delete',
+                    data=json.dumps({'force': False}),
+                    content_type='application/json'
+                )
+                data = json.loads(response.data)
+                assert data['success'] is True
+                assert '삭제되었습니다' in data['message']
