@@ -20,6 +20,43 @@ def is_logged_in():
     from snowball import is_logged_in as main_is_logged_in
     return main_is_logged_in()
 
+def check_ongoing_evaluations(rcm_id, user_id):
+    """
+    진행 중인 평가 확인
+    Returns: {
+        'has_design': bool,
+        'has_operation': bool,
+        'design_sessions': list,
+        'operation_sessions': list
+    }
+    """
+    with get_db() as conn:
+        # 진행 중인 설계평가 확인 (NOT COMPLETED)
+        design_cursor = conn.execute('''
+            SELECT evaluation_session, evaluation_status, total_controls, evaluated_controls
+            FROM sb_design_evaluation_header
+            WHERE rcm_id = ? AND user_id = ?
+            AND evaluation_status != 'COMPLETED'
+            AND evaluation_status != 'ARCHIVED'
+        ''', (rcm_id, user_id))
+        design_sessions = [dict(row) for row in design_cursor.fetchall()]
+
+        # 진행 중인 운영평가 확인 (IN_PROGRESS 또는 완료되지 않은 것)
+        operation_cursor = conn.execute('''
+            SELECT evaluation_session, evaluation_status
+            FROM sb_operation_evaluation_header
+            WHERE rcm_id = ? AND user_id = ?
+            AND evaluation_status IN ('IN_PROGRESS', 'NOT_STARTED')
+        ''', (rcm_id, user_id))
+        operation_sessions = [dict(row) for row in operation_cursor.fetchall()]
+
+        return {
+            'has_design': len(design_sessions) > 0,
+            'has_operation': len(operation_sessions) > 0,
+            'design_sessions': design_sessions,
+            'operation_sessions': operation_sessions
+        }
+
 bp_link5 = Blueprint('link5', __name__)
 
 # RCM 관련 기능들
@@ -86,43 +123,49 @@ def user_rcm_view(rcm_id):
 @bp_link5.route('/rcm/upload')
 @login_required
 def rcm_upload():
-    """RCM 업로드 페이지 (관리자 전용)"""
+    """RCM 업로드 페이지 (일반 사용자는 본인 회사, 관리자는 모든 회사)"""
     user_info = get_user_info()
-
-    # 관리자 권한 확인
-    if user_info.get('admin_flag') != 'Y':
-        flash('관리자만 접근 가능합니다.')
-        return redirect(url_for('link5.user_rcm'))
+    is_admin = user_info.get('admin_flag') == 'Y'
 
     # 사용자 목록 조회 (권한 부여용)
     with get_db() as conn:
-        users = conn.execute('''
-            SELECT user_id, user_name, user_email, company_name
-            FROM sb_user
-            WHERE is_active = 'Y'
-            ORDER BY company_name, user_name
-        ''').fetchall()
+        if is_admin:
+            # 관리자: 모든 활성 사용자 조회
+            users = conn.execute('''
+                SELECT user_id, user_name, user_email, company_name
+                FROM sb_user
+                WHERE effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP
+                ORDER BY company_name, user_name
+            ''').fetchall()
+        else:
+            # 일반 사용자: 본인 회사 사용자만 조회
+            users = conn.execute('''
+                SELECT user_id, user_name, user_email, company_name
+                FROM sb_user
+                WHERE (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)
+                  AND company_name = ?
+                ORDER BY user_name
+            ''', (user_info.get('company_name', ''),)).fetchall()
 
     return render_template('link5_rcm_upload.jsp',
                          users=[dict(u) for u in users],
                          is_logged_in=is_logged_in(),
-                         user_info=user_info)
+                         user_info=user_info,
+                         is_admin=is_admin)
 
 @bp_link5.route('/rcm/process_upload', methods=['POST'])
 @login_required
 def rcm_process_upload():
-    """RCM 업로드 처리"""
+    """RCM 업로드 처리 (일반 사용자는 본인 회사, 관리자는 모든 회사)"""
     user_info = get_user_info()
-
-    # 관리자 권한 확인
-    if user_info.get('admin_flag') != 'Y':
-        return jsonify({'success': False, 'message': '관리자만 업로드 가능합니다.'})
+    is_admin = user_info.get('admin_flag') == 'Y'
 
     try:
         rcm_name = request.form.get('rcm_name', '').strip()
         control_category = request.form.get('control_category', 'ITGC').strip()
         description = request.form.get('description', '').strip()
         access_users = request.form.getlist('access_users')
+        header_row = int(request.form.get('header_row', 0))
 
         # 유효성 검사
         if not rcm_name:
@@ -141,6 +184,25 @@ def rcm_process_upload():
         if not file.filename.lower().endswith(('.xlsx', '.xls')):
             return jsonify({'success': False, 'message': 'Excel 파일(.xlsx, .xls)만 업로드 가능합니다.'})
 
+        if header_row < 0 or header_row > 20:
+            return jsonify({'success': False, 'message': '데이터 시작 행은 0~20 사이의 값이어야 합니다.'})
+
+        # 일반 사용자는 선택된 사용자들이 모두 본인 회사 소속인지 확인
+        if not is_admin and access_users:
+            user_company = user_info.get('company_name', '')
+            with get_db() as conn:
+                for user_id in access_users:
+                    if user_id:
+                        check_user = conn.execute(
+                            'SELECT company_name FROM sb_user WHERE user_id = ?',
+                            (int(user_id),)
+                        ).fetchone()
+                        if check_user and check_user[0] != user_company:
+                            return jsonify({
+                                'success': False,
+                                'message': '본인 회사 사용자에게만 권한을 부여할 수 있습니다.'
+                            })
+
         # RCM 생성
         from auth import create_rcm, grant_rcm_access
         rcm_id = create_rcm(
@@ -151,27 +213,42 @@ def rcm_process_upload():
             control_category=control_category
         )
 
-        # Excel 파일 파싱
-        import pandas as pd
-        df = pd.read_excel(file)
+        # Excel 파일 파싱 (개선된 방식)
+        from rcm_utils import parse_excel_file, validate_rcm_data, get_mapping_summary
+        rcm_details, mapping_info = parse_excel_file(file, header_row)
+
+        # 데이터 유효성 검증
+        is_valid, error_message = validate_rcm_data(rcm_details)
+        if not is_valid:
+            # RCM 생성 롤백 (실패 시 삭제)
+            with get_db() as conn:
+                conn.execute('DELETE FROM sb_rcm WHERE rcm_id = ?', (rcm_id,))
+                conn.commit()
+            return jsonify({'success': False, 'message': error_message})
 
         # RCM 상세 데이터 저장
-        rcm_details = df.to_dict('records')
-        save_rcm_details(rcm_id, rcm_details)
+        save_rcm_details(rcm_id, rcm_details, control_category)
+
+        # 업로드한 사용자에게 admin 권한 자동 부여
+        grant_rcm_access(user_info['user_id'], rcm_id, 'admin', user_info['user_id'])
 
         # 선택된 사용자들에게 접근 권한 부여
         for user_id in access_users:
-            if user_id:
-                grant_rcm_access(int(user_id), rcm_id, 'read')
+            if user_id and int(user_id) != user_info['user_id']:  # 본인 제외
+                grant_rcm_access(int(user_id), rcm_id, 'read', user_info['user_id'])
 
         # 로그 기록
-        log_user_activity(user_info, 'RCM_UPLOAD', f'RCM 업로드 - {rcm_name} ({control_category})',
+        mapping_summary = get_mapping_summary(mapping_info)
+        log_user_activity(user_info, 'RCM_UPLOAD',
+                         f'RCM 업로드 - {rcm_name} ({control_category}) - 매핑: {mapping_summary}',
                          '/rcm/process_upload', request.remote_addr, request.headers.get('User-Agent'))
 
         return jsonify({
             'success': True,
-            'message': f'RCM "{rcm_name}"이(가) 성공적으로 업로드되었습니다.',
-            'rcm_id': rcm_id
+            'message': f'RCM "{rcm_name}"이(가) 성공적으로 업로드되었습니다. (총 {len(rcm_details)}개 통제)',
+            'rcm_id': rcm_id,
+            'record_count': len(rcm_details),
+            'mapping_info': mapping_info
         })
 
     except Exception as e:
@@ -185,19 +262,61 @@ def rcm_process_upload():
 @bp_link5.route('/rcm/<int:rcm_id>/delete', methods=['POST'])
 @login_required
 def rcm_delete(rcm_id):
-    """RCM 삭제 (비활성화) - 관리자 전용"""
+    """RCM 삭제 (비활성화) - admin 권한을 가진 사용자만 가능"""
     user_info = get_user_info()
+    is_admin = user_info.get('admin_flag') == 'Y'
 
-    # 관리자 권한 확인
-    if user_info.get('admin_flag') != 'Y':
-        return jsonify({'success': False, 'message': '관리자만 삭제 가능합니다.'})
+    # force 파라미터: 설계평가 진행 중에도 강제 삭제 (사용자 확인 후)
+    force_delete = request.json.get('force', False) if request.is_json else False
 
     try:
         with get_db() as conn:
-            # RCM 정보 조회
-            rcm = conn.execute('SELECT rcm_name FROM sb_rcm WHERE rcm_id = ?', (rcm_id,)).fetchone()
+            # RCM 정보 및 사용자 권한 조회
+            rcm = conn.execute('SELECT rcm_name, upload_user_id FROM sb_rcm WHERE rcm_id = ?', (rcm_id,)).fetchone()
             if not rcm:
                 return jsonify({'success': False, 'message': 'RCM을 찾을 수 없습니다.'})
+
+            # 권한 확인: 시스템 관리자 또는 RCM에 대한 admin 권한이 있는 사용자
+            if not is_admin:
+                # 사용자의 RCM 권한 확인
+                user_permission = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+
+                if not user_permission or user_permission[0] != 'admin':
+                    return jsonify({'success': False, 'message': 'RCM 삭제 권한이 없습니다. (admin 권한 필요)'})
+
+            # 진행 중인 평가 확인
+            ongoing = check_ongoing_evaluations(rcm_id, user_info['user_id'])
+
+            if ongoing['has_operation']:
+                # 운영평가 진행 중 - 삭제 불가
+                return jsonify({
+                    'success': False,
+                    'message': '운영평가가 진행 중이므로 RCM을 삭제할 수 없습니다. 평가를 완료한 후 삭제해주세요.',
+                    'ongoing_operation': True
+                })
+
+            if ongoing['has_design'] and not force_delete:
+                # 설계평가 진행 중 - 경고와 함께 삭제 가능 (확인 필요)
+                session_names = ', '.join([s['evaluation_session'] for s in ongoing['design_sessions']])
+                return jsonify({
+                    'success': False,
+                    'message': f'진행 중인 설계평가가 있습니다 ({session_names}). RCM을 삭제하면 해당 평가 데이터가 삭제되며 처음부터 다시 평가해야 합니다.',
+                    'ongoing_design': True,
+                    'require_confirmation': True
+                })
+
+            # 설계평가 진행 중이지만 force_delete가 true인 경우, 평가 데이터도 삭제
+            if ongoing['has_design'] and force_delete:
+                # 진행 중인 설계평가 데이터 삭제 (또는 아카이빙)
+                for session in ongoing['design_sessions']:
+                    conn.execute('''
+                        UPDATE sb_design_evaluation_header
+                        SET evaluation_status = 'ARCHIVED'
+                        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                    ''', (rcm_id, user_info['user_id'], session['evaluation_session']))
 
             # Soft delete (is_active를 'N'으로 변경)
             conn.execute('UPDATE sb_rcm SET is_active = ? WHERE rcm_id = ?', ('N', rcm_id))

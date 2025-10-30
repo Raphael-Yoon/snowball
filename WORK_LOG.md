@@ -45,6 +45,108 @@ snowball/
 
 ## 작업 히스토리
 
+### 2025-10-29
+- **Link1 (ITGC RCM Builder) UI/UX 개선 및 기능 추가**
+  - **OS/DB 접근제어 Tool 토글 스위치 추가**
+    - OS와 DB 섹션에 각각 토글 스위치 UI 추가
+    - Bootstrap의 form-switch 컴포넌트 사용
+    - Shield 아이콘(🛡️)과 primary 색상으로 시각적 강조
+    - 배경색(bg-light)과 border로 구분하여 가독성 향상
+    - 파일: `templates/link1.jsp` (라인 77-87, 174-184)
+
+  - **토글 스위치 배치 최적화**
+    - OS 접근제어 Tool 토글을 OS 선택 라디오 버튼 **위로** 이동
+    - DB 접근제어 Tool 토글을 DB 선택 라디오 버튼 **위로** 이동
+    - 사용자가 Tool 사용 여부를 먼저 결정 → 구체적인 OS/DB 종류를 선택하는 논리적 순서
+    - 더욱 직관적인 사용자 경험 제공
+
+  - **Cloud 선택 옵션 추가**
+    - 위치: 시스템명과 System 사이에 배치
+    - 옵션: On-Premise (기본값), SaaS, PaaS, IaaS
+    - 클라우드 서비스 모델(Cloud Service Model) 기준으로 분류
+    - On-Premise = 클라우드 미사용 의미 (중복 옵션 제거)
+    - 파일: `templates/link1.jsp` (라인 49-69)
+
+  - **DB 선택 옵션 단순화**
+    - 변경 전: Oracle, MS-SQL, MySQL, PostgreSQL, MongoDB, 기타
+    - 변경 후: Oracle, MS-SQL, MySQL, 기타
+    - PostgreSQL, MongoDB 옵션 및 관련 세부 선택 제거
+    - JavaScript 동적 선택 로직 정리
+    - 파일: `templates/link1.jsp` (라인 215-270)
+
+  - **백엔드 로직 구현**
+    - `param_cloud` 파라미터 처리 추가: Cloud 서비스 모델 필터링
+    - `use_os_tool`, `use_db_tool` 파라미터 처리: Tool 사용 여부 필터링
+    - RCM 엑셀 템플릿 필터링 로직:
+      - `Cloud` 섹션: param_cloud 값에 따라 해당 행만 유지
+      - `OS_Tool` 섹션: use_os_tool='Y'일 때만 유지, 아니면 삭제
+      - `DB_Tool` 섹션: use_db_tool='Y'일 때만 유지, 아니면 삭제
+    - 디버깅 로그 추가: 각 행의 유지/삭제 여부를 콘솔에 출력
+    - 파일: `snowball_link1.py` (라인 38-114)
+
+  - **최종 폼 구조**
+    ```
+    1. e-Mail 주소 (로그인 시 자동 입력)
+    2. 시스템명
+    3. Cloud (신규)
+       - On-Premise / SaaS / PaaS / IaaS
+    4. System
+       - SAP / Oracle / 더존 / 영림원 / 기타
+    5. OS
+       - [토글 스위치] OS 접근제어 Tool 사용
+       - Unix / Windows / Linux / 기타
+       - 세부 선택 (동적 표시)
+    6. DB
+       - [토글 스위치] DB 접근제어 Tool 사용
+       - Oracle / MS-SQL / MySQL / 기타
+       - 세부 선택 (동적 표시)
+    ```
+
+  - **기대 효과**
+    - 클라우드 환경과 온프레미스 환경을 명확히 구분
+    - 접근제어 Tool 사용 여부를 통한 맞춤형 RCM 생성
+    - 단순화된 DB 선택으로 사용자 혼란 감소
+    - 더욱 직관적이고 논리적인 UI 흐름
+
+### 2025-01-29
+- **RCM 업로드 및 삭제 권한 개선**
+  - **일반 사용자 RCM 업로드 허용**
+    - 기존: 관리자만 RCM 업로드 가능
+    - 변경: 모든 로그인 사용자가 본인 회사 RCM 업로드 가능
+    - 일반 사용자는 본인 회사 사용자에게만 접근 권한 부여 가능
+    - 업로드한 사용자에게 자동으로 RCM admin 권한 부여
+
+  - **RCM 삭제 권한 정책 구현**
+    - 업로드한 사용자(admin 권한)는 본인 RCM 삭제 가능
+    - 시스템 관리자는 모든 RCM 삭제 가능
+
+  - **평가 진행 중 RCM 변경 정책**
+    - `check_ongoing_evaluations()` 함수 추가: 설계평가/운영평가 진행 상태 확인
+    - **운영평가 진행 중**: RCM 삭제 불가 ⛔
+    - **설계평가 진행 중**: 경고 후 삭제 가능 ⚠️ (force 파라미터 사용, 평가 데이터 ARCHIVED)
+    - **평가 없음**: 자유롭게 삭제 가능 ✅
+
+  - **UI 개선**
+    - 업로드 페이지: 평가 진행 중 RCM 변경 정책 안내 추가
+    - 사용자가 1명인 경우 접근 권한 부여 섹션 숨김 (조건부 표시)
+    - RCM 목록: admin 권한을 가진 사용자에게만 삭제 버튼 표시
+    - 삭제 시 진행 중인 평가 상태에 따른 경고 메시지 표시
+
+  - **데이터베이스 정리**
+    - Test Company, Admin Company 테스트 사용자 삭제
+
+  - **테스트 코드 추가**
+    - RCM 업로드 기능 테스트 (7개)
+    - RCM 삭제 기능 테스트 (평가 상태별 5개)
+    - 진행 중인 평가 확인 테스트 (1개)
+    - 총 13개 신규 테스트 추가
+
+- **Internal Assessment (내부평가) 대시보드 UI 개선**
+  - 설계평가/운영평가 단계 인디케이터 크기 확대 (24px → 36px)
+  - 단계 연결선 두께 증가 (2px → 3px)
+  - 단계 이름 폰트 크기 및 굵기 개선
+  - ELC 중복 카드 제거
+
 ### 2025-01-26
 - **테스트 코드 검토 및 보완**
   - **Admin User Switching 테스트 추가** (10개 신규)

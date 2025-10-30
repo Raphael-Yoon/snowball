@@ -20,11 +20,9 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1><img src="{{ url_for('static', filename='img/rcm.jpg') }}" alt="RCM" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">내 RCM 조회/평가</h1>
                     <div>
-                        {% if user_info and user_info.get('admin_flag') == 'Y' %}
                         <a href="{{ url_for('link5.rcm_upload') }}" class="btn btn-gradient me-2">
                             <i class="fas fa-upload me-1"></i>RCM 업로드
                         </a>
-                        {% endif %}
                         <a href="/" class="btn btn-secondary">
                             <i class="fas fa-home me-1"></i>홈으로
                         </a>
@@ -106,7 +104,7 @@
                                             <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세보기
                                             </a>
-                                            {% if user_info and user_info.get('admin_flag') == 'Y' %}
+                                            {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRcm({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -157,7 +155,7 @@
                                             <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세보기
                                             </a>
-                                            {% if user_info and user_info.get('admin_flag') == 'Y' %}
+                                            {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRcm({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -213,7 +211,7 @@
                                             <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세보기
                                             </a>
-                                            {% if user_info and user_info.get('admin_flag') == 'Y' %}
+                                            {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRcm({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -269,7 +267,7 @@
                                             <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세보기
                                             </a>
-                                            {% if user_info and user_info.get('admin_flag') == 'Y' %}
+                                            {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRcm({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -327,13 +325,17 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function deleteRcm(rcmId, rcmName) {
-            if (!confirm(`"${rcmName}" RCM을 삭제하시겠습니까?\n\n삭제된 RCM은 목록에서 제거됩니다.`)) {
+        function deleteRcm(rcmId, rcmName, force = false) {
+            if (!force && !confirm(`"${rcmName}" RCM을 삭제하시겠습니까?\n\n삭제된 RCM은 목록에서 제거됩니다.`)) {
                 return;
             }
 
             fetch(`/rcm/${rcmId}/delete`, {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ force: force })
             })
             .then(response => response.json())
             .then(data => {
@@ -341,7 +343,19 @@
                     alert(data.message);
                     location.reload();
                 } else {
-                    alert('오류: ' + data.message);
+                    // 진행 중인 평가가 있는 경우
+                    if (data.ongoing_operation) {
+                        // 운영평가 진행 중 - 삭제 불가
+                        alert('⛔ ' + data.message);
+                    } else if (data.ongoing_design && data.require_confirmation) {
+                        // 설계평가 진행 중 - 경고 후 재확인
+                        if (confirm('⚠️ ' + data.message + '\n\n그래도 삭제하시겠습니까?')) {
+                            // 사용자가 확인했으므로 강제 삭제
+                            deleteRcm(rcmId, rcmName, true);
+                        }
+                    } else {
+                        alert('오류: ' + data.message);
+                    }
                 }
             })
             .catch(error => {

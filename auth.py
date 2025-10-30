@@ -406,13 +406,30 @@ def has_rcm_access(user_id, rcm_id):
         
         return access is not None
 
-def get_rcm_details(rcm_id):
-    """RCM 상세 데이터 조회"""
+def get_rcm_details(rcm_id, control_category=None):
+    """RCM 상세 데이터 조회
+
+    Args:
+        rcm_id: RCM ID
+        control_category: 통제 카테고리 필터 ('ITGC', 'ELC', 'TLC', None=전체)
+
+    Returns:
+        RCM 상세 데이터 목록
+    """
     with get_db() as conn:
-        details = conn.execute('''
+        query = '''
             SELECT *
             FROM sb_rcm_detail_v
             WHERE rcm_id = ?
+        '''
+        params = [rcm_id]
+
+        # 통제 카테고리 필터 추가
+        if control_category:
+            query += ' AND control_category = ?'
+            params.append(control_category)
+
+        query += '''
             ORDER BY
                 CASE
                     WHEN control_code LIKE 'PWC%' THEN 1
@@ -424,16 +441,19 @@ def get_rcm_details(rcm_id):
                     ELSE 7
                 END,
                 control_code
-        ''', (rcm_id,)).fetchall()
+        '''
+
+        details = conn.execute(query, params).fetchall()
         return [dict(detail) for detail in details]
 
-def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None):
+def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, control_category=None):
     """핵심통제만 조회하는 RCM 상세 데이터 조회 (운영평가용)
 
     Args:
         rcm_id: RCM ID
         user_id: 사용자 ID (설계평가 필터링용)
         design_evaluation_session: 설계평가 세션명 (설계평가 필터링용)
+        control_category: 통제 카테고리 필터 ('ITGC', 'ELC', 'TLC', None=전체)
 
     Returns:
         핵심통제 목록. user_id와 design_evaluation_session이 제공되면 설계평가 결과가 '적정'인 통제만 반환.
@@ -441,7 +461,7 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None):
     with get_db() as conn:
         if user_id and design_evaluation_session:
             # 핵심통제이면서 설계평가 결과가 'effective'(적정)인 통제만 조회
-            details = conn.execute('''
+            query = '''
                 SELECT DISTINCT d.*
                 FROM sb_rcm_detail_v d
                 INNER JOIN sb_design_evaluation_header h ON d.rcm_id = h.rcm_id
@@ -451,6 +471,14 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None):
                     AND h.user_id = ?
                     AND h.evaluation_session = ?
                     AND l.overall_effectiveness = 'effective'
+            '''
+            params = [rcm_id, user_id, design_evaluation_session]
+
+            if control_category:
+                query += ' AND d.control_category = ?'
+                params.append(control_category)
+
+            query += '''
                 ORDER BY
                     CASE
                         WHEN d.control_code LIKE 'PWC%' THEN 1
@@ -462,13 +490,22 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None):
                         ELSE 7
                     END,
                     d.control_code
-            ''', (rcm_id, user_id, design_evaluation_session)).fetchall()
+            '''
+            details = conn.execute(query, params).fetchall()
         else:
             # 모든 핵심통제 조회 (기존 동작)
-            details = conn.execute('''
+            query = '''
                 SELECT *
                 FROM sb_rcm_detail_v
                 WHERE rcm_id = ? AND (key_control = 'Y' OR key_control = '핵심')
+            '''
+            params = [rcm_id]
+
+            if control_category:
+                query += ' AND control_category = ?'
+                params.append(control_category)
+
+            query += '''
                 ORDER BY
                     CASE
                         WHEN control_code LIKE 'PWC%' THEN 1
@@ -480,20 +517,31 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None):
                         ELSE 7
                     END,
                     control_code
-            ''', (rcm_id,)).fetchall()
+            '''
+            details = conn.execute(query, params).fetchall()
         return [dict(detail) for detail in details]
 
-def save_rcm_details(rcm_id, rcm_data):
-    """RCM 상세 데이터 저장 (추가 방식)"""
+def save_rcm_details(rcm_id, rcm_data, control_category='ITGC'):
+    """RCM 상세 데이터 저장 (추가 방식)
+
+    Args:
+        rcm_id: RCM ID
+        rcm_data: 통제 데이터 리스트
+        control_category: 통제 카테고리 ('ITGC', 'ELC', 'TLC') - 기본값 ITGC
+    """
     with get_db() as conn:
         # 새 데이터 삽입 (기존 데이터 삭제하지 않음)
         for data in rcm_data:
+            # rcm_data에 control_category가 있으면 우선 사용, 없으면 파라미터 값 사용
+            category = data.get('control_category', control_category)
+
             conn.execute('''
                 INSERT OR REPLACE INTO sb_rcm_detail (
                     rcm_id, control_code, control_name, control_description,
                     key_control, control_frequency, control_type, control_nature,
-                    population, population_completeness_check, population_count, test_procedure
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    population, population_completeness_check, population_count, test_procedure,
+                    control_category
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 rcm_id,
                 data.get('control_code', ''),
@@ -506,16 +554,17 @@ def save_rcm_details(rcm_id, rcm_data):
                 data.get('population', ''),
                 data.get('population_completeness_check', ''),
                 data.get('population_count', ''),
-                data.get('test_procedure', '')
+                data.get('test_procedure', ''),
+                category
             ))
-        
+
         # sb_rcm 테이블의 completion_date 업데이트 (매핑 완료 표시)
         conn.execute('''
-            UPDATE sb_rcm 
-            SET completion_date = CURRENT_TIMESTAMP 
+            UPDATE sb_rcm
+            SET completion_date = CURRENT_TIMESTAMP
             WHERE rcm_id = ?
         ''', (rcm_id,))
-        
+
         conn.commit()
 
 def grant_rcm_access(user_id, rcm_id, permission_type, granted_by):

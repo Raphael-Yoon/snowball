@@ -85,20 +85,36 @@ def user_design_evaluation_rcm():
                 rcm_info = rcm
                 break
     
+    # 통제 카테고리 필터 (쿼리 파라미터)
+    control_category = request.args.get('control_category', None)
+
     # RCM 세부 데이터 조회
-    rcm_details = get_rcm_details(rcm_id)
-    
+    rcm_details = get_rcm_details(rcm_id, control_category=control_category)
+
     # 매핑 정보 조회
     rcm_mappings = get_rcm_detail_mappings(rcm_id)
-    
+
+    # 통제 카테고리별 통계
+    with get_db() as conn:
+        category_stats = conn.execute('''
+            SELECT control_category, COUNT(*) as count
+            FROM sb_rcm_detail
+            WHERE rcm_id = ?
+            GROUP BY control_category
+            ORDER BY control_category
+        ''', (rcm_id,)).fetchall()
+        category_stats = {row['control_category']: row['count'] for row in category_stats}
+
     log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 디자인 평가', '/design-evaluation/rcm',
                      request.remote_addr, request.headers.get('User-Agent'))
-    
+
     return render_template('link6_design_rcm_detail.jsp',
                          rcm_id=rcm_id,
                          rcm_info=rcm_info,
                          rcm_details=rcm_details,
                          rcm_mappings=rcm_mappings,
+                         control_category=control_category,
+                         category_stats=category_stats,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          remote_addr=request.remote_addr)

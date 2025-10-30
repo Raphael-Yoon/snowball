@@ -43,7 +43,7 @@ app.config.update(
     SESSION_COOKIE_SECURE=is_production,  # 운영환경(HTTPS)에서만 True
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
-    # 브라우저 종료 후에도 세션 유지되도록 설정
+    # 브라우저 종료 후에도 세션 유지되도록 설정 
     SESSION_COOKIE_MAX_AGE=timedelta(hours=24).total_seconds(),  # 24시간
 )
 
