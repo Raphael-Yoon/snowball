@@ -29,28 +29,12 @@
             <!-- 1단계: 이메일 입력 및 OTP 요청 -->
             <form method="POST" action="{{ url_for('login') }}">
                 <input type="hidden" name="action" value="send_otp">
+                <input type="hidden" name="method" value="email">
                 <div class="form-group">
                     <label for="email">이메일:</label>
-                    <input type="email" id="email" name="email" required 
+                    <input type="email" id="email" name="email" required
                            placeholder="등록된 이메일 주소를 입력하세요">
                 </div>
-                {% if not show_direct_login %}
-                <div class="form-group">
-                    <label>인증 방법:</label>
-                    <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="method" value="email" checked>
-                            이메일로 받기
-                        </label>
-                        {% if remote_addr == '127.0.0.1' or (user_info and user_info.get('admin_flag') == 'Y') %}
-                        <label class="radio-label">
-                            <input type="radio" name="method" value="sms">
-                            SMS로 받기 (테스트용: <a href="/sms_test_log">로그 확인</a>)
-                        </label>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
                 <button type="submit" class="btn-primary">인증 코드 발송</button>
             </form>
             
@@ -63,9 +47,6 @@
                         <i class="fas fa-shield-alt"></i> 관리자 로그인
                     </button>
                 </form>
-                <small style="color: #666; margin-top: 5px; display: block;">
-                    <i class="fas fa-info-circle"></i> 관리자 직접 로그인
-                </small>
             </div>
             {% endif %}
             {% else %}
@@ -99,7 +80,7 @@
             
             <div class="info-container">
                 <div class="info-header">
-                    <h3><i class="fas fa-star"></i> 프리미엄 서비스</h3>
+                    <h3><i class="fas fa-star"></i> Private Service</h3>
                     <p class="info-subtitle">전문적인 내부통제 평가 솔루션</p>
                 </div>
                 
@@ -151,7 +132,7 @@
                         서비스 문의
                     </div>
                     <p class="pricing-description">
-                        전문적인 내부통제 평가를 위한 프리미엄 서비스로 운영됩니다.
+                        전문적인 내부통제 평가를 위한 Private 서비스로 운영됩니다.
                     </p>
                 </div>
             </div>

@@ -1,7 +1,84 @@
-"""RCM 업로드 및 파싱 유틸리티"""
+"""
+RCM 업로드 및 파싱 유틸리티
+
+이 모듈은 RCM 엑셀 파일 업로드 시 사용되는 공통 함수들을 제공합니다.
+- 컬럼명 자동 매핑
+- 사용자 지정 컬럼 매핑
+- 데이터 유효성 검증
+- 카테고리별 필수 컬럼 관리
+"""
 import pandas as pd
 import re
 
+
+# =============================================================================
+# 카테고리별 설정
+# =============================================================================
+
+# 카테고리별 필수 컬럼 정의
+REQUIRED_COLUMNS = {
+    'ELC': [
+        'control_code',         # 통제코드
+        'control_name',         # 통제명
+        'control_description',  # 통제설명
+        'key_control',          # 핵심통제 여부
+        'control_frequency',    # 통제주기
+        'control_type',         # 통제성격(예방/적발)
+        'control_nature',       # 통제방법(자동/수동)
+        'population',           # 모집단
+        'test_procedure'        # 테스트 방법
+    ],
+    'TLC': [
+        'control_code',
+        'control_name',
+        'control_description',
+        'key_control',
+        'control_frequency',
+        'control_type',
+        'control_nature',
+        'population',
+        'test_procedure'
+    ],
+    'ITGC': [
+        'control_code',
+        'control_name',
+        'control_description',
+        'key_control',
+        'control_frequency',
+        'control_type',
+        'control_nature'
+    ]
+}
+
+# 컬럼 한글 라벨 (UI 표시용)
+COLUMN_LABELS = {
+    'control_code': '통제코드',
+    'control_name': '통제명',
+    'control_description': '통제설명',
+    'key_control': '핵심통제 여부',
+    'control_frequency': '통제주기',
+    'control_type': '통제성격 (예방/적발)',
+    'control_nature': '통제방법 (자동/수동)',
+    'system': '시스템',
+    'population': '모집단',
+    'test_procedure': '테스트 방법',
+    'population_completeness_check': '모집단 완전성 확인',
+    'population_count': '모집단 건수',
+    'control_category': '통제카테고리'
+}
+
+# 모든 표준 컬럼 목록 (논리적 순서)
+ALL_STANDARD_COLUMNS = [
+    'control_code', 'control_name', 'control_description', 'key_control',
+    'control_frequency', 'control_type', 'control_nature', 'system',
+    'population', 'test_procedure',
+    'population_completeness_check', 'population_count', 'control_category'
+]
+
+
+# =============================================================================
+# 컬럼명 매핑 사전
+# =============================================================================
 
 # 컬럼명 매핑 딕셔너리 (다양한 컬럼명 변형 지원)
 COLUMN_MAPPING = {
@@ -65,9 +142,75 @@ COLUMN_MAPPING = {
         'control_category', 'controlcategory', 'control category',
         '통제카테고리', '카테고리', '통제 카테고리', 'category',
         '분류', '구분'
+    ],
+    'system': [
+        'system', 'systems', 'sys',
+        '시스템', '시스템명', '시스템 명', '시스템이름',
+        'application', 'app', '어플리케이션', '애플리케이션'
     ]
 }
 
+
+# =============================================================================
+# 공통 유틸리티 함수
+# =============================================================================
+
+def get_required_columns(category):
+    """
+    카테고리별 필수 컬럼 조회
+
+    Args:
+        category: 'ELC', 'TLC', 'ITGC' 중 하나
+
+    Returns:
+        list: 필수 컬럼 목록
+    """
+    return REQUIRED_COLUMNS.get(category, [])
+
+
+def get_column_label(column_name):
+    """
+    표준 컬럼명의 한글 라벨 조회
+
+    Args:
+        column_name: 표준 컬럼명
+
+    Returns:
+        str: 한글 라벨
+    """
+    return COLUMN_LABELS.get(column_name, column_name)
+
+
+def validate_required_columns(data, category):
+    """
+    필수 컬럼이 모두 있는지 검증
+
+    Args:
+        data: 파싱된 데이터 (dict 리스트)
+        category: 'ELC', 'TLC', 'ITGC' 중 하나
+
+    Returns:
+        tuple: (유효 여부, 누락된 컬럼 목록)
+    """
+    if not data:
+        return False, []
+
+    required_cols = get_required_columns(category)
+    missing_cols = []
+
+    # 첫 번째 레코드에서 필수 컬럼 확인
+    first_record = data[0] if data else {}
+
+    for col in required_cols:
+        if col not in first_record or not first_record.get(col):
+            missing_cols.append(get_column_label(col))
+
+    return len(missing_cols) == 0, missing_cols
+
+
+# =============================================================================
+# 컬럼명 처리 함수
+# =============================================================================
 
 def normalize_column_name(col_name):
     """컬럼명 정규화 (공백, 대소문자, 특수문자 처리)"""
@@ -114,13 +257,14 @@ def map_columns(df):
     return df_mapped, column_mapping_result
 
 
-def parse_excel_file(file, header_row=0):
+def parse_excel_file(file, header_row=0, column_mapping=None):
     """
     엑셀 파일 파싱 및 컬럼 매핑
 
     Args:
         file: 업로드된 파일 객체
         header_row: 헤더 행 번호 (기본값 0)
+        column_mapping: 사용자 지정 컬럼 매핑 dict (예: {'control_code': 0, 'control_name': 1})
 
     Returns:
         tuple: (매핑된 데이터 리스트, 매핑 정보 딕셔너리)
@@ -131,8 +275,13 @@ def parse_excel_file(file, header_row=0):
     # 빈 행 제거
     df = df.dropna(how='all')
 
-    # 컬럼명 매핑
-    df_mapped, mapping_info = map_columns(df)
+    # 사용자 지정 매핑이 있으면 사용, 없으면 자동 매핑
+    if column_mapping:
+        # 사용자 지정 매핑 사용
+        df_mapped, mapping_info = apply_user_mapping(df, column_mapping)
+    else:
+        # 자동 컬럼명 매핑
+        df_mapped, mapping_info = map_columns(df)
 
     # 데이터를 딕셔너리 리스트로 변환
     rcm_data = []
@@ -154,6 +303,31 @@ def parse_excel_file(file, header_row=0):
             rcm_data.append(record)
 
     return rcm_data, mapping_info
+
+
+def apply_user_mapping(df, column_mapping):
+    """
+    사용자 지정 컬럼 매핑 적용
+
+    Args:
+        df: 원본 데이터프레임
+        column_mapping: 컬럼 인덱스 매핑 dict (예: {'control_code': 0, 'control_name': 1})
+
+    Returns:
+        tuple: (매핑된 데이터프레임, 매핑 정보)
+    """
+    # 새로운 데이터프레임 생성
+    mapped_data = {}
+    mapping_info = {}
+
+    for std_col, col_index in column_mapping.items():
+        if col_index < len(df.columns):
+            original_col_name = df.columns[col_index]
+            mapped_data[std_col] = df.iloc[:, col_index]
+            mapping_info[original_col_name] = std_col
+
+    df_mapped = pd.DataFrame(mapped_data)
+    return df_mapped, mapping_info
 
 
 def validate_rcm_data(rcm_data):

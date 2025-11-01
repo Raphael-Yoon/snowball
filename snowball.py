@@ -206,35 +206,34 @@ def login():
                         return render_template('login.jsp', error="관리자 계정을 찾을 수 없습니다.", remote_addr=request.remote_addr)
         
         elif action == 'send_otp':
-            # OTP 발송 요청
+            # OTP 발송 요청 (이메일만 지원)
             email = request.form.get('email')
-            method = request.form.get('method', 'email')
             host = request.headers.get('Host', '')
-            
+
             if not email:
                 return render_template('login.jsp', error="이메일을 입력해주세요.", remote_addr=request.remote_addr, show_direct_login=host.startswith('snowball.pythonanywhere.com'))
-            
+
             # snowball.pythonanywhere.com에서는 실제 OTP 발송하지 않고 고정 메시지 표시
             if host.startswith('snowball.pythonanywhere.com'):
                 print(f"운영서버 OTP 발송 요청 - Host: {host}, Email: {email}")
-                
+
                 # 사용자가 존재하는지만 확인
                 user = find_user_by_email(email)
                 print(f"사용자 존재 확인 결과: {user is not None}")
-                
+
                 if not user:
                     print(f"등록되지 않은 사용자: {email}")
                     return render_template('login.jsp', error="등록되지 않은 사용자입니다.", remote_addr=request.remote_addr, show_direct_login=True)
-                
+
                 print(f"세션에 login_email 저장: {email}")
                 session['login_email'] = email
-                return render_template('login.jsp', step='verify', email=email, 
-                                     message="인증 코드를 입력해주세요.", 
-                                     remote_addr=request.remote_addr, 
+                return render_template('login.jsp', step='verify', email=email,
+                                     message="인증 코드를 입력해주세요.",
+                                     remote_addr=request.remote_addr,
                                      show_direct_login=True)
             else:
-                # 일반적인 OTP 발송
-                success, message = send_otp(email, method)
+                # 일반적인 OTP 발송 (이메일만)
+                success, message = send_otp(email, method='email')
                 if success:
                     session['login_email'] = email
                     return render_template('login.jsp', step='verify', email=email, message=message, remote_addr=request.remote_addr)
@@ -375,28 +374,6 @@ def clear_session():
         print(f"브라우저 종료로 세션 해제: {user_name}")
     return '', 204
 
-@app.route('/sms_test_log')
-def sms_test_log():
-    """SMS 테스트 로그 확인 (개발용)"""
-    try:
-        with open('sms_test_log.txt', 'r', encoding='utf-8') as f:
-            logs = f.readlines()
-        
-        log_html = "<h3>SMS OTP 테스트 로그</h3>"
-        log_html += "<div style='font-family: monospace; background: #f5f5f5; padding: 15px; border-radius: 5px;'>"
-        
-        if logs:
-            for log in logs[-10:]:  # 최근 10개만 표시
-                log_html += f"{log}<br>"
-        else:
-            log_html += "SMS 테스트 로그가 없습니다."
-        
-        log_html += "</div>"
-        log_html += "<br><a href='/login'>로그인 페이지로 돌아가기</a>"
-        
-        return log_html
-    except FileNotFoundError:
-        return "<h3>SMS 테스트 로그 파일이 없습니다.</h3><a href='/login'>로그인 페이지로 돌아가기</a>"
 
 
 def main():

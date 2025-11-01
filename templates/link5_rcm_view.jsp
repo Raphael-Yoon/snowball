@@ -108,9 +108,11 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="fas fa-list me-2"></i>통제 상세 목록</h5>
                         <div>
+                            {% if rcm_info.control_category == 'ITGC' %}
                             <a href="/rcm/{{ rcm_info.rcm_id }}/mapping" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-link me-1"></i>기준통제 매핑
                             </a>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="card-body">

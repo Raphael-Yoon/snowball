@@ -153,6 +153,70 @@ def rcm_upload():
                          user_info=user_info,
                          is_admin=is_admin)
 
+@bp_link5.route('/rcm/column_config', methods=['GET'])
+@login_required
+def rcm_column_config():
+    """RCM 컬럼 설정 정보 조회 (필수 컬럼, 라벨 등)"""
+    from rcm_utils import REQUIRED_COLUMNS, COLUMN_LABELS, ALL_STANDARD_COLUMNS
+
+    return jsonify({
+        'success': True,
+        'required_columns': REQUIRED_COLUMNS,
+        'column_labels': COLUMN_LABELS,
+        'all_columns': ALL_STANDARD_COLUMNS
+    })
+
+@bp_link5.route('/rcm/preview_excel', methods=['POST'])
+@login_required
+def rcm_preview_excel():
+    """엑셀 파일 미리보기 (처음 10행) + 컬럼 정보"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': '파일을 선택해주세요.'})
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': '파일을 선택해주세요.'})
+
+        if not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'message': 'Excel 파일만 업로드 가능합니다.'})
+
+        # 엑셀 파일 읽기 (헤더 없이 처음 10행)
+        import pandas as pd
+        df = pd.read_excel(file, header=None, nrows=10)
+
+        # 데이터를 리스트로 변환 (NaN을 빈 문자열로)
+        preview_data = []
+        for idx, row in df.iterrows():
+            row_data = ['' if pd.isna(val) else str(val) for val in row]
+            preview_data.append({
+                'row_index': int(idx),
+                'cells': row_data
+            })
+
+        # 컬럼 정보 (인덱스 기반)
+        column_info = []
+        for col_idx in range(len(df.columns)):
+            column_info.append({
+                'index': col_idx,
+                'label': f'컬럼 {col_idx + 1}'  # A, B, C 대신 숫자 사용
+            })
+
+        return jsonify({
+            'success': True,
+            'data': preview_data,
+            'total_columns': len(df.columns),
+            'columns': column_info
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'파일 미리보기 중 오류가 발생했습니다: {str(e)}'
+        })
+
 @bp_link5.route('/rcm/process_upload', methods=['POST'])
 @login_required
 def rcm_process_upload():
@@ -166,6 +230,13 @@ def rcm_process_upload():
         description = request.form.get('description', '').strip()
         access_users = request.form.getlist('access_users')
         header_row = int(request.form.get('header_row', 0))
+
+        # 컬럼 매핑 정보 받기
+        column_mapping_str = request.form.get('column_mapping', '{}')
+        try:
+            column_mapping = json.loads(column_mapping_str) if column_mapping_str else None
+        except:
+            column_mapping = None
 
         # 유효성 검사
         if not rcm_name:
@@ -213,9 +284,9 @@ def rcm_process_upload():
             control_category=control_category
         )
 
-        # Excel 파일 파싱 (개선된 방식)
+        # Excel 파일 파싱 (개선된 방식 + 사용자 매핑)
         from rcm_utils import parse_excel_file, validate_rcm_data, get_mapping_summary
-        rcm_details, mapping_info = parse_excel_file(file, header_row)
+        rcm_details, mapping_info = parse_excel_file(file, header_row, column_mapping)
 
         # 데이터 유효성 검증
         is_valid, error_message = validate_rcm_data(rcm_details)
@@ -262,7 +333,7 @@ def rcm_process_upload():
 @bp_link5.route('/rcm/<int:rcm_id>/delete', methods=['POST'])
 @login_required
 def rcm_delete(rcm_id):
-    """RCM 삭제 (비활성화) - admin 권한을 가진 사용자만 가능"""
+    """RCM 물리적 삭제 - admin 권한을 가진 사용자만 가능"""
     user_info = get_user_info()
     is_admin = user_info.get('admin_flag') == 'Y'
 
@@ -310,16 +381,33 @@ def rcm_delete(rcm_id):
 
             # 설계평가 진행 중이지만 force_delete가 true인 경우, 평가 데이터도 삭제
             if ongoing['has_design'] and force_delete:
-                # 진행 중인 설계평가 데이터 삭제 (또는 아카이빙)
+                # 진행 중인 설계평가 데이터 삭제
                 for session in ongoing['design_sessions']:
+                    # 설계평가 라인 삭제
                     conn.execute('''
-                        UPDATE sb_design_evaluation_header
-                        SET evaluation_status = 'ARCHIVED'
+                        DELETE FROM sb_design_evaluation_line
+                        WHERE header_id IN (
+                            SELECT header_id FROM sb_design_evaluation_header
+                            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                        )
+                    ''', (rcm_id, user_info['user_id'], session['evaluation_session']))
+
+                    # 설계평가 헤더 삭제
+                    conn.execute('''
+                        DELETE FROM sb_design_evaluation_header
                         WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
                     ''', (rcm_id, user_info['user_id'], session['evaluation_session']))
 
-            # Soft delete (is_active를 'N'으로 변경)
-            conn.execute('UPDATE sb_rcm SET is_active = ? WHERE rcm_id = ?', ('N', rcm_id))
+            # 물리적 삭제 (Hard delete)
+            # 1. RCM 상세 데이터 삭제
+            conn.execute('DELETE FROM sb_rcm_detail WHERE rcm_id = ?', (rcm_id,))
+
+            # 2. 사용자-RCM 매핑 삭제
+            conn.execute('DELETE FROM sb_user_rcm WHERE rcm_id = ?', (rcm_id,))
+
+            # 3. RCM 마스터 삭제
+            conn.execute('DELETE FROM sb_rcm WHERE rcm_id = ?', (rcm_id,))
+
             conn.commit()
 
             # 로그 기록
@@ -570,23 +658,28 @@ def evaluate_completeness_api(rcm_id):
 @bp_link5.route('/rcm/<int:rcm_id>/mapping')
 @login_required
 def rcm_mapping_page(rcm_id):
-    """RCM 기준통제 매핑 화면"""
+    """RCM 기준통제 매핑 화면 (ITGC만 가능)"""
     user_info = get_user_info()
-    
+
     # 사용자가 해당 RCM에 접근 권한이 있는지 확인
     user_rcms = get_user_rcms(user_info['user_id'])
     rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
-    
+
     if rcm_id not in rcm_ids:
         flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
         return redirect(url_for('link5.user_rcm'))
-    
+
     # RCM 기본 정보 조회
     rcm_info = None
     for rcm in user_rcms:
         if rcm['rcm_id'] == rcm_id:
             rcm_info = rcm
             break
+
+    # ITGC가 아닌 경우 접근 차단
+    if rcm_info and rcm_info.get('control_category') != 'ITGC':
+        flash('기준통제 매핑은 ITGC 카테고리에서만 사용할 수 있습니다.', 'error')
+        return redirect(url_for('link5.user_rcm_view', rcm_id=rcm_id))
     
     # RCM 상세 데이터 조회 (매핑할 통제 목록)
     rcm_details = get_rcm_details(rcm_id)
