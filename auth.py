@@ -534,29 +534,69 @@ def save_rcm_details(rcm_id, rcm_data, control_category='ITGC'):
         for data in rcm_data:
             # rcm_data에 control_category가 있으면 우선 사용, 없으면 파라미터 값 사용
             category = data.get('control_category', control_category)
+            control_code = data.get('control_code', '')
 
-            conn.execute('''
-                INSERT OR REPLACE INTO sb_rcm_detail (
-                    rcm_id, control_code, control_name, control_description,
-                    key_control, control_frequency, control_type, control_nature,
-                    population, population_completeness_check, population_count, test_procedure,
-                    control_category
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                rcm_id,
-                data.get('control_code', ''),
-                data.get('control_name', ''),
-                data.get('control_description', ''),
-                data.get('key_control', ''),
-                data.get('control_frequency', ''),
-                data.get('control_type', ''),
-                data.get('control_nature', ''),
-                data.get('population', ''),
-                data.get('population_completeness_check', ''),
-                data.get('population_count', ''),
-                data.get('test_procedure', ''),
-                category
-            ))
+            # 기존 데이터 확인
+            existing = conn.execute('''
+                SELECT detail_id FROM sb_rcm_detail
+                WHERE rcm_id = ? AND control_code = ?
+            ''', (rcm_id, control_code)).fetchone()
+
+            if existing:
+                # 기존 데이터가 있으면 UPDATE
+                conn.execute('''
+                    UPDATE sb_rcm_detail SET
+                        control_name = ?,
+                        control_description = ?,
+                        key_control = ?,
+                        control_frequency = ?,
+                        control_type = ?,
+                        control_nature = ?,
+                        population = ?,
+                        population_completeness_check = ?,
+                        population_count = ?,
+                        test_procedure = ?,
+                        control_category = ?
+                    WHERE rcm_id = ? AND control_code = ?
+                ''', (
+                    data.get('control_name', ''),
+                    data.get('control_description', ''),
+                    data.get('key_control', ''),
+                    data.get('control_frequency', ''),
+                    data.get('control_type', ''),
+                    data.get('control_nature', ''),
+                    data.get('population', ''),
+                    data.get('population_completeness_check', ''),
+                    data.get('population_count', ''),
+                    data.get('test_procedure', ''),
+                    category,
+                    rcm_id,
+                    control_code
+                ))
+            else:
+                # 새 데이터 INSERT
+                conn.execute('''
+                    INSERT INTO sb_rcm_detail (
+                        rcm_id, control_code, control_name, control_description,
+                        key_control, control_frequency, control_type, control_nature,
+                        population, population_completeness_check, population_count, test_procedure,
+                        control_category
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    rcm_id,
+                    control_code,
+                    data.get('control_name', ''),
+                    data.get('control_description', ''),
+                    data.get('key_control', ''),
+                    data.get('control_frequency', ''),
+                    data.get('control_type', ''),
+                    data.get('control_nature', ''),
+                    data.get('population', ''),
+                    data.get('population_completeness_check', ''),
+                    data.get('population_count', ''),
+                    data.get('test_procedure', ''),
+                    category
+                ))
 
         # sb_rcm 테이블의 completion_date 업데이트 (매핑 완료 표시)
         conn.execute('''

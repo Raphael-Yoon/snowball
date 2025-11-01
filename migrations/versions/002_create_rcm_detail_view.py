@@ -18,7 +18,7 @@ def upgrade(conn):
     table_exists = cursor.fetchone()
 
     if table_exists:
-        # sb_lookup 테이블과 조인하는 뷰 생성
+        # sb_lookup 테이블과 조인하는 뷰 생성 (값이 있으면 그대로 사용)
         conn.execute('''
             CREATE VIEW sb_rcm_detail_v AS
             SELECT
@@ -27,10 +27,10 @@ def upgrade(conn):
                 d.control_code,
                 d.control_name,
                 d.control_description,
-                lk.lookup_name AS key_control,
-                lf.lookup_name AS control_frequency,
-                lt.lookup_name AS control_type,
-                ln.lookup_name AS control_nature,
+                COALESCE(lk.lookup_name, d.key_control) AS key_control,
+                COALESCE(lf.lookup_name, d.control_frequency) AS control_frequency,
+                COALESCE(lt.lookup_name, d.control_type) AS control_type,
+                COALESCE(ln.lookup_name, d.control_nature) AS control_nature,
                 d.population,
                 d.population_completeness_check,
                 d.population_count,

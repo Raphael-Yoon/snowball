@@ -45,6 +45,78 @@ snowball/
 
 ## 작업 히스토리
 
+### 2025-11-01
+- **RCM 업로드 페이지 (Link5) 컬럼 매핑 기능 대폭 개선**
+  - **용어 개선**
+    - "필수 항목" → "평가 필수 항목"으로 변경
+    - 설계/운영평가에 필요한 항목이라는 의미 명확화
+    - 파일: `templates/link5_rcm_upload.jsp`
+
+  - **자동 매핑 키워드 추가**
+    - `control_nature`에 "통제구분", "구분" 키워드 추가
+    - 통제주기, 통제유형, 통제구분이 자동 매핑되도록 개선
+    - 파일: `templates/link5_rcm_upload.jsp:807`
+
+  - **중복 선택 방지 - 자동 해제 방식**
+    - 이전: 이미 매핑된 항목은 드롭다운에서 비활성화
+    - 변경: 모든 항목 선택 가능, 중복 시 기존 매핑 자동 해제
+    - 알림 메시지로 변경 사항 확인: "이전: 컬럼A → 현재: 컬럼B"
+    - 드롭다운 옵션에 매핑 상태 표시: "(매핑됨: 컬럼명)"
+    - 파일: `templates/link5_rcm_upload.jsp:647-734`
+
+  - **체크리스트 클릭 시 컬럼 하이라이트**
+    - 평가 필수 항목 클릭 → 매핑된 엑셀 컬럼 하이라이트 (노란색)
+    - 3초 후 자동으로 강조 효과 제거
+    - 화면 스크롤 이동 없음 (사용자 위치 유지)
+    - 파일: `templates/link5_rcm_upload.jsp:540-659`
+
+  - **파일 업로드 진행 상황 표시**
+    - 로딩 인디케이터 추가: 스피너 + 진행 상태 텍스트 + 프로그레스 바
+    - 단계별 상태 메시지:
+      1. "파일을 읽고 있습니다..."
+      2. "엑셀 데이터를 분석하고 있습니다..."
+      3. "미리보기를 생성하고 있습니다..."
+      4. "컬럼 매핑을 준비하고 있습니다..."
+      5. "완료!"
+    - 파일: `templates/link5_rcm_upload.jsp:55-73, 254-324`
+
+  - **자동 매핑 후 체크리스트 업데이트**
+    - `performAutoMapping()` 실행 후 `updateRequiredChecklist()` 호출
+    - 자동 매핑된 항목이 즉시 체크리스트에 반영
+    - 파일: `templates/link5_rcm_upload.jsp:565`
+
+- **데이터베이스 뷰 및 저장 로직 수정**
+  - **sb_rcm_detail_v 뷰 개선**
+    - 문제: `sb_lookup` 테이블과 조인 시 코드 매칭 실패로 통제주기/유형/구분이 NULL로 표시
+    - 원인: DB에는 "Annually", "예방", "Manual" 같은 실제 값이 저장되어 있지만, `sb_lookup`에는 "A", "P", "M" 같은 코드값만 정의
+    - 해결: `COALESCE` 함수로 원본 데이터 우선 사용
+    - 파일: `migrations/versions/002_create_rcm_detail_view.py:30-33`
+
+  - **RCM 상세 데이터 저장 로직 개선**
+    - 문제: `INSERT OR REPLACE` 사용 시 `detail_id`가 NULL로 저장됨
+    - 원인: `UNIQUE(rcm_id, control_code)` 제약조건으로 인해 REPLACE 시 AUTOINCREMENT 작동 안함
+    - 해결: `SELECT` 후 `UPDATE` 또는 `INSERT` 방식으로 변경
+    - 파일: `auth.py:533-599`
+
+  - **NULL detail_id 데이터 정리**
+    - 538개의 NULL detail_id 행 삭제 완료
+
+- **RCM 삭제 로직 변경**
+  - **Soft Delete → Hard Delete**
+    - 이전: `is_active = 'N'`으로 비활성화
+    - 변경: 물리적 삭제 (DELETE)
+    - 삭제 순서:
+      1. 설계평가 데이터 (진행 중인 경우)
+      2. RCM 상세 데이터 (`sb_rcm_detail`)
+      3. 사용자-RCM 매핑 (`sb_user_rcm`)
+      4. RCM 마스터 (`sb_rcm`)
+    - 파일: `snowball_link5.py:382-411`
+
+- **디버깅 로그 추가**
+  - 자동 매핑 과정을 콘솔에 출력
+  - 각 컬럼의 매칭 결과 및 중복 여부 확인 가능
+  - 파일: `templates/link5_rcm_upload.jsp:535-562`
+
 ### 2025-10-29
 - **Link1 (ITGC RCM Builder) UI/UX 개선 및 기능 추가**
   - **OS/DB 접근제어 Tool 토글 스위치 추가**
