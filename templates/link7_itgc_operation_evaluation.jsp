@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>ELC 운영평가</title>
+    <title>ITGC 운영평가</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -18,7 +18,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><img src="{{ url_for('static', filename='img/elc.jpg') }}" alt="ELC" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">ELC 운영평가</h1>
+                    <h1><img src="{{ url_for('static', filename='img/itgc.jpg') }}" alt="ITGC" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">ITGC 운영평가</h1>
                     <a href="/" class="btn btn-secondary">
                         <i class="fas fa-home me-1"></i>홈으로
                     </a>
@@ -57,7 +57,7 @@
                         <h5 class="mb-0"><i class="fas fa-folder-open me-2"></i>보유 RCM 목록</h5>
                     </div>
                     <div class="card-body">
-                        {% if elc_rcms %}
+                        {% if user_rcms %}
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
@@ -68,7 +68,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for rcm in elc_rcms %}
+                                    {% for rcm in user_rcms %}
                                     <tr>
                                         <td><i class="fas fa-file-alt me-2 text-warning"></i>{{ rcm.rcm_name }}</td>
                                         <td>{{ rcm.company_name }}</td>
@@ -81,7 +81,7 @@
                         {% else %}
                         <div class="text-center py-4">
                             <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
-                            <p class="text-muted">접근 가능한 ELC RCM이 없습니다.</p>
+                            <p class="text-muted">접근 가능한 ITGC RCM이 없습니다.</p>
                             <small class="text-muted">관리자에게 RCM 접근 권한을 요청하세요.</small>
                         </div>
                         {% endif %}
@@ -98,11 +98,11 @@
                         <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>설계평가 현황</h5>
                     </div>
                     <div class="card-body">
-                        {% if elc_rcms %}
-                        {% set has_design_sessions = elc_rcms|selectattr('design_evaluation_completed')|list|length > 0 %}
+                        {% if user_rcms %}
+                        {% set has_design_sessions = user_rcms|selectattr('design_evaluation_completed')|list|length > 0 %}
                         {% if has_design_sessions %}
                         <div class="accordion" id="designEvaluationAccordion">
-                            {% for rcm in elc_rcms %}
+                            {% for rcm in user_rcms %}
                             {% if rcm.design_evaluation_completed %}
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="heading{{ rcm.rcm_id }}">
@@ -172,11 +172,11 @@
                         <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>운영평가 현황</h5>
                     </div>
                     <div class="card-body">
-                        {% if elc_rcms %}
-                        {% set has_operation_sessions = elc_rcms|selectattr('design_evaluation_completed')|list|length > 0 %}
+                        {% if user_rcms %}
+                        {% set has_operation_sessions = user_rcms|selectattr('design_evaluation_completed')|list|length > 0 %}
                         {% if has_operation_sessions %}
                         <div class="accordion" id="operationEvaluationAccordion">
-                            {% for rcm in elc_rcms %}
+                            {% for rcm in user_rcms %}
                             {% if rcm.design_evaluation_completed %}
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="opheading{{ rcm.rcm_id }}">

@@ -20,10 +20,10 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1><i class="fas fa-users me-2"></i>RCM 사용자 관리</h1>
                     <div>
-                        <a href="/admin/rcm/{{ rcm_info.rcm_id }}/view" class="btn btn-info me-2">
+                        <a href="/rcm/{{ rcm_info.rcm_id }}/view" class="btn btn-info me-2">
                             <i class="fas fa-eye me-1"></i>RCM 보기
                         </a>
-                        <a href="/admin/rcm" class="btn btn-secondary">
+                        <a href="/rcm" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>목록으로
                         </a>
                     </div>

@@ -226,7 +226,7 @@
         const REQUIRED_COLUMNS = {
             'ELC': ['control_code', 'control_name', 'control_description', 'key_control', 'control_frequency', 'control_type', 'control_nature', 'population', 'test_procedure'],
             'TLC': ['control_code', 'control_name', 'control_description', 'key_control', 'control_frequency', 'control_type', 'control_nature', 'population', 'test_procedure'],
-            'ITGC': ['control_code', 'control_name', 'control_description', 'key_control', 'control_frequency', 'control_type', 'control_nature']
+            'ITGC': ['control_code', 'control_name', 'control_description', 'key_control', 'control_frequency', 'control_type', 'control_nature', 'test_procedure']
         };
 
         // 컬럼 한글 이름
@@ -616,6 +616,8 @@
                     } else {
                         cell.style.backgroundColor = '';
                     }
+                    // 기존 하이라이트 제거
+                    cell.style.border = '';
                 });
             });
 
@@ -625,6 +627,7 @@
                 if (cells[mappedColIndex + 1]) {
                     cells[mappedColIndex + 1].style.backgroundColor = '#fff3cd';
                     cells[mappedColIndex + 1].style.border = '3px solid #ffc107';
+                    cells[mappedColIndex + 1].style.transition = 'all 0.3s ease';
                 }
             });
 
@@ -633,8 +636,28 @@
             if (select) {
                 select.style.backgroundColor = '#fff3cd';
                 select.style.border = '2px solid #ffc107';
+                select.style.transition = 'all 0.3s ease';
 
-                // 3초 후 강조 제거
+                // 매핑된 컬럼이 화면에 보이도록 수평 스크롤
+                const previewContainer = document.querySelector('#excelPreviewContainer .card-body');
+                if (previewContainer && rows.length > 0) {
+                    const firstCell = rows[0].querySelectorAll('td')[mappedColIndex + 1];
+                    if (firstCell) {
+                        const containerRect = previewContainer.getBoundingClientRect();
+                        const cellRect = firstCell.getBoundingClientRect();
+
+                        // 셀이 화면에 보이지 않으면 스크롤
+                        if (cellRect.left < containerRect.left || cellRect.right > containerRect.right) {
+                            const scrollLeft = firstCell.offsetLeft - (previewContainer.clientWidth / 2) + (firstCell.offsetWidth / 2);
+                            previewContainer.scrollTo({
+                                left: scrollLeft,
+                                behavior: 'smooth'
+                            });
+                        }
+                    }
+                }
+
+                // 10초 후 강조 제거 (기존 3초에서 증가)
                 setTimeout(() => {
                     select.style.backgroundColor = '';
                     select.style.border = '';
@@ -651,7 +674,7 @@
                             }
                         }
                     });
-                }, 3000);
+                }, 10000); // 3초 → 10초로 변경
             }
         }
 

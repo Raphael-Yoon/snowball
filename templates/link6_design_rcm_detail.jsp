@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>RCM 설계평가 - {{ rcm_info.rcm_name }}</title>
+    <title>{{ evaluation_type|default('ITGC') }} 설계평가 - {{ rcm_info.rcm_name }}</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -19,7 +19,7 @@
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h1><i class="fas fa-clipboard-check me-2"></i>RCM 설계평가</h1>
+                        <h1><i class="fas fa-clipboard-check me-2"></i>{{ evaluation_type|default('ITGC') }} 설계평가</h1>
                         <div id="evaluationNameDisplay" class="text-primary fw-bold fs-6 mt-1" style="display: none;">
                             평가명: <span id="currentEvaluationName"></span>
                         </div>
@@ -130,38 +130,6 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <!-- 통제 카테고리 필터 -->
-                        <div class="mb-3">
-                            <div class="btn-group" role="group" aria-label="통제 카테고리 필터">
-                                <a href="?rcm_id={{ rcm_id }}" class="btn btn-sm {% if not control_category %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                                    <i class="fas fa-list me-1"></i>전체
-                                </a>
-                                <a href="?rcm_id={{ rcm_id }}&control_category=ITGC" class="btn btn-sm {% if control_category == 'ITGC' %}btn-info{% else %}btn-outline-info{% endif %}">
-                                    <i class="fas fa-server me-1"></i>ITGC
-                                    {% if category_stats.get('ITGC') %}<span class="badge bg-light text-dark ms-1">{{ category_stats.get('ITGC') }}</span>{% endif %}
-                                </a>
-                                <a href="?rcm_id={{ rcm_id }}&control_category=ELC" class="btn btn-sm {% if control_category == 'ELC' %}btn-warning{% else %}btn-outline-warning{% endif %}">
-                                    <i class="fas fa-building me-1"></i>ELC
-                                    {% if category_stats.get('ELC') %}<span class="badge bg-light text-dark ms-1">{{ category_stats.get('ELC') }}</span>{% endif %}
-                                </a>
-                                <a href="?rcm_id={{ rcm_id }}&control_category=TLC" class="btn btn-sm {% if control_category == 'TLC' %}btn-success{% else %}btn-outline-success{% endif %}">
-                                    <i class="fas fa-exchange-alt me-1"></i>TLC
-                                    {% if category_stats.get('TLC') %}<span class="badge bg-light text-dark ms-1">{{ category_stats.get('TLC') }}</span>{% endif %}
-                                </a>
-                            </div>
-                            {% if control_category %}
-                            <small class="text-muted ms-3">
-                                <i class="fas fa-filter me-1"></i>
-                                현재 필터: <strong>
-                                    {% if control_category == 'ITGC' %}IT 일반 통제 (ITGC)
-                                    {% elif control_category == 'ELC' %}전사 수준 통제 (ELC)
-                                    {% elif control_category == 'TLC' %}거래 수준 통제 (TLC)
-                                    {% endif %}
-                                </strong>
-                            </small>
-                            {% endif %}
-                        </div>
-
                         {% if rcm_details %}
                         <div class="table-responsive">
                             <table class="table table-striped" id="controlsTable">
@@ -173,7 +141,9 @@
                                         <th width="7%">통제주기</th>
                                         <th width="7%">통제유형</th>
                                         <th width="6%">핵심통제</th>
+                                        {% if evaluation_type == 'ITGC' %}
                                         <th width="8%">기준통제 매핑</th>
+                                        {% endif %}
                                         <th width="8%">설계평가</th>
                                         <th width="9%">평가결과</th>
                                         <th width="14%">조치사항</th>
@@ -182,7 +152,7 @@
                                 <tbody>
                                     {% for detail in rcm_details %}
                                     {% set mapping_info = rcm_mappings|selectattr('control_code', 'equalto', detail.control_code)|first %}
-                                    <tr id="control-row-{{ loop.index }}" {% if not mapping_info %}class="table-warning"{% endif %}>
+                                    <tr id="control-row-{{ loop.index }}" {% if evaluation_type == 'ITGC' and not mapping_info %}class="table-warning"{% endif %}>
                                         <td><code>{{ detail.control_code }}</code></td>
                                         <td><strong>{{ detail.control_name }}</strong></td>
                                         <td>
@@ -191,11 +161,12 @@
                                                 {{ detail.control_description or '-' }}
                                             </div>
                                         </td>
-                                        <td>{{ detail.control_frequency_name or detail.control_frequency or '-' }}</td>
-                                        <td>{{ detail.control_type_name or detail.control_type or '-' }}</td>
+                                        <td>{{ detail.control_frequency or '-' }}</td>
+                                        <td>{{ detail.control_type or '-' }}</td>
                                         <td>
                                             {{ detail.key_control or '비핵심' }}
                                         </td>
+                                        {% if evaluation_type == 'ITGC' %}
                                         <td>
                                             {% if mapping_info %}
                                                 <a href="/rcm/{{ rcm_id }}/mapping" class="badge bg-success text-white text-decoration-none" title="{{ mapping_info.std_control_name or mapping_info.std_control_code or '기준통제 매핑됨' }}" data-bs-toggle="tooltip">
@@ -207,6 +178,7 @@
                                                 </a>
                                             {% endif %}
                                         </td>
+                                        {% endif %}
                                         <td>
                                             <button class="btn btn-sm btn-outline-success evaluate-btn" 
                                                     onclick="openEvaluationModal({{ loop.index }}, '{{ detail.control_code }}', '{{ detail.control_name }}')"
