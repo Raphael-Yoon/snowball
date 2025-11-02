@@ -780,6 +780,130 @@ def test_rcm_process_upload_grants_admin_permission_to_uploader(authenticated_cl
                     first_call = mock_grant.call_args_list[0]
                     assert first_call[0][2] == 'admin'
 
+def test_rcm_upload_with_real_excel_file(authenticated_client, test_user):
+    """실제 Excel 파일로 RCM 업로드 통합 테스트"""
+    from io import BytesIO
+    import pandas as pd
+
+    # 실제와 유사한 RCM Excel 데이터 생성
+    df = pd.DataFrame({
+        'control_code': ['APD01', 'APD07', 'PC01'],
+        'control_name': ['권한 관리', '데이터 변경 승인', '프로그램 변경 승인'],
+        'control_description': ['신규 권한 승인 절차', 'DB 변경 승인 절차', '소스 변경 승인 절차'],
+        'key_control': ['Y', 'Y', 'Y'],
+        'control_frequency': ['Monthly', 'Daily', 'Weekly'],
+        'control_type': ['예방', '예방', '예방'],
+        'control_nature': ['Manual', 'Manual', 'Manual'],
+        'test_procedure': ['승인 문서 확인', 'SQL 로그 검토', 'Git 커밋 로그 검토']
+    })
+    excel_buffer = BytesIO()
+    df.to_excel(excel_buffer, index=False, engine='openpyxl')
+    excel_buffer.seek(0)
+
+    with patch('snowball_link5.log_user_activity'):
+        response = authenticated_client.post(
+            '/rcm/process_upload',
+            data={
+                'rcm_name': '2024 ITGC 테스트',
+                'control_category': 'ITGC',
+                'description': 'Integration test RCM',
+                'header_row': '0',
+                'column_mapping': json.dumps({
+                    'control_code': 0,
+                    'control_name': 1,
+                    'control_description': 2,
+                    'key_control': 3,
+                    'control_frequency': 4,
+                    'control_type': 5,
+                    'control_nature': 6,
+                    'test_procedure': 7
+                }),
+                'rcm_file': (excel_buffer, 'test_itgc.xlsx')
+            },
+            content_type='multipart/form-data'
+        )
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert 'rcm_id' in data
+        assert data['record_count'] == 3
+
+def test_rcm_upload_with_column_mapping(authenticated_client, test_user):
+    """컬럼 매핑 정보를 포함한 업로드 테스트"""
+    from io import BytesIO
+    import pandas as pd
+
+    # 컬럼명이 다른 Excel 파일
+    df = pd.DataFrame({
+        '통제코드': ['APD01', 'APD07'],
+        '통제명': ['권한 관리', '데이터 변경'],
+        '통제설명': ['설명1', '설명2'],
+        '핵심통제': ['Y', 'Y'],
+        '주기': ['Monthly', 'Daily'],
+        '성격': ['예방', '예방'],
+        '방법': ['Manual', 'Manual'],
+        '테스트': ['확인1', '확인2']
+    })
+    excel_buffer = BytesIO()
+    df.to_excel(excel_buffer, index=False, engine='openpyxl')
+    excel_buffer.seek(0)
+
+    # 컬럼 매핑 정보
+    column_mapping = {
+        'control_code': 0,
+        'control_name': 1,
+        'control_description': 2,
+        'key_control': 3,
+        'control_frequency': 4,
+        'control_type': 5,
+        'control_nature': 6,
+        'test_procedure': 7
+    }
+
+    with patch('snowball_link5.log_user_activity'):
+        response = authenticated_client.post(
+            '/rcm/process_upload',
+            data={
+                'rcm_name': '컬럼 매핑 테스트',
+                'control_category': 'ITGC',
+                'description': 'Column mapping test',
+                'header_row': '0',
+                'column_mapping': json.dumps(column_mapping),
+                'rcm_file': (excel_buffer, 'mapping_test.xlsx')
+            },
+            content_type='multipart/form-data'
+        )
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert 'mapping_info' in data
+
+def test_rcm_upload_validates_required_columns(authenticated_client, test_user):
+    """필수 컬럼 누락 시 업로드 실패"""
+    from io import BytesIO
+    import pandas as pd
+
+    # 필수 컬럼(control_code, control_name) 누락
+    df = pd.DataFrame({
+        'description': ['Test1', 'Test2'],
+        'type': ['A', 'B']
+    })
+    excel_buffer = BytesIO()
+    df.to_excel(excel_buffer, index=False, engine='openpyxl')
+    excel_buffer.seek(0)
+
+    response = authenticated_client.post(
+        '/rcm/process_upload',
+        data={
+            'rcm_name': '필수 컬럼 누락 테스트',
+            'control_category': 'ITGC',
+            'description': 'Should fail',
+            'rcm_file': (excel_buffer, 'incomplete.xlsx')
+        },
+        content_type='multipart/form-data'
+    )
+    data = json.loads(response.data)
+    assert data['success'] is False
+    # 필수 컬럼 누락 에러 확인
+
 # ================================
 # RCM 삭제 기능 테스트 (평가 상태별)
 # ================================

@@ -363,7 +363,14 @@ def get_user_rcms(user_id):
                 FROM sb_rcm r
                 INNER JOIN sb_user u ON r.upload_user_id = u.user_id
                 WHERE r.is_active = 'Y'
-                ORDER BY r.upload_date DESC
+                ORDER BY u.company_name,
+                         CASE r.control_category
+                             WHEN 'ELC' THEN 1
+                             WHEN 'TLC' THEN 2
+                             WHEN 'ITGC' THEN 3
+                             ELSE 4
+                         END,
+                         r.upload_date DESC
             ''').fetchall()
         else:
             # 일반 사용자는 권한이 있는 RCM만 접근 가능
@@ -374,7 +381,14 @@ def get_user_rcms(user_id):
                 INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
                 INNER JOIN sb_user u ON r.upload_user_id = u.user_id
                 WHERE ur.user_id = ? AND ur.is_active = 'Y' AND r.is_active = 'Y'
-                ORDER BY r.upload_date DESC
+                ORDER BY u.company_name,
+                         CASE r.control_category
+                             WHEN 'ELC' THEN 1
+                             WHEN 'TLC' THEN 2
+                             WHEN 'ITGC' THEN 3
+                             ELSE 4
+                         END,
+                         r.upload_date DESC
             ''', (user_id,)).fetchall()
         
         return [dict(rcm) for rcm in rcms]
@@ -1144,6 +1158,21 @@ def get_completed_design_evaluation_sessions(rcm_id, user_id):
             WHERE rcm_id = ? AND user_id = ? AND completed_date IS NOT NULL
             AND (evaluation_status != 'ARCHIVED' OR evaluation_status IS NULL)
             ORDER BY start_date DESC
+        ''', (rcm_id, user_id)).fetchall()
+        return [dict(session) for session in sessions]
+
+def get_all_design_evaluation_sessions(rcm_id, user_id):
+    """특정 RCM의 사용자별 모든 설계평가 세션 목록 조회 (진행중 + 완료, Archive된 세션 제외)"""
+    with get_db() as conn:
+        sessions = conn.execute('''
+            SELECT header_id, evaluation_session, completed_date, start_date,
+                   evaluated_controls, total_controls, progress_percentage, evaluation_status
+            FROM sb_design_evaluation_header
+            WHERE rcm_id = ? AND user_id = ?
+            AND (evaluation_status != 'ARCHIVED' OR evaluation_status IS NULL)
+            ORDER BY
+                CASE WHEN completed_date IS NULL THEN 0 ELSE 1 END,
+                start_date DESC
         ''', (rcm_id, user_id)).fetchall()
         return [dict(session) for session in sessions]
 

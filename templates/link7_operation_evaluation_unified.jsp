@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>ELC 운영평가</title>
+    <title>{{ evaluation_type|default('ITGC') }} 운영평가</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -14,11 +14,14 @@
 <body>
     {% include 'navi.jsp' %}
 
+    {% set eval_type = evaluation_type|default('ITGC') %}
+    {% set eval_image = 'itgc.jpg' if eval_type == 'ITGC' else ('elc.jpg' if eval_type == 'ELC' else 'tlc.jpg') %}
+
     <div class="container mt-4">
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><img src="{{ url_for('static', filename='img/elc.jpg') }}" alt="ELC" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">ELC 운영평가</h1>
+                    <h1><img src="{{ url_for('static', filename='img/' ~ eval_image) }}" alt="{{ eval_type }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">{{ eval_type }} 운영평가</h1>
                     <a href="/" class="btn btn-secondary">
                         <i class="fas fa-home me-1"></i>홈으로
                     </a>
@@ -57,7 +60,7 @@
                         <h5 class="mb-0"><i class="fas fa-folder-open me-2"></i>보유 RCM 목록</h5>
                     </div>
                     <div class="card-body">
-                        {% if elc_rcms %}
+                        {% if user_rcms %}
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
@@ -68,7 +71,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for rcm in elc_rcms %}
+                                    {% for rcm in user_rcms %}
                                     <tr>
                                         <td><i class="fas fa-file-alt me-2 text-warning"></i>{{ rcm.rcm_name }}</td>
                                         <td>{{ rcm.company_name }}</td>
@@ -81,7 +84,7 @@
                         {% else %}
                         <div class="text-center py-4">
                             <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
-                            <p class="text-muted">접근 가능한 ELC RCM이 없습니다.</p>
+                            <p class="text-muted">접근 가능한 {{ eval_type }} RCM이 없습니다.</p>
                             <small class="text-muted">관리자에게 RCM 접근 권한을 요청하세요.</small>
                         </div>
                         {% endif %}
@@ -98,24 +101,68 @@
                         <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>설계평가 현황</h5>
                     </div>
                     <div class="card-body">
-                        {% if elc_rcms %}
-                        {% set has_design_sessions = elc_rcms|selectattr('design_evaluation_completed')|list|length > 0 %}
-                        {% if has_design_sessions %}
+                        {% if user_rcms %}
+                        {% set has_any_sessions = user_rcms|selectattr('all_design_sessions')|list|length > 0 %}
+                        {% if has_any_sessions %}
                         <div class="accordion" id="designEvaluationAccordion">
-                            {% for rcm in elc_rcms %}
-                            {% if rcm.design_evaluation_completed %}
+                            {% for rcm in user_rcms %}
+                            {% if rcm.all_design_sessions|length > 0 %}
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="heading{{ rcm.rcm_id }}">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ rcm.rcm_id }}">
                                         <i class="fas fa-file-alt me-2"></i>{{ rcm.rcm_name }}
-                                        <span class="badge bg-success ms-2">{{ rcm.completed_design_sessions|length }}개 세션 완료</span>
+                                        {% if rcm.in_progress_design_sessions|length > 0 %}
+                                        <span class="badge bg-warning text-dark ms-2">진행중 {{ rcm.in_progress_design_sessions|length }}개</span>
+                                        {% endif %}
+                                        {% if rcm.completed_design_sessions|length > 0 %}
+                                        <span class="badge bg-success ms-2">완료 {{ rcm.completed_design_sessions|length }}개</span>
+                                        {% endif %}
                                     </button>
                                 </h2>
                                 <div id="collapse{{ rcm.rcm_id }}" class="accordion-collapse collapse" data-bs-parent="#designEvaluationAccordion">
                                     <div class="accordion-body">
+                                        {% if rcm.in_progress_design_sessions|length > 0 %}
+                                        <h6 class="text-warning mb-3"><i class="fas fa-hourglass-half me-2"></i>진행 중인 설계평가</h6>
+                                        <div class="table-responsive mb-4">
+                                            <table class="table table-sm table-bordered">
+                                                <thead class="table-warning">
+                                                    <tr>
+                                                        <th>세션명</th>
+                                                        <th>시작일</th>
+                                                        <th>진행률</th>
+                                                        <th>상태</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for session in rcm.in_progress_design_sessions %}
+                                                    <tr>
+                                                        <td><i class="fas fa-spinner text-warning me-1"></i>{{ session.evaluation_session }}</td>
+                                                        <td>{{ session.start_date[:10] if session.start_date else '-' }}</td>
+                                                        <td>
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                                                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ session.progress_percentage|default(0) }}%">
+                                                                        {{ session.progress_percentage|default(0)|round(1) }}%
+                                                                    </div>
+                                                                </div>
+                                                                <small class="text-muted text-nowrap">
+                                                                    <strong>{{ session.evaluated_controls|default(0) }}/{{ session.total_controls|default(0) }}</strong>
+                                                                </small>
+                                                            </div>
+                                                        </td>
+                                                        <td><span class="badge bg-warning text-dark">진행중</span></td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {% endif %}
+
+                                        {% if rcm.completed_design_sessions|length > 0 %}
+                                        <h6 class="text-success mb-3"><i class="fas fa-check-circle me-2"></i>완료된 설계평가</h6>
                                         <div class="table-responsive">
-                                            <table class="table table-sm">
-                                                <thead>
+                                            <table class="table table-sm table-bordered">
+                                                <thead class="table-success">
                                                     <tr>
                                                         <th>세션명</th>
                                                         <th>완료일</th>
@@ -141,6 +188,7 @@
                                                 </tbody>
                                             </table>
                                         </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -150,8 +198,8 @@
                         {% else %}
                         <div class="text-center py-4">
                             <i class="fas fa-clipboard fa-2x text-muted mb-2"></i>
-                            <p class="text-muted">완료된 설계평가가 없습니다.</p>
-                            <small class="text-muted">설계평가를 먼저 완료해주세요.</small>
+                            <p class="text-muted">설계평가 세션이 없습니다.</p>
+                            <small class="text-muted">설계평가를 시작해주세요.</small>
                         </div>
                         {% endif %}
                         {% else %}
@@ -172,11 +220,11 @@
                         <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>운영평가 현황</h5>
                     </div>
                     <div class="card-body">
-                        {% if elc_rcms %}
-                        {% set has_operation_sessions = elc_rcms|selectattr('design_evaluation_completed')|list|length > 0 %}
+                        {% if user_rcms %}
+                        {% set has_operation_sessions = user_rcms|selectattr('design_evaluation_completed')|list|length > 0 %}
                         {% if has_operation_sessions %}
                         <div class="accordion" id="operationEvaluationAccordion">
-                            {% for rcm in elc_rcms %}
+                            {% for rcm in user_rcms %}
                             {% if rcm.design_evaluation_completed %}
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="opheading{{ rcm.rcm_id }}">

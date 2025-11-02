@@ -39,15 +39,18 @@ def user_design_evaluation_rcm():
     # POST로 전달된 RCM ID 받기 또는 세션에서 가져오기
     if request.method == 'POST':
         rcm_id = request.form.get('rcm_id')
+        evaluation_type = request.form.get('evaluation_type', 'ITGC')  # 기본값 ITGC
         if not rcm_id:
             flash('RCM 정보가 없습니다.', 'error')
             return redirect(url_for('link6.user_design_evaluation'))
 
         # 세션에 저장
         session['current_design_rcm_id'] = int(rcm_id)
+        session['current_evaluation_type'] = evaluation_type
     else:
         # GET 요청인 경우 세션에서 가져오기
         rcm_id = session.get('current_design_rcm_id')
+        evaluation_type = session.get('current_evaluation_type', 'ITGC')
         if not rcm_id:
             flash('RCM 정보가 없습니다. 다시 선택해주세요.', 'error')
             return redirect(url_for('link6.user_design_evaluation'))
@@ -85,8 +88,9 @@ def user_design_evaluation_rcm():
                 rcm_info = rcm
                 break
     
-    # 통제 카테고리 필터 (쿼리 파라미터)
-    control_category = request.args.get('control_category', None)
+    # evaluation_type에 따라 자동으로 control_category 설정
+    # ITGC, ELC, TLC는 해당 카테고리만 보여줌
+    control_category = evaluation_type if evaluation_type in ['ITGC', 'ELC', 'TLC'] else None
 
     # RCM 세부 데이터 조회
     rcm_details = get_rcm_details(rcm_id, control_category=control_category)
@@ -115,6 +119,7 @@ def user_design_evaluation_rcm():
                          rcm_mappings=rcm_mappings,
                          control_category=control_category,
                          category_stats=category_stats,
+                         evaluation_type=evaluation_type,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          remote_addr=request.remote_addr)

@@ -105,6 +105,9 @@
                                                 <i class="fas fa-eye me-1"></i>상세보기
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
+                                            <a href="/admin/rcm/{{ rcm.rcm_id }}/users" class="btn btn-sm btn-outline-info me-1">
+                                                <i class="fas fa-users me-1"></i>접근 관리
+                                            </a>
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRcm({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -156,6 +159,9 @@
                                                 <i class="fas fa-eye me-1"></i>상세보기
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
+                                            <a href="/admin/rcm/{{ rcm.rcm_id }}/users" class="btn btn-sm btn-outline-info me-1">
+                                                <i class="fas fa-users me-1"></i>접근 관리
+                                            </a>
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRcm({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -212,6 +218,9 @@
                                                 <i class="fas fa-eye me-1"></i>상세보기
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
+                                            <a href="/admin/rcm/{{ rcm.rcm_id }}/users" class="btn btn-sm btn-outline-info me-1">
+                                                <i class="fas fa-users me-1"></i>접근 관리
+                                            </a>
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRcm({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -268,6 +277,9 @@
                                                 <i class="fas fa-eye me-1"></i>상세보기
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
+                                            <a href="/admin/rcm/{{ rcm.rcm_id }}/users" class="btn btn-sm btn-outline-info me-1">
+                                                <i class="fas fa-users me-1"></i>접근 관리
+                                            </a>
                                             <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRcm({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')">
                                                 <i class="fas fa-trash"></i>
                                             </button>

@@ -17,11 +17,14 @@ def user_operation_evaluation():
     # 사용자가 접근 가능한 RCM 목록 조회
     user_rcms = get_user_rcms(user_info['user_id'])
 
-    # 각 RCM에 대해 완료된 설계평가 세션 조회 및 핵심통제 개수 확인
+    # 각 RCM에 대해 모든 설계평가 세션 조회 (진행중 + 완료)
+    from auth import get_all_design_evaluation_sessions
     for rcm in user_rcms:
-        completed_sessions = get_completed_design_evaluation_sessions(rcm['rcm_id'], user_info['user_id'])
+        all_sessions = get_all_design_evaluation_sessions(rcm['rcm_id'], user_info['user_id'])
+        completed_sessions = [s for s in all_sessions if s['completed_date'] is not None]
+        in_progress_sessions = [s for s in all_sessions if s['completed_date'] is None]
 
-        # 각 설계평가 세션에 대해 운영평가 진행상황 조회
+        # 완료된 세션에 대해서만 운영평가 진행상황 조회
         for session in completed_sessions:
             operation_evaluation_session = f"OP_{session['evaluation_session']}"
 
@@ -39,7 +42,13 @@ def user_operation_evaluation():
             else:
                 session['operation_completed_count'] = 0
 
+            # 운영평가 가능한 통제 개수 추가
+            eligible_controls = get_key_rcm_details(rcm['rcm_id'], user_info['user_id'], session['evaluation_session'])
+            session['eligible_control_count'] = len(eligible_controls)
+
+        rcm['all_design_sessions'] = all_sessions
         rcm['completed_design_sessions'] = completed_sessions
+        rcm['in_progress_design_sessions'] = in_progress_sessions
         rcm['design_evaluation_completed'] = len(completed_sessions) > 0
 
         # 핵심통제 개수 조회 (모든 핵심통제)
@@ -47,15 +56,11 @@ def user_operation_evaluation():
         rcm['key_control_count'] = len(key_controls)
         rcm['has_key_controls'] = len(key_controls) > 0
 
-        # 각 완료된 설계평가 세션에 대해 운영평가 가능한 통제 개수 추가
-        for session in completed_sessions:
-            eligible_controls = get_key_rcm_details(rcm['rcm_id'], user_info['user_id'], session['evaluation_session'])
-            session['eligible_control_count'] = len(eligible_controls)
-
     log_user_activity(user_info, 'PAGE_ACCESS', '운영평가', '/user/operation-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
-    return render_template('link7.jsp',
+    return render_template('link7_operation_evaluation_unified.jsp',
+                         evaluation_type='ITGC',
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          user_rcms=user_rcms,
@@ -1391,11 +1396,50 @@ def elc_operation_evaluation():
     all_rcms = get_user_rcms(user_info['user_id'])
     elc_rcms = [rcm for rcm in all_rcms if rcm.get('control_category') == 'ELC']
 
+    # 각 RCM에 대해 모든 설계평가 세션 조회 (진행중 + 완료)
+    from auth import get_all_design_evaluation_sessions
+    for rcm in elc_rcms:
+        all_sessions = get_all_design_evaluation_sessions(rcm['rcm_id'], user_info['user_id'])
+        completed_sessions = [s for s in all_sessions if s['completed_date'] is not None]
+        in_progress_sessions = [s for s in all_sessions if s['completed_date'] is None]
+
+        # 완료된 세션에 대해서만 운영평가 진행상황 조회
+        for session in completed_sessions:
+            operation_evaluation_session = f"OP_{session['evaluation_session']}"
+
+            from auth import count_completed_operation_evaluations
+            with get_db() as conn:
+                header = conn.execute('''
+                    SELECT header_id FROM sb_operation_evaluation_header
+                    WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                ''', (rcm['rcm_id'], user_info['user_id'], operation_evaluation_session, session['evaluation_session'])).fetchone()
+
+            if header:
+                completed_count = count_completed_operation_evaluations(header['header_id'])
+                session['operation_completed_count'] = completed_count
+            else:
+                session['operation_completed_count'] = 0
+
+            # 운영평가 가능한 통제 개수 추가
+            eligible_controls = get_key_rcm_details(rcm['rcm_id'], user_info['user_id'], session['evaluation_session'], control_category='ELC')
+            session['eligible_control_count'] = len(eligible_controls)
+
+        rcm['all_design_sessions'] = all_sessions
+        rcm['completed_design_sessions'] = completed_sessions
+        rcm['in_progress_design_sessions'] = in_progress_sessions
+        rcm['design_evaluation_completed'] = len(completed_sessions) > 0
+
+        # 핵심통제 개수 조회
+        key_controls = get_key_rcm_details(rcm['rcm_id'], control_category='ELC')
+        rcm['key_control_count'] = len(key_controls)
+        rcm['has_key_controls'] = len(key_controls) > 0
+
     log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 운영평가', '/elc/operation-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
-    return render_template('link7_elc_operation_evaluation.jsp',
-                         elc_rcms=elc_rcms,
+    return render_template('link7_operation_evaluation_unified.jsp',
+                         evaluation_type='ELC',
+                         user_rcms=elc_rcms,
                          is_logged_in=is_logged_in(),
                          user_info=user_info)
 
@@ -1413,10 +1457,49 @@ def tlc_operation_evaluation():
     all_rcms = get_user_rcms(user_info['user_id'])
     tlc_rcms = [rcm for rcm in all_rcms if rcm.get('control_category') == 'TLC']
 
+    # 각 RCM에 대해 모든 설계평가 세션 조회 (진행중 + 완료)
+    from auth import get_all_design_evaluation_sessions
+    for rcm in tlc_rcms:
+        all_sessions = get_all_design_evaluation_sessions(rcm['rcm_id'], user_info['user_id'])
+        completed_sessions = [s for s in all_sessions if s['completed_date'] is not None]
+        in_progress_sessions = [s for s in all_sessions if s['completed_date'] is None]
+
+        # 완료된 세션에 대해서만 운영평가 진행상황 조회
+        for session in completed_sessions:
+            operation_evaluation_session = f"OP_{session['evaluation_session']}"
+
+            from auth import count_completed_operation_evaluations
+            with get_db() as conn:
+                header = conn.execute('''
+                    SELECT header_id FROM sb_operation_evaluation_header
+                    WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                ''', (rcm['rcm_id'], user_info['user_id'], operation_evaluation_session, session['evaluation_session'])).fetchone()
+
+            if header:
+                completed_count = count_completed_operation_evaluations(header['header_id'])
+                session['operation_completed_count'] = completed_count
+            else:
+                session['operation_completed_count'] = 0
+
+            # 운영평가 가능한 통제 개수 추가
+            eligible_controls = get_key_rcm_details(rcm['rcm_id'], user_info['user_id'], session['evaluation_session'], control_category='TLC')
+            session['eligible_control_count'] = len(eligible_controls)
+
+        rcm['all_design_sessions'] = all_sessions
+        rcm['completed_design_sessions'] = completed_sessions
+        rcm['in_progress_design_sessions'] = in_progress_sessions
+        rcm['design_evaluation_completed'] = len(completed_sessions) > 0
+
+        # 핵심통제 개수 조회
+        key_controls = get_key_rcm_details(rcm['rcm_id'], control_category='TLC')
+        rcm['key_control_count'] = len(key_controls)
+        rcm['has_key_controls'] = len(key_controls) > 0
+
     log_user_activity(user_info, 'PAGE_ACCESS', 'TLC 운영평가', '/tlc/operation-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
-    return render_template('link7_tlc_operation_evaluation.jsp',
-                         tlc_rcms=tlc_rcms,
+    return render_template('link7_operation_evaluation_unified.jsp',
+                         evaluation_type='TLC',
+                         user_rcms=tlc_rcms,
                          is_logged_in=is_logged_in(),
                          user_info=user_info)

@@ -439,7 +439,13 @@
                     rcmInput.name = 'rcm_id';
                     rcmInput.value = rcmId;
 
+                    const evalTypeInput = document.createElement('input');
+                    evalTypeInput.type = 'hidden';
+                    evalTypeInput.name = 'evaluation_type';
+                    evalTypeInput.value = 'ELC';
+
                     form.appendChild(rcmInput);
+                    form.appendChild(evalTypeInput);
                     document.body.appendChild(form);
                     form.submit();
                 } else {
@@ -604,7 +610,13 @@
             rcmInput.name = 'rcm_id';
             rcmInput.value = rcmId;
 
+            const evalTypeInput = document.createElement('input');
+            evalTypeInput.type = 'hidden';
+            evalTypeInput.name = 'evaluation_type';
+            evalTypeInput.value = 'ELC';
+
             form.appendChild(rcmInput);
+            form.appendChild(evalTypeInput);
             document.body.appendChild(form);
             form.submit();
         }

@@ -657,10 +657,12 @@ def admin_rcm_view(rcm_id):
 def admin_rcm_users(rcm_id):
     """RCM 사용자 관리"""
     user_info = get_user_info()
-    if not user_info or user_info.get('admin_flag') != 'Y':
-        flash('관리자 권한이 필요합니다.')
-        return redirect(url_for('index'))
-    
+    if not user_info:
+        flash('로그인이 필요합니다.')
+        return redirect(url_for('login'))
+
+    is_admin = user_info.get('admin_flag') == 'Y'
+
     # RCM 기본 정보 조회
     with get_db() as conn:
         rcm_info = conn.execute('''
@@ -669,33 +671,64 @@ def admin_rcm_users(rcm_id):
             LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
             WHERE r.rcm_id = ? AND r.is_active = 'Y'
         ''', (rcm_id,)).fetchone()
-        
+
         if not rcm_info:
             flash('RCM을 찾을 수 없습니다.')
-            return redirect(url_for('admin.admin_rcm'))
-        
-        # RCM 접근 권한이 있는 사용자 목록
+            return redirect(url_for('index'))
+
+        # 시스템 관리자가 아닌 경우, RCM admin 권한 확인
+        if not is_admin:
+            user_permission = conn.execute('''
+                SELECT permission_type FROM sb_user_rcm
+                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+            ''', (user_info['user_id'], rcm_id)).fetchone()
+
+            if not user_permission or user_permission['permission_type'] != 'admin':
+                flash('해당 RCM의 관리자 권한이 필요합니다.')
+                return redirect(url_for('index'))
+
+        # RCM 접근 권한이 있는 사용자 목록 (시스템 관리자 제외)
         rcm_users = conn.execute('''
-            SELECT ur.*, u.user_name, u.user_email, u.company_name,
+            SELECT ur.*, u.user_name, u.user_email, u.company_name, u.admin_flag,
                    gb.user_name as granted_by_name
             FROM sb_user_rcm ur
             JOIN sb_user u ON ur.user_id = u.user_id
             LEFT JOIN sb_user gb ON ur.granted_by = gb.user_id
             WHERE ur.rcm_id = ? AND ur.is_active = 'Y'
+            AND (u.admin_flag IS NULL OR u.admin_flag != 'Y')
             ORDER BY ur.granted_date DESC
         ''', (rcm_id,)).fetchall()
         
-        # 모든 활성 사용자 목록 (권한 부여용)
-        all_users = conn.execute('''
-            SELECT user_id, user_name, user_email, company_name
-            FROM sb_user
-            WHERE (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)
-            AND user_id NOT IN (
-                SELECT user_id FROM sb_user_rcm 
-                WHERE rcm_id = ? AND is_active = 'Y'
-            )
-            ORDER BY company_name, user_name
-        ''', (rcm_id,)).fetchall()
+        # 활성 사용자 목록 (권한 부여용)
+        # 시스템 관리자: 모든 사용자, 일반 사용자: 본인 회사 사용자만
+        if is_admin:
+            # 관리자는 모든 사용자 조회 (시스템 관리자 제외)
+            all_users = conn.execute('''
+                SELECT user_id, user_name, user_email, company_name
+                FROM sb_user
+                WHERE (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)
+                AND (admin_flag IS NULL OR admin_flag != 'Y')
+                AND user_id NOT IN (
+                    SELECT user_id FROM sb_user_rcm
+                    WHERE rcm_id = ? AND is_active = 'Y'
+                )
+                ORDER BY company_name, user_name
+            ''', (rcm_id,)).fetchall()
+        else:
+            # 일반 사용자는 본인 회사 사용자만 조회 (시스템 관리자 제외)
+            user_company = user_info.get('company_name', '')
+            all_users = conn.execute('''
+                SELECT user_id, user_name, user_email, company_name
+                FROM sb_user
+                WHERE (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)
+                AND company_name = ?
+                AND (admin_flag IS NULL OR admin_flag != 'Y')
+                AND user_id NOT IN (
+                    SELECT user_id FROM sb_user_rcm
+                    WHERE rcm_id = ? AND is_active = 'Y'
+                )
+                ORDER BY user_name
+            ''', (user_company, rcm_id)).fetchall()
         
         rcm_users_list = [dict(user) for user in rcm_users]
         all_users_list = [dict(user) for user in all_users]
@@ -710,69 +743,152 @@ def admin_rcm_users(rcm_id):
 
 @admin_bp.route('/rcm/grant_access', methods=['POST'])
 def admin_rcm_grant_access():
-    """사용자에게 RCM 접근 권한 부여"""
+    """사용자에게 RCM 접근 권한 부여 (시스템 관리자 또는 RCM admin)"""
     user_info = get_user_info()
-    if not user_info or user_info.get('admin_flag') != 'Y':
-        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
-    
+    if not user_info:
+        return jsonify({'success': False, 'message': '로그인이 필요합니다.'})
+
     try:
-        rcm_id = int(request.form.get('rcm_id'))
-        target_user_id = int(request.form.get('target_user_id'))
-        permission_type = request.form.get('permission_type', 'view')
-        
+        # JSON 또는 form 데이터 처리
+        data = request.get_json() if request.is_json else request.form
+
+        rcm_id = data.get('rcm_id')
+        # user_id 또는 target_user_id 둘 다 지원
+        target_user_id = data.get('user_id') or data.get('target_user_id')
+        permission_type = data.get('permission_type', 'read')
+
+        # 필수 파라미터 검증
+        if not rcm_id or not target_user_id:
+            return jsonify({'success': False, 'message': 'RCM ID와 사용자 ID는 필수입니다.'})
+
+        # 정수 변환
+        rcm_id = int(rcm_id)
+        target_user_id = int(target_user_id)
+
+        # 권한 확인: 시스템 관리자 또는 RCM admin
+        is_admin = user_info.get('admin_flag') == 'Y'
+        with get_db() as conn:
+            if not is_admin:
+                user_permission = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+
+                if not user_permission or user_permission['permission_type'] != 'admin':
+                    return jsonify({'success': False, 'message': '해당 RCM의 관리자 권한이 필요합니다.'})
+
+                # 일반 사용자는 본인 회사 사용자에게만 권한 부여 가능
+                user_company = user_info.get('company_name', '')
+                target_user = conn.execute('''
+                    SELECT company_name FROM sb_user WHERE user_id = ?
+                ''', (target_user_id,)).fetchone()
+
+                if not target_user or target_user['company_name'] != user_company:
+                    return jsonify({'success': False, 'message': '본인 회사 사용자에게만 권한을 부여할 수 있습니다.'})
+
         # 권한 부여
-        grant_rcm_access(rcm_id, target_user_id, permission_type, user_info['user_id'])
-        
+        grant_rcm_access(target_user_id, rcm_id, permission_type, user_info['user_id'])
+
         return jsonify({
             'success': True,
             'message': '사용자에게 RCM 접근 권한이 부여되었습니다.'
         })
-        
+
+    except ValueError as e:
+        return jsonify({'success': False, 'message': f'잘못된 파라미터입니다: {str(e)}'})
     except Exception as e:
         return jsonify({'success': False, 'message': f'권한 부여 중 오류가 발생했습니다: {str(e)}'})
 
 @admin_bp.route('/rcm/change_permission', methods=['POST'])
 def admin_rcm_change_permission():
-    """사용자의 RCM 접근 권한 변경"""
+    """사용자의 RCM 접근 권한 변경 (시스템 관리자 또는 RCM admin)"""
     user_info = get_user_info()
-    if not user_info or user_info.get('admin_flag') != 'Y':
-        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
-    
+    if not user_info:
+        return jsonify({'success': False, 'message': '로그인이 필요합니다.'})
+
     try:
-        rcm_id = int(request.form.get('rcm_id'))
-        target_user_id = int(request.form.get('target_user_id'))
-        permission_type = request.form.get('permission_type')
-        
+        # JSON 또는 form 데이터 처리
+        data = request.get_json() if request.is_json else request.form
+
+        rcm_id = data.get('rcm_id')
+        # user_id 또는 target_user_id 둘 다 지원
+        target_user_id = data.get('user_id') or data.get('target_user_id')
+        permission_type = data.get('permission_type')
+
+        # 필수 파라미터 검증
+        if not rcm_id or not target_user_id or not permission_type:
+            return jsonify({'success': False, 'message': 'RCM ID, 사용자 ID, 권한 유형은 필수입니다.'})
+
+        # 정수 변환
+        rcm_id = int(rcm_id)
+        target_user_id = int(target_user_id)
+
+        # 권한 확인: 시스템 관리자 또는 RCM admin
+        is_admin = user_info.get('admin_flag') == 'Y'
         with get_db() as conn:
+            if not is_admin:
+                user_permission = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+
+                if not user_permission or user_permission['permission_type'] != 'admin':
+                    return jsonify({'success': False, 'message': '해당 RCM의 관리자 권한이 필요합니다.'})
+
             conn.execute('''
-                UPDATE sb_user_rcm 
-                SET permission_type = ?, last_updated = CURRENT_TIMESTAMP
+                UPDATE sb_user_rcm
+                SET permission_type = ?
                 WHERE rcm_id = ? AND user_id = ? AND is_active = 'Y'
             ''', (permission_type, rcm_id, target_user_id))
             conn.commit()
-        
+
         return jsonify({
             'success': True,
             'message': '사용자 권한이 성공적으로 변경되었습니다.'
         })
-        
+
+    except ValueError as e:
+        return jsonify({'success': False, 'message': f'잘못된 파라미터입니다: {str(e)}'})
     except Exception as e:
         return jsonify({'success': False, 'message': f'권한 변경 중 오류가 발생했습니다: {str(e)}'})
 
 @admin_bp.route('/rcm/revoke_access', methods=['POST'])
 def admin_rcm_revoke_access():
-    """사용자의 RCM 접근 권한 제거"""
+    """사용자의 RCM 접근 권한 제거 (시스템 관리자 또는 RCM admin)"""
     user_info = get_user_info()
-    if not user_info or user_info.get('admin_flag') != 'Y':
-        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
-    
+    if not user_info:
+        return jsonify({'success': False, 'message': '로그인이 필요합니다.'})
+
     try:
-        rcm_id = int(request.form.get('rcm_id'))
-        target_user_id = int(request.form.get('target_user_id'))
-        
+        # JSON 또는 form 데이터 처리
+        data = request.get_json() if request.is_json else request.form
+
+        rcm_id = data.get('rcm_id')
+        # user_id 또는 target_user_id 둘 다 지원
+        target_user_id = data.get('user_id') or data.get('target_user_id')
+
+        # 필수 파라미터 검증
+        if not rcm_id or not target_user_id:
+            return jsonify({'success': False, 'message': 'RCM ID와 사용자 ID는 필수입니다.'})
+
+        # 정수 변환
+        rcm_id = int(rcm_id)
+        target_user_id = int(target_user_id)
+
+        # 권한 확인: 시스템 관리자 또는 RCM admin
+        is_admin = user_info.get('admin_flag') == 'Y'
         with get_db() as conn:
+            if not is_admin:
+                user_permission = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                ''', (user_info['user_id'], rcm_id)).fetchone()
+
+                if not user_permission or user_permission['permission_type'] != 'admin':
+                    return jsonify({'success': False, 'message': '해당 RCM의 관리자 권한이 필요합니다.'})
+
             conn.execute('''
-                UPDATE sb_user_rcm 
+                UPDATE sb_user_rcm
                 SET is_active = 'N', last_updated = CURRENT_TIMESTAMP
                 WHERE rcm_id = ? AND user_id = ? AND is_active = 'Y'
             ''', (rcm_id, target_user_id))
