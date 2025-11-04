@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SnowBall - RCM 운영평가 - {{ rcm_info.rcm_name }}</title>
+    <title>SnowBall - {{ rcm_info.control_category or 'RCM' }} 운영평가 - {{ rcm_info.rcm_name }}</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -20,7 +20,7 @@
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h1><i class="fas fa-cogs me-2"></i>RCM 운영평가</h1>
+                        <h1><i class="fas fa-cogs me-2"></i>{{ rcm_info.control_category or 'RCM' }} 운영평가</h1>
                         <div class="text-warning fw-bold fs-6 mt-1">
                             설계평가 세션: <span class="badge bg-warning text-dark">{{ evaluation_session }}</span>
                         </div>
@@ -364,7 +364,7 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="min-width: auto; padding: 0.375rem 0.75rem;">취소</button>
                     <button type="button" class="btn btn-warning" onclick="saveOperationEvaluation()">
                         <i class="fas fa-save me-1"></i>저장
                     </button>
@@ -601,7 +601,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="min-width: auto; padding: 0.375rem 0.75rem;">
                         <i class="fas fa-times me-1"></i>닫기
                     </button>
                     <button type="button" class="btn btn-warning" onclick="goToPC01()">
@@ -1166,11 +1166,21 @@
                 };
             } else {
                 // 일반 평가인 경우
+                const operatingEffectiveness = formData.get('operating_effectiveness');
                 const exceptionCount = parseInt(formData.get('exception_count')) || 0;
-                const autoConclusion = exceptionCount > 0 ? 'exception' : 'effective';
+
+                // 운영 효과성에 따라 결론 결정
+                let autoConclusion;
+                if (operatingEffectiveness === 'effective') {
+                    autoConclusion = exceptionCount > 0 ? 'exception' : 'effective';
+                } else if (operatingEffectiveness === 'deficient' || operatingEffectiveness === 'ineffective') {
+                    autoConclusion = 'exception';
+                } else {
+                    autoConclusion = 'exception';
+                }
 
                 evaluationData = {
-                    operating_effectiveness: formData.get('operating_effectiveness'),
+                    operating_effectiveness: operatingEffectiveness,
                     sample_size: parseInt(formData.get('sample_size')) || 0,
                     exception_count: exceptionCount,
                     exception_details: formData.get('exception_details'),

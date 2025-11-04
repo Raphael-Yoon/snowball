@@ -239,12 +239,43 @@ def user_operation_evaluation_rcm():
 def save_operation_evaluation_api():
     """운영평가 결과 저장 API"""
     user_info = get_user_info()
-    data = request.get_json()
-    
-    rcm_id = data.get('rcm_id')
-    design_evaluation_session = data.get('design_evaluation_session')
-    control_code = data.get('control_code')
-    evaluation_data = data.get('evaluation_data')
+
+    # JSON과 FormData 모두 처리
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        # FormData로 전송된 경우
+        data = request.form.to_dict()
+        rcm_id = data.get('rcm_id')
+        design_evaluation_session = data.get('design_evaluation_session')
+        control_code = data.get('control_code')
+
+        # evaluation_data는 JSON 문자열로 전송되므로 파싱
+        import json
+        evaluation_data_str = data.get('evaluation_data')
+        if evaluation_data_str:
+            try:
+                evaluation_data = json.loads(evaluation_data_str)
+            except json.JSONDecodeError:
+                return jsonify({
+                    'success': False,
+                    'message': 'evaluation_data 파싱 오류'
+                })
+        else:
+            # 개별 필드로 전송된 경우 (구버전 호환)
+            evaluation_data = {
+                'operating_effectiveness': data.get('operating_effectiveness'),
+                'sample_size': int(data.get('sample_size', 0)),
+                'exception_count': int(data.get('exception_count', 0)),
+                'exception_details': data.get('exception_details', ''),
+                'conclusion': data.get('conclusion'),
+                'improvement_plan': data.get('improvement_plan', '')
+            }
+    else:
+        # JSON으로 전송된 경우
+        data = request.get_json()
+        rcm_id = data.get('rcm_id')
+        design_evaluation_session = data.get('design_evaluation_session')
+        control_code = data.get('control_code')
+        evaluation_data = data.get('evaluation_data')
 
     if not all([rcm_id, design_evaluation_session, control_code, evaluation_data]):
         return jsonify({
@@ -297,9 +328,12 @@ def save_operation_evaluation_api():
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"운영평가 저장 오류: {str(e)}")
         return jsonify({
             'success': False,
-            'message': '저장 중 오류가 발생했습니다.'
+            'message': f'저장 중 오류가 발생했습니다: {str(e)}'
         })
 
 @bp_link7.route('/api/operation-evaluation/load/<int:rcm_id>/<design_evaluation_session>')

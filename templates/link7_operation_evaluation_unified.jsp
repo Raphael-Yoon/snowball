@@ -52,47 +52,6 @@
             </div>
         </div>
 
-        <!-- 1. 보유 RCM 목록 -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0"><i class="fas fa-folder-open me-2"></i>보유 RCM 목록</h5>
-                    </div>
-                    <div class="card-body">
-                        {% if user_rcms %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th width="60%">RCM명</th>
-                                        <th width="25%">회사명</th>
-                                        <th width="15%">업로드일</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for rcm in user_rcms %}
-                                    <tr>
-                                        <td><i class="fas fa-file-alt me-2 text-warning"></i>{{ rcm.rcm_name }}</td>
-                                        <td>{{ rcm.company_name }}</td>
-                                        <td>{{ rcm.upload_date[:10] if rcm.upload_date else '-' }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <div class="text-center py-4">
-                            <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
-                            <p class="text-muted">접근 가능한 {{ eval_type }} RCM이 없습니다.</p>
-                            <small class="text-muted">관리자에게 RCM 접근 권한을 요청하세요.</small>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- 2. 설계평가 현황 -->
         <div class="row mb-4">
             <div class="col-12">
@@ -136,7 +95,14 @@
                                                 <tbody>
                                                     {% for session in rcm.in_progress_design_sessions %}
                                                     <tr>
-                                                        <td><i class="fas fa-spinner text-warning me-1"></i>{{ session.evaluation_session }}</td>
+                                                        <td>
+                                                            <i class="fas fa-spinner text-warning me-1"></i>
+                                                            <a href="/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}&session={{ session.evaluation_session }}"
+                                                               class="text-decoration-none"
+                                                               title="설계평가 진행 화면으로 이동">
+                                                                {{ session.evaluation_session }}
+                                                            </a>
+                                                        </td>
                                                         <td>{{ session.start_date[:10] if session.start_date else '-' }}</td>
                                                         <td>
                                                             <div class="d-flex align-items-center">
@@ -168,12 +134,20 @@
                                                         <th>완료일</th>
                                                         <th>평가 대상 통제</th>
                                                         <th>상태</th>
+                                                        <th>작업</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {% for session in rcm.completed_design_sessions %}
                                                     <tr>
-                                                        <td><i class="fas fa-check-circle text-success me-1"></i>{{ session.evaluation_session }}</td>
+                                                        <td>
+                                                            <i class="fas fa-check-circle text-success me-1"></i>
+                                                            <a href="/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}&session={{ session.evaluation_session }}"
+                                                               class="text-decoration-none"
+                                                               title="설계평가 결과 조회">
+                                                                {{ session.evaluation_session }}
+                                                            </a>
+                                                        </td>
                                                         <td>{{ session.completed_date[:10] if session.completed_date else '-' }}</td>
                                                         <td>{{ session.eligible_control_count }}개</td>
                                                         <td>
@@ -181,6 +155,16 @@
                                                             <span class="badge bg-success">운영평가 가능</span>
                                                             {% else %}
                                                             <span class="badge bg-secondary">적정 통제 없음</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if session.eligible_control_count > 0 %}
+                                                            <button class="btn btn-sm btn-success"
+                                                                    onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count or 0 }}, {{ session.eligible_control_count }})">
+                                                                <i class="fas fa-play me-1"></i>시작
+                                                            </button>
+                                                            {% else %}
+                                                            -
                                                             {% endif %}
                                                         </td>
                                                     </tr>
@@ -253,11 +237,17 @@
                                                         <span class="text-muted">진행상황:</span>
                                                         <strong>{{ session.operation_completed_count }}/{{ session.eligible_control_count }}</strong> 통제
                                                     </div>
-                                                    <button type="button" class="btn {% if session.operation_completed_count > 0 %}btn-warning{% else %}btn-primary{% endif %} btn-sm"
-                                                            onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count }}, {{ session.eligible_control_count }})">
-                                                        <i class="fas fa-{% if session.operation_completed_count > 0 %}play-circle{% else %}plus-circle{% endif %} me-1"></i>
-                                                        {% if session.operation_completed_count > 0 %}계속하기{% else %}시작하기{% endif %}
+                                                    {% if session.operation_completed_count > 0 %}
+                                                    <button type="button" class="btn btn-warning btn-sm"
+                                                            onclick="continueDirectly({{ rcm.rcm_id }}, '{{ session.evaluation_session }}')">
+                                                        <i class="fas fa-play-circle me-1"></i>계속하기
                                                     </button>
+                                                    {% else %}
+                                                    <button type="button" class="btn btn-primary btn-sm"
+                                                            onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count }}, {{ session.eligible_control_count }})">
+                                                        <i class="fas fa-plus-circle me-1"></i>시작하기
+                                                    </button>
+                                                    {% endif %}
                                                 </div>
                                                 {% if session.operation_completed_count > 0 %}
                                                 <div class="progress" style="height: 20px;">
@@ -328,18 +318,20 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let currentRcmId, currentDesignSession;
+        let currentRcmId, currentDesignSession, currentOperationCount;
 
         function showOperationStartModal(rcmId, designSession, operationCount, totalCount) {
+            console.log('[DEBUG] showOperationStartModal 호출됨:', rcmId, designSession, operationCount, totalCount);
             currentRcmId = rcmId;
             currentDesignSession = designSession;
+            currentOperationCount = operationCount || 0;
 
             document.getElementById('modalSessionName').textContent = designSession;
 
-            if (operationCount > 0) {
+            if (currentOperationCount > 0) {
                 document.getElementById('existingSessionInfo').style.display = 'block';
                 document.getElementById('existingSessionText').textContent =
-                    `진행중인 운영평가가 있습니다 (${operationCount}/${totalCount})`;
+                    `진행중인 운영평가가 있습니다 (${currentOperationCount}/${totalCount})`;
                 document.getElementById('continueExistingBtn').style.display = 'block';
             } else {
                 document.getElementById('existingSessionInfo').style.display = 'none';
@@ -350,7 +342,9 @@
             modal.show();
         }
 
-        function continueExisting() {
+        function continueDirectly(rcmId, designSession) {
+            console.log('[DEBUG] continueDirectly 호출됨:', rcmId, designSession);
+            // 모달 없이 바로 기존 데이터로 이동
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/operation-evaluation/rcm';
@@ -358,12 +352,12 @@
             const rcmInput = document.createElement('input');
             rcmInput.type = 'hidden';
             rcmInput.name = 'rcm_id';
-            rcmInput.value = currentRcmId;
+            rcmInput.value = rcmId;
 
             const sessionInput = document.createElement('input');
             sessionInput.type = 'hidden';
             sessionInput.name = 'design_evaluation_session';
-            sessionInput.value = currentDesignSession;
+            sessionInput.value = designSession;
 
             const actionInput = document.createElement('input');
             actionInput.type = 'hidden';
@@ -377,9 +371,17 @@
             form.submit();
         }
 
+        function continueExisting() {
+            // 모달에서 '기존 데이터로 계속하기' 클릭 시
+            continueDirectly(currentRcmId, currentDesignSession);
+        }
+
         function startNew() {
-            if (!confirm('새로운 운영평가를 시작하면 기존 진행 데이터가 삭제됩니다. 계속하시겠습니까?')) {
-                return;
+            // 기존 진행 데이터가 있는 경우에만 확인 메시지 표시
+            if (currentOperationCount > 0) {
+                if (!confirm('새로운 운영평가를 시작하면 기존 진행 데이터가 삭제됩니다. 계속하시겠습니까?')) {
+                    return;
+                }
             }
 
             const form = document.createElement('form');

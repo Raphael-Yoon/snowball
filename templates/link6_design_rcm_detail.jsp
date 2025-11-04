@@ -35,16 +35,16 @@
         </div>
 
         <!-- RCM 기본 정보 -->
-        <div class="row mb-4">
+        <div class="row mb-3">
             <div class="col-12">
                 <div class="card border-success">
-                    <div class="card-header bg-success text-white">
-                        <h5><i class="fas fa-info-circle me-2"></i>RCM 기본 정보</h5>
+                    <div class="card-header bg-success text-white py-2">
+                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>RCM 기본 정보</h5>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
+                    <div class="card-body py-3">
+                        <div class="row align-items-center">
                             <div class="col-md-4">
-                                <table class="table table-borderless">
+                                <table class="table table-borderless table-sm mb-0">
                                     <tr>
                                         <th width="40%">RCM명:</th>
                                         <td><strong>{{ rcm_info.rcm_name }}</strong></td>
@@ -56,22 +56,10 @@
                                 </table>
                             </div>
                             <div class="col-md-4">
-                                <table class="table table-borderless">
+                                <table class="table table-borderless table-sm mb-0">
                                     <tr>
                                         <th width="40%">총 통제 수:</th>
                                         <td><span class="badge bg-primary">{{ rcm_details|length }}개</span></td>
-                                    </tr>
-                                    <tr>
-                                        <th>카테고리별:</th>
-                                        <td>
-                                            {% if category_stats %}
-                                                <small>
-                                                    {% if category_stats.get('ITGC') %}<span class="badge bg-info me-1">ITGC: {{ category_stats.get('ITGC') }}</span>{% endif %}
-                                                    {% if category_stats.get('ELC') %}<span class="badge bg-warning text-dark me-1">ELC: {{ category_stats.get('ELC') }}</span>{% endif %}
-                                                    {% if category_stats.get('TLC') %}<span class="badge bg-success me-1">TLC: {{ category_stats.get('TLC') }}</span>{% endif %}
-                                                </small>
-                                            {% endif %}
-                                        </td>
                                     </tr>
                                     <tr>
                                         <th>평가자:</th>
@@ -81,13 +69,12 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="text-center">
-                                    <h6 class="text-success">설계평가 진행률</h6>
+                                    <h6 class="text-success mb-2">설계평가 진행률</h6>
                                     <div class="progress mb-2" style="height: 20px;">
                                         <div class="progress-bar bg-success" id="evaluationProgress" role="progressbar" style="width: 0%; font-size: 12px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
                                     </div>
                                     <small class="text-muted">
                                         <span id="evaluatedCount">0</span> / <span id="totalControlCount">{{ rcm_details|length }}</span> 통제 평가 완료
-                                        <br>상태: <span id="evaluationStatus" class="badge bg-secondary">준비 중</span>
                                     </small>
                                 </div>
                             </div>
@@ -105,9 +92,6 @@
                         <h5><i class="fas fa-list me-2"></i>통제 설계평가</h5>
                         <div class="d-flex flex-wrap gap-2">
                             {% if user_info.admin_flag == 'Y' %}
-                            <button class="btn btn-sm btn-outline-success" onclick="evaluateAllControls()" title="[관리자 전용] 임시 데이터를 생성하여 화면에만 표시 (실제 저장되지 않음)" data-bs-toggle="tooltip" style="height: 70%; padding: 0.2rem 0.5rem; border: 2px dashed #198754;">
-                                <i class="fas fa-user-shield me-1"></i><i class="fas fa-check-double me-1"></i>임시평가
-                            </button>
                             <button class="btn btn-sm btn-outline-primary" onclick="saveAllAsAdequate()" title="[관리자 전용] 모든 통제를 '적정' 값으로 실제 저장" data-bs-toggle="tooltip" style="height: 70%; padding: 0.2rem 0.5rem; border: 2px dashed #0d6efd;">
                                 <i class="fas fa-user-shield me-1"></i><i class="fas fa-check-circle me-1"></i>적정저장
                             </button>
@@ -115,8 +99,8 @@
                                 <i class="fas fa-user-shield me-1"></i><i class="fas fa-undo me-1"></i>초기화
                             </button>
                             {% endif %}
-                            <button id="completeEvaluationBtn" class="btn btn-sm btn-success" onclick="completeEvaluation()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;" title="설계평가를 완료 처리합니다" data-bs-toggle="tooltip">
-                                <i class="fas fa-check me-1"></i>완료처리
+                            <button id="completeEvaluationBtn" class="btn btn-sm btn-success" onclick="completeEvaluation()" style="display: none; height: 70%; padding: 0.2rem 0.5rem; width: auto;" title="설계평가를 완료 처리합니다" data-bs-toggle="tooltip">
+                                <i class="fas fa-check me-1"></i>완료
                             </button>
                             <button id="archiveEvaluationBtn" class="btn btn-sm btn-secondary" onclick="archiveEvaluation()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;" title="완료된 설계평가를 Archive 처리합니다" data-bs-toggle="tooltip">
                                 <i class="fas fa-archive me-1"></i>Archive
@@ -132,7 +116,7 @@
                     <div class="card-body">
                         {% if rcm_details %}
                         <div class="table-responsive">
-                            <table class="table table-striped" id="controlsTable">
+                            <table class="table table-striped align-middle" id="controlsTable">
                                 <thead>
                                     <tr>
                                         <th width="6%">통제코드</th>
@@ -144,9 +128,9 @@
                                         {% if evaluation_type == 'ITGC' %}
                                         <th width="8%">기준통제 매핑</th>
                                         {% endif %}
-                                        <th width="8%">설계평가</th>
+                                        <th width="5%" style="max-width: 60px;">설계평가</th>
                                         <th width="9%">평가결과</th>
-                                        <th width="14%">조치사항</th>
+                                        <th width="17%">조치사항</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -179,16 +163,17 @@
                                             {% endif %}
                                         </td>
                                         {% endif %}
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-success evaluate-btn" 
+                                        <td style="text-align: center; padding: 0.25rem;">
+                                            <button class="btn btn-sm btn-outline-success evaluate-btn"
                                                     onclick="openEvaluationModal({{ loop.index }}, '{{ detail.control_code }}', '{{ detail.control_name }}')"
-                                                    id="eval-btn-{{ loop.index }}">
-                                                <i class="fas fa-clipboard-check me-1"></i>평가
+                                                    id="eval-btn-{{ loop.index }}"
+                                                    style="padding: 0.2rem 0.35rem; font-size: 0.75rem;">
+                                                <i class="fas fa-edit"></i>
                                             </button>
                                         </td>
                                         <td>
                                             <span class="evaluation-result" id="result-{{ loop.index }}">
-                                                <span class="text-muted">미평가</span>
+                                                <span class="text-muted">평가 필요</span>
                                             </span>
                                         </td>
                                         <td>
@@ -453,6 +438,49 @@
         
         console.log('***** JavaScript rcmId value:', rcmId, '(type:', typeof rcmId, ') *****');
         
+        // 기존 평가 데이터 로드 함수
+        function loadExistingEvaluationData(sessionName) {
+            console.log('Loading evaluation data for session:', sessionName);
+
+            fetch(`/api/design-evaluation/load/{{ rcm_id }}?session=${encodeURIComponent(sessionName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.evaluations) {
+                        console.log('Loaded evaluations:', data.evaluations.length);
+
+                        // 각 평가 데이터를 폼에 적용
+                        data.evaluations.forEach(evaluation => {
+                            const controlCode = evaluation.control_code;
+
+                            // 각 필드에 값 설정
+                            const adequacySelect = document.querySelector(`select[name="adequacy_${controlCode}"]`);
+                            const effectivenessSelect = document.querySelector(`select[name="effectiveness_${controlCode}"]`);
+                            const recommendedActions = document.querySelector(`textarea[name="recommended_actions_${controlCode}"]`);
+
+                            if (adequacySelect && evaluation.adequacy_of_description) {
+                                adequacySelect.value = evaluation.adequacy_of_description;
+                                adequacySelect.dispatchEvent(new Event('change'));
+                            }
+
+                            if (effectivenessSelect && evaluation.effectiveness_of_design) {
+                                effectivenessSelect.value = evaluation.effectiveness_of_design;
+                            }
+
+                            if (recommendedActions && evaluation.recommended_actions) {
+                                recommendedActions.value = evaluation.recommended_actions;
+                            }
+                        });
+
+                        console.log('Evaluation data loaded successfully');
+                    } else {
+                        console.log('No existing evaluation data found for this session');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading evaluation data:', error);
+                });
+        }
+
         // SessionStorage 디버깅 함수
         function debugSessionStorage() {
             console.log('=== SessionStorage Debug ===');
@@ -817,22 +845,34 @@
         document.addEventListener('DOMContentLoaded', function() {
             // SessionStorage 상태 확인
             debugSessionStorage();
-            
+
+            // 서버에서 전달받은 evaluation_session이 있으면 사용
+            {% if evaluation_session %}
+            const serverSession = '{{ evaluation_session }}';
+            console.log('Server provided session:', serverSession);
+            sessionStorage.setItem('currentEvaluationSession', serverSession);
+            sessionStorage.setItem('isNewEvaluationSession', 'false'); // 기존 세션
+            {% endif %}
+
             // 새 세션인지 확인
             const isNewSession = sessionStorage.getItem('isNewEvaluationSession') === 'true';
             const currentSession = sessionStorage.getItem('currentEvaluationSession');
-            
+
             console.log('Page loaded - Current session:', currentSession);
             console.log('Is new session:', isNewSession);
-            
+
             if (!currentSession) {
                 // 세션 정보가 없으면 기본 세션명 설정
                 const defaultSession = `평가_${new Date().getTime()}`;
                 sessionStorage.setItem('currentEvaluationSession', defaultSession);
                 console.log('No session found, created default session:', defaultSession);
-                
+
                 // 새 세션이므로 평가 구조 생성
                 createEvaluationStructure(defaultSession);
+            } else if (!isNewSession) {
+                // 기존 세션이면 데이터 로드
+                console.log('Loading existing session data...');
+                loadExistingEvaluationData(currentSession);
             }
             
             // 평가명 화면에 표시
@@ -1058,7 +1098,13 @@
                 document.getElementById('overallEffectiveness').value = result.overall_effectiveness || '';
                 document.getElementById('evaluationRationale').value = result.evaluation_rationale || '';
                 document.getElementById('recommendedActions').value = result.recommended_actions || '';
-                
+
+                // 적절성 값이 설정되면 효과성 필드 활성화 이벤트 발생
+                const adequacySelect = document.getElementById('descriptionAdequacy');
+                if (adequacySelect.value === 'adequate') {
+                    adequacySelect.dispatchEvent(new Event('change'));
+                }
+
                 // 기존 이미지 표시
                 console.log('DEBUG - Images data:', result.images);
                 displayExistingImages(result.images || []);
@@ -1080,6 +1126,8 @@
             
             // 완료 상태 확인하여 저장 버튼 제어
             const saveButton = document.getElementById('saveEvaluationBtn');
+            const cancelButton = document.querySelector('#evaluationModal .modal-footer .btn-outline-secondary');
+
             if (saveButton) {
                 if (isHeaderCompleted) {
                     saveButton.disabled = true;
@@ -1095,7 +1143,55 @@
                     saveButton.classList.add('btn-success');
                 }
             }
-            
+
+            // 취소/닫기 버튼 텍스트 변경
+            if (cancelButton) {
+                if (isHeaderCompleted) {
+                    cancelButton.innerHTML = '<i class="fas fa-times me-1"></i>닫기';
+                } else {
+                    cancelButton.innerHTML = '<i class="fas fa-times me-1"></i>취소';
+                }
+            }
+
+            // 이미지 업로드 버튼 및 입력 필드 제어
+            const uploadImageBtn = document.querySelector('#evaluationModal button[onclick*="uploadImageModal"]');
+
+            if (isHeaderCompleted) {
+                // 완료된 상태: 이미지 업로드 비활성화
+                if (uploadImageBtn) {
+                    uploadImageBtn.disabled = true;
+                    uploadImageBtn.classList.add('disabled');
+                    uploadImageBtn.style.cursor = 'not-allowed';
+                }
+                if (imageInput) {
+                    imageInput.disabled = true;
+                }
+
+                // 모든 입력 필드 비활성화
+                document.getElementById('descriptionAdequacy').disabled = true;
+                document.getElementById('improvementSuggestion').disabled = true;
+                document.getElementById('overallEffectiveness').disabled = true;
+                document.getElementById('evaluationRationale').disabled = true;
+                document.getElementById('recommendedActions').disabled = true;
+            } else {
+                // 완료되지 않은 상태: 모든 입력 활성화
+                if (uploadImageBtn) {
+                    uploadImageBtn.disabled = false;
+                    uploadImageBtn.classList.remove('disabled');
+                    uploadImageBtn.style.cursor = 'pointer';
+                }
+                if (imageInput) {
+                    imageInput.disabled = false;
+                }
+
+                // 모든 입력 필드 활성화
+                document.getElementById('descriptionAdequacy').disabled = false;
+                document.getElementById('improvementSuggestion').disabled = false;
+                document.getElementById('overallEffectiveness').disabled = false;
+                document.getElementById('evaluationRationale').disabled = false;
+                document.getElementById('recommendedActions').disabled = false;
+            }
+
             const modal = new bootstrap.Modal(document.getElementById('evaluationModal'));
             modal.show();
         }
@@ -1176,20 +1272,29 @@
                 return;
             }
             
+            // 이미지 데이터 준비
+            const imageData = evaluationImages[currentEvaluationIndex] || [];
+
+            // 증빙자료 업로드 확인 (적정이면서 효과적인 경우에만)
+            if (adequacy === 'adequate' && effectiveness === 'effective' && imageData.length === 0) {
+                const confirmed = confirm('평가 결과가 "적정" 및 "효과적"이지만 업로드된 증빙자료가 없습니다.\n\n증빙자료 없이 평가를 저장하시겠습니까?');
+                if (!confirmed) {
+                    console.log('User cancelled save due to no evidence files');
+                    return; // 사용자가 취소를 선택한 경우 저장 중단
+                }
+            }
+
             const originalText = saveButton.innerHTML;
             saveButton.disabled = true;
             saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>저장 중...';
-            
-            // 이미지 데이터 준비
-            const imageData = evaluationImages[currentEvaluationIndex] || [];
-            
+
             // FormData를 사용하여 이미지 파일과 함께 전송
             const formData = new FormData();
             formData.append('rcm_id', rcmId);
             formData.append('control_code', controlCode);
             formData.append('evaluation_data', JSON.stringify(evaluation));
             formData.append('evaluation_session', currentSession);
-            
+
             // 이미지 파일들 추가
             if (imageData.length > 0) {
                 imageData.forEach((file, index) => {
@@ -1334,63 +1439,21 @@
                     buttonElement.classList.remove('btn-outline-success', 'btn-success', 'btn-secondary');
                     buttonElement.classList.add('btn-sm', 'btn-outline-info');
                     buttonElement.disabled = false;
-                    buttonElement.title = '평가 결과를 조회합니다 (완료된 상태)';
+                    buttonElement.title = '평가 결과를 조회합니다';
                     buttonElement.setAttribute('data-bs-toggle', 'tooltip');
+                    buttonElement.style.minWidth = '70px';
                 } else {
-                    buttonElement.innerHTML = '<i class="fas fa-check me-1"></i>완료';
+                    buttonElement.innerHTML = '<i class="fas fa-check me-1"></i>평가완료';
                     buttonElement.classList.remove('btn-outline-success', 'btn-secondary', 'btn-outline-secondary');
                     buttonElement.classList.add('btn-sm', 'btn-success');
                     buttonElement.disabled = false;
                     buttonElement.title = '평가 결과를 수정합니다';
                     buttonElement.setAttribute('data-bs-toggle', 'tooltip');
-                }
-            } else if (isTemporaryEvaluation) {
-                // 임시평가 데이터 표시 (저장되지 않은 샘플 데이터)
-                let resultClass = '';
-                let resultText = '';
-                switch(evaluation.overall_effectiveness) {
-                    case 'effective':
-                        resultClass = 'bg-info';  // 파란색으로 임시 데이터 구분
-                        resultText = '효과적 (임시)';
-                        break;
-                    case 'partially_effective':
-                        resultClass = 'bg-info';
-                        resultText = '부분적 효과적 (임시)';
-                        break;
-                    case 'ineffective':
-                        resultClass = 'bg-info';
-                        resultText = '비효과적 (임시)';
-                        break;
-                }
-                
-                resultElement.innerHTML = `
-                    <span class="badge ${resultClass}" title="임시 데이터 - 저장되지 않음" data-bs-toggle="tooltip">${resultText}</span>
-                `;
-                
-                // 조치사항도 (임시) 표시
-                const actionText = evaluation.recommended_actions || '조치사항 없음';
-                actionElement.innerHTML = `<span class="text-info" title="임시 데이터 - 저장되지 않음" data-bs-toggle="tooltip">${actionText} <small>(임시)</small></span>`;
-                
-                // 버튼 상태 - 임시평가 상태
-                if (isHeaderCompleted) {
-                    // 헤더 완료 시 버튼 상태 변경 (조회용으로 활성화)
-                    buttonElement.innerHTML = '<i class="fas fa-eye me-1"></i>조회';
-                    buttonElement.classList.remove('btn-success', 'btn-outline-primary', 'btn-secondary');
-                    buttonElement.classList.add('btn-sm', 'btn-outline-info');
-                    buttonElement.disabled = false;
-                    buttonElement.title = '실제 평가 결과를 조회합니다 (완료된 상태)';
-                    buttonElement.setAttribute('data-bs-toggle', 'tooltip');
-                } else {
-                    buttonElement.innerHTML = '<i class="fas fa-edit me-1"></i>실제평가';
-                    buttonElement.classList.remove('btn-success', 'btn-secondary', 'btn-outline-secondary');
-                    buttonElement.classList.add('btn-sm', 'btn-outline-primary');
-                    buttonElement.disabled = false;
-                    buttonElement.title = '실제 평가를 수행하여 저장하세요';
-                    buttonElement.setAttribute('data-bs-toggle', 'tooltip');
+                    buttonElement.style.minWidth = '70px';
                 }
             } else {
-                // evaluation_date가 없고 임시평가도 아니면 미평가 상태로 표시
-                resultElement.innerHTML = '<span class="badge bg-secondary">미평가</span>';
+                // evaluation_date가 없고 임시평가도 아니면 평가 필요 상태로 표시
+                resultElement.innerHTML = '<span class="badge bg-secondary">평가 필요</span>';
                 actionElement.innerHTML = '<span class="text-muted">-</span>';
                 
                 // 버튼 상태 - 미완료
@@ -1400,7 +1463,8 @@
                     buttonElement.classList.remove('btn-success', 'btn-outline-success', 'btn-secondary');
                     buttonElement.classList.add('btn-sm', 'btn-outline-info');
                     buttonElement.disabled = false;
-                    buttonElement.title = '평가 결과를 조회합니다 (완료된 상태)';
+                    buttonElement.style.minWidth = '70px';;
+                    buttonElement.title = '평가 결과를 조회합니다';
                     buttonElement.setAttribute('data-bs-toggle', 'tooltip');
                 } else {
                     buttonElement.innerHTML = '<i class="fas fa-edit me-1"></i>평가';
@@ -1435,12 +1499,17 @@
                 }
             });
             
-            // 간단한 디버깅 로그
-            console.log(`평가 결과: 총 ${Object.keys(evaluationResults).length}개 중 ${evaluatedCount}개 완료`);
-            
+            // 디버깅 로그
+            console.log('=== updateProgress Debug ===');
+            console.log(`총 통제 수: ${totalControls}`);
+            console.log(`평가 완료 수: ${evaluatedCount}`);
+            console.log(`평가 결과 객체 수: ${Object.keys(evaluationResults).length}`);
+
             // header의 completed_date가 있으면 전체 완료 상태
             const headerCompletedDate = sessionStorage.getItem('headerCompletedDate');
             const isCompleted = headerCompletedDate && headerCompletedDate !== 'null' && headerCompletedDate !== null && headerCompletedDate.trim() !== '';
+            console.log(`headerCompletedDate: ${headerCompletedDate}`);
+            console.log(`isCompleted: ${isCompleted}`);
             
             let progress, statusText, statusClass;
             
@@ -1460,20 +1529,19 @@
             document.getElementById('evaluationProgress').setAttribute('aria-valuenow', progress);
             document.getElementById('evaluationProgress').textContent = `${progress}%`;
             document.getElementById('evaluatedCount').textContent = evaluatedCount;
-            
-            // 상태 업데이트
-            const statusElement = document.getElementById('evaluationStatus');
+
+            // 버튼 요소 가져오기
             const completeBtn = document.getElementById('completeEvaluationBtn');
             const archiveBtn = document.getElementById('archiveEvaluationBtn');
             const downloadBtn = document.getElementById('downloadBtn');
 
-            // 상태 표시 및 버튼 표시 로직
-            statusElement.textContent = statusText;
-            statusElement.className = `badge ${statusClass}`;
+            console.log(`completeBtn 요소:`, completeBtn);
+            console.log(`버튼 표시 조건 - isCompleted: ${isCompleted}, evaluatedCount === totalControls: ${evaluatedCount === totalControls}`);
 
             // 버튼 표시 및 텍스트 설정
             if (isCompleted) {
                 // 완료 상태면 완료취소 버튼 표시
+                console.log('완료 상태: 완료취소 버튼 표시');
                 completeBtn.style.display = 'block';
                 completeBtn.innerHTML = '<i class="fas fa-undo me-1"></i>완료취소';
                 completeBtn.className = 'btn btn-sm btn-outline-warning';
@@ -1488,6 +1556,7 @@
                 downloadBtn.style.display = 'block';
             } else if (evaluatedCount === totalControls) {
                 // 모든 개별 평가가 완료되었지만 헤더 완료가 안된 경우
+                console.log('평가 완료: 완료처리 버튼 표시');
                 completeBtn.style.display = 'block';
                 completeBtn.innerHTML = '<i class="fas fa-check me-1"></i>완료처리';
                 completeBtn.className = 'btn btn-sm btn-success';
@@ -1600,8 +1669,8 @@
                         alert(`[DESIGN-012] 모든 통제가 "적절함 + 효과적"으로 저장되었습니다!\n총 ${savedCount}개 통제 저장 완료`);
                     }
                     
-                    // UI 업데이트 및 데이터 다시 로드
-                    loadEvaluationData();
+                    // UI 업데이트 - 페이지 새로고침으로 데이터 다시 로드
+                    window.location.reload();
                     return;
                 }
                 
@@ -1980,7 +2049,7 @@
             const buttonElement = document.getElementById(`eval-btn-${index}`);
             
             // 결과 초기화
-            resultElement.innerHTML = '<span class="text-muted">미평가</span>';
+            resultElement.innerHTML = '<span class="text-muted">평가 필요</span>';
             actionElement.innerHTML = '<span class="text-muted">-</span>';
             
             // 버튼 초기화

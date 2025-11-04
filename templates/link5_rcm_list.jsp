@@ -91,7 +91,10 @@
                                             <span class="badge bg-info">ITGC</span>
                                             {% endif %}
                                         </td>
-                                        <td><strong>{{ rcm.rcm_name }}</strong></td>
+                                        <td id="rcm-name-{{ rcm.rcm_id }}">
+                                            <strong class="rcm-name-display" ondblclick="editRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
+                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" onblur="cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" onkeypress="if(event.key==='Enter') saveRcmName({{ rcm.rcm_id }}); else if(event.key==='Escape') cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}');">
+                                        </td>
                                         <td>{{ rcm.company_name }}</td>
                                         <td>{{ rcm.description or '-' }}</td>
                                         <td>
@@ -101,8 +104,28 @@
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
                                         <td>
-                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-1">
-                                                <i class="fas fa-eye me-1"></i>상세보기
+                                            {% if rcm.has_ongoing_evaluation %}
+                                            <a href="/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}{% if rcm.ongoing_session %}&session={{ rcm.ongoing_session }}{% endif %}" class="btn btn-sm btn-success me-1"
+                                               data-bs-toggle="tooltip" data-bs-placement="top" title="가장 최근에 작업한 세션으로 이동합니다 (세션: {{ rcm.ongoing_session or '없음' }})">
+                                                <i class="fas fa-play me-1"></i>설계평가 이어하기
+                                            </a>
+                                            {% else %}
+                                            {% if rcm.control_category == 'ELC' %}
+                                            <a href="/elc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% elif rcm.control_category == 'TLC' %}
+                                            <a href="/tlc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% else %}
+                                            <a href="/design-evaluation?rcm_id={{ rcm.rcm_id }}&auto_start=true" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% endif %}
+                                            {% endif %}
+                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
+                                                <i class="fas fa-eye me-1"></i>상세
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
                                             <a href="/admin/rcm/{{ rcm.rcm_id }}/users" class="btn btn-sm btn-outline-info me-1">
@@ -145,7 +168,10 @@
                                 <tbody>
                                     {% for rcm in rcms_by_category.ELC %}
                                     <tr>
-                                        <td><strong>{{ rcm.rcm_name }}</strong></td>
+                                        <td id="rcm-name-{{ rcm.rcm_id }}">
+                                            <strong class="rcm-name-display" ondblclick="editRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
+                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" onblur="cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" onkeypress="if(event.key==='Enter') saveRcmName({{ rcm.rcm_id }}); else if(event.key==='Escape') cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}');">
+                                        </td>
                                         <td>{{ rcm.company_name }}</td>
                                         <td>{{ rcm.description or '-' }}</td>
                                         <td>
@@ -155,8 +181,28 @@
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
                                         <td>
-                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-1">
-                                                <i class="fas fa-eye me-1"></i>상세보기
+                                            {% if rcm.has_ongoing_evaluation %}
+                                            <a href="/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}{% if rcm.ongoing_session %}&session={{ rcm.ongoing_session }}{% endif %}" class="btn btn-sm btn-success me-1"
+                                               data-bs-toggle="tooltip" data-bs-placement="top" title="가장 최근에 작업한 세션으로 이동합니다 (세션: {{ rcm.ongoing_session or '없음' }})">
+                                                <i class="fas fa-play me-1"></i>설계평가 이어하기
+                                            </a>
+                                            {% else %}
+                                            {% if rcm.control_category == 'ELC' %}
+                                            <a href="/elc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% elif rcm.control_category == 'TLC' %}
+                                            <a href="/tlc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% else %}
+                                            <a href="/design-evaluation?rcm_id={{ rcm.rcm_id }}&auto_start=true" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% endif %}
+                                            {% endif %}
+                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
+                                                <i class="fas fa-eye me-1"></i>상세
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
                                             <a href="/admin/rcm/{{ rcm.rcm_id }}/users" class="btn btn-sm btn-outline-info me-1">
@@ -204,7 +250,10 @@
                                 <tbody>
                                     {% for rcm in rcms_by_category.TLC %}
                                     <tr>
-                                        <td><strong>{{ rcm.rcm_name }}</strong></td>
+                                        <td id="rcm-name-{{ rcm.rcm_id }}">
+                                            <strong class="rcm-name-display" ondblclick="editRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
+                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" onblur="cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" onkeypress="if(event.key==='Enter') saveRcmName({{ rcm.rcm_id }}); else if(event.key==='Escape') cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}');">
+                                        </td>
                                         <td>{{ rcm.company_name }}</td>
                                         <td>{{ rcm.description or '-' }}</td>
                                         <td>
@@ -214,8 +263,28 @@
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
                                         <td>
-                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-1">
-                                                <i class="fas fa-eye me-1"></i>상세보기
+                                            {% if rcm.has_ongoing_evaluation %}
+                                            <a href="/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}{% if rcm.ongoing_session %}&session={{ rcm.ongoing_session }}{% endif %}" class="btn btn-sm btn-success me-1"
+                                               data-bs-toggle="tooltip" data-bs-placement="top" title="가장 최근에 작업한 세션으로 이동합니다 (세션: {{ rcm.ongoing_session or '없음' }})">
+                                                <i class="fas fa-play me-1"></i>설계평가 이어하기
+                                            </a>
+                                            {% else %}
+                                            {% if rcm.control_category == 'ELC' %}
+                                            <a href="/elc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% elif rcm.control_category == 'TLC' %}
+                                            <a href="/tlc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% else %}
+                                            <a href="/design-evaluation?rcm_id={{ rcm.rcm_id }}&auto_start=true" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% endif %}
+                                            {% endif %}
+                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
+                                                <i class="fas fa-eye me-1"></i>상세
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
                                             <a href="/admin/rcm/{{ rcm.rcm_id }}/users" class="btn btn-sm btn-outline-info me-1">
@@ -263,7 +332,10 @@
                                 <tbody>
                                     {% for rcm in rcms_by_category.ITGC %}
                                     <tr>
-                                        <td><strong>{{ rcm.rcm_name }}</strong></td>
+                                        <td id="rcm-name-{{ rcm.rcm_id }}">
+                                            <strong class="rcm-name-display" ondblclick="editRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
+                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" onblur="cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" onkeypress="if(event.key==='Enter') saveRcmName({{ rcm.rcm_id }}); else if(event.key==='Escape') cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}');">
+                                        </td>
                                         <td>{{ rcm.company_name }}</td>
                                         <td>{{ rcm.description or '-' }}</td>
                                         <td>
@@ -273,8 +345,28 @@
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
                                         <td>
-                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-1">
-                                                <i class="fas fa-eye me-1"></i>상세보기
+                                            {% if rcm.has_ongoing_evaluation %}
+                                            <a href="/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}{% if rcm.ongoing_session %}&session={{ rcm.ongoing_session }}{% endif %}" class="btn btn-sm btn-success me-1"
+                                               data-bs-toggle="tooltip" data-bs-placement="top" title="가장 최근에 작업한 세션으로 이동합니다 (세션: {{ rcm.ongoing_session or '없음' }})">
+                                                <i class="fas fa-play me-1"></i>설계평가 이어하기
+                                            </a>
+                                            {% else %}
+                                            {% if rcm.control_category == 'ELC' %}
+                                            <a href="/elc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% elif rcm.control_category == 'TLC' %}
+                                            <a href="/tlc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% else %}
+                                            <a href="/design-evaluation?rcm_id={{ rcm.rcm_id }}&auto_start=true" class="btn btn-sm btn-primary me-1">
+                                                <i class="fas fa-plus me-1"></i>설계평가 시작
+                                            </a>
+                                            {% endif %}
+                                            {% endif %}
+                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
+                                                <i class="fas fa-eye me-1"></i>상세
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
                                             <a href="/admin/rcm/{{ rcm.rcm_id }}/users" class="btn btn-sm btn-outline-info me-1">
@@ -337,6 +429,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Bootstrap 툴팁 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+
         function deleteRcm(rcmId, rcmName, force = false) {
             if (!force && !confirm(`"${rcmName}" RCM을 삭제하시겠습니까?\n\n삭제된 RCM은 목록에서 제거됩니다.`)) {
                 return;
@@ -373,6 +473,73 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('RCM 삭제 중 오류가 발생했습니다.');
+            });
+        }
+
+        // RCM 이름 수정 모드
+        function editRcmName(rcmId, originalName) {
+            const cell = document.getElementById(`rcm-name-${rcmId}`);
+            const display = cell.querySelector('.rcm-name-display');
+            const input = cell.querySelector('.rcm-name-edit');
+
+            display.classList.add('d-none');
+            input.classList.remove('d-none');
+            input.value = originalName;
+            input.focus();
+            input.select();
+        }
+
+        // RCM 이름 수정 취소
+        function cancelEditRcmName(rcmId, originalName) {
+            const cell = document.getElementById(`rcm-name-${rcmId}`);
+            const display = cell.querySelector('.rcm-name-display');
+            const input = cell.querySelector('.rcm-name-edit');
+
+            setTimeout(() => {
+                input.classList.add('d-none');
+                display.classList.remove('d-none');
+            }, 200);
+        }
+
+        // RCM 이름 저장
+        function saveRcmName(rcmId) {
+            const cell = document.getElementById(`rcm-name-${rcmId}`);
+            const input = cell.querySelector('.rcm-name-edit');
+            const newName = input.value.trim();
+
+            if (!newName) {
+                alert('RCM 이름을 입력해주세요.');
+                input.focus();
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('rcm_id', rcmId);
+            formData.append('rcm_name', newName);
+
+            fetch('/rcm/update-name', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 성공 시 화면 업데이트
+                    const display = cell.querySelector('.rcm-name-display');
+                    display.textContent = newName;
+                    display.setAttribute('ondblclick', `editRcmName(${rcmId}, '${newName}')`);
+
+                    input.classList.add('d-none');
+                    display.classList.remove('d-none');
+                    input.setAttribute('onblur', `cancelEditRcmName(${rcmId}, '${newName}')`);
+                    input.setAttribute('onkeypress', `if(event.key==='Enter') saveRcmName(${rcmId}); else if(event.key==='Escape') cancelEditRcmName(${rcmId}, '${newName}');`);
+                } else {
+                    alert('저장 실패: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('RCM 이름 수정 중 오류가 발생했습니다.');
             });
         }
     </script>

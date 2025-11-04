@@ -51,7 +51,7 @@
                                     {% for rcm in rcms %}
                                     <tr>
                                         <td><strong>{{ rcm.rcm_name }}</strong></td>
-                                        <td>{{ rcm.company_name }}</td>
+                                        <td>{{ rcm.company_name or '-' }}</td>
                                         <td>{{ rcm.description or '-' }}</td>
                                         <td>{{ rcm.upload_user_name or '-' }}</td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
@@ -106,15 +106,15 @@
             if (!confirm(`'${rcmName}' RCM을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 다음 항목들이 함께 삭제됩니다:\n- RCM 상세 데이터\n- 사용자 접근 권한\n\n정말로 삭제하시겠습니까?`)) {
                 return;
             }
-            
+
             const formData = new FormData();
             formData.append('rcm_id', rcmId);
-            
+
             // 삭제 버튼 비활성화
             const deleteBtn = event.target.closest('button');
             deleteBtn.disabled = true;
             deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>삭제 중...';
-            
+
             fetch('/admin/rcm/delete', {
                 method: 'POST',
                 body: formData

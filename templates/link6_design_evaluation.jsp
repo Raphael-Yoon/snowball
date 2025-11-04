@@ -204,6 +204,31 @@
         // 페이지 로드 시 RCM 현황 로드
         document.addEventListener('DOMContentLoaded', function() {
             loadAvailableRcmCount();
+
+            // URL 파라미터 확인 (auto_start=true면 자동으로 세션 생성 모달 띄우기)
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoStart = urlParams.get('auto_start');
+            const rcmId = urlParams.get('rcm_id');
+
+            if (autoStart === 'true' && rcmId) {
+                // RCM 정보를 가져와서 바로 세션 생성 모달 띄우기
+                fetch('/api/user/rcm-list')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const rcm = data.rcms.find(r => r.rcm_id == rcmId);
+                            if (rcm) {
+                                // 해당 RCM의 세션 생성 모달 바로 표시
+                                showCreateEvaluationModal(rcm.rcm_id, rcm.rcm_name, rcm.control_category);
+                            } else {
+                                alert('해당 RCM을 찾을 수 없습니다.');
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('RCM 정보 로드 오류:', error);
+                    });
+            }
         });
         
         // 평가 가능한 RCM 수 로드
@@ -327,8 +352,8 @@
         function showEvaluationNameModal(rcmId, rcmName) {
             const today = new Date();
             const year = today.getFullYear();
-            const defaultName = `FY${year.toString().slice(-2)}_설계평가`;
-            
+            const defaultName = `FY${year.toString().slice(-2)}_내부평가`;
+
             const modalHtml = `
                 <div class="modal fade" id="evaluationNameModal" tabindex="-1">
                     <div class="modal-dialog">
@@ -343,8 +368,8 @@
                                 <p class="text-muted mb-3">RCM: <strong>${rcmName}</strong></p>
                                 <div class="mb-3">
                                     <label for="evaluationNameInput" class="form-label">설계평가명</label>
-                                    <input type="text" class="form-control" id="evaluationNameInput" 
-                                           value="${defaultName}" placeholder="예: FY25_설계평가">
+                                    <input type="text" class="form-control" id="evaluationNameInput"
+                                           value="${defaultName}" placeholder="예: FY25_내부평가">
                                     <div class="form-text">평가를 구분할 수 있는 이름을 입력하세요.</div>
                                 </div>
                             </div>
@@ -437,8 +462,8 @@
             })
             .catch(error => {
                 console.error('평가 생성 오류:', error);
-                alert('[EVAL-001] 평가 생성 중 오류가 발생했습니다.');
-                
+                alert('평가 생성 중 오류가 발생했습니다.');
+
                 // 버튼 복원
                 confirmButton.disabled = false;
                 confirmButton.innerHTML = '<i class="fas fa-play me-1"></i>평가 시작';
@@ -617,12 +642,12 @@
                     const modal = bootstrap.Modal.getInstance(document.getElementById('sessionSelectionModal'));
                     modal.hide();
                 } else {
-                    alert('[EVAL-002] 삭제 중 오류가 발생했습니다: ' + data.message);
+                    alert(data.message || '삭제 중 오류가 발생했습니다.');
                 }
             })
             .catch(error => {
                 console.error('세션 삭제 오류:', error);
-                alert('[EVAL-003] 세션 삭제 중 오류가 발생했습니다.');
+                alert('세션 삭제 중 오류가 발생했습니다.');
             });
         }
 
@@ -649,12 +674,12 @@
                     // 모달 새로고침을 위해 세션 목록 다시 로드
                     showSessionSelection(rcmId, ''); // rcmName은 비워도 됨
                 } else {
-                    alert('[EVAL-004] 복원 중 오류가 발생했습니다: ' + data.message);
+                    alert(data.message || '복원 중 오류가 발생했습니다.');
                 }
             })
             .catch(error => {
                 console.error('세션 복원 오류:', error);
-                alert('[EVAL-005] 세션 복원 중 오류가 발생했습니다.');
+                alert('세션 복원 중 오류가 발생했습니다.');
             });
         }
     </script>

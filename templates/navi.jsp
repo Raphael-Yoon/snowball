@@ -82,12 +82,12 @@
                     </li>
                     <li class="nav-item">
                         <a href="/link3" class="nav-link">
-                            <i class="fas fa-cogs me-1"></i>운영평가
+                            <i class="fas fa-cogs me-1"></i>운영평가 가이드
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="/link4" class="nav-link">
-                            <i class="fas fa-film me-1"></i>가이드
+                            <i class="fas fa-film me-1"></i>영상 가이드
                         </a>
                     </li>
                     <li class="nav-item">
