@@ -162,15 +162,15 @@
 
                                         {% if item.evaluation_status == 'COMPLETED' %}
                                             {% if item.operation_status == 'COMPLETED' %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
                                             </a>
                                             {% elif item.operation_status == 'IN_PROGRESS' %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
+                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 계속
                                             </a>
                                             {% else %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 시작
                                             </a>
                                             {% endif %}
@@ -241,15 +241,15 @@
 
                                         {% if item.evaluation_status == 'COMPLETED' %}
                                             {% if item.operation_status == 'COMPLETED' %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
                                             </a>
                                             {% elif item.operation_status == 'IN_PROGRESS' %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
+                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 계속
                                             </a>
                                             {% else %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 시작
                                             </a>
                                             {% endif %}
@@ -333,15 +333,15 @@
                                         {% endif %}
                                         {% if item.evaluation_status == 'COMPLETED' %}
                                             {% if item.operation_status == 'COMPLETED' %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
                                             </a>
                                             {% elif item.operation_status == 'IN_PROGRESS' %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
+                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 계속
                                             </a>
                                             {% else %}
-                                            <a href="/user/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 시작
                                             </a>
                                             {% endif %}

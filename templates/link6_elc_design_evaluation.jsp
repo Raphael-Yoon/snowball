@@ -147,11 +147,36 @@
                         <h6><i class="fas fa-history me-2"></i>최근 설계평가 결과</h6>
                     </div>
                     <div class="card-body">
+                        {% if recent_evaluations %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>평가 세션</th>
+                                        <th>RCM</th>
+                                        <th>평가 통제 수</th>
+                                        <th>완료일</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for eval in recent_evaluations %}
+                                    <tr>
+                                        <td><strong>{{ eval.evaluation_session }}</strong></td>
+                                        <td>{{ eval.rcm_name }}</td>
+                                        <td>{{ eval.evaluated_controls }}/{{ eval.total_controls }}</td>
+                                        <td>{{ eval.completed_date.split(' ')[0] if eval.completed_date else '-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
                         <div class="text-center py-4">
                             <i class="fas fa-clock fa-2x text-muted mb-2"></i>
                             <p class="text-muted">아직 수행된 설계평가가 없습니다.</p>
                             <small class="text-muted">설계평가를 시작하면 여기에 결과가 표시됩니다.</small>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -348,8 +373,8 @@
         function showEvaluationNameModal(rcmId, rcmName) {
             const today = new Date();
             const year = today.getFullYear();
-            const defaultName = `FY${year.toString().slice(-2)}_설계평가`;
-            
+            const defaultName = `FY${year.toString().slice(-2)}_내부평가`;
+
             const modalHtml = `
                 <div class="modal fade" id="evaluationNameModal" tabindex="-1">
                     <div class="modal-dialog">
@@ -364,8 +389,8 @@
                                 <p class="text-muted mb-3">RCM: <strong>${rcmName}</strong></p>
                                 <div class="mb-3">
                                     <label for="evaluationNameInput" class="form-label">설계평가명</label>
-                                    <input type="text" class="form-control" id="evaluationNameInput" 
-                                           value="${defaultName}" placeholder="예: FY25_설계평가">
+                                    <input type="text" class="form-control" id="evaluationNameInput"
+                                           value="${defaultName}" placeholder="예: FY25_내부평가">
                                     <div class="form-text">평가를 구분할 수 있는 이름을 입력하세요.</div>
                                 </div>
                             </div>
@@ -458,7 +483,7 @@
             })
             .catch(error => {
                 console.error('평가 생성 오류:', error);
-                alert('[EVAL-001] 평가 생성 중 오류가 발생했습니다.');
+                alert('평가 생성 중 오류가 발생했습니다.');
                 
                 // 버튼 복원
                 confirmButton.disabled = false;
@@ -644,12 +669,12 @@
                     const modal = bootstrap.Modal.getInstance(document.getElementById('sessionSelectionModal'));
                     modal.hide();
                 } else {
-                    alert('[EVAL-002] 삭제 중 오류가 발생했습니다: ' + data.message);
+                    alert(data.message || '삭제 중 오류가 발생했습니다.');
                 }
             })
             .catch(error => {
                 console.error('세션 삭제 오류:', error);
-                alert('[EVAL-003] 세션 삭제 중 오류가 발생했습니다.');
+                alert('세션 삭제 중 오류가 발생했습니다.');
             });
         }
 
@@ -676,12 +701,12 @@
                     // 모달 새로고침을 위해 세션 목록 다시 로드
                     showSessionSelection(rcmId, ''); // rcmName은 비워도 됨
                 } else {
-                    alert('[EVAL-004] 복원 중 오류가 발생했습니다: ' + data.message);
+                    alert(data.message || '복원 중 오류가 발생했습니다.');
                 }
             })
             .catch(error => {
                 console.error('세션 복원 오류:', error);
-                alert('[EVAL-005] 세션 복원 중 오류가 발생했습니다.');
+                alert('세션 복원 중 오류가 발생했습니다.');
             });
         }
     </script>

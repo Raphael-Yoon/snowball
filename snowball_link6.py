@@ -40,6 +40,7 @@ def user_design_evaluation_rcm():
     if request.method == 'POST':
         rcm_id = request.form.get('rcm_id')
         evaluation_type = request.form.get('evaluation_type', 'ITGC')  # 기본값 ITGC
+        evaluation_session = request.form.get('session')  # 평가 세션
         if not rcm_id:
             flash('RCM 정보가 없습니다.', 'error')
             return redirect(url_for('link6.user_design_evaluation'))
@@ -47,10 +48,38 @@ def user_design_evaluation_rcm():
         # 세션에 저장
         session['current_design_rcm_id'] = int(rcm_id)
         session['current_evaluation_type'] = evaluation_type
+        if evaluation_session:
+            session['current_evaluation_session'] = evaluation_session
     else:
-        # GET 요청인 경우 세션에서 가져오기
-        rcm_id = session.get('current_design_rcm_id')
-        evaluation_type = session.get('current_evaluation_type', 'ITGC')
+        # GET 요청인 경우 URL 파라미터 우선, 없으면 세션에서 가져오기
+        rcm_id = request.args.get('rcm_id')
+        evaluation_session = request.args.get('session')
+
+        if rcm_id:
+            # URL 파라미터가 있으면 세션에 저장
+            rcm_id = int(rcm_id)
+            session['current_design_rcm_id'] = rcm_id
+            if evaluation_session:
+                session['current_evaluation_session'] = evaluation_session
+
+            # RCM의 실제 control_category를 조회하여 evaluation_type 설정
+            with get_db() as conn:
+                rcm_category = conn.execute('''
+                    SELECT control_category FROM sb_rcm WHERE rcm_id = ?
+                ''', (rcm_id,)).fetchone()
+
+                if rcm_category and rcm_category['control_category']:
+                    evaluation_type = rcm_category['control_category']
+                    session['current_evaluation_type'] = evaluation_type
+                else:
+                    evaluation_type = 'ITGC'  # 기본값
+                    session['current_evaluation_type'] = evaluation_type
+        else:
+            # URL 파라미터가 없으면 세션에서 가져오기
+            rcm_id = session.get('current_design_rcm_id')
+            evaluation_session = session.get('current_evaluation_session')
+            evaluation_type = session.get('current_evaluation_type', 'ITGC')
+
         if not rcm_id:
             flash('RCM 정보가 없습니다. 다시 선택해주세요.', 'error')
             return redirect(url_for('link6.user_design_evaluation'))
@@ -120,6 +149,7 @@ def user_design_evaluation_rcm():
                          control_category=control_category,
                          category_stats=category_stats,
                          evaluation_type=evaluation_type,
+                         evaluation_session=evaluation_session,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          remote_addr=request.remote_addr)
@@ -542,13 +572,26 @@ def delete_evaluation_session_api():
                     SELECT permission_type FROM sb_user_rcm
                     WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
-                
+
                 if not access_check:
                     return jsonify({
                         'success': False,
                         'message': '해당 RCM에 대한 접근 권한이 없습니다.'
                     })
-        
+
+            # 해당 설계평가 세션을 기반으로 한 운영평가가 있는지 확인
+            operation_check = conn.execute('''
+                SELECT COUNT(*) as count
+                FROM sb_operation_evaluation_header
+                WHERE rcm_id = ? AND design_evaluation_session = ?
+            ''', (rcm_id, evaluation_session)).fetchone()
+
+            if operation_check and operation_check['count'] > 0:
+                return jsonify({
+                    'success': False,
+                    'message': '⛔ 이 설계평가를 기반으로 진행 중인 운영평가가 있습니다. 운영평가를 먼저 삭제해주세요.'
+                })
+
         # 세션 삭제
         deleted_count = delete_evaluation_session(rcm_id, user_info['user_id'], evaluation_session)
         
@@ -1368,16 +1411,39 @@ def unarchive_design_evaluation_api():
 def elc_design_evaluation():
     """ELC 설계평가 페이지"""
     user_info = get_user_info()
-    
+
     # ELC RCM 목록만 필터링
     all_rcms = get_user_rcms(user_info['user_id'])
     elc_rcms = [rcm for rcm in all_rcms if rcm.get('control_category') == 'ELC']
-    
-    log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 설계평가', '/elc/design-evaluation', 
+
+    # 최근 완료된 설계평가 결과 조회 (최근 5개)
+    with get_db() as conn:
+        recent_evaluations = conn.execute('''
+            SELECT
+                h.evaluation_session,
+                h.rcm_id,
+                r.rcm_name,
+                h.total_controls,
+                h.evaluated_controls,
+                h.completed_date,
+                h.evaluation_status
+            FROM sb_design_evaluation_header h
+            JOIN sb_rcm r ON h.rcm_id = r.rcm_id
+            WHERE h.user_id = ?
+            AND r.control_category = 'ELC'
+            AND h.evaluation_status = 'COMPLETED'
+            ORDER BY h.completed_date DESC
+            LIMIT 5
+        ''', (user_info['user_id'],)).fetchall()
+
+        recent_evaluations = [dict(row) for row in recent_evaluations]
+
+    log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 설계평가', '/elc/design-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
-    
+
     return render_template('link6_elc_design_evaluation.jsp',
                          elc_rcms=elc_rcms,
+                         recent_evaluations=recent_evaluations,
                          is_logged_in=is_logged_in(),
                          user_info=user_info)
 

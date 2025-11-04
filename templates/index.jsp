@@ -107,8 +107,8 @@
                     <h2 class="section-title"><i class="fas fa-lock me-2"></i>Private</h2>
                 </div>
 
-                <!-- RCM -->
-                <div class="col-lg-3 col-md-6">
+                <!-- 위 2개: RCM, 내부평가 -->
+                <div class="col-lg-3 col-md-6 offset-lg-3">
                     <div class="feature-card border-primary h-100">
                         <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
@@ -124,7 +124,25 @@
                     </div>
                 </div>
 
-                <!-- ELC -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-info h-100">
+                        <img src="{{ url_for('static', filename='img/review.jpg')}}" class="feature-img" alt="내부평가"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-clipboard-check me-2"></i>내부평가</h5>
+                            <p class="feature-description">내부통제 전반에 대한 종합 평가를 수행합니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/user/internal-assessment" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 내부통제 종합 평가<br>• 통제 효과성 분석<br>• 취약점 식별 및 개선 방안<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 아래 3개: ELC, TLC, ITGC -->
+            <div class="row g-4 mt-3 justify-content-center">
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-success h-100">
                         <img src="{{ url_for('static', filename='img/elc.jpg')}}" class="feature-img" alt="ELC"
@@ -141,7 +159,6 @@
                     </div>
                 </div>
 
-                <!-- TLC -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-warning h-100">
                         <img src="{{ url_for('static', filename='img/tlc.jpg')}}" class="feature-img" alt="TLC"
@@ -158,7 +175,6 @@
                     </div>
                 </div>
 
-                <!-- ITGC -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-danger h-100">
                         <img src="{{ url_for('static', filename='img/itgc.jpg')}}" class="feature-img" alt="ITGC"
@@ -177,16 +193,16 @@
             </div>
 
             <!-- Public 섹션 (로그인 시 아래로) -->
-            <div class="row g-4 mt-3">
+            <div class="row g-4 mt-3 justify-content-center">
                 <div class="col-12">
                     <h2 class="section-title"><i class="fas fa-globe me-2"></i>Public</h2>
                 </div>
             {% else %}
             <!-- 비로그인 상태: Public 섹션 먼저 표시 -->
             <h2 class="section-title"><i class="fas fa-globe me-2"></i>Public</h2>
-            <div class="row g-4">
+            <div class="row g-4 justify-content-center">
             {% endif %}
-                <!-- 기본 4개 카드 -->
+                <!-- Public 3개 카드 -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/rcm.jpg')}}" class="feature-img" alt="RCM">
@@ -219,7 +235,7 @@
                     <div class="feature-card">
                         <img src="{{ url_for('static', filename='img/testing.jpg')}}" class="feature-img" alt="Operation Test">
                         <div class="card-body p-4">
-                            <h5 class="feature-title text-center">운영평가</h5>
+                            <h5 class="feature-title text-center">운영평가 가이드</h5>
                             <p class="feature-description">내부통제의 운영 효과성을 평가하고 실제 운용 상태를 점검합니다.</p>
                             <div class="text-center">
                                 <a href="/link3" class="feature-link"
@@ -229,16 +245,38 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="feature-card">
+            </div>
+
+            <!-- Support 섹션 -->
+            <div class="row g-4 mt-3">
+                <div class="col-12">
+                    <h2 class="section-title"><i class="fas fa-envelope me-2"></i>Support</h2>
+                </div>
+                <div class="col-lg-3 col-md-6 offset-lg-3">
+                    <div class="feature-card h-100">
                         <img src="{{ url_for('static', filename='img/video.jpg')}}" class="feature-img" alt="교육자료">
-                        <div class="card-body p-4">
-                            <h5 class="feature-title text-center">가이드</h5>
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center">영상 가이드</h5>
                             <p class="feature-description">ITGC를 포함한 내부통제에 관련된 교육 영상 및 자료를 제공합니다.</p>
-                            <div class="text-center">
+                            <div class="text-center mt-auto">
                                 <a href="/link4" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
                                    title="<div>• ITGC(IT일반통제) 교육 영상<br>• 내부통제 기본 개념 및 실무 가이드<br>• 통제 설계 및 평가 방법론<br>• 실무 사례 및 베스트 프랙티스</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-info h-100">
+                        <img src="{{ url_for('static', filename='img/contact_us.jpg')}}" class="feature-img" alt="Contact Us"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center">서비스 문의</h5>
+                            <p class="feature-description">문의사항이나 지원이 필요하시면 언제든지 연락주세요.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/contact" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 내부통제 시스템 사용 문의<br>• 기술적 지원 및 전문 상담<br>• 최적의 솔루션 제안<br>• 24/7 고객 지원 서비스</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -326,28 +364,6 @@
 
             </div>
             {% endif %}
-
-            <!-- Contact Us (로그인 불필요) -->
-            <div class="row g-4 mt-3">
-                <div class="col-12">
-                    <h2 class="section-title"><i class="fas fa-envelope me-2"></i>Support</h2>
-                </div>
-                <div class="col-lg-3 col-md-6 mx-auto">
-                    <div class="feature-card border-info h-100">
-                        <img src="{{ url_for('static', filename='img/contact_us.jpg')}}" class="feature-img" alt="Contact Us"
-                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
-                        <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center">서비스 문의</h5>
-                            <p class="feature-description">문의사항이나 지원이 필요하시면 언제든지 연락주세요.</p>
-                            <div class="text-center mt-auto">
-                                <a href="/contact" class="feature-link"
-                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 내부통제 시스템 사용 문의<br>• 기술적 지원 및 전문 상담<br>• 최적의 솔루션 제안<br>• 24/7 고객 지원 서비스</div>">자세히 보기</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- 툴팁 안내 메시지 (비로그인 상태에서만 표시) -->
             {% if not is_logged_in %}

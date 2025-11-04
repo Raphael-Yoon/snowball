@@ -20,9 +20,12 @@ def is_logged_in():
     from snowball import is_logged_in as main_is_logged_in
     return main_is_logged_in()
 
-def check_ongoing_evaluations(rcm_id, user_id):
+def check_ongoing_evaluations(rcm_id, user_id=None):
     """
     진행 중인 평가 확인
+    Args:
+        rcm_id: RCM ID
+        user_id: 사용자 ID (None이면 모든 사용자 체크)
     Returns: {
         'has_design': bool,
         'has_operation': bool,
@@ -32,22 +35,43 @@ def check_ongoing_evaluations(rcm_id, user_id):
     """
     with get_db() as conn:
         # 진행 중인 설계평가 확인 (NOT COMPLETED)
-        design_cursor = conn.execute('''
-            SELECT evaluation_session, evaluation_status, total_controls, evaluated_controls
-            FROM sb_design_evaluation_header
-            WHERE rcm_id = ? AND user_id = ?
-            AND evaluation_status != 'COMPLETED'
-            AND evaluation_status != 'ARCHIVED'
-        ''', (rcm_id, user_id))
+        if user_id is not None:
+            # 특정 사용자만 체크
+            design_cursor = conn.execute('''
+                SELECT evaluation_session, evaluation_status, total_controls, evaluated_controls, user_id
+                FROM sb_design_evaluation_header
+                WHERE rcm_id = ? AND user_id = ?
+                AND evaluation_status != 'COMPLETED'
+                AND evaluation_status != 'ARCHIVED'
+            ''', (rcm_id, user_id))
+        else:
+            # 모든 사용자 체크 (RCM 삭제 시)
+            design_cursor = conn.execute('''
+                SELECT evaluation_session, evaluation_status, total_controls, evaluated_controls, user_id
+                FROM sb_design_evaluation_header
+                WHERE rcm_id = ?
+                AND evaluation_status != 'COMPLETED'
+                AND evaluation_status != 'ARCHIVED'
+            ''', (rcm_id,))
         design_sessions = [dict(row) for row in design_cursor.fetchall()]
 
         # 진행 중인 운영평가 확인 (IN_PROGRESS 또는 완료되지 않은 것)
-        operation_cursor = conn.execute('''
-            SELECT evaluation_session, evaluation_status
-            FROM sb_operation_evaluation_header
-            WHERE rcm_id = ? AND user_id = ?
-            AND evaluation_status IN ('IN_PROGRESS', 'NOT_STARTED')
-        ''', (rcm_id, user_id))
+        if user_id is not None:
+            # 특정 사용자만 체크
+            operation_cursor = conn.execute('''
+                SELECT evaluation_session, evaluation_status, user_id
+                FROM sb_operation_evaluation_header
+                WHERE rcm_id = ? AND user_id = ?
+                AND evaluation_status IN ('IN_PROGRESS', 'NOT_STARTED')
+            ''', (rcm_id, user_id))
+        else:
+            # 모든 사용자 체크 (RCM 삭제 시)
+            operation_cursor = conn.execute('''
+                SELECT evaluation_session, evaluation_status, user_id
+                FROM sb_operation_evaluation_header
+                WHERE rcm_id = ?
+                AND evaluation_status IN ('IN_PROGRESS', 'NOT_STARTED')
+            ''', (rcm_id,))
         operation_sessions = [dict(row) for row in operation_cursor.fetchall()]
 
         return {
@@ -69,6 +93,26 @@ def user_rcm():
 
     # 사용자가 접근 권한을 가진 RCM 목록 조회
     all_rcms = get_user_rcms(user_info['user_id'])
+
+    # 각 RCM의 설계평가 상태 조회
+    with get_db() as conn:
+        for rcm in all_rcms:
+            # 진행 중인 설계평가가 있는지 확인
+            ongoing = conn.execute('''
+                SELECT evaluation_session, evaluation_status
+                FROM sb_design_evaluation_header
+                WHERE rcm_id = ? AND user_id = ?
+                AND evaluation_status NOT IN ('COMPLETED', 'ARCHIVED')
+                ORDER BY start_date DESC
+                LIMIT 1
+            ''', (rcm['rcm_id'], user_info['user_id'])).fetchone()
+
+            if ongoing:
+                rcm['has_ongoing_evaluation'] = True
+                rcm['ongoing_session'] = ongoing['evaluation_session']
+            else:
+                rcm['has_ongoing_evaluation'] = False
+                rcm['ongoing_session'] = None
 
     # 카테고리별로 분류
     rcms_by_category = {
@@ -358,54 +402,53 @@ def rcm_delete(rcm_id):
                 if not user_permission or user_permission[0] != 'admin':
                     return jsonify({'success': False, 'message': 'RCM 삭제 권한이 없습니다. (admin 권한 필요)'})
 
-            # 진행 중인 평가 확인
-            ongoing = check_ongoing_evaluations(rcm_id, user_info['user_id'])
+            # 진행 중인 평가 확인 (모든 사용자 체크)
+            ongoing = check_ongoing_evaluations(rcm_id, user_id=None)
 
             if ongoing['has_operation']:
                 # 운영평가 진행 중 - 삭제 불가
+                session_info = ', '.join([s['evaluation_session'] for s in ongoing['operation_sessions']])
                 return jsonify({
                     'success': False,
-                    'message': '운영평가가 진행 중이므로 RCM을 삭제할 수 없습니다. 평가를 완료한 후 삭제해주세요.',
+                    'message': f'⛔ 운영평가가 진행 중이므로 RCM을 삭제할 수 없습니다.\n\n진행 중인 운영평가: {session_info}\n\n운영평가를 먼저 삭제해주세요.',
                     'ongoing_operation': True
                 })
 
-            if ongoing['has_design'] and not force_delete:
-                # 설계평가 진행 중 - 경고와 함께 삭제 가능 (확인 필요)
-                session_names = ', '.join([s['evaluation_session'] for s in ongoing['design_sessions']])
+            if ongoing['has_design']:
+                # 설계평가 진행 중 - 삭제 불가
+                session_info = ', '.join([s['evaluation_session'] for s in ongoing['design_sessions']])
                 return jsonify({
                     'success': False,
-                    'message': f'진행 중인 설계평가가 있습니다 ({session_names}). RCM을 삭제하면 해당 평가 데이터가 삭제되며 처음부터 다시 평가해야 합니다.',
-                    'ongoing_design': True,
-                    'require_confirmation': True
+                    'message': f'⛔ 설계평가가 진행 중이므로 RCM을 삭제할 수 없습니다.\n\n진행 중인 설계평가: {session_info}\n\n설계평가를 먼저 완료하거나 삭제해주세요.',
+                    'ongoing_design': True
                 })
 
-            # 설계평가 진행 중이지만 force_delete가 true인 경우, 평가 데이터도 삭제
-            if ongoing['has_design'] and force_delete:
-                # 진행 중인 설계평가 데이터 삭제
-                for session in ongoing['design_sessions']:
-                    # 설계평가 라인 삭제
-                    conn.execute('''
-                        DELETE FROM sb_design_evaluation_line
-                        WHERE header_id IN (
-                            SELECT header_id FROM sb_design_evaluation_header
-                            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
-                        )
-                    ''', (rcm_id, user_info['user_id'], session['evaluation_session']))
-
-                    # 설계평가 헤더 삭제
-                    conn.execute('''
-                        DELETE FROM sb_design_evaluation_header
-                        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
-                    ''', (rcm_id, user_info['user_id'], session['evaluation_session']))
-
             # 물리적 삭제 (Hard delete)
-            # 1. RCM 상세 데이터 삭제
+            # 1. 설계평가 데이터 삭제
+            # 1-1. 설계평가 라인 삭제
+            conn.execute('''
+                DELETE FROM sb_design_evaluation_line
+                WHERE header_id IN (SELECT header_id FROM sb_design_evaluation_header WHERE rcm_id = ?)
+            ''', (rcm_id,))
+            # 1-2. 설계평가 헤더 삭제
+            conn.execute('DELETE FROM sb_design_evaluation_header WHERE rcm_id = ?', (rcm_id,))
+
+            # 2. 운영평가 데이터 삭제
+            # 2-1. 운영평가 라인 삭제
+            conn.execute('''
+                DELETE FROM sb_operation_evaluation_line
+                WHERE header_id IN (SELECT header_id FROM sb_operation_evaluation_header WHERE rcm_id = ?)
+            ''', (rcm_id,))
+            # 2-2. 운영평가 헤더 삭제
+            conn.execute('DELETE FROM sb_operation_evaluation_header WHERE rcm_id = ?', (rcm_id,))
+
+            # 3. RCM 상세 데이터 삭제
             conn.execute('DELETE FROM sb_rcm_detail WHERE rcm_id = ?', (rcm_id,))
 
-            # 2. 사용자-RCM 매핑 삭제
+            # 4. 사용자-RCM 매핑 삭제
             conn.execute('DELETE FROM sb_user_rcm WHERE rcm_id = ?', (rcm_id,))
 
-            # 3. RCM 마스터 삭제
+            # 5. RCM 마스터 삭제
             conn.execute('DELETE FROM sb_rcm WHERE rcm_id = ?', (rcm_id,))
 
             conn.commit()
@@ -1643,6 +1686,44 @@ def get_rcm_ai_review(control_content, std_control_name=None):
             ai_response = ai_response.replace('개선권고사항:', '').strip()
         
         return ai_response
-        
+
     except Exception as e:
         return f"AI 검토 중 오류가 발생했습니다: {str(e)}"
+
+@bp_link5.route('/rcm/update-name', methods=['POST'])
+@login_required
+def update_rcm_name():
+    """RCM 이름 수정"""
+    user_info = get_user_info()
+
+    try:
+        rcm_id = int(request.form.get('rcm_id'))
+        rcm_name = request.form.get('rcm_name', '').strip()
+
+        if not rcm_name:
+            return jsonify({'success': False, 'message': 'RCM 이름은 필수 항목입니다.'})
+
+        # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+        user_rcms = get_user_rcms(user_info['user_id'])
+        rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
+
+        if rcm_id not in rcm_ids:
+            return jsonify({'success': False, 'message': '권한이 없습니다.'}), 403
+
+        # RCM 이름 업데이트
+        with get_db() as conn:
+            conn.execute('''
+                UPDATE sb_rcm
+                SET rcm_name = ?
+                WHERE rcm_id = ?
+            ''', (rcm_name, rcm_id))
+            conn.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'RCM 이름이 성공적으로 수정되었습니다.'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'오류가 발생했습니다: {str(e)}'})
+

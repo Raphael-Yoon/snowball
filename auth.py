@@ -481,7 +481,7 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
                 INNER JOIN sb_design_evaluation_header h ON d.rcm_id = h.rcm_id
                 INNER JOIN sb_design_evaluation_line l ON h.header_id = l.header_id AND d.control_code = l.control_code
                 WHERE d.rcm_id = ?
-                    AND (d.key_control = 'Y' OR d.key_control = '핵심')
+                    AND (d.key_control = 'Y' OR d.key_control = '핵심' OR d.key_control = 'KEY')
                     AND h.user_id = ?
                     AND h.evaluation_session = ?
                     AND l.overall_effectiveness = 'effective'
@@ -511,7 +511,7 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
             query = '''
                 SELECT *
                 FROM sb_rcm_detail_v
-                WHERE rcm_id = ? AND (key_control = 'Y' OR key_control = '핵심')
+                WHERE rcm_id = ? AND (key_control = 'Y' OR key_control = '핵심' OR key_control = 'KEY')
             '''
             params = [rcm_id]
 
@@ -1059,8 +1059,6 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
 
 def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_session, design_evaluation_session):
     """운영평가 헤더 생성 또는 조회"""
-    print(f"[DEBUG get_or_create_header] 입력값: rcm_id={rcm_id}, user_id={user_id}, evaluation_session={evaluation_session}, design_evaluation_session={design_evaluation_session}")
-
     # 기존 헤더 조회
     header = conn.execute('''
         SELECT header_id FROM sb_operation_evaluation_header
@@ -1068,7 +1066,6 @@ def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_
     ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchone()
 
     if header:
-        print(f"[DEBUG get_or_create_header] 기존 헤더 발견: header_id={header['header_id']}")
         return header['header_id']
 
     # 새 헤더 생성
@@ -1078,7 +1075,6 @@ def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_
         ) VALUES (?, ?, ?, ?)
     ''', (rcm_id, user_id, evaluation_session, design_evaluation_session))
 
-    print(f"[DEBUG get_or_create_header] 새 헤더 생성: header_id={cursor.lastrowid}")
     return cursor.lastrowid
 
 def get_operation_evaluations(rcm_id, user_id, evaluation_session, design_evaluation_session=None):

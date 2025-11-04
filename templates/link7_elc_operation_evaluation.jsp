@@ -49,47 +49,6 @@
             </div>
         </div>
 
-        <!-- 1. 보유 RCM 목록 -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0"><i class="fas fa-folder-open me-2"></i>보유 RCM 목록</h5>
-                    </div>
-                    <div class="card-body">
-                        {% if elc_rcms %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th width="60%">RCM명</th>
-                                        <th width="25%">회사명</th>
-                                        <th width="15%">업로드일</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for rcm in elc_rcms %}
-                                    <tr>
-                                        <td><i class="fas fa-file-alt me-2 text-warning"></i>{{ rcm.rcm_name }}</td>
-                                        <td>{{ rcm.company_name }}</td>
-                                        <td>{{ rcm.upload_date[:10] if rcm.upload_date else '-' }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <div class="text-center py-4">
-                            <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
-                            <p class="text-muted">접근 가능한 ELC RCM이 없습니다.</p>
-                            <small class="text-muted">관리자에게 RCM 접근 권한을 요청하세요.</small>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- 2. 설계평가 현황 -->
         <div class="row mb-4">
             <div class="col-12">
@@ -205,11 +164,17 @@
                                                         <span class="text-muted">진행상황:</span>
                                                         <strong>{{ session.operation_completed_count }}/{{ session.eligible_control_count }}</strong> 통제
                                                     </div>
-                                                    <button type="button" class="btn {% if session.operation_completed_count > 0 %}btn-warning{% else %}btn-primary{% endif %} btn-sm"
-                                                            onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count }}, {{ session.eligible_control_count }})">
-                                                        <i class="fas fa-{% if session.operation_completed_count > 0 %}play-circle{% else %}plus-circle{% endif %} me-1"></i>
-                                                        {% if session.operation_completed_count > 0 %}계속하기{% else %}시작하기{% endif %}
+                                                    {% if session.operation_completed_count > 0 %}
+                                                    <button type="button" class="btn btn-warning btn-sm"
+                                                            onclick="continueDirectly({{ rcm.rcm_id }}, '{{ session.evaluation_session }}')">
+                                                        <i class="fas fa-play-circle me-1"></i>계속하기
                                                     </button>
+                                                    {% else %}
+                                                    <button type="button" class="btn btn-primary btn-sm"
+                                                            onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count }}, {{ session.eligible_control_count }})">
+                                                        <i class="fas fa-plus-circle me-1"></i>시작하기
+                                                    </button>
+                                                    {% endif %}
                                                 </div>
                                                 {% if session.operation_completed_count > 0 %}
                                                 <div class="progress" style="height: 20px;">
@@ -283,6 +248,7 @@
         let currentRcmId, currentDesignSession;
 
         function showOperationStartModal(rcmId, designSession, operationCount, totalCount) {
+            console.log('[DEBUG] showOperationStartModal 호출됨:', rcmId, designSession, operationCount, totalCount);
             currentRcmId = rcmId;
             currentDesignSession = designSession;
 
@@ -302,7 +268,9 @@
             modal.show();
         }
 
-        function continueExisting() {
+        function continueDirectly(rcmId, designSession) {
+            console.log('[DEBUG] continueDirectly 호출됨:', rcmId, designSession);
+            // 모달 없이 바로 기존 데이터로 이동
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/operation-evaluation/rcm';
@@ -310,12 +278,12 @@
             const rcmInput = document.createElement('input');
             rcmInput.type = 'hidden';
             rcmInput.name = 'rcm_id';
-            rcmInput.value = currentRcmId;
+            rcmInput.value = rcmId;
 
             const sessionInput = document.createElement('input');
             sessionInput.type = 'hidden';
             sessionInput.name = 'design_evaluation_session';
-            sessionInput.value = currentDesignSession;
+            sessionInput.value = designSession;
 
             const actionInput = document.createElement('input');
             actionInput.type = 'hidden';
@@ -327,6 +295,11 @@
             form.appendChild(actionInput);
             document.body.appendChild(form);
             form.submit();
+        }
+
+        function continueExisting() {
+            // 모달에서 '기존 데이터로 계속하기' 클릭 시
+            continueDirectly(currentRcmId, currentDesignSession);
         }
 
         function startNew() {
