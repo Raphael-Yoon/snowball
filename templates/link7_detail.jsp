@@ -431,8 +431,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="padding: 0.375rem 0.75rem;">취소</button>
-                    <button type="button" class="btn btn-success" onclick="saveAutoControlCheck()" style="padding: 0.375rem 0.75rem;">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-sm btn-success" onclick="saveAutoControlCheck()">
                         <i class="fas fa-check me-1"></i>확인 완료
                     </button>
                 </div>

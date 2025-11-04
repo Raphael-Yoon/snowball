@@ -294,8 +294,8 @@
                     </div>
                 </div>
 
-                <!-- RCM -->
-                <div class="col-lg-3 col-md-6">
+                <!-- 위 2개: RCM, 내부평가 -->
+                <div class="col-lg-3 col-md-6 offset-lg-3">
                     <div class="feature-card border-primary h-100">
                         <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
@@ -311,7 +311,25 @@
                     </div>
                 </div>
 
-                <!-- ELC -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-info h-100">
+                        <img src="{{ url_for('static', filename='img/review.jpg')}}" class="feature-img" alt="내부평가"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-clipboard-check me-2"></i>내부평가</h5>
+                            <p class="feature-description">내부통제 전반에 대한 종합 평가를 수행합니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/user/internal-assessment" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 내부통제 종합 평가<br>• 통제 효과성 분석<br>• 취약점 식별 및 개선 방안<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 아래 3개: ELC, TLC, ITGC -->
+            <div class="row g-4 mt-3 justify-content-center" style="opacity: 0.4;">
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-success h-100">
                         <img src="{{ url_for('static', filename='img/elc.jpg')}}" class="feature-img" alt="ELC"
@@ -328,7 +346,6 @@
                     </div>
                 </div>
 
-                <!-- TLC -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-warning h-100">
                         <img src="{{ url_for('static', filename='img/tlc.jpg')}}" class="feature-img" alt="TLC"
@@ -345,7 +362,6 @@
                     </div>
                 </div>
 
-                <!-- ITGC -->
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-danger h-100">
                         <img src="{{ url_for('static', filename='img/itgc.jpg')}}" class="feature-img" alt="ITGC"
@@ -361,7 +377,6 @@
                         </div>
                     </div>
                 </div>
-
             </div>
             {% endif %}
 

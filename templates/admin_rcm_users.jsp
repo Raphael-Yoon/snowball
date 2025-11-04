@@ -196,8 +196,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                        <button type="submit" class="btn btn-warning">권한 변경</button>
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+                        <button type="submit" class="btn btn-sm btn-warning">권한 변경</button>
                     </div>
                 </form>
             </div>
