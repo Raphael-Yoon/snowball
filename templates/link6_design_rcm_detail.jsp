@@ -167,13 +167,13 @@
                                             <button class="btn btn-sm btn-outline-success evaluate-btn"
                                                     onclick="openEvaluationModal({{ loop.index }}, '{{ detail.control_code }}', '{{ detail.control_name }}')"
                                                     id="eval-btn-{{ loop.index }}"
-                                                    style="padding: 0.2rem 0.35rem; font-size: 0.75rem;">
+                                                    style="padding: 0.2rem 0.35rem; font-size: 0.75rem; height: 24px;">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                         </td>
                                         <td>
                                             <span class="evaluation-result" id="result-{{ loop.index }}">
-                                                <span class="text-muted">평가 필요</span>
+                                                <span class="text-muted"></span>
                                             </span>
                                         </td>
                                         <td>
@@ -337,10 +337,10 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
                         <i class="fas fa-times me-1"></i>취소
                     </button>
-                    <button type="button" id="saveEvaluationBtn" class="btn btn-sm btn-success" onclick="saveEvaluation()">
+                    <button type="button" id="saveEvaluationBtn" class="btn btn-sm btn-success" onclick="saveEvaluation()" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
                         <i class="fas fa-save me-1"></i>평가 저장
                     </button>
                 </div>
@@ -416,10 +416,10 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
                         <i class="fas fa-times me-1"></i>취소
                     </button>
-                    <button type="button" class="btn btn-info" onclick="uploadEvaluationFile()">
+                    <button type="button" class="btn btn-sm btn-info" onclick="uploadEvaluationFile()" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
                         <i class="fas fa-upload me-1"></i>업로드 및 적용
                     </button>
                 </div>
@@ -1449,11 +1449,14 @@
                     buttonElement.disabled = false;
                     buttonElement.title = '평가 결과를 수정합니다';
                     buttonElement.setAttribute('data-bs-toggle', 'tooltip');
+                    buttonElement.style.padding = '0.2rem 0.35rem';
+                    buttonElement.style.fontSize = '0.75rem';
+                    buttonElement.style.height = '24px';
                     buttonElement.style.minWidth = '70px';
                 }
             } else {
-                // evaluation_date가 없고 임시평가도 아니면 평가 필요 상태로 표시
-                resultElement.innerHTML = '<span class="badge bg-secondary">평가 필요</span>';
+                // evaluation_date가 없고 임시평가도 아니면 공란으로 표시
+                resultElement.innerHTML = '<span class="text-muted"></span>';
                 actionElement.innerHTML = '<span class="text-muted">-</span>';
                 
                 // 버튼 상태 - 미완료
@@ -1463,7 +1466,10 @@
                     buttonElement.classList.remove('btn-success', 'btn-outline-success', 'btn-secondary');
                     buttonElement.classList.add('btn-sm', 'btn-outline-info');
                     buttonElement.disabled = false;
-                    buttonElement.style.minWidth = '70px';;
+                    buttonElement.style.padding = '0.2rem 0.35rem';
+                    buttonElement.style.fontSize = '0.75rem';
+                    buttonElement.style.height = '24px';
+                    buttonElement.style.minWidth = '70px';
                     buttonElement.title = '평가 결과를 조회합니다';
                     buttonElement.setAttribute('data-bs-toggle', 'tooltip');
                 } else {
@@ -1473,6 +1479,9 @@
                     buttonElement.disabled = false;
                     buttonElement.title = '평가를 시작합니다';
                     buttonElement.setAttribute('data-bs-toggle', 'tooltip');
+                    buttonElement.style.padding = '0.2rem 0.35rem';
+                    buttonElement.style.fontSize = '0.75rem';
+                    buttonElement.style.height = '24px';
                 }
             }
             
@@ -2047,9 +2056,9 @@
             const resultElement = document.getElementById(`result-${index}`);
             const actionElement = document.getElementById(`action-${index}`);
             const buttonElement = document.getElementById(`eval-btn-${index}`);
-            
+
             // 결과 초기화
-            resultElement.innerHTML = '<span class="text-muted">평가 필요</span>';
+            resultElement.innerHTML = '<span class="text-muted"></span>';
             actionElement.innerHTML = '<span class="text-muted">-</span>';
             
             // 버튼 초기화

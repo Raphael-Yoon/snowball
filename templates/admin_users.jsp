@@ -161,8 +161,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                        <button type="submit" class="btn btn-primary">추가</button>
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+                        <button type="submit" class="btn btn-sm btn-primary">추가</button>
                     </div>
                 </form>
             </div>
@@ -212,8 +212,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                        <button type="submit" class="btn btn-primary">수정</button>
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+                        <button type="submit" class="btn btn-sm btn-primary">수정</button>
                     </div>
                 </form>
             </div>
@@ -236,9 +236,9 @@
                     </ul>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
                     <form id="extendUserForm" method="post" style="display:inline;">
-                        <button type="submit" class="btn btn-success">1년 연장</button>
+                        <button type="submit" class="btn btn-sm btn-success">1년 연장</button>
                     </form>
                 </div>
             </div>
@@ -258,9 +258,9 @@
                     <p class="text-danger"><small>이 작업은 되돌릴 수 없습니다.</small></p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
                     <form id="deleteUserForm" method="post" style="display:inline;">
-                        <button type="submit" class="btn btn-danger">삭제</button>
+                        <button type="submit" class="btn btn-sm btn-danger">삭제</button>
                     </form>
                 </div>
             </div>

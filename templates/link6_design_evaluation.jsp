@@ -374,8 +374,8 @@
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                                <button type="button" class="btn btn-success" onclick="confirmStartEvaluation(${rcmId})">
+                                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">취소</button>
+                                <button type="button" class="btn btn-sm btn-success" onclick="confirmStartEvaluation(${rcmId})" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
                                     <i class="fas fa-play me-1"></i>평가 시작
                                 </button>
                             </div>
