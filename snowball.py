@@ -174,7 +174,7 @@ def login():
             # 관리자 로그인 (IP 제한 없음)
             client_ip = request.environ.get('REMOTE_ADDR', '')
             server_port = request.environ.get('SERVER_PORT', '')
-            
+
             # IP 제한 제거 - 어느 주소에서든 관리자 로그인 가능
             if True:
                 with get_db() as conn:
@@ -182,11 +182,11 @@ def login():
                         'SELECT * FROM sb_user WHERE user_email = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
                         ('snowball2727@naver.com',)
                     ).fetchone()
-                    
+
                     if user:
                         # SQLite Row 객체를 딕셔너리로 변환
                         user_dict = dict(user)
-                        
+
                         session['user_id'] = user_dict['user_id']
                         session['user_email'] = user_dict['user_email']
                         session['user_info'] = {
@@ -199,7 +199,7 @@ def login():
                         }
                         from datetime import datetime
                         session['last_activity'] = datetime.now().isoformat()
-                        
+
                         print(f"관리자 로그인 성공: {user_dict['user_email']} (admin_flag: {user_dict.get('admin_flag', 'N')}) from {client_ip}:{server_port}")
                         return redirect(url_for('index'))
                     else:

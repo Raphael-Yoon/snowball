@@ -39,7 +39,7 @@
             </form>
             
             <!-- 관리자 로그인 버튼 (로컬호스트 및 pythonanywhere) -->
-            {% if remote_addr == '127.0.0.1' or request.host.startswith('snowball.pythonanywhere.com') %}
+            {% if remote_addr == '127.0.0.1' or request.host.startswith('127.0.0.1') or request.host.startswith('localhost') or request.host.startswith('snowball.pythonanywhere.com') %}
             <div class="admin-login-section" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
                 <form method="POST" action="{{ url_for('login') }}">
                     <input type="hidden" name="action" value="admin_login">

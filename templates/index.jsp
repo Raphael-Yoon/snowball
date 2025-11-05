@@ -107,7 +107,7 @@
                     <h2 class="section-title"><i class="fas fa-lock me-2"></i>Private</h2>
                 </div>
 
-                <!-- 위 2개: RCM, 내부평가 -->
+                <!-- 위 2개: RCM, Dashboard -->
                 <div class="col-lg-3 col-md-6 offset-lg-3">
                     <div class="feature-card border-primary h-100">
                         <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
@@ -126,15 +126,15 @@
 
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-info h-100">
-                        <img src="{{ url_for('static', filename='img/review.jpg')}}" class="feature-img" alt="내부평가"
+                        <img src="{{ url_for('static', filename='img/review.jpg')}}" class="feature-img" alt="Dashboard"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center"><i class="fas fa-clipboard-check me-2"></i>내부평가</h5>
-                            <p class="feature-description">내부통제 전반에 대한 종합 평가를 수행합니다.</p>
+                            <h5 class="feature-title text-center"><i class="fas fa-chart-pie me-2"></i>Dashboard</h5>
+                            <p class="feature-description">ELC, TLC, ITGC 평가 결과를 통합 조회하고 종합 리포트를 생성합니다.</p>
                             <div class="text-center mt-auto">
                                 <a href="/user/internal-assessment" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 내부통제 종합 평가<br>• 통제 효과성 분석<br>• 취약점 식별 및 개선 방안<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
+                                   title="<div>• ELC, TLC, ITGC 통합 결과 조회<br>• 통제 현황 종합 분석<br>• 자동 리포트 생성<br>• 트렌드 분석 및 인사이트</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -294,7 +294,7 @@
                     </div>
                 </div>
 
-                <!-- 위 2개: RCM, 내부평가 -->
+                <!-- 위 2개: RCM, Dashboard -->
                 <div class="col-lg-3 col-md-6 offset-lg-3">
                     <div class="feature-card border-primary h-100">
                         <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
@@ -313,15 +313,15 @@
 
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-info h-100">
-                        <img src="{{ url_for('static', filename='img/review.jpg')}}" class="feature-img" alt="내부평가"
+                        <img src="{{ url_for('static', filename='img/review.jpg')}}" class="feature-img" alt="Dashboard"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center"><i class="fas fa-clipboard-check me-2"></i>내부평가</h5>
-                            <p class="feature-description">내부통제 전반에 대한 종합 평가를 수행합니다.</p>
+                            <h5 class="feature-title text-center"><i class="fas fa-chart-pie me-2"></i>Dashboard</h5>
+                            <p class="feature-description">ELC, TLC, ITGC 평가 결과를 통합 조회하고 종합 리포트를 생성합니다.</p>
                             <div class="text-center mt-auto">
                                 <a href="/user/internal-assessment" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 내부통제 종합 평가<br>• 통제 효과성 분석<br>• 취약점 식별 및 개선 방안<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
+                                   title="<div>• ELC, TLC, ITGC 통합 결과 조회<br>• 통제 현황 종합 분석<br>• 자동 리포트 생성<br>• 트렌드 분석 및 인사이트</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
