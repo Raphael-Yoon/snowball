@@ -56,7 +56,7 @@
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('link8.internal_assessment') }}">
-                                <i class="fas fa-tasks me-2"></i>내부평가
+                                <i class="fas fa-chart-pie me-2"></i>Dashboard
                             </a></li>
                         </ul>
                     </li>

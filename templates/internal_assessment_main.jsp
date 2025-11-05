@@ -144,33 +144,33 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- 버튼 (ITGC와 동일) -->
+                                    <!-- 버튼 (ELC용) -->
                                     <div class="d-grid gap-2">
                                         {% if item.evaluation_status == 'COMPLETED' %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                        <a href="/elc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                             <i class="fas fa-check-circle"></i> 설계평가 확인
                                         </a>
                                         {% elif item.evaluation_status == 'IN_PROGRESS' %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
+                                        <a href="/elc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-clipboard-check"></i> 설계평가 계속
                                         </a>
                                         {% else %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-primary">
+                                        <a href="/elc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-clipboard-check"></i> 설계평가 시작
                                         </a>
                                         {% endif %}
 
                                         {% if item.evaluation_status == 'COMPLETED' %}
                                             {% if item.operation_status == 'COMPLETED' %}
-                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <a href="/elc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
                                             </a>
                                             {% elif item.operation_status == 'IN_PROGRESS' %}
-                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
+                                            <a href="/elc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 계속
                                             </a>
                                             {% else %}
-                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <a href="/elc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 시작
                                             </a>
                                             {% endif %}
@@ -223,33 +223,33 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- 버튼 (ITGC와 동일) -->
+                                    <!-- 버튼 (TLC용) -->
                                     <div class="d-grid gap-2">
                                         {% if item.evaluation_status == 'COMPLETED' %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                        <a href="/tlc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                             <i class="fas fa-check-circle"></i> 설계평가 확인
                                         </a>
                                         {% elif item.evaluation_status == 'IN_PROGRESS' %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
+                                        <a href="/tlc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-clipboard-check"></i> 설계평가 계속
                                         </a>
                                         {% else %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-primary">
+                                        <a href="/tlc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-clipboard-check"></i> 설계평가 시작
                                         </a>
                                         {% endif %}
 
                                         {% if item.evaluation_status == 'COMPLETED' %}
                                             {% if item.operation_status == 'COMPLETED' %}
-                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <a href="/tlc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
                                             </a>
                                             {% elif item.operation_status == 'IN_PROGRESS' %}
-                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
+                                            <a href="/tlc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 계속
                                             </a>
                                             {% else %}
-                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
+                                            <a href="/tlc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 시작
                                             </a>
                                             {% endif %}
