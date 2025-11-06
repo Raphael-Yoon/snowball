@@ -978,6 +978,12 @@ def delete_evaluation_session(rcm_id, user_id, evaluation_session):
 
 def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session, design_evaluation_session, evaluation_data):
     """운영평가 결과 저장 (Header-Line 구조)"""
+    import json
+
+    # sample_lines 데이터를 JSON 문자열로 변환
+    sample_lines = evaluation_data.get('sample_lines', [])
+    sample_lines_json = json.dumps(sample_lines, ensure_ascii=False) if sample_lines else None
+
     with get_db() as conn:
         # Header 생성 또는 조회
         header_id = get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_session, design_evaluation_session)
@@ -992,9 +998,9 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
             # 업데이트
             conn.execute('''
                 UPDATE sb_operation_evaluation_line
-                SET operating_effectiveness = ?,
-                    sample_size = ?,
+                SET sample_size = ?,
                     exception_count = ?,
+                    mitigating_factors = ?,
                     exception_details = ?,
                     conclusion = ?,
                     improvement_plan = ?,
@@ -1004,13 +1010,14 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     population_count = ?,
                     no_occurrence = ?,
                     no_occurrence_reason = ?,
+                    sample_details = ?,
                     evaluation_date = CURRENT_TIMESTAMP,
                     last_updated = CURRENT_TIMESTAMP
                 WHERE line_id = ?
             ''', (
-                evaluation_data.get('operating_effectiveness'),
                 evaluation_data.get('sample_size'),
                 evaluation_data.get('exception_count'),
+                evaluation_data.get('mitigating_factors'),
                 evaluation_data.get('exception_details'),
                 evaluation_data.get('conclusion'),
                 evaluation_data.get('improvement_plan'),
@@ -1020,23 +1027,24 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                 evaluation_data.get('population_count'),
                 1 if evaluation_data.get('no_occurrence') else 0,
                 evaluation_data.get('no_occurrence_reason'),
+                sample_lines_json,  # 표본 라인 JSON을 sample_details에 저장
                 existing_line['line_id']
             ))
         else:
             # 삽입
             conn.execute('''
                 INSERT INTO sb_operation_evaluation_line (
-                    header_id, control_code, operating_effectiveness, sample_size,
-                    exception_count, exception_details, conclusion, improvement_plan,
+                    header_id, control_code, sample_size,
+                    exception_count, mitigating_factors, exception_details, conclusion, improvement_plan,
                     population_path, samples_path, test_results_path, population_count,
-                    no_occurrence, no_occurrence_reason,
+                    no_occurrence, no_occurrence_reason, sample_details,
                     evaluation_date, last_updated
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ''', (
                 header_id, control_code,
-                evaluation_data.get('operating_effectiveness'),
                 evaluation_data.get('sample_size'),
                 evaluation_data.get('exception_count'),
+                evaluation_data.get('mitigating_factors'),
                 evaluation_data.get('exception_details'),
                 evaluation_data.get('conclusion'),
                 evaluation_data.get('improvement_plan'),
@@ -1045,7 +1053,8 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                 evaluation_data.get('test_results_path'),
                 evaluation_data.get('population_count'),
                 1 if evaluation_data.get('no_occurrence') else 0,
-                evaluation_data.get('no_occurrence_reason')
+                evaluation_data.get('no_occurrence_reason'),
+                sample_lines_json  # 표본 라인 JSON을 sample_details에 저장
             ))
 
         # Header의 last_updated 갱신

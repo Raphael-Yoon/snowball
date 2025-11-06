@@ -238,9 +238,15 @@ def user_operation_evaluation_rcm():
 @login_required
 def save_operation_evaluation_api():
     """운영평가 결과 저장 API"""
+    print("=" * 50)
+    print("운영평가 저장 API 호출됨")
+    print("=" * 50)
+
     user_info = get_user_info()
+    print(f"사용자 정보: {user_info}")
 
     # JSON과 FormData 모두 처리
+    print(f"Content-Type: {request.content_type}")
     if request.content_type and 'multipart/form-data' in request.content_type:
         # FormData로 전송된 경우
         data = request.form.to_dict()
@@ -262,7 +268,6 @@ def save_operation_evaluation_api():
         else:
             # 개별 필드로 전송된 경우 (구버전 호환)
             evaluation_data = {
-                'operating_effectiveness': data.get('operating_effectiveness'),
                 'sample_size': int(data.get('sample_size', 0)),
                 'exception_count': int(data.get('exception_count', 0)),
                 'exception_details': data.get('exception_details', ''),
@@ -277,7 +282,13 @@ def save_operation_evaluation_api():
         control_code = data.get('control_code')
         evaluation_data = data.get('evaluation_data')
 
+    print(f"rcm_id: {rcm_id}")
+    print(f"design_evaluation_session: {design_evaluation_session}")
+    print(f"control_code: {control_code}")
+    print(f"evaluation_data: {evaluation_data}")
+
     if not all([rcm_id, design_evaluation_session, control_code, evaluation_data]):
+        print("필수 데이터 누락!")
         return jsonify({
             'success': False,
             'message': '필수 데이터가 누락되었습니다.'
@@ -285,8 +296,10 @@ def save_operation_evaluation_api():
 
     # 운영평가 세션명 생성
     operation_evaluation_session = f"OP_{design_evaluation_session}"
-    
+    print(f"operation_evaluation_session: {operation_evaluation_session}")
+
     try:
+        print("권한 확인 시작...")
         # 사용자가 해당 RCM에 접근 권한이 있는지 확인
         with get_db() as conn:
             access_check = conn.execute('''
@@ -314,14 +327,17 @@ def save_operation_evaluation_api():
                 'message': f'설계평가 세션 "{design_evaluation_session}"이 완료되지 않아 운영평가를 수행할 수 없습니다.'
             })
 
+        print("DB 저장 시작...")
         # 운영평가 결과 저장 (Header-Line 구조)
         save_operation_evaluation(rcm_id, control_code, user_info['user_id'], operation_evaluation_session, design_evaluation_session, evaluation_data)
-        
+        print("DB 저장 완료!")
+
         # 활동 로그 기록
-        log_user_activity(user_info, 'OPERATION_EVALUATION', f'운영평가 저장 - {control_code}', 
-                         f'/api/operation-evaluation/save', 
+        log_user_activity(user_info, 'OPERATION_EVALUATION', f'운영평가 저장 - {control_code}',
+                         f'/api/operation-evaluation/save',
                          request.remote_addr, request.headers.get('User-Agent'))
-        
+
+        print("저장 성공 응답 반환")
         return jsonify({
             'success': True,
             'message': '운영평가 결과가 저장되었습니다.'
@@ -359,9 +375,9 @@ def load_operation_evaluation(rcm_id, design_evaluation_session):
         for eval_data in evaluations:
             control_code = eval_data['control_code']
             evaluation_dict[control_code] = {
-                'operating_effectiveness': eval_data['operating_effectiveness'],
                 'sample_size': eval_data['sample_size'],
                 'exception_count': eval_data['exception_count'],
+                'mitigating_factors': eval_data.get('mitigating_factors'),
                 'exception_details': eval_data['exception_details'],
                 'conclusion': eval_data['conclusion'],
                 'improvement_plan': eval_data['improvement_plan']

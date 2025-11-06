@@ -273,49 +273,53 @@
                         </div>
 
                         <div id="evaluation-fields">
-                            <div class="row">
+                            <!-- 표본 크기 입력 -->
+                            <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="operating_effectiveness" class="form-label fw-bold">운영 효과성</label>
-                                        <select class="form-select" id="operating_effectiveness" name="operating_effectiveness" required>
-                                            <option value="">선택하세요</option>
-                                            <option value="effective">효과적</option>
-                                            <option value="deficient">미흡</option>
-                                            <option value="ineffective">비효과적</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
                                     <label for="sample_size" class="form-label fw-bold">표본 크기</label>
-                                    <input type="number" class="form-control" id="sample_size" name="sample_size" min="1" placeholder="통제주기에 따라 자동 설정">
+                                    <input type="number" class="form-control" id="sample_size" name="sample_size" min="1" max="100" placeholder="통제주기에 따라 자동 설정">
                                     <div class="form-text">
                                         <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1)</small>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="exception_count" class="form-label fw-bold">예외 발견 수</label>
-                                    <input type="number" class="form-control" id="exception_count" name="exception_count" min="0" placeholder="예: 0">
-                                    <div class="form-text">
-                                        <small>예외가 1건 이상이면 결론이 자동으로 "Exception"으로 설정됩니다</small>
-                                    </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button type="button" class="btn btn-primary" id="generate-samples-btn" onclick="generateSampleLines()">
+                                        <i class="fas fa-list me-1"></i>표본 라인 생성
+                                    </button>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+
+                            <!-- 표본 라인 테이블 -->
+                            <div id="sample-lines-container" style="display: none;">
                                 <div class="mb-3">
-                                    <label for="conclusion" class="form-label fw-bold">결론</label>
-                                    <select class="form-select" id="conclusion" name="conclusion" required disabled>
-                                        <option value="">-</option>
-                                        <option value="effective">Effective</option>
-                                        <option value="exception">Exception</option>
-                                    </select>
-                                    <div class="form-text">
-                                        <small>예외 발견 수에 따라 자동 설정됩니다</small>
+                                    <label class="form-label fw-bold">표본별 테스트 결과</label>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm" id="sample-lines-table">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th width="8%">표본 #</th>
+                                                    <th width="35%">증빙 내용</th>
+                                                    <th width="15%">결과</th>
+                                                    <th width="35%">경감요소</th>
+                                                    <th width="7%">결론</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="sample-lines-tbody">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- 전체 결론 -->
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="alert alert-info">
+                                            <strong>전체 결론:</strong>
+                                            <span id="overall-conclusion" class="badge bg-secondary ms-2">-</span>
+                                            <div class="mt-2">
+                                                <small id="conclusion-summary">표본별 결과를 입력하면 자동으로 계산됩니다.</small>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -365,7 +369,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="min-width: auto; padding: 0.375rem 0.75rem;">취소</button>
-                    <button type="button" class="btn btn-warning" onclick="saveOperationEvaluation()">
+                    <button type="button" id="saveOperationEvaluationBtn" class="btn btn-warning" onclick="console.log('저장 버튼 클릭됨'); saveOperationEvaluation();">
                         <i class="fas fa-save me-1"></i>저장
                     </button>
                 </div>
@@ -775,7 +779,6 @@
             const data = {
                 control_code: currentControlCode,
                 header_id: {{ header_id | default(0) }},
-                operating_effectiveness: 'evaluated',
                 conclusion: status === 'confirmed' ? 'effective' : 'ineffective',
                 exception_details: issueEl ? issueEl.value : '',
                 improvement_plan: noteEl ? noteEl.value : '',
@@ -791,7 +794,6 @@
                     design_evaluation_session: currentEvaluationSession,
                     control_code: data.control_code,
                     evaluation_data: {
-                        operating_effectiveness: data.operating_effectiveness,
                         conclusion: data.conclusion,
                         exception_details: data.exception_details,
                         improvement_plan: data.improvement_plan,
@@ -940,8 +942,8 @@
 
             console.log('Not APD01/APD07/APD09/APD12/PC01/PC02/PC03/CO01, checking if manual control...');
 
-            // 수동통제 판별 (control_nature_code가 'M' 또는 '수동'인 경우)
-            if (controlNatureCode && (controlNatureCode.toUpperCase() === 'M' || controlNatureCode === '수동')) {
+            // 수동통제 판별 (control_nature_code가 'M', 'Manual', '수동'인 경우)
+            if (controlNatureCode && (controlNatureCode.toUpperCase() === 'M' || controlNatureCode === '수동' || controlNatureCode.toUpperCase() === 'MANUAL')) {
                 console.log('Manual control detected! Redirecting to Generic evaluation page...');
                 showGenericManualControlUI(buttonElement);
                 return;
@@ -951,99 +953,435 @@
 
             // 일반 운영평가 UI (수동통제가 아닌 경우 - 거의 사용되지 않음)
             const excelSection = document.getElementById('excelUploadSection');
-            excelSection.style.display = 'none';
-            
-            // 파일 입력 초기화
-            document.getElementById('evaluationImages').value = '';
-            document.getElementById('sampleExcelFile').value = '';
-            document.getElementById('imagePreview').innerHTML = '';
-            document.getElementById('excelPreview').innerHTML = '';
+            if (excelSection) {
+                excelSection.style.display = 'none';
+            }
 
-            document.getElementById('modal-control-code').textContent = controlCode;
-            document.getElementById('modal-control-name').textContent = controlName;
-            document.getElementById('modal-control-frequency').textContent = controlFrequency || '-';
-            document.getElementById('modal-control-type').textContent = controlType || '-';
-            document.getElementById('modal-control-nature').textContent = controlNature || '-';
-            document.getElementById('modal-test-procedure').textContent = testProcedure || '-';
+            // 파일 입력 초기화 (요소 존재 확인)
+            const evaluationImages = document.getElementById('evaluationImages');
+            const sampleExcelFile = document.getElementById('sampleExcelFile');
+            const imagePreview = document.getElementById('imagePreview');
+            const excelPreview = document.getElementById('excelPreview');
+
+            if (evaluationImages) evaluationImages.value = '';
+            if (sampleExcelFile) sampleExcelFile.value = '';
+            if (imagePreview) imagePreview.innerHTML = '';
+            if (excelPreview) excelPreview.innerHTML = '';
+
+            const modalControlCode = document.getElementById('modal-control-code');
+            const modalControlName = document.getElementById('modal-control-name');
+            const modalControlFrequency = document.getElementById('modal-control-frequency');
+            const modalControlType = document.getElementById('modal-control-type');
+            const modalControlNature = document.getElementById('modal-control-nature');
+            const modalTestProcedure = document.getElementById('modal-test-procedure');
+
+            if (modalControlCode) modalControlCode.textContent = controlCode;
+            if (modalControlName) modalControlName.textContent = controlName;
+            if (modalControlFrequency) modalControlFrequency.textContent = controlFrequency || '-';
+            if (modalControlType) modalControlType.textContent = controlType || '-';
+            if (modalControlNature) modalControlNature.textContent = controlNature || '-';
+            if (modalTestProcedure) modalTestProcedure.textContent = testProcedure || '-';
+
+            // 권장 표본수 계산 및 저장 (표본수 검증을 위해)
+            currentControlFrequency = controlFrequency;
+            recommendedSampleSize = getDefaultSampleSize(controlFrequency, controlType);
 
             // 기존 평가 데이터 로드
+            const noOccurrenceEl = document.getElementById('no_occurrence');
+            const noOccurrenceReasonEl = document.getElementById('no_occurrence_reason');
+            const sampleSizeEl = document.getElementById('sample_size');
+            const exceptionCountEl = document.getElementById('exception_count');
+            const mitigatingFactorsEl = document.getElementById('mitigating_factors');
+            const exceptionDetailsEl = document.getElementById('exception_details');
+            const conclusionEl = document.getElementById('conclusion');
+            const improvementPlanEl = document.getElementById('improvement_plan');
+            const evaluationFieldsEl = document.getElementById('evaluation-fields');
+            const noOccurrenceReasonSectionEl = document.getElementById('no-occurrence-reason-section');
+            const operationEvaluationFormEl = document.getElementById('operationEvaluationForm');
+
             if (evaluated_controls[controlCode]) {
                 const data = evaluated_controls[controlCode];
 
                 // 당기 발생사실 없음 여부 확인
                 if (data.no_occurrence) {
-                    document.getElementById('no_occurrence').checked = true;
-                    document.getElementById('no_occurrence_reason').value = data.no_occurrence_reason || '';
-                    toggleNoOccurrenceFields();
+                    if (noOccurrenceEl) noOccurrenceEl.checked = true;
+                    if (noOccurrenceReasonEl) noOccurrenceReasonEl.value = data.no_occurrence_reason || '';
+                    if (typeof toggleNoOccurrenceFields === 'function') toggleNoOccurrenceFields();
                 } else {
-                    document.getElementById('no_occurrence').checked = false;
-                    document.getElementById('operating_effectiveness').value = data.operating_effectiveness || '';
-                    document.getElementById('sample_size').value = data.sample_size || '';
-                    document.getElementById('exception_count').value = data.exception_count || '';
-                    document.getElementById('exception_details').value = data.exception_details || '';
-                    document.getElementById('conclusion').value = data.conclusion || '';
-                    document.getElementById('improvement_plan').value = data.improvement_plan || '';
+                    if (noOccurrenceEl) noOccurrenceEl.checked = false;
+                    if (sampleSizeEl) sampleSizeEl.value = data.sample_size || '';
+                    if (exceptionCountEl) exceptionCountEl.value = data.exception_count || '';
+                    if (mitigatingFactorsEl) mitigatingFactorsEl.value = data.mitigating_factors || '';
+                    if (exceptionDetailsEl) exceptionDetailsEl.value = data.exception_details || '';
+                    if (conclusionEl) conclusionEl.value = data.conclusion || '';
+                    if (improvementPlanEl) improvementPlanEl.value = data.improvement_plan || '';
                 }
             } else {
                 // 폼 초기화
-                document.getElementById('operationEvaluationForm').reset();
-                document.getElementById('no_occurrence').checked = false;
+                if (operationEvaluationFormEl) operationEvaluationFormEl.reset();
+                if (noOccurrenceEl) noOccurrenceEl.checked = false;
 
                 // 예외 발견 수 기본값 0으로 설정
-                document.getElementById('exception_count').value = 0;
+                if (exceptionCountEl) exceptionCountEl.value = 0;
 
                 // 필드 표시 초기화
-                document.getElementById('evaluation-fields').style.display = 'block';
-                document.getElementById('no-occurrence-reason-section').style.display = 'none';
-                disableEvaluationFields(false);
+                if (evaluationFieldsEl) evaluationFieldsEl.style.display = 'block';
+                if (noOccurrenceReasonSectionEl) noOccurrenceReasonSectionEl.style.display = 'none';
+                if (typeof disableEvaluationFields === 'function') disableEvaluationFields(false);
             }
 
             // 기존 평가 데이터가 없거나 표본수가 비어있는 경우 자동 설정
             if (!evaluated_controls[controlCode] || (!evaluated_controls[controlCode].sample_size && !evaluated_controls[controlCode].no_occurrence)) {
                 const defaultSampleSize = getDefaultSampleSize(controlFrequency, controlType);
-                document.getElementById('sample_size').value = defaultSampleSize;
+                if (sampleSizeEl) sampleSizeEl.value = defaultSampleSize;
             }
 
             // 예외 발견 수에 따른 결론 자동 업데이트 (발생사실 없음이 아닐 때만)
-            if (!document.getElementById('no_occurrence').checked) {
-                updateConclusionBasedOnExceptions();
+            if (noOccurrenceEl && !noOccurrenceEl.checked) {
+                if (typeof updateConclusionBasedOnExceptions === 'function') updateConclusionBasedOnExceptions();
             }
 
-            // 모달 표시
-            const modal = new bootstrap.Modal(document.getElementById('operationEvaluationModal'));
-            modal.show();
-        }
+            // 표본수 입력 필드에 change 이벤트 리스너 등록
+            const sampleSizeInput = document.getElementById('sample_size');
+            if (sampleSizeInput) {
+                // 기존 이벤트 리스너 제거 후 새로 등록 (중복 방지)
+                sampleSizeInput.removeEventListener('change', validateSampleSize);
+                sampleSizeInput.addEventListener('change', validateSampleSize);
 
-        // 예외 발견 수 변경 시 결론 자동 업데이트
-        function updateConclusionBasedOnExceptions() {
+                // 표본 크기 변경 시 자동으로 라인 생성
+                sampleSizeInput.removeEventListener('change', autoGenerateSampleLines);
+                sampleSizeInput.addEventListener('change', autoGenerateSampleLines);
+            }
+
+            // 예외 발견 수 입력 필드에 이벤트 리스너 등록 (표본 크기 초과 시 자동 조정)
             const exceptionCountInput = document.getElementById('exception_count');
-            const conclusionSelect = document.getElementById('conclusion');
-
-            if (exceptionCountInput && conclusionSelect) {
-                const exceptionCount = parseInt(exceptionCountInput.value) || 0;
-
-                if (exceptionCount > 0) {
-                    conclusionSelect.value = 'exception';
-                } else {
-                    conclusionSelect.value = 'effective';
+            if (exceptionCountInput && sampleSizeInput) {
+                // 예외 발견 수의 최대값을 표본 크기로 설정
+                const currentSampleSize = parseInt(sampleSizeInput.value) || 0;
+                if (currentSampleSize > 0) {
+                    exceptionCountInput.setAttribute('max', currentSampleSize);
                 }
-            }
-        }
 
-        // 예외 발견 수 입력 필드에 이벤트 리스너 추가 (페이지 로드 후)
-        document.addEventListener('DOMContentLoaded', function() {
-            const exceptionCountInput = document.getElementById('exception_count');
-            if (exceptionCountInput) {
+                // 기존 이벤트 리스너 제거 후 새로 등록 (중복 방지)
+                exceptionCountInput.removeEventListener('input', validateExceptionCount);
+                exceptionCountInput.removeEventListener('change', validateExceptionCount);
+                exceptionCountInput.removeEventListener('input', updateConclusionBasedOnExceptions);
+                exceptionCountInput.removeEventListener('change', updateConclusionBasedOnExceptions);
+                // input 이벤트로 실시간 검증 및 결론 업데이트
+                exceptionCountInput.addEventListener('input', validateExceptionCount);
+                exceptionCountInput.addEventListener('change', validateExceptionCount);
                 exceptionCountInput.addEventListener('input', updateConclusionBasedOnExceptions);
                 exceptionCountInput.addEventListener('change', updateConclusionBasedOnExceptions);
             }
 
-            // 당기 발생사실 없음 체크박스 이벤트 리스너
+            // 경감요소 입력 필드에 이벤트 리스너 등록
+            const mitigatingFactorsInput = document.getElementById('mitigating_factors');
+            if (mitigatingFactorsInput) {
+                mitigatingFactorsInput.removeEventListener('input', updateConclusionBasedOnExceptions);
+                mitigatingFactorsInput.addEventListener('input', updateConclusionBasedOnExceptions);
+            }
+
+            // 초기 결론 상태 설정
+            if (typeof updateConclusionBasedOnExceptions === 'function') {
+                updateConclusionBasedOnExceptions();
+            }
+
+            // 모달 표시
+            const operationEvaluationModalEl = document.getElementById('operationEvaluationModal');
+            if (operationEvaluationModalEl) {
+                const modal = new bootstrap.Modal(operationEvaluationModalEl);
+                modal.show();
+            } else {
+                console.error('operationEvaluationModal element not found');
+                alert('운영평가 모달을 찾을 수 없습니다. 페이지를 새로고침 해주세요.');
+            }
+        }
+
+        // 예외 발견 수 및 경감요소 변경 시 결론 필드 업데이트
+        function updateConclusionBasedOnExceptions() {
+            const exceptionCountInput = document.getElementById('exception_count');
+            const mitigatingFactorsInput = document.getElementById('mitigating_factors');
+            const conclusionSelect = document.getElementById('conclusion');
+            const helpText = document.getElementById('conclusion-help-text');
+
+            if (exceptionCountInput && conclusionSelect && mitigatingFactorsInput && helpText) {
+                const exceptionCount = parseInt(exceptionCountInput.value) || 0;
+                const hasMitigatingFactors = mitigatingFactorsInput.value.trim().length > 0;
+
+                // 예외 발견 수가 0이면 경감요소 필드 비활성화
+                if (exceptionCount === 0) {
+                    mitigatingFactorsInput.disabled = true;
+                    mitigatingFactorsInput.value = '';  // 값도 초기화
+                    conclusionSelect.disabled = true;
+                    conclusionSelect.value = 'effective';
+                    helpText.textContent = '예외 발견 수에 따라 자동 설정됩니다';
+                }
+                // 예외가 있는 경우 경감요소 필드 활성화
+                else {
+                    mitigatingFactorsInput.disabled = false;
+
+                    // 경감요소가 입력된 경우 결론을 수동 선택 가능하게
+                    if (hasMitigatingFactors) {
+                        conclusionSelect.disabled = false;
+                        helpText.textContent = '경감요소가 있으므로 결론을 선택할 수 있습니다';
+                        // 기본값은 exception이지만 사용자가 변경 가능
+                        if (conclusionSelect.value === '') {
+                            conclusionSelect.value = 'exception';
+                        }
+                    } else {
+                        // 경감요소가 없으면 자동 설정
+                        conclusionSelect.disabled = true;
+                        conclusionSelect.value = 'exception';
+                        helpText.textContent = '예외 발견 수에 따라 자동 설정됩니다';
+                    }
+                }
+            }
+        }
+
+        // ===================================================================
+        // 표본별 라인 입력 관련 함수들
+        // ===================================================================
+
+        // 표본 크기 변경 시 자동으로 라인 생성
+        function autoGenerateSampleLines() {
+            const sampleSizeInput = document.getElementById('sample_size');
+            const sampleSize = parseInt(sampleSizeInput?.value) || 0;
+
+            // 유효한 표본 크기인 경우에만 자동 생성
+            if (sampleSize >= 1 && sampleSize <= 100) {
+                generateSampleLines();
+            }
+        }
+
+        // 표본 라인 생성
+        function generateSampleLines() {
+            const sampleSizeInput = document.getElementById('sample_size');
+            const sampleSize = parseInt(sampleSizeInput.value) || 0;
+
+            if (sampleSize < 1 || sampleSize > 100) {
+                alert('표본 크기는 1에서 100 사이여야 합니다.');
+                return;
+            }
+
+            const tbody = document.getElementById('sample-lines-tbody');
+            tbody.innerHTML = ''; // 기존 라인 초기화
+
+            // 표본 크기만큼 라인 생성
+            for (let i = 1; i <= sampleSize; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="text-center align-middle">#${i}</td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm"
+                               id="sample-evidence-${i}"
+                               placeholder="예: 증빙서류 확인" />
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm"
+                                id="sample-result-${i}"
+                                onchange="handleSampleResultChange(${i})">
+                            <option value="no_exception">No Exception</option>
+                            <option value="exception">Exception</option>
+                        </select>
+                    </td>
+                    <td>
+                        <textarea class="form-control form-control-sm"
+                                  id="sample-mitigation-${i}"
+                                  rows="2"
+                                  placeholder="경감요소 입력"
+                                  disabled></textarea>
+                    </td>
+                    <td class="text-center align-middle">
+                        <span id="sample-conclusion-${i}" class="badge bg-success">OK</span>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+
+            // 컨테이너 표시
+            document.getElementById('sample-lines-container').style.display = 'block';
+
+            // 전체 결론 업데이트
+            updateOverallConclusion();
+        }
+
+        // 표본 결과 변경 처리
+        function handleSampleResultChange(sampleNumber) {
+            const resultSelect = document.getElementById(`sample-result-${sampleNumber}`);
+            const mitigationTextarea = document.getElementById(`sample-mitigation-${sampleNumber}`);
+            const conclusionBadge = document.getElementById(`sample-conclusion-${sampleNumber}`);
+
+            if (resultSelect.value === 'exception') {
+                // Exception 선택 시 경감요소 활성화
+                mitigationTextarea.disabled = false;
+                conclusionBadge.textContent = 'EX';
+                conclusionBadge.className = 'badge bg-danger';
+
+                // 경감요소 입력 이벤트 리스너
+                mitigationTextarea.onInput = () => updateSampleConclusion(sampleNumber);
+            } else {
+                // No Exception 선택 시 경감요소 비활성화 및 초기화
+                mitigationTextarea.disabled = true;
+                mitigationTextarea.value = '';
+                conclusionBadge.textContent = 'OK';
+                conclusionBadge.className = 'badge bg-success';
+            }
+
+            // 전체 결론 업데이트
+            updateOverallConclusion();
+        }
+
+        // 개별 표본 결론 업데이트
+        function updateSampleConclusion(sampleNumber) {
+            const resultSelect = document.getElementById(`sample-result-${sampleNumber}`);
+            const mitigationTextarea = document.getElementById(`sample-mitigation-${sampleNumber}`);
+            const conclusionBadge = document.getElementById(`sample-conclusion-${sampleNumber}`);
+
+            if (resultSelect.value === 'exception') {
+                const hasMitigation = mitigationTextarea.value.trim().length > 0;
+                if (hasMitigation) {
+                    // 경감요소가 있으면 조건부 OK
+                    conclusionBadge.textContent = 'OK*';
+                    conclusionBadge.className = 'badge bg-warning';
+                } else {
+                    // 경감요소 없으면 Exception
+                    conclusionBadge.textContent = 'EX';
+                    conclusionBadge.className = 'badge bg-danger';
+                }
+            }
+
+            // 전체 결론 업데이트
+            updateOverallConclusion();
+        }
+
+        // 전체 결론 자동 계산
+        function updateOverallConclusion() {
+            const tbody = document.getElementById('sample-lines-tbody');
+            const rows = tbody.querySelectorAll('tr');
+
+            if (rows.length === 0) {
+                return;
+            }
+
+            let noExceptionCount = 0;
+            let exceptionWithMitigationCount = 0;
+            let exceptionWithoutMitigationCount = 0;
+
+            rows.forEach((row, index) => {
+                const sampleNumber = index + 1;
+                const resultSelect = document.getElementById(`sample-result-${sampleNumber}`);
+                const mitigationTextarea = document.getElementById(`sample-mitigation-${sampleNumber}`);
+
+                if (resultSelect.value === 'no_exception') {
+                    noExceptionCount++;
+                } else if (resultSelect.value === 'exception') {
+                    const hasMitigation = mitigationTextarea.value.trim().length > 0;
+                    if (hasMitigation) {
+                        exceptionWithMitigationCount++;
+                    } else {
+                        exceptionWithoutMitigationCount++;
+                    }
+                }
+            });
+
+            const conclusionSpan = document.getElementById('overall-conclusion');
+            const summaryDiv = document.getElementById('conclusion-summary');
+
+            // 경감요소 없는 Exception이 하나라도 있으면 전체 Exception
+            if (exceptionWithoutMitigationCount > 0) {
+                conclusionSpan.textContent = 'Exception';
+                conclusionSpan.className = 'badge bg-danger ms-2';
+                summaryDiv.innerHTML = `
+                    <small>
+                        <i class="fas fa-times-circle text-danger me-1"></i>
+                        경감요소 없는 예외 ${exceptionWithoutMitigationCount}건 발견
+                    </small>
+                `;
+            } else {
+                // 모든 Exception에 경감요소가 있거나 Exception이 없으면 Effective
+                conclusionSpan.textContent = 'Effective';
+                conclusionSpan.className = 'badge bg-success ms-2';
+                summaryDiv.innerHTML = `
+                    <small>
+                        <i class="fas fa-check-circle text-success me-1"></i>
+                        No Exception: ${noExceptionCount}건, 경감요소 있는 Exception: ${exceptionWithMitigationCount}건
+                    </small>
+                `;
+            }
+        }
+
+        // ===================================================================
+        // 기존 함수들
+        // ===================================================================
+
+        // 전역 변수로 권장 표본수와 통제주기 저장
+        let recommendedSampleSize = 0;
+        let currentControlFrequency = '';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 당기 발생사실 없음 체크박스 이벤트 리스너 (모달 외부의 체크박스용)
             const noOccurrenceCheckbox = document.getElementById('no_occurrence');
             if (noOccurrenceCheckbox) {
                 noOccurrenceCheckbox.addEventListener('change', toggleNoOccurrenceFields);
             }
         });
+
+        // 표본 크기 검증 함수
+        function validateSampleSize() {
+            const sampleSizeInput = document.getElementById('sample_size');
+            const exceptionCountInput = document.getElementById('exception_count');
+            const inputValue = parseInt(sampleSizeInput.value) || 0;
+
+            console.log('validateSampleSize 호출됨');
+            console.log('입력값:', inputValue);
+            console.log('권장 표본수:', recommendedSampleSize);
+            console.log('통제주기:', currentControlFrequency);
+
+            // 예외 발견 수의 최대값을 새로운 표본 크기로 업데이트
+            if (exceptionCountInput && inputValue > 0) {
+                exceptionCountInput.setAttribute('max', inputValue);
+                // 현재 예외 발견 수가 새로운 표본 크기를 초과하면 자동 조정
+                validateExceptionCount();
+            }
+
+            // 통제주기 기반 권장 표본수와 비교
+            if (recommendedSampleSize > 0 && inputValue !== recommendedSampleSize) {
+                const frequencyName = getFrequencyName(currentControlFrequency);
+                alert(`ℹ️ 안내\n\n통제주기: ${frequencyName}\n권장 표본수: ${recommendedSampleSize}개\n입력한 표본수: ${inputValue}개\n\n필요에 따라 조정하셨다면 그대로 진행하시면 됩니다.`);
+            }
+        }
+
+        // 통제주기 코드를 이름으로 변환
+        function getFrequencyName(controlFrequency) {
+            if (!controlFrequency) return '알 수 없음';
+            const frequencyCode = controlFrequency.charAt(0).toUpperCase();
+            const frequencyNames = {
+                'A': '연간',
+                'Q': '분기',
+                'M': '월',
+                'W': '주',
+                'D': '일',
+                'O': '기타',
+                'N': '필요시'
+            };
+            return frequencyNames[frequencyCode] || controlFrequency;
+        }
+
+        // 예외 발견 수가 표본 크기를 초과하지 않도록 자동 조정
+        function validateExceptionCount() {
+            const sampleSizeInput = document.getElementById('sample_size');
+            const exceptionCountInput = document.getElementById('exception_count');
+
+            const sampleSize = parseInt(sampleSizeInput.value) || 0;
+            const exceptionCount = parseInt(exceptionCountInput.value) || 0;
+
+            // 표본 크기를 초과하면 자동으로 표본 크기로 변경 (메시지 없이)
+            if (exceptionCount > sampleSize) {
+                exceptionCountInput.value = sampleSize;
+            }
+            return true;
+        }
+
 
         // 당기 발생사실 없음 체크 시 필드 토글
         function toggleNoOccurrenceFields() {
@@ -1071,9 +1409,9 @@
         // 평가 필드 활성화/비활성화
         function disableEvaluationFields(disable) {
             const fields = [
-                'operating_effectiveness',
                 'sample_size',
                 'exception_count',
+                'mitigating_factors',
                 'exception_details',
                 'improvement_plan',
                 'evaluationImages',
@@ -1088,9 +1426,6 @@
                         field.removeAttribute('required');
                     } else {
                         field.disabled = false;
-                        if (fieldId === 'operating_effectiveness') {
-                            field.setAttribute('required', 'required');
-                        }
                     }
                 }
             });
@@ -1142,107 +1477,181 @@
 
         // 운영평가 저장
         function saveOperationEvaluation() {
-            const form = document.getElementById('operationEvaluationForm');
-            const formData = new FormData(form);
+            try {
+                console.log('=== saveOperationEvaluation 시작 ===');
+                console.log('currentRcmId:', currentRcmId);
+                console.log('currentEvaluationSession:', currentEvaluationSession);
+                console.log('currentControlCode:', currentControlCode);
 
-            // 당기 발생사실 없음 체크 확인
-            const noOccurrence = document.getElementById('no_occurrence').checked;
-
-            let evaluationData;
-
-            if (noOccurrence) {
-                // 당기 발생사실 없음인 경우
-                const noOccurrenceReason = formData.get('no_occurrence_reason') || '';
-
-                evaluationData = {
-                    operating_effectiveness: 'not_applicable',
-                    sample_size: 0,
-                    exception_count: 0,
-                    exception_details: '',
-                    conclusion: 'not_applicable',
-                    improvement_plan: '',
-                    no_occurrence: true,
-                    no_occurrence_reason: noOccurrenceReason.trim()
-                };
-            } else {
-                // 일반 평가인 경우
-                const operatingEffectiveness = formData.get('operating_effectiveness');
-                const exceptionCount = parseInt(formData.get('exception_count')) || 0;
-
-                // 운영 효과성에 따라 결론 결정
-                let autoConclusion;
-                if (operatingEffectiveness === 'effective') {
-                    autoConclusion = exceptionCount > 0 ? 'exception' : 'effective';
-                } else if (operatingEffectiveness === 'deficient' || operatingEffectiveness === 'ineffective') {
-                    autoConclusion = 'exception';
-                } else {
-                    autoConclusion = 'exception';
+                // 필수 변수 검증
+                if (!currentRcmId) {
+                    throw new Error('RCM ID가 설정되지 않았습니다.');
+                }
+                if (!currentEvaluationSession) {
+                    throw new Error('평가 세션이 설정되지 않았습니다.');
+                }
+                if (!currentControlCode) {
+                    throw new Error('통제 코드가 설정되지 않았습니다.');
                 }
 
-                evaluationData = {
-                    operating_effectiveness: operatingEffectiveness,
-                    sample_size: parseInt(formData.get('sample_size')) || 0,
-                    exception_count: exceptionCount,
-                    exception_details: formData.get('exception_details'),
-                    conclusion: autoConclusion,
-                    improvement_plan: formData.get('improvement_plan'),
-                    no_occurrence: false,
-                    no_occurrence_reason: ''
-                };
-
-                // 필수 필드 검증
-                if (!evaluationData.operating_effectiveness) {
-                    showWarningToast('운영 효과성은 필수 입력 항목입니다.');
+                const form = document.getElementById('operationEvaluationForm');
+                if (!form) {
+                    console.error('폼을 찾을 수 없음');
+                    showErrorToast('폼을 찾을 수 없습니다.');
                     return;
                 }
+
+                const formData = new FormData(form);
+                console.log('FormData 생성 완료');
+            } catch (error) {
+                console.error('saveOperationEvaluation 초기화 오류:', error);
+                showErrorToast('저장 초기화 중 오류 발생: ' + error.message);
+                return;
             }
 
-            // FormData 생성 (파일 포함)
-            const uploadData = new FormData();
-            uploadData.append('rcm_id', currentRcmId);
-            uploadData.append('design_evaluation_session', currentEvaluationSession);
-            uploadData.append('control_code', currentControlCode);
-            uploadData.append('evaluation_data', JSON.stringify(evaluationData));
-            
-            // 이미지 파일 추가
-            const imageFiles = document.getElementById('evaluationImages').files;
-            for (let i = 0; i < imageFiles.length; i++) {
-                uploadData.append('evaluation_image_' + i, imageFiles[i]);
-            }
-            
-            // 엑셀 파일 추가 (수동통제인 경우)
-            const excelFile = document.getElementById('sampleExcelFile').files[0];
-            if (excelFile) {
-                uploadData.append('sample_excel', excelFile);
-            }
+            try {
+                // 당기 발생사실 없음 체크 확인
+                const noOccurrenceEl = document.getElementById('no_occurrence');
+                const noOccurrence = noOccurrenceEl ? noOccurrenceEl.checked : false;
 
-            // 서버에 저장
-            fetch('/api/operation-evaluation/save', {
-                method: 'POST',
-                body: uploadData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 로컬 데이터 업데이트
-                    evaluated_controls[currentControlCode] = evaluationData;
+                let evaluationData;
 
-                    // UI 업데이트
-                    updateEvaluationUI(currentRowIndex, evaluationData);
-                    updateProgress();
+                if (noOccurrence) {
+                    // 당기 발생사실 없음인 경우
+                    const noOccurrenceReason = formData.get('no_occurrence_reason') || '';
 
-                    // 모달 닫기
-                    bootstrap.Modal.getInstance(document.getElementById('operationEvaluationModal')).hide();
-
-                    showSuccessToast('운영평가 결과가 저장되었습니다.');
+                    evaluationData = {
+                        sample_size: 0,
+                        exception_count: 0,
+                        exception_details: '',
+                        conclusion: 'effective',
+                        improvement_plan: '',
+                        no_occurrence: true,
+                        no_occurrence_reason: noOccurrenceReason.trim()
+                    };
                 } else {
-                    showErrorToast('저장 중 오류가 발생했습니다: ' + data.message);
+                    // 일반 평가인 경우
+                    const exceptionCount = parseInt(formData.get('exception_count')) || 0;
+                    const mitigatingFactors = formData.get('mitigating_factors') || '';
+                    const userConclusion = formData.get('conclusion');
+
+                    // 결론 결정: 경감요소가 있으면 사용자 선택, 없으면 자동
+                    let finalConclusion;
+                    if (exceptionCount > 0 && mitigatingFactors.trim().length > 0) {
+                        // 경감요소가 있는 경우 사용자가 선택한 결론 사용
+                        finalConclusion = userConclusion;
+                    } else {
+                        // 자동 결정
+                        finalConclusion = exceptionCount > 0 ? 'exception' : 'effective';
+                    }
+
+                    // 표본 라인별 데이터 수집
+                    const sampleSize = parseInt(formData.get('sample_size')) || 0;
+                    const sampleLines = [];
+
+                    for (let i = 1; i <= sampleSize; i++) {
+                        const evidenceEl = document.getElementById(`sample-evidence-${i}`);
+                        const resultEl = document.getElementById(`sample-result-${i}`);
+                        const mitigationEl = document.getElementById(`sample-mitigation-${i}`);
+
+                        if (evidenceEl && resultEl) {
+                            sampleLines.push({
+                                sample_number: i,
+                                evidence: evidenceEl.value || '',
+                                result: resultEl.value || 'no_exception',
+                                mitigation: mitigationEl ? mitigationEl.value || '' : ''
+                            });
+                        }
+                    }
+
+                    evaluationData = {
+                        sample_size: sampleSize,
+                        exception_count: exceptionCount,
+                        mitigating_factors: mitigatingFactors,
+                        exception_details: formData.get('exception_details'),
+                        conclusion: finalConclusion,
+                        improvement_plan: formData.get('improvement_plan'),
+                        no_occurrence: false,
+                        no_occurrence_reason: '',
+                        sample_lines: sampleLines  // 표본 라인 데이터 추가
+                    };
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showErrorToast('저장 중 오류가 발생했습니다.');
-            });
+
+                // FormData 생성 (파일 포함)
+                const uploadData = new FormData();
+                uploadData.append('rcm_id', currentRcmId);
+                uploadData.append('design_evaluation_session', currentEvaluationSession);
+                uploadData.append('control_code', currentControlCode);
+                uploadData.append('evaluation_data', JSON.stringify(evaluationData));
+
+                // 이미지 파일 추가 (요소 존재 확인)
+                const evaluationImagesEl = document.getElementById('evaluationImages');
+                if (evaluationImagesEl && evaluationImagesEl.files) {
+                    const imageFiles = evaluationImagesEl.files;
+                    for (let i = 0; i < imageFiles.length; i++) {
+                        uploadData.append('evaluation_image_' + i, imageFiles[i]);
+                    }
+                }
+
+                // 엑셀 파일 추가 (수동통제인 경우, 요소 존재 확인)
+                const sampleExcelFileEl = document.getElementById('sampleExcelFile');
+                if (sampleExcelFileEl && sampleExcelFileEl.files && sampleExcelFileEl.files[0]) {
+                    uploadData.append('sample_excel', sampleExcelFileEl.files[0]);
+                }
+
+                console.log('저장 요청 전송 시작');
+                console.log('evaluationData:', evaluationData);
+                console.log('Uploading to /api/operation-evaluation/save');
+
+                // 서버에 저장 (세션 쿠키 포함)
+                fetch('/api/operation-evaluation/save', {
+                    method: 'POST',
+                    body: uploadData,
+                    credentials: 'same-origin'  // 세션 쿠키를 포함하여 전송
+                })
+                .then(response => {
+                    console.log('응답 상태:', response.status, response.statusText);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('응답 데이터:', data);
+                    if (data.success) {
+                        // 성공 메시지 먼저 표시
+                        showSuccessToast('운영평가 결과가 저장되었습니다.');
+
+                        // 로컬 데이터 업데이트
+                        evaluated_controls[currentControlCode] = evaluationData;
+
+                        // UI 업데이트
+                        updateEvaluationUI(currentRowIndex, evaluationData);
+                        updateProgress();
+
+                        // 모달은 약간 지연 후 닫기 (토스트가 보이도록)
+                        setTimeout(() => {
+                            const modalEl = document.getElementById('operationEvaluationModal');
+                            if (modalEl) {
+                                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                                if (modalInstance) {
+                                    modalInstance.hide();
+                                }
+                            }
+                        }, 500);
+                    } else {
+                        console.error('저장 실패:', data.message);
+                        showErrorToast('저장 실패: ' + (data.message || '알 수 없는 오류'));
+                    }
+                })
+                .catch(error => {
+                    console.error('저장 요청 오류:', error);
+                    showErrorToast('저장 중 네트워크 오류 발생: ' + error.message);
+                });
+            } catch (error) {
+                console.error('saveOperationEvaluation 데이터 처리 오류:', error);
+                showErrorToast('데이터 처리 중 오류 발생: ' + error.message);
+            }
         }
 
         // 개별 평가 UI 업데이트
@@ -1250,23 +1659,21 @@
             // 평가 결과 업데이트
             const resultElement = document.getElementById(`evaluation-result-${rowIndex}`);
             if (resultElement && data.conclusion) {
-                // not_applicable이면서 no_occurrence가 true인 경우 Effective + 아이콘 표시
-                if (data.conclusion === 'not_applicable' && data.no_occurrence) {
-                    resultElement.innerHTML = 'Effective <i class="fas fa-info-circle ms-1" title="당기 발생사실 없음"></i>';
-                    resultElement.className = 'badge bg-success';
-                    resultElement.title = '당기 발생사실 없음';
-                } else {
-                    const resultMap = {
-                        'effective': { text: 'Effective', class: 'bg-success' },
-                        'exception': { text: 'Exception', class: 'bg-danger' },
-                        'ineffective': { text: 'Ineffective', class: 'bg-danger' },
-                        'not_applicable': { text: 'N/A', class: 'bg-secondary' }
-                    };
-                    const result = resultMap[data.conclusion];
-                    if (result) {
+                const resultMap = {
+                    'effective': { text: 'Effective', class: 'bg-success' },
+                    'exception': { text: 'Exception', class: 'bg-danger' }
+                };
+
+                const result = resultMap[data.conclusion];
+                if (result) {
+                    // no_occurrence가 true인 경우 아이콘 추가
+                    if (data.no_occurrence) {
+                        resultElement.innerHTML = `${result.text} <i class="fas fa-info-circle ms-1" title="당기 발생사실 없음"></i>`;
+                        resultElement.title = '당기 발생사실 없음';
+                    } else {
                         resultElement.textContent = result.text;
-                        resultElement.className = `badge ${result.class}`;
                     }
+                    resultElement.className = `badge ${result.class}`;
                 }
             }
 
