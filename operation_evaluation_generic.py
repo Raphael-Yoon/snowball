@@ -71,7 +71,7 @@ def manual_control_evaluation(control_code):
                 # 데이터베이스에서 no_occurrence 정보 추가 로드
                 if existing_data:
                     eval_line = conn.execute('''
-                        SELECT operating_effectiveness, conclusion, no_occurrence, no_occurrence_reason
+                        SELECT conclusion, no_occurrence, no_occurrence_reason
                         FROM sb_operation_evaluation_line
                         WHERE header_id = ? AND control_code = ?
                         ORDER BY line_id DESC
@@ -81,12 +81,11 @@ def manual_control_evaluation(control_code):
                     if eval_line:
                         existing_data['no_occurrence'] = eval_line['no_occurrence'] if eval_line['no_occurrence'] else False
                         existing_data['no_occurrence_reason'] = eval_line['no_occurrence_reason'] or ''
-                        existing_data['operating_effectiveness'] = eval_line['operating_effectiveness']
                         existing_data['conclusion'] = eval_line['conclusion']
                 elif not loaded_data:
                     # 엑셀 파일은 없지만 DB에 no_occurrence 데이터가 있을 수 있음
                     eval_line = conn.execute('''
-                        SELECT operating_effectiveness, conclusion, no_occurrence, no_occurrence_reason
+                        SELECT conclusion, no_occurrence, no_occurrence_reason
                         FROM sb_operation_evaluation_line
                         WHERE header_id = ? AND control_code = ?
                         ORDER BY line_id DESC
@@ -97,7 +96,6 @@ def manual_control_evaluation(control_code):
                         existing_data = {
                             'no_occurrence': True,
                             'no_occurrence_reason': eval_line['no_occurrence_reason'] or '',
-                            'operating_effectiveness': eval_line['operating_effectiveness'],
                             'conclusion': eval_line['conclusion'],
                             'samples_data': None,
                             'population_data': []
@@ -466,11 +464,10 @@ def save_no_occurrence():
 
         # 운영평가 데이터 저장 (당기 발생사실 없음)
         evaluation_data = {
-            'operating_effectiveness': 'not_applicable',
             'sample_size': 0,
             'exception_count': 0,
             'exception_details': '',
-            'conclusion': 'not_applicable',
+            'conclusion': 'effective',
             'improvement_plan': '',
             'no_occurrence': True,
             'no_occurrence_reason': no_occurrence_reason,

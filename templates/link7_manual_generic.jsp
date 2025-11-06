@@ -156,7 +156,7 @@
                 <div class="card">
                     <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Step 2: 테스트 결과 입력</h5>
-                        <button type="button" class="btn btn-dark btn-sm" onclick="saveResults()">
+                        <button type="button" id="saveResultsBtn" class="btn btn-dark btn-sm" onclick="console.log('[DEBUG] 저장 버튼 클릭됨'); saveResults();">
                             <i class="fas fa-save me-1"></i>저장
                         </button>
                     </div>
@@ -730,74 +730,111 @@
         }
 
         function saveResults() {
-            const results = samples.map((s, i) => {
-                const result = {
-                    sample_index: i,
-                    population_data: s.data,
-                    has_exception: document.getElementById(`exc_${i}`).textContent === 'Y',
-                    notes: document.getElementById(`notes_${i}`).value
-                };
+            try {
+                console.log('===== saveResults 함수 호출됨 =====');
+                console.log('rcmId:', rcmId);
+                console.log('controlCode:', controlCode);
+                console.log('designEvaluationSession:', designEvaluationSession);
+                console.log('samples 개수:', samples ? samples.length : 0);
 
-                if (controlCode === 'PC02') {
-                    // PC02 전용 필드
-                    result.request_number = document.getElementById(`req_num_${i}`).value;
-                    result.user_test_yn = document.getElementById(`test_yn_${i}`).value;
-                    result.user_test_person = document.getElementById(`test_person_${i}`).value;
-                    result.user_test_date = document.getElementById(`test_date_${i}`).value;
-                } else if (controlCode === 'PC03') {
-                    // PC03 전용 필드
-                    result.request_number = document.getElementById(`req_num_${i}`).value;
-                    result.deploy_requester = document.getElementById(`deploy_req_${i}`).value;
-                    result.deploy_requester_dept = document.getElementById(`deploy_req_dept_${i}`).value;
-                    result.deploy_approver = document.getElementById(`deploy_appr_${i}`).value;
-                    result.deploy_approver_dept = document.getElementById(`deploy_appr_dept_${i}`).value;
-                    result.deploy_approval_date = document.getElementById(`deploy_appr_date_${i}`).value;
-                } else if (controlCode === 'CO01') {
-                    // CO01 전용 필드 (APD 스타일과 동일)
-                    result.request_number = document.getElementById(`req_num_${i}`).value;
-                    result.requester_name = document.getElementById(`req_name_${i}`).value;
-                    result.requester_department = document.getElementById(`req_dept_${i}`).value;
-                    result.approver_name = document.getElementById(`appr_name_${i}`).value;
-                    result.approver_department = document.getElementById(`appr_dept_${i}`).value;
-                    result.approval_date = document.getElementById(`appr_date_${i}`).value;
-                } else {
-                    // APD01/07/09/12, PC01용 표준 필드
-                    result.request_number = document.getElementById(`req_num_${i}`).value;
-                    result.requester_name = document.getElementById(`req_name_${i}`).value;
-                    result.requester_department = document.getElementById(`req_dept_${i}`).value;
-                    result.approver_name = document.getElementById(`appr_name_${i}`).value;
-                    result.approver_department = document.getElementById(`appr_dept_${i}`).value;
-                    result.approval_date = document.getElementById(`appr_date_${i}`).value;
-
-                    // PC01 전용 추가 필드
-                    if (controlCode === 'PC01') {
-                        result.developer = document.getElementById(`developer_${i}`).value;
-                        result.deployer = document.getElementById(`deployer_${i}`).value;
-                    }
+                if (!samples || samples.length === 0) {
+                    console.error('samples 배열이 비어있거나 정의되지 않았습니다');
+                    alert('표본 데이터가 없습니다. 먼저 모집단을 업로드해주세요.');
+                    return;
                 }
 
-                return result;
-            });
+                const results = samples.map((s, i) => {
+                    const result = {
+                        sample_index: i,
+                        population_data: s.data,
+                        has_exception: document.getElementById(`exc_${i}`).textContent === 'Y',
+                        notes: document.getElementById(`notes_${i}`).value
+                    };
 
-            fetch(`/api/operation-evaluation/manual/${controlCode}/save-test-results`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
+                    if (controlCode === 'PC02') {
+                        // PC02 전용 필드
+                        result.request_number = document.getElementById(`req_num_${i}`).value;
+                        result.user_test_yn = document.getElementById(`test_yn_${i}`).value;
+                        result.user_test_person = document.getElementById(`test_person_${i}`).value;
+                        result.user_test_date = document.getElementById(`test_date_${i}`).value;
+                    } else if (controlCode === 'PC03') {
+                        // PC03 전용 필드
+                        result.request_number = document.getElementById(`req_num_${i}`).value;
+                        result.deploy_requester = document.getElementById(`deploy_req_${i}`).value;
+                        result.deploy_requester_dept = document.getElementById(`deploy_req_dept_${i}`).value;
+                        result.deploy_approver = document.getElementById(`deploy_appr_${i}`).value;
+                        result.deploy_approver_dept = document.getElementById(`deploy_appr_dept_${i}`).value;
+                        result.deploy_approval_date = document.getElementById(`deploy_appr_date_${i}`).value;
+                    } else if (controlCode === 'CO01') {
+                        // CO01 전용 필드 (APD 스타일과 동일)
+                        result.request_number = document.getElementById(`req_num_${i}`).value;
+                        result.requester_name = document.getElementById(`req_name_${i}`).value;
+                        result.requester_department = document.getElementById(`req_dept_${i}`).value;
+                        result.approver_name = document.getElementById(`appr_name_${i}`).value;
+                        result.approver_department = document.getElementById(`appr_dept_${i}`).value;
+                        result.approval_date = document.getElementById(`appr_date_${i}`).value;
+                    } else {
+                        // APD01/07/09/12, PC01용 표준 필드
+                        result.request_number = document.getElementById(`req_num_${i}`).value;
+                        result.requester_name = document.getElementById(`req_name_${i}`).value;
+                        result.requester_department = document.getElementById(`req_dept_${i}`).value;
+                        result.approver_name = document.getElementById(`appr_name_${i}`).value;
+                        result.approver_department = document.getElementById(`appr_dept_${i}`).value;
+                        result.approval_date = document.getElementById(`appr_date_${i}`).value;
+
+                        // PC01 전용 추가 필드
+                        if (controlCode === 'PC01') {
+                            result.developer = document.getElementById(`developer_${i}`).value;
+                            result.deployer = document.getElementById(`deployer_${i}`).value;
+                        }
+                    }
+
+                    return result;
+                });
+
+                console.log('수집된 결과 데이터:', results);
+
+                const url = `/api/operation-evaluation/manual/${controlCode}/save-test-results`;
+                const payload = {
                     rcm_id: rcmId,
                     control_code: controlCode,
                     design_evaluation_session: designEvaluationSession,
                     test_results: results
+                };
+
+                console.log('전송 URL:', url);
+                console.log('전송 데이터:', JSON.stringify(payload));
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
                 })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    showToast();
-                } else {
-                    alert(data.message);
-                }
-            })
-            .catch(e => alert('오류: ' + e));
+                .then(response => {
+                    console.log('응답 상태:', response.status, response.statusText);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('응답 데이터:', data);
+                    if (data.success) {
+                        console.log('저장 성공!');
+                        showToast();
+                    } else {
+                        console.error('저장 실패:', data.message);
+                        alert('저장 실패: ' + (data.message || '알 수 없는 오류'));
+                    }
+                })
+                .catch(error => {
+                    console.error('저장 오류:', error);
+                    alert('저장 중 오류 발생: ' + error.message);
+                });
+            } catch (error) {
+                console.error('saveResults 함수 실행 중 오류:', error);
+                alert('데이터 수집 중 오류 발생: ' + error.message);
+            }
         }
 
         function updateConclusion() {
