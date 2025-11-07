@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
-from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, get_key_rcm_details, save_operation_evaluation, get_operation_evaluations, log_user_activity, get_db, is_design_evaluation_completed, get_completed_design_evaluation_sessions
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, get_key_rcm_details, save_operation_evaluation, get_operation_evaluations, get_operation_evaluation_samples, log_user_activity, get_db, is_design_evaluation_completed, get_completed_design_evaluation_sessions
 from snowball_link5 import get_user_info, is_logged_in
 import file_manager
 import json
@@ -199,12 +199,17 @@ def user_operation_evaluation_rcm():
     try:
         evaluations = get_operation_evaluations(rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)
 
+        print(f'[snowball_link7] Total evaluations: {len(evaluations)}')
+
         # 평가가 완료된 통제만(conclusion 값이 있는 경우) control_code를 키로 하는 딕셔너리로 변환
         # 중복이 있는 경우 가장 최신(last_updated 또는 evaluation_date 기준) 레코드만 사용
         evaluated_controls = {}
         for eval in evaluations:
             if eval.get('conclusion'):
                 control_code = eval['control_code']
+                sample_lines_count = len(eval.get('sample_lines', []))
+                print(f'[snowball_link7] {control_code}: samples={sample_lines_count}, line_id={eval.get("line_id")}')
+
                 # 기존에 없거나, 더 최신 데이터인 경우만 업데이트
                 if control_code not in evaluated_controls:
                     evaluated_controls[control_code] = eval
@@ -215,7 +220,12 @@ def user_operation_evaluation_rcm():
                     if new_date and existing_date and new_date > existing_date:
                         evaluated_controls[control_code] = eval
 
+        print(f'[snowball_link7] evaluated_controls keys: {list(evaluated_controls.keys())}')
+
     except Exception as e:
+        print(f'[snowball_link7] Error loading evaluations: {e}')
+        import traceback
+        traceback.print_exc()
         evaluated_controls = {}
 
     log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 운영평가', '/operation-evaluation/rcm',
@@ -387,6 +397,42 @@ def load_operation_evaluation(rcm_id, design_evaluation_session):
 
     except Exception as e:
         return jsonify({'success': False, 'message': '데이터 로드 중 오류가 발생했습니다.'}), 500
+
+@bp_link7.route('/api/operation-evaluation/samples/<int:line_id>')
+@login_required
+def load_operation_evaluation_samples(line_id):
+    """평가 버튼 클릭 시 특정 line_id의 샘플 데이터 조회 API"""
+    user_info = get_user_info()
+
+    try:
+        # line_id에 해당하는 통제의 권한 확인
+        with get_db() as conn:
+            line_info = conn.execute('''
+                SELECT h.rcm_id, h.user_id
+                FROM sb_operation_evaluation_line l
+                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                WHERE l.line_id = ?
+            ''', (line_id,)).fetchone()
+
+            if not line_info:
+                return jsonify({'success': False, 'message': '평가 데이터를 찾을 수 없습니다.'}), 404
+
+            # 권한 체크
+            if line_info['user_id'] != user_info['user_id']:
+                return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
+
+        # 샘플 데이터 조회
+        sample_lines = get_operation_evaluation_samples(line_id)
+
+        return jsonify({
+            'success': True,
+            'samples': sample_lines
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'샘플 데이터 로드 중 오류가 발생했습니다: {str(e)}'}), 500
 
 # REMOVED: Duplicate reset API that was deleting entire header
 # The correct reset API is at line 589: operation_evaluation_reset()

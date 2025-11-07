@@ -18,6 +18,10 @@
         .dropend .dropdown-toggle::after {
             margin-left: auto;
         }
+        /* navbar가 모달을 가리지 않도록 z-index 낮춤 */
+        .navbar {
+            z-index: 10 !important;
+        }
     </style>
 </head>
 <body>

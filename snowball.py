@@ -374,8 +374,6 @@ def clear_session():
         print(f"브라우저 종료로 세션 해제: {user_name}")
     return '', 204
 
-
-
 def main():
     app.run(host='0.0.0.0', debug=False, port=5001)
     #app.run(host='127.0.0.1', debug=False, port=8001)
