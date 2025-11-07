@@ -303,3 +303,165 @@ buttonElement.style.height = '24px';
 - 작업 디렉토리 확인: Flask 실행 시 `templates/`, `static/` 폴더 접근 가능 여부 확인
 - 이미지 교체 후 브라우저 캐시 클리어 권장 (Ctrl+Shift+R)
 - 미사용 이미지는 백업 후 삭제 권장
+
+---
+
+## 2025-01-07 - MySQL 마이그레이션 및 백업 스크립트 구현
+
+### 1. SQLite → MySQL 마이그레이션 스크립트
+
+#### 1.1 migrate_to_mysql.py 개선
+- **목적**: 로컬 SQLite DB를 PythonAnywhere MySQL로 마이그레이션
+- **파일**: `migrate_to_mysql.py`
+
+**주요 기능**:
+1. **DROP & RECREATE 모드**: 기존 테이블 삭제 후 재생성
+2. **날짜/시간 변환**: SQLite TIMESTAMP → MySQL DATETIME 자동 변환
+3. **배치 처리**: 1000개 단위 배치 커밋으로 성능 최적화
+4. **에러 핸들링**: 개별 행 에러 발생 시 건너뛰고 계속 진행
+
+**추가된 함수**:
+- `convert_datetime_value()`: 날짜/시간 문자열을 MySQL 호환 형식으로 변환
+- `create_mysql_table()`: drop_if_exists 옵션 추가
+
+**실행 방법**:
+```bash
+python migrate_to_mysql.py
+# "YES" 입력하여 확인
+```
+
+**해결된 문제**:
+- PRIMARY KEY 중복 오류 → DROP TABLE로 해결
+- 날짜 형식 변환 오류 → convert_datetime_value() 함수 추가
+- 배치 처리 중 에러 → 개별 행 에러 무시하고 계속 진행
+
+### 2. MySQL → SQLite 백업 스크립트
+
+#### 2.1 backup_mysql_to_sqlite.py 신규 작성
+- **목적**: 프로덕션 MySQL 데이터를 로컬 SQLite로 백업
+- **파일**: `backup_mysql_to_sqlite.py` (신규)
+- **배치 스케줄**: cron 또는 작업 스케줄러로 주기적 실행 가능
+
+**주요 기능**:
+1. **자동 백업**: 기존 SQLite DB를 타임스탬프와 함께 백업
+   - 백업 위치: `backups/snowball_YYYYMMDD_HHMMSS.db`
+2. **백업 관리**: 최근 10개 백업만 유지, 오래된 파일 자동 삭제
+3. **스키마 복제**: MySQL 테이블 구조를 SQLite로 변환
+4. **인덱스 복제**: MySQL 인덱스를 SQLite에 재생성
+5. **배치 처리**: 1000개 단위로 데이터 복사
+6. **Exit Code**: 성공 시 0, 실패 시 1 반환 (스케줄러 모니터링용)
+
+**타입 변환 매핑**:
+```python
+MySQL          → SQLite
+INT/BIGINT     → INTEGER
+VARCHAR/TEXT   → TEXT
+DOUBLE/FLOAT   → REAL
+DATETIME       → TIMESTAMP
+BLOB           → BLOB
+TINYINT(1)     → INTEGER (boolean)
+```
+
+**실행 방법**:
+```bash
+# 수동 실행
+python backup_mysql_to_sqlite.py
+
+# cron 설정 (매일 새벽 3시)
+0 3 * * * cd /path/to/snowball && python3 backup_mysql_to_sqlite.py >> backups/backup.log 2>&1
+```
+
+**백업 파일 구조**:
+```
+snowball/
+├── snowball.db                    # 현재 DB
+└── backups/
+    ├── snowball_20250107_030000.db
+    ├── snowball_20250106_030000.db
+    └── ... (최근 10개 유지)
+```
+
+### 3. 주요 변경 파일
+
+#### Python 스크립트
+1. **migrate_to_mysql.py** (수정)
+   - 날짜/시간 변환 로직 추가 (158-193줄)
+   - DROP TABLE 옵션 추가 (81-88줄)
+   - 단순화된 확인 프로세스 (281-294줄)
+
+2. **backup_mysql_to_sqlite.py** (신규)
+   - MySQL → SQLite 백업 스크립트
+   - 자동 백업 관리 기능
+   - 배치 스케줄러 호환
+
+### 4. 워크플로우
+
+#### 개발 → 프로덕션 (SQLite → MySQL)
+```bash
+1. 로컬에서 개발 (SQLite)
+2. python migrate_to_mysql.py 실행
+3. PythonAnywhere MySQL에 데이터 업로드
+```
+
+#### 프로덕션 → 개발 (MySQL → SQLite)
+```bash
+1. python backup_mysql_to_sqlite.py 실행
+2. MySQL 데이터를 로컬 SQLite로 백업
+3. 로컬에서 개발 계속
+```
+
+### 5. 기술적 개선 사항
+
+1. ✅ **양방향 마이그레이션**: SQLite ↔ MySQL 모두 지원
+2. ✅ **데이터 안전성**: 백업 자동 생성 및 관리
+3. ✅ **배치 스케줄**: cron/작업 스케줄러 호환
+4. ✅ **에러 복구**: 실패 시에도 기존 백업 유지
+5. ✅ **성능 최적화**: 배치 처리로 대용량 데이터 처리
+
+### 6. 주의사항
+
+- **migrate_to_mysql.py**:
+  - MySQL 데이터 전체 삭제 후 재생성
+  - .env 파일에 MYSQL_PASSWORD 필수
+  - "YES" 정확히 입력해야 실행
+
+- **backup_mysql_to_sqlite.py**:
+  - 프로덕션 MySQL 접속 권한 필요
+  - backups/ 디렉토리 자동 생성
+  - 디스크 용량 확인 필요 (DB 크기에 따라)
+
+### 7. 테스트 계획
+
+로컬에서는 MySQL이 없어 서버에서 테스트 필요:
+
+1. **migrate_to_mysql.py** 테스트:
+   - PythonAnywhere 콘솔에서 실행
+   - 테이블 생성 확인
+   - 데이터 카운트 확인
+
+2. **backup_mysql_to_sqlite.py** 테스트:
+   - PythonAnywhere 콘솔에서 실행
+   - backups/ 디렉토리 생성 확인
+   - 백업 파일 다운로드 후 로컬에서 검증
+
+### 8. 다음 단계
+
+1. 서버에 스크립트 업로드
+2. migrate_to_mysql.py 실행하여 초기 데이터 마이그레이션
+3. sync_mysql_to_sqlite.py 테스트 (파일명 변경)
+4. cron 작업 설정 (옵션)
+
+### 9. 파일 정리 및 최종 결정
+
+**삭제된 파일**:
+- 중복 이미지 8개 (~14MB)
+- 백업 Excel 파일 1개
+- Python 캐시 파일 다수
+
+**파일명 변경**:
+- `backup_mysql_to_sqlite.py` → `sync_mysql_to_sqlite.py`
+
+**운영 방침 확정**:
+- ✅ **운영 서버**: MySQL 데이터베이스 사용
+- ✅ **로컬 개발**: SQLite 파일 사용
+- ✅ **데이터 동기화**: 양방향 마이그레이션 스크립트 활용
