@@ -237,7 +237,7 @@
 
     <!-- 운영평가 모달 -->
     <div class="modal fade" id="operationEvaluationModal" tabindex="-1" aria-labelledby="operationEvaluationModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog" style="max-width: 1200px;">
             <div class="modal-content">
                 <div class="modal-header bg-warning text-dark">
                     <h5 class="modal-title" id="operationEvaluationModalLabel">
@@ -299,15 +299,10 @@
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label for="sample_size" class="form-label fw-bold">표본 크기</label>
-                                    <input type="number" class="form-control" id="sample_size" name="sample_size" min="1" max="100" placeholder="통제주기에 따라 자동 설정">
+                                    <input type="number" class="form-control" id="sample_size" name="sample_size" min="1" max="100" placeholder="통제주기에 따라 자동 설정" onchange="generateSampleLines()" onkeyup="if(event.key === 'Enter') generateSampleLines()">
                                     <div class="form-text">
-                                        <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1)</small>
+                                        <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1). 입력 후 자동으로 표본 라인이 생성됩니다.</small>
                                     </div>
-                                </div>
-                                <div class="col-md-6 d-flex align-items-end">
-                                    <button type="button" class="btn btn-primary" id="generate-samples-btn" onclick="generateSampleLines()">
-                                        <i class="fas fa-list me-1"></i>표본 라인 생성
-                                    </button>
                                 </div>
                             </div>
 
@@ -319,11 +314,10 @@
                                         <table class="table table-bordered table-sm" id="sample-lines-table">
                                             <thead class="table-light">
                                                 <tr>
-                                                    <th width="8%">표본 #</th>
-                                                    <th width="35%">증빙 내용</th>
+                                                    <th width="10%">표본 #</th>
+                                                    <th width="70%">증빙 내용</th>
                                                     <th width="15%">결과</th>
-                                                    <th width="35%">경감요소</th>
-                                                    <th width="7%">결론</th>
+                                                    <th width="5%">결론</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="sample-lines-tbody">
@@ -1109,6 +1103,15 @@
                     .catch(error => {
                         console.error('[openOperationEvaluationModal] 샘플 데이터 조회 실패:', error);
                     });
+            } else {
+                // line_id가 없어도 표본 크기가 설정되어 있으면 테이블 생성
+                const sampleSizeEl = document.getElementById('sample_size');
+                if (sampleSizeEl && sampleSizeEl.value && parseInt(sampleSizeEl.value) > 0) {
+                    console.log('[openOperationEvaluationModal] line_id 없지만 표본 크기 있음, 테이블 생성');
+                    setTimeout(() => {
+                        generateSampleLines();
+                    }, 100);
+                }
             }
 
             // 예외 발견 수에 따른 결론 자동 업데이트 (발생사실 없음이 아닐 때만)
@@ -1278,26 +1281,21 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="text-center align-middle">#${i}</td>
-                    <td>
+                    <td class="align-middle">
                         <input type="text" class="form-control form-control-sm"
                                id="sample-evidence-${i}"
                                placeholder="예: 증빙서류 확인"
-                               value="${evidence}" />
+                               value="${evidence}"
+                               style="height: 31px;" />
                     </td>
-                    <td>
+                    <td class="align-middle">
                         <select class="form-select form-select-sm"
                                 id="sample-result-${i}"
-                                onchange="handleSampleResultChange(${i})">
+                                onchange="handleSampleResultChange(${i})"
+                                style="height: 31px;">
                             <option value="no_exception" ${result === 'no_exception' ? 'selected' : ''}>No Exception</option>
                             <option value="exception" ${result === 'exception' ? 'selected' : ''}>Exception</option>
                         </select>
-                    </td>
-                    <td>
-                        <textarea class="form-control form-control-sm"
-                                  id="sample-mitigation-${i}"
-                                  rows="2"
-                                  placeholder="경감요소 입력"
-                                  ${result === 'exception' ? '' : 'disabled'}>${mitigation}</textarea>
                     </td>
                     <td class="text-center align-middle">
                         <span id="sample-conclusion-${i}" class="badge ${result === 'exception' ? 'bg-danger' : 'bg-success'}">
@@ -1306,6 +1304,25 @@
                     </td>
                 `;
                 tbody.appendChild(row);
+
+                // Exception 선택 시 경감요소 입력란을 행 아래에 추가
+                if (result === 'exception') {
+                    const mitigationRow = document.createElement('tr');
+                    mitigationRow.id = `mitigation-row-${i}`;
+                    mitigationRow.innerHTML = `
+                        <td colspan="4" class="bg-light">
+                            <div class="p-2">
+                                <label class="form-label fw-bold mb-1" style="font-size: 0.875rem;">경감요소:</label>
+                                <input type="text" class="form-control form-control-sm"
+                                       id="sample-mitigation-${i}"
+                                       placeholder="경감요소를 입력하세요"
+                                       value="${mitigation}"
+                                       style="height: 31px;" />
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(mitigationRow);
+                }
             }
 
             // 컨테이너 표시
@@ -1318,23 +1335,42 @@
         // 표본 결과 변경 처리
         function handleSampleResultChange(sampleNumber) {
             const resultSelect = document.getElementById(`sample-result-${sampleNumber}`);
-            const mitigationTextarea = document.getElementById(`sample-mitigation-${sampleNumber}`);
             const conclusionBadge = document.getElementById(`sample-conclusion-${sampleNumber}`);
+            const existingMitigationRow = document.getElementById(`mitigation-row-${sampleNumber}`);
 
             if (resultSelect.value === 'exception') {
-                // Exception 선택 시 경감요소 활성화
-                mitigationTextarea.disabled = false;
-                conclusionBadge.textContent = 'EX';
+                // Exception 선택 시 경감요소 행 추가
+                conclusionBadge.textContent = 'Exception';
                 conclusionBadge.className = 'badge bg-danger';
 
-                // 경감요소 입력 이벤트 리스너
-                mitigationTextarea.onInput = () => updateSampleConclusion(sampleNumber);
+                // 경감요소 행이 없으면 추가
+                if (!existingMitigationRow) {
+                    const tbody = document.getElementById('sample-lines-tbody');
+                    const currentRow = resultSelect.closest('tr');
+                    const mitigationRow = document.createElement('tr');
+                    mitigationRow.id = `mitigation-row-${sampleNumber}`;
+                    mitigationRow.innerHTML = `
+                        <td colspan="4" class="bg-light">
+                            <div class="p-2">
+                                <label class="form-label fw-bold mb-1" style="font-size: 0.875rem;">경감요소:</label>
+                                <input type="text" class="form-control form-control-sm"
+                                       id="sample-mitigation-${sampleNumber}"
+                                       placeholder="경감요소를 입력하세요"
+                                       value=""
+                                       style="height: 31px;" />
+                            </div>
+                        </td>
+                    `;
+                    currentRow.insertAdjacentElement('afterend', mitigationRow);
+                }
             } else {
-                // No Exception 선택 시 경감요소 비활성화 및 초기화
-                mitigationTextarea.disabled = true;
-                mitigationTextarea.value = '';
+                // No Exception 선택 시 경감요소 행 제거
                 conclusionBadge.textContent = 'OK';
                 conclusionBadge.className = 'badge bg-success';
+
+                if (existingMitigationRow) {
+                    existingMitigationRow.remove();
+                }
             }
 
             // 전체 결론 업데이트
