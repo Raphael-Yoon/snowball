@@ -11,6 +11,28 @@
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* 모달이 navbar 위에 표시되도록 z-index 강제 조정 */
+        .modal {
+            z-index: 1060 !important;
+        }
+        .modal-backdrop {
+            z-index: 1055 !important;
+        }
+        /* 모달이 화면을 벗어나지 않도록 높이 제한 및 스크롤 추가 */
+        #operationEvaluationModal .modal-content {
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #operationEvaluationModal .modal-body {
+            overflow-y: auto;
+            flex: 1 1 auto;
+        }
+        #operationEvaluationModal .modal-footer {
+            flex-shrink: 0;
+        }
+    </style>
 </head>
 <body>
     {% include 'navi.jsp' %}
@@ -325,31 +347,30 @@
                             </div>
                         </div>
 
-                            <div class="mb-3">
-                                <label for="exception_details" class="form-label fw-bold">예외사항 세부내용</label>
-                                <textarea class="form-control" id="exception_details" name="exception_details" rows="3" placeholder="발견된 예외사항의 세부내용을 기록하세요"></textarea>
-                            </div>
+                        <div class="mb-3">
+                            <label for="exception_details" class="form-label fw-bold">예외사항 세부내용</label>
+                            <textarea class="form-control" id="exception_details" name="exception_details" rows="3" placeholder="발견된 예외사항의 세부내용을 기록하세요"></textarea>
+                        </div>
 
-                            <div class="mb-3">
-                                <label for="improvement_plan" class="form-label fw-bold">개선계획</label>
-                                <textarea class="form-control" id="improvement_plan" name="improvement_plan" rows="3" placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
-                            </div>
+                        <div class="mb-3">
+                            <label for="improvement_plan" class="form-label fw-bold">개선계획</label>
+                            <textarea class="form-control" id="improvement_plan" name="improvement_plan" rows="3" placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
+                        </div>
 
-                            <!-- 파일 첨부 섹션 -->
-                            <div class="mb-3">
-                                <label for="evaluationImages" class="form-label fw-bold">증빙 자료 (이미지)</label>
-                                <input type="file" class="form-control" id="evaluationImages" accept="image/*" multiple>
-                                <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
-                                <div id="imagePreview" class="mt-2"></div>
-                            </div>
+                        <!-- 파일 첨부 섹션 -->
+                        <div class="mb-3">
+                            <label for="evaluationImages" class="form-label fw-bold">증빙 자료 (이미지)</label>
+                            <input type="file" class="form-control" id="evaluationImages" accept="image/*" multiple>
+                            <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
+                            <div id="imagePreview" class="mt-2"></div>
+                        </div>
 
-                            <!-- 수동통제 전용: 엑셀 파일 업로드 -->
-                            <div class="mb-3" id="excelUploadSection" style="display: none;">
-                                <label for="sampleExcelFile" class="form-label fw-bold">표본 데이터 (엑셀)</label>
-                                <input type="file" class="form-control" id="sampleExcelFile" accept=".xlsx,.xls,.csv">
-                                <div class="form-text">표본 검토 내역이 포함된 엑셀 파일을 업로드하세요.</div>
-                                <div id="excelPreview" class="mt-2"></div>
-                            </div>
+                        <!-- 수동통제 전용: 엑셀 파일 업로드 -->
+                        <div class="mb-3" id="excelUploadSection" style="display: none;">
+                            <label for="sampleExcelFile" class="form-label fw-bold">표본 데이터 (엑셀)</label>
+                            <input type="file" class="form-control" id="sampleExcelFile" accept=".xlsx,.xls,.csv">
+                            <div class="form-text">표본 검토 내역이 포함된 엑셀 파일을 업로드하세요.</div>
+                            <div id="excelPreview" class="mt-2"></div>
                         </div>
 
                         <!-- 당기 발생사실 없음 사유 -->
@@ -369,7 +390,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="min-width: auto; padding: 0.375rem 0.75rem;">취소</button>
-                    <button type="button" id="saveOperationEvaluationBtn" class="btn btn-warning" onclick="console.log('저장 버튼 클릭됨'); saveOperationEvaluation();">
+                    <button type="button" id="saveOperationEvaluationBtn" class="btn btn-warning" onclick="saveOperationEvaluation();">
                         <i class="fas fa-save me-1"></i>저장
                     </button>
                 </div>
@@ -940,16 +961,17 @@
                 return;
             }
 
-            console.log('Not APD01/APD07/APD09/APD12/PC01/PC02/PC03/CO01, checking if manual control...');
+            console.log('Not APD01/APD07/APD09/APD12/PC01/PC02/PC03/CO01, using standard modal...');
 
-            // 수동통제 판별 (control_nature_code가 'M', 'Manual', '수동'인 경우)
-            if (controlNatureCode && (controlNatureCode.toUpperCase() === 'M' || controlNatureCode === '수동' || controlNatureCode.toUpperCase() === 'MANUAL')) {
-                console.log('Manual control detected! Redirecting to Generic evaluation page...');
-                showGenericManualControlUI(buttonElement);
-                return;
-            }
+            // 수동통제 판별: 표준통제 코드가 없는 수동통제만 Generic UI 사용
+            // ELC 일반 수동통제는 기본 모달 사용 (통제 주기 기반 표본 수 자동 설정)
+            // if (controlNatureCode && (controlNatureCode.toUpperCase() === 'M' || controlNatureCode === '수동' || controlNatureCode.toUpperCase() === 'MANUAL')) {
+            //     console.log('Manual control detected! Redirecting to Generic evaluation page...');
+            //     showGenericManualControlUI(buttonElement);
+            //     return;
+            // }
 
-            console.log('Not a manual control, showing standard modal');
+            console.log('Showing standard evaluation modal with auto sample size...');
 
             // 일반 운영평가 UI (수동통제가 아닌 경우 - 거의 사용되지 않음)
             const excelSection = document.getElementById('excelUploadSection');
@@ -1034,6 +1056,59 @@
             if (!evaluated_controls[controlCode] || (!evaluated_controls[controlCode].sample_size && !evaluated_controls[controlCode].no_occurrence)) {
                 const defaultSampleSize = getDefaultSampleSize(controlFrequency, controlType);
                 if (sampleSizeEl) sampleSizeEl.value = defaultSampleSize;
+            }
+
+            // 먼저 기존 샘플 테이블 완전히 비우기 (다른 통제의 데이터가 보이는 것 방지)
+            const tbody = document.getElementById('sample-lines-tbody');
+            if (tbody) {
+                tbody.innerHTML = '';
+            }
+            const container = document.getElementById('sample-lines-container');
+            if (container) {
+                container.style.display = 'none';
+            }
+
+            // 평가 버튼 클릭할 때마다 line_id로 샘플 데이터 조회 (캐시 사용 안 함)
+            if (evaluated_controls[controlCode] && evaluated_controls[controlCode].line_id) {
+                const lineId = evaluated_controls[controlCode].line_id;
+                console.log('[openOperationEvaluationModal] 샘플 데이터 조회 시작 - line_id:', lineId, '(매번 새로 조회)');
+
+                // 먼저 기존 샘플 데이터 제거
+                evaluated_controls[controlCode].sample_lines = [];
+
+                // API 호출하여 샘플 데이터 조회 (평가 버튼 클릭할 때마다 실행)
+                fetch(`/api/operation-evaluation/samples/${lineId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 샘플이 0개여도 빈 배열로 업데이트 (기존 데이터 제거)
+                            evaluated_controls[controlCode].sample_lines = data.samples || [];
+
+                            if (data.samples && data.samples.length > 0) {
+                                console.log('[openOperationEvaluationModal] 샘플 데이터 조회 성공:', data.samples);
+                                // 샘플 라인 자동 생성
+                                setTimeout(() => {
+                                    generateSampleLines();
+                                }, 100);
+                            } else {
+                                console.log('[openOperationEvaluationModal] 샘플 데이터 없음 (0개) - 테이블 비우기');
+                                // 샘플이 없으면 기존 테이블 완전히 비우기
+                                const tbody = document.getElementById('sample-lines-tbody');
+                                if (tbody) {
+                                    tbody.innerHTML = '';
+                                }
+                                const container = document.getElementById('sample-lines-container');
+                                if (container) {
+                                    container.style.display = 'none';
+                                }
+                            }
+                        } else {
+                            console.error('[openOperationEvaluationModal] API 응답 실패:', data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('[openOperationEvaluationModal] 샘플 데이터 조회 실패:', error);
+                    });
             }
 
             // 예외 발견 수에 따른 결론 자동 업데이트 (발생사실 없음이 아닐 때만)
@@ -1166,22 +1241,55 @@
             const tbody = document.getElementById('sample-lines-tbody');
             tbody.innerHTML = ''; // 기존 라인 초기화
 
+            // 기존 샘플 데이터 가져오기
+            console.log('===========================================');
+            console.log('[generateSampleLines] START');
+            console.log('[generateSampleLines] currentControlCode:', currentControlCode);
+            console.log('[generateSampleLines] evaluated_controls 전체:', evaluated_controls);
+            console.log('[generateSampleLines] evaluated_controls[currentControlCode]:', evaluated_controls[currentControlCode]);
+
+            const existingData = evaluated_controls[currentControlCode];
+            console.log('[generateSampleLines] existingData:', existingData);
+
+            const existingSampleLines = existingData?.sample_lines || [];
+            console.log('[generateSampleLines] existingSampleLines:', existingSampleLines);
+            console.log('[generateSampleLines] existingSampleLines.length:', existingSampleLines.length);
+
+            // SQL 쿼리 시뮬레이션 출력
+            if (existingData && existingData.line_id) {
+                console.log(`[SQL Query 시뮬레이션]
+                    SELECT sample_id, sample_number, evidence, has_exception, mitigation
+                    FROM sb_operation_evaluation_sample
+                    WHERE line_id = ${existingData.line_id}
+                    ORDER BY sample_number
+                `);
+            }
+            console.log('===========================================');
+
             // 표본 크기만큼 라인 생성
             for (let i = 1; i <= sampleSize; i++) {
+                // 기존 데이터에서 해당 표본 번호의 데이터 찾기
+                const existingSample = existingSampleLines.find(s => s.sample_number === i);
+
+                const evidence = existingSample?.evidence || '';
+                const result = existingSample?.result || 'no_exception';
+                const mitigation = existingSample?.mitigation || '';
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="text-center align-middle">#${i}</td>
                     <td>
                         <input type="text" class="form-control form-control-sm"
                                id="sample-evidence-${i}"
-                               placeholder="예: 증빙서류 확인" />
+                               placeholder="예: 증빙서류 확인"
+                               value="${evidence}" />
                     </td>
                     <td>
                         <select class="form-select form-select-sm"
                                 id="sample-result-${i}"
                                 onchange="handleSampleResultChange(${i})">
-                            <option value="no_exception">No Exception</option>
-                            <option value="exception">Exception</option>
+                            <option value="no_exception" ${result === 'no_exception' ? 'selected' : ''}>No Exception</option>
+                            <option value="exception" ${result === 'exception' ? 'selected' : ''}>Exception</option>
                         </select>
                     </td>
                     <td>
@@ -1189,10 +1297,12 @@
                                   id="sample-mitigation-${i}"
                                   rows="2"
                                   placeholder="경감요소 입력"
-                                  disabled></textarea>
+                                  ${result === 'exception' ? '' : 'disabled'}>${mitigation}</textarea>
                     </td>
                     <td class="text-center align-middle">
-                        <span id="sample-conclusion-${i}" class="badge bg-success">OK</span>
+                        <span id="sample-conclusion-${i}" class="badge ${result === 'exception' ? 'bg-danger' : 'bg-success'}">
+                            ${result === 'exception' ? 'Exception' : 'OK'}
+                        </span>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -1477,35 +1587,47 @@
 
         // 운영평가 저장
         function saveOperationEvaluation() {
+            console.log('===== saveOperationEvaluation 호출됨 =====');
+
+            // 변수 선언을 함수 최상단으로 이동
+            let formData;
+
             try {
                 console.log('=== saveOperationEvaluation 시작 ===');
-                console.log('currentRcmId:', currentRcmId);
-                console.log('currentEvaluationSession:', currentEvaluationSession);
-                console.log('currentControlCode:', currentControlCode);
+                console.log('currentRcmId:', currentRcmId, '(type:', typeof currentRcmId, ')');
+                console.log('currentEvaluationSession:', currentEvaluationSession, '(type:', typeof currentEvaluationSession, ')');
+                console.log('currentControlCode:', currentControlCode, '(type:', typeof currentControlCode, ')');
 
                 // 필수 변수 검증
                 if (!currentRcmId) {
+                    console.error('❌ RCM ID가 설정되지 않음');
+                    alert('RCM ID가 설정되지 않았습니다.');
                     throw new Error('RCM ID가 설정되지 않았습니다.');
                 }
                 if (!currentEvaluationSession) {
+                    console.error('❌ 평가 세션이 설정되지 않음');
+                    alert('평가 세션이 설정되지 않았습니다.');
                     throw new Error('평가 세션이 설정되지 않았습니다.');
                 }
                 if (!currentControlCode) {
+                    console.error('❌ 통제 코드가 설정되지 않음');
+                    alert('통제 코드가 설정되지 않았습니다.');
                     throw new Error('통제 코드가 설정되지 않았습니다.');
                 }
 
                 const form = document.getElementById('operationEvaluationForm');
+                console.log('폼 요소 검색 결과:', form);
                 if (!form) {
-                    console.error('폼을 찾을 수 없음');
-                    showErrorToast('폼을 찾을 수 없습니다.');
+                    console.error('❌ 폼을 찾을 수 없음');
+                    alert('폼을 찾을 수 없습니다.');
                     return;
                 }
 
-                const formData = new FormData(form);
-                console.log('FormData 생성 완료');
+                formData = new FormData(form);
+                console.log('✅ FormData 생성 완료');
             } catch (error) {
-                console.error('saveOperationEvaluation 초기화 오류:', error);
-                showErrorToast('저장 초기화 중 오류 발생: ' + error.message);
+                console.error('❌ saveOperationEvaluation 초기화 오류:', error);
+                alert('저장 초기화 중 오류 발생: ' + error.message);
                 return;
             }
 

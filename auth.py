@@ -977,12 +977,20 @@ def delete_evaluation_session(rcm_id, user_id, evaluation_session):
 #     pass
 
 def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session, design_evaluation_session, evaluation_data):
-    """운영평가 결과 저장 (Header-Line 구조)"""
+    """운영평가 결과 저장 (Header-Line-Sample 3단 구조)"""
     import json
 
-    # sample_lines 데이터를 JSON 문자열로 변환
+    # sample_lines 데이터 추출
     sample_lines = evaluation_data.get('sample_lines', [])
-    sample_lines_json = json.dumps(sample_lines, ensure_ascii=False) if sample_lines else None
+
+    # 하위 호환성: sample_details도 확인
+    if not sample_lines:
+        sample_details_json = evaluation_data.get('sample_details')
+        if sample_details_json:
+            try:
+                sample_lines = json.loads(sample_details_json) if isinstance(sample_details_json, str) else sample_details_json
+            except:
+                sample_lines = []
 
     with get_db() as conn:
         # Header 생성 또는 조회
@@ -994,7 +1002,9 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
             WHERE header_id = ? AND control_code = ?
         ''', (header_id, control_code)).fetchone()
 
+        line_id = None
         if existing_line:
+            line_id = existing_line['line_id']
             # 업데이트
             conn.execute('''
                 UPDATE sb_operation_evaluation_line
@@ -1010,7 +1020,6 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     population_count = ?,
                     no_occurrence = ?,
                     no_occurrence_reason = ?,
-                    sample_details = ?,
                     evaluation_date = CURRENT_TIMESTAMP,
                     last_updated = CURRENT_TIMESTAMP
                 WHERE line_id = ?
@@ -1027,19 +1036,18 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                 evaluation_data.get('population_count'),
                 1 if evaluation_data.get('no_occurrence') else 0,
                 evaluation_data.get('no_occurrence_reason'),
-                sample_lines_json,  # 표본 라인 JSON을 sample_details에 저장
-                existing_line['line_id']
+                line_id
             ))
         else:
             # 삽입
-            conn.execute('''
+            cursor = conn.execute('''
                 INSERT INTO sb_operation_evaluation_line (
                     header_id, control_code, sample_size,
                     exception_count, mitigating_factors, exception_details, conclusion, improvement_plan,
                     population_path, samples_path, test_results_path, population_count,
-                    no_occurrence, no_occurrence_reason, sample_details,
+                    no_occurrence, no_occurrence_reason,
                     evaluation_date, last_updated
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ''', (
                 header_id, control_code,
                 evaluation_data.get('sample_size'),
@@ -1053,9 +1061,28 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                 evaluation_data.get('test_results_path'),
                 evaluation_data.get('population_count'),
                 1 if evaluation_data.get('no_occurrence') else 0,
-                evaluation_data.get('no_occurrence_reason'),
-                sample_lines_json  # 표본 라인 JSON을 sample_details에 저장
+                evaluation_data.get('no_occurrence_reason')
             ))
+            line_id = cursor.lastrowid
+
+        # Sample 데이터 저장 (새 테이블 구조)
+        if sample_lines and line_id:
+            # 기존 샘플 데이터 삭제
+            conn.execute('DELETE FROM sb_operation_evaluation_sample WHERE line_id = ?', (line_id,))
+
+            # 새 샘플 데이터 삽입
+            for sample in sample_lines:
+                conn.execute('''
+                    INSERT INTO sb_operation_evaluation_sample (
+                        line_id, sample_number, evidence, has_exception, mitigation
+                    ) VALUES (?, ?, ?, ?, ?)
+                ''', (
+                    line_id,
+                    sample.get('sample_number'),
+                    sample.get('evidence', ''),
+                    1 if sample.get('result') == 'exception' else 0,
+                    sample.get('mitigation', '')
+                ))
 
         # Header의 last_updated 갱신
         conn.execute('''
@@ -1087,27 +1114,90 @@ def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_
     return cursor.lastrowid
 
 def get_operation_evaluations(rcm_id, user_id, evaluation_session, design_evaluation_session=None):
-    """특정 RCM의 사용자별 운영평가 결과 조회 (세션별, Header-Line 구조)"""
+    """특정 RCM의 사용자별 운영평가 결과 조회 (세션별, Header-Line-Sample 3단 구조)"""
+    import json
+
+    print(f'[get_operation_evaluations] rcm_id={rcm_id}, user_id={user_id}, eval_session={evaluation_session}, design_session={design_evaluation_session}')
+
     with get_db() as conn:
         if design_evaluation_session:
             # 특정 설계평가 세션에 대한 운영평가 조회
-            evaluations = conn.execute('''
-                SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session
-                FROM sb_operation_evaluation_line l
-                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
-                WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ? AND h.design_evaluation_session = ?
-                ORDER BY l.control_sequence, l.control_code
-            ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchall()
+            query = '''SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session FROM sb_operation_evaluation_line l JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ? AND h.design_evaluation_session = ? ORDER BY l.control_sequence, l.control_code'''
+            params = (rcm_id, user_id, evaluation_session, design_evaluation_session)
+            print(f'[SQL] {query}')
+            print(f'[PARAMS] {params}')
+            evaluations = conn.execute(query, params).fetchall()
         else:
             # 운영평가 세션만으로 조회 (기존 호환성)
-            evaluations = conn.execute('''
-                SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session
-                FROM sb_operation_evaluation_line l
-                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
-                WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ?
-                ORDER BY l.control_sequence, l.control_code
-            ''', (rcm_id, user_id, evaluation_session)).fetchall()
-        return [dict(eval) for eval in evaluations]
+            query = '''SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session FROM sb_operation_evaluation_line l JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ? ORDER BY l.control_sequence, l.control_code'''
+            params = (rcm_id, user_id, evaluation_session)
+            print(f'[SQL] {query}')
+            print(f'[PARAMS] {params}')
+            evaluations = conn.execute(query, params).fetchall()
+
+        print(f'[get_operation_evaluations] Found {len(evaluations)} evaluation lines')
+
+        result = []
+        for eval in evaluations:
+            eval_dict = dict(eval)
+
+            # 샘플 데이터는 평가 버튼 클릭 시에만 별도 API로 조회
+            # 페이지 로드 시에는 line 정보만 반환
+            eval_dict['sample_lines'] = []
+
+            result.append(eval_dict)
+
+        return result
+
+def get_operation_evaluation_samples(line_id):
+    """특정 line_id의 샘플 데이터 조회 (평가 버튼 클릭 시 사용)"""
+    import json
+
+    print(f'[get_operation_evaluation_samples] line_id={line_id}')
+
+    with get_db() as conn:
+        # 실제 실행될 SQL 쿼리 출력 (파라미터 바인딩 포함)
+        sample_query = '''
+            SELECT sample_id, sample_number, evidence, has_exception, mitigation,
+                   request_number, requester_name, requester_department,
+                   approver_name, approver_department, approval_date
+            FROM sb_operation_evaluation_sample
+            WHERE line_id = ?
+            ORDER BY sample_number
+        '''
+        # 쿼리를 한 줄로 변환하여 출력
+        query_oneline = ' '.join(sample_query.split())
+        print(f'[SQL Query] {query_oneline} -- Parameters: line_id={line_id}')
+        print(f'[SQL Query - Expanded] SELECT sample_id, sample_number, evidence, has_exception, mitigation, request_number, requester_name, requester_department, approver_name, approver_department, approval_date FROM sb_operation_evaluation_sample WHERE line_id = {line_id} ORDER BY sample_number')
+
+        samples = conn.execute(sample_query, (line_id,)).fetchall()
+
+        print(f'[get_operation_evaluation_samples] 조회된 샘플 수 = {len(samples)}')
+        if len(samples) > 0:
+            print(f'[SQL Result] 조회된 샘플 데이터:')
+            for idx, sample in enumerate(samples):
+                evidence_preview = sample['evidence'][:50] + '...' if sample['evidence'] and len(sample['evidence']) > 50 else (sample['evidence'] or '없음')
+                print(f'  샘플 #{idx+1}: sample_id={sample["sample_id"]}, sample_number={sample["sample_number"]}, has_exception={sample["has_exception"]}, evidence={evidence_preview}')
+        else:
+            print(f'[SQL Result] 조회된 샘플이 없습니다.')
+
+        # 샘플 데이터를 sample_lines 형식으로 변환
+        sample_lines = []
+        for sample in samples:
+            sample_lines.append({
+                'sample_number': sample['sample_number'],
+                'evidence': sample['evidence'],
+                'result': 'exception' if sample['has_exception'] else 'no_exception',
+                'mitigation': sample['mitigation'] or '',
+                'request_number': sample['request_number'],
+                'requester_name': sample['requester_name'],
+                'requester_department': sample['requester_department'],
+                'approver_name': sample['approver_name'],
+                'approver_department': sample['approver_department'],
+                'approval_date': sample['approval_date']
+            })
+
+        return sample_lines
 
 def count_design_evaluations(rcm_id, user_id):
     """특정 RCM의 사용자별 설계평가 헤더 개수 조회 (평가 세션 개수)"""
