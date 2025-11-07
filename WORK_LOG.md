@@ -240,3 +240,66 @@ buttonElement.style.height = '24px';
 1. Flask 서버 재시작
 2. 브라우저에서 **Ctrl+Shift+R** (하드 리프레시)
 3. `/design-evaluation/rcm` 페이지에서 버튼 높이 확인
+
+---
+
+## 2025-01-07 - VSCode 디버그 설정 및 Dashboard 이미지 적용
+
+### 1. VSCode/Cursor 디버그 설정 개선
+
+#### 1.1 작업 디렉토리 설정
+- **문제**: F5로 Flask 서버 실행 시 작업 디렉토리가 상위 폴더(Pythons)로 설정됨
+- **해결**: `launch.json`에 `cwd: "${fileDirname}"` 추가
+- **파일**: `.vscode/launch.json`
+- **효과**: `snowball.py` 실행 시 자동으로 `snowball` 폴더가 작업 디렉토리로 설정됨
+
+**변경 내용**:
+```json
+{
+    "name": "Python Debugger: Current File",
+    "type": "debugpy",
+    "request": "launch",
+    "program": "${file}",
+    "console": "integratedTerminal",
+    "cwd": "${fileDirname}"  // 추가
+}
+```
+
+### 2. Dashboard 이미지 적용
+
+#### 2.1 메인 페이지 이미지 교체
+- **대상**: index.jsp의 Dashboard 카드
+- **변경**: `img/review.jpg` → `img/dashboard.jpg`
+- **파일**: `templates/index.jsp` (129줄, 316줄)
+- **적용 위치**:
+  - 로그인 상태 Private 섹션
+  - 비로그인 상태 Private 미리보기 섹션
+
+### 3. 미사용 이미지 분석 및 정리
+
+#### 3.1 중복/대체된 이미지 정리
+- **review.jpg** ← dashboard.jpg로 대체됨 (삭제 권장)
+- contact_us.png (jpg 버전 사용 중)
+- rcm_inquiry.png (jpg 버전 사용 중)
+- interview.png (jpg 버전 사용 중)
+- operational_review.png (jpg 버전 사용 중)
+
+### 주요 변경 파일
+
+#### 설정 파일
+- `.vscode/launch.json` - 작업 디렉토리 설정 추가
+
+#### 템플릿 파일
+- `templates/index.jsp` - Dashboard 이미지 교체 (2개 위치)
+
+### 개선 사항
+
+1. ✅ **개발 환경**: F5 디버그 실행 시 올바른 작업 디렉토리 설정
+2. ✅ **UI 일관성**: Dashboard 전용 이미지 적용
+3. ✅ **리소스 관리**: 중복 이미지 파악 및 정리 대상 선정
+
+### 참고
+
+- 작업 디렉토리 확인: Flask 실행 시 `templates/`, `static/` 폴더 접근 가능 여부 확인
+- 이미지 교체 후 브라우저 캐시 클리어 권장 (Ctrl+Shift+R)
+- 미사용 이미지는 백업 후 삭제 권장
