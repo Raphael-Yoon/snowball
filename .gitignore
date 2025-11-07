@@ -7,6 +7,7 @@ credentials.json
 downloads/
 uploads/
 progress_data/
+.DS_Store
 
 # Test coverage reports
 tests/htmlcov/

@@ -126,7 +126,7 @@
 
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-info h-100">
-                        <img src="{{ url_for('static', filename='img/review.jpg')}}" class="feature-img" alt="Dashboard"
+                        <img src="{{ url_for('static', filename='img/dashboard.jpg')}}" class="feature-img" alt="Dashboard"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-chart-pie me-2"></i>Dashboard</h5>
@@ -313,7 +313,7 @@
 
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-info h-100">
-                        <img src="{{ url_for('static', filename='img/review.jpg')}}" class="feature-img" alt="Dashboard"
+                        <img src="{{ url_for('static', filename='img/dashboard.jpg')}}" class="feature-img" alt="Dashboard"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-chart-pie me-2"></i>Dashboard</h5>
