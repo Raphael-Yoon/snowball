@@ -465,3 +465,156 @@ snowball/
 - ✅ **운영 서버**: MySQL 데이터베이스 사용
 - ✅ **로컬 개발**: SQLite 파일 사용
 - ✅ **데이터 동기화**: 양방향 마이그레이션 스크립트 활용
+
+---
+
+## 2025-01-08 - ELC 운영평가 모달 UI/UX 개선
+
+### 1. 개요
+- **목적**: ELC 운영평가 모달의 사용성 개선 및 전체 결론 로직 수정
+- **대상 파일**: `templates/link7_detail.jsp`
+- **작업 시작**: 이전 세션에서 계속됨
+
+### 2. 주요 변경 사항
+
+#### 2.1 "결론" 컬럼 제거
+- **위치**: 표본별 테스트 결과 테이블
+- **변경 내용**:
+  - 테이블 헤더에서 "결론" 컬럼 제거
+  - JavaScript에서 결론 배지 생성 코드 삭제
+  - `updateSampleConclusion()` 함수 완전 제거
+  - `handleSampleResultChange()` 함수 간소화
+  - Mitigation 행의 colspan 4→3으로 조정
+- **수정 라인**: 315-320, 1290-1299, 1307, 1343
+- **이유**: 표본별 결론은 불필요하고, 전체 결론만 표시하면 충분
+
+#### 2.2 모달 너비 조정
+- **변경 과정**:
+  1. 1200px → 70% (반응형)
+  2. 70% → 840px (고정, 70% of 1200px)
+  3. 840px → **800px** (최종)
+- **수정 라인**: 240
+- **이유**: 사용자가 고정 너비를 선호, 800px가 적당한 크기
+
+#### 2.3 표본 크기 필드 조정
+- **필드 너비**: col-md-6 → col-md-3 (절반 크기)
+- **정렬**: `text-end` 클래스 추가 (우측 정렬)
+- **수정 라인**: 300, 302
+- **이유**: 숫자 입력 필드는 작아도 되고 우측 정렬이 자연스러움
+
+#### 2.4 권장 표본수 안내 텍스트 개선
+- **문제**: col-md-3 안에 있어서 텍스트가 짧게 잘림
+- **해결**:
+  - 안내 텍스트를 별도 col-md-9 영역으로 분리
+  - `d-flex align-items-end` 클래스로 하단 정렬
+- **수정 라인**: 304-308
+- **결과**: 안내 텍스트 전체가 보이고 입력 필드 하단에 자연스럽게 정렬
+
+#### 2.5 전체 결론 로직 수정 ⭐
+- **문제**: `rows.forEach((row, index)` 루프가 모든 `<tr>` 요소(mitigation 행 포함)를 카운트하여 잘못된 sample numbering 발생
+- **해결**:
+  - `rows.forEach()` 대신 `for (let i = 1; i <= sampleSize; i++)` 루프 사용
+  - `sample_size` 입력값을 기준으로 정확한 샘플 개수만큼 반복
+  - 각 샘플의 ID로 직접 요소 조회
+- **로직**:
+  - 경감요소 없는 Exception 1건이라도 있으면 → "Ineffective"
+  - 모든 Exception에 경감요소가 있으면 → "Effective"
+  - Exception이 없으면 → "Effective"
+- **수정 라인**: 1368-1423
+- **추가 개선**: 경감요소 입력 시 실시간 업데이트 (`oninput="updateOverallConclusion()"` 추가)
+- **수정 라인**: 1314, 1351
+
+#### 2.6 평가결과 텍스트 변경
+- **변경**: "Exception" → "Ineffective" (미비)
+- **위치**: 전체 결론 표시 (`updateOverallConclusion()` 함수)
+- **수정 라인**: 1408
+- **유지**: "Effective" (적정)
+- **참고**: 목록 페이지의 "Exception" 표시는 사용자 요청으로 원복
+
+#### 2.7 표본별 테스트 결과 테이블 컬럼 너비 조정
+- **변경 과정**:
+  1. 표본 #: 10%, 증빙 내용: 75%, 결과: 15% (초기)
+  2. 표본 #: 10%, 증빙 내용: 65%, 결과: 25% (1차 수정)
+  3. 표본 #: 10%, 증빙 내용: 70%, 결과: 20% (최종)
+- **수정 라인**: 319-321
+- **이유**: "No Exception" 텍스트가 잘리지 않도록 결과 컬럼 확대
+
+### 3. 기술적 세부사항
+
+#### 3.1 JavaScript 함수 변경
+
+**updateOverallConclusion() - Before:**
+```javascript
+const rows = tbody.querySelectorAll('tr');
+rows.forEach((row, index) => {
+    const sampleNumber = index + 1;  // ❌ mitigation 행도 카운트됨
+    const resultSelect = document.getElementById(`sample-result-${sampleNumber}`);
+    // ...
+});
+```
+
+**updateOverallConclusion() - After:**
+```javascript
+const sampleSize = parseInt(document.getElementById('sample_size').value) || 0;
+for (let i = 1; i <= sampleSize; i++) {  // ✅ 정확한 샘플 개수만 반복
+    const resultSelect = document.getElementById(`sample-result-${i}`);
+    const mitigationTextarea = document.getElementById(`sample-mitigation-${i}`);
+    // ...
+}
+```
+
+#### 3.2 실시간 업데이트 구현
+- Mitigation 입력 필드에 `oninput` 이벤트 핸들러 추가
+- 사용자가 경감요소를 입력하면 즉시 전체 결론이 업데이트됨
+- UX 개선: 별도 버튼 클릭 없이 자동 반영
+
+#### 3.3 Bootstrap Grid 활용
+- 표본 크기 입력: `col-md-3`
+- 권장 표본수 안내: `col-md-9 d-flex align-items-end`
+- 반응형 레이아웃 유지하면서 가독성 향상
+
+### 4. 테스트 체크리스트
+
+- [x] 표본 크기 입력 시 라인 생성
+- [x] Exception 선택 시 경감요소 입력란 표시
+- [x] 경감요소 입력 시 실시간 전체 결론 업데이트
+- [x] 경감요소 없는 Exception → Ineffective 표시
+- [x] 모든 Exception에 경감요소 있음 → Effective 표시
+- [x] No Exception만 있음 → Effective 표시
+- [x] 권장 표본수 안내 텍스트 전체 표시
+- [x] 표본 크기 필드 우측 정렬
+- [x] 모달 너비 800px 적용
+- [x] "No Exception" 텍스트가 잘리지 않음
+
+### 5. 파일 변경 요약
+
+**수정된 파일**: `templates/link7_detail.jsp`
+
+**변경된 섹션**:
+1. 모달 너비 설정 (line 240)
+2. 표본 크기 입력 필드 (lines 300-309)
+3. 표본별 테스트 결과 테이블 헤더 (lines 317-323)
+4. 샘플 라인 생성 JavaScript (lines 1272-1320)
+5. 샘플 결과 변경 핸들러 (lines 1330-1365)
+6. 전체 결론 계산 함수 (lines 1368-1423)
+
+**삭제된 함수**:
+- `updateSampleConclusion()` (표본별 결론 업데이트 - 불필요)
+
+### 6. 사용자 피드백 반영
+
+1. ✅ "결론 컬럼 삭제" - 완료
+2. ✅ "모달 너비 800px" - 완료
+3. ✅ "표본 크기 필드 크기 조정" - 완료
+4. ✅ "숫자 우측 정렬" - 완료
+5. ✅ "전체 결론 로직 수정" - 완료
+6. ✅ "권장 표본수 안내 개선" - 완료
+7. ✅ "목록의 Exception 표시 유지" - 사용자 요청으로 원복
+8. ✅ "결과 컬럼 너비 조정" - 20%로 최종 확정
+
+### 7. 향후 개선 가능 사항
+
+- 표본별 테스트 결과 자동 저장 기능
+- 경감요소 템플릿/자동완성 기능
+- 표본 크기별 권장값 자동 설정
+- 평가 진행률 실시간 표시

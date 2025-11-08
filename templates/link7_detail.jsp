@@ -237,7 +237,7 @@
 
     <!-- 운영평가 모달 -->
     <div class="modal fade" id="operationEvaluationModal" tabindex="-1" aria-labelledby="operationEvaluationModalLabel" aria-hidden="true">
-        <div class="modal-dialog" style="max-width: 1200px;">
+        <div class="modal-dialog" style="max-width: 800px;">
             <div class="modal-content">
                 <div class="modal-header bg-warning text-dark">
                     <h5 class="modal-title" id="operationEvaluationModalLabel">
@@ -297,9 +297,11 @@
                         <div id="evaluation-fields">
                             <!-- 표본 크기 입력 -->
                             <div class="row mb-3">
-                                <div class="col-md-6">
+                                <div class="col-md-3">
                                     <label for="sample_size" class="form-label fw-bold">표본 크기</label>
-                                    <input type="number" class="form-control" id="sample_size" name="sample_size" min="1" max="100" placeholder="통제주기에 따라 자동 설정" onchange="generateSampleLines()" onkeyup="if(event.key === 'Enter') generateSampleLines()">
+                                    <input type="number" class="form-control text-end" id="sample_size" name="sample_size" min="1" max="100" placeholder="통제주기에 따라 자동 설정" onchange="generateSampleLines()" onkeyup="if(event.key === 'Enter') generateSampleLines()">
+                                </div>
+                                <div class="col-md-9 d-flex align-items-end">
                                     <div class="form-text">
                                         <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1). 입력 후 자동으로 표본 라인이 생성됩니다.</small>
                                     </div>
@@ -316,8 +318,7 @@
                                                 <tr>
                                                     <th width="10%">표본 #</th>
                                                     <th width="70%">증빙 내용</th>
-                                                    <th width="15%">결과</th>
-                                                    <th width="5%">결론</th>
+                                                    <th width="20%">결과</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="sample-lines-tbody">
@@ -1297,11 +1298,6 @@
                             <option value="exception" ${result === 'exception' ? 'selected' : ''}>Exception</option>
                         </select>
                     </td>
-                    <td class="text-center align-middle">
-                        <span id="sample-conclusion-${i}" class="badge ${result === 'exception' ? 'bg-danger' : 'bg-success'}">
-                            ${result === 'exception' ? 'Exception' : 'OK'}
-                        </span>
-                    </td>
                 `;
                 tbody.appendChild(row);
 
@@ -1310,13 +1306,14 @@
                     const mitigationRow = document.createElement('tr');
                     mitigationRow.id = `mitigation-row-${i}`;
                     mitigationRow.innerHTML = `
-                        <td colspan="4" class="bg-light">
+                        <td colspan="3" class="bg-light">
                             <div class="p-2">
                                 <label class="form-label fw-bold mb-1" style="font-size: 0.875rem;">경감요소:</label>
                                 <input type="text" class="form-control form-control-sm"
                                        id="sample-mitigation-${i}"
                                        placeholder="경감요소를 입력하세요"
                                        value="${mitigation}"
+                                       oninput="updateOverallConclusion()"
                                        style="height: 31px;" />
                             </div>
                         </td>
@@ -1335,14 +1332,10 @@
         // 표본 결과 변경 처리
         function handleSampleResultChange(sampleNumber) {
             const resultSelect = document.getElementById(`sample-result-${sampleNumber}`);
-            const conclusionBadge = document.getElementById(`sample-conclusion-${sampleNumber}`);
             const existingMitigationRow = document.getElementById(`mitigation-row-${sampleNumber}`);
 
             if (resultSelect.value === 'exception') {
                 // Exception 선택 시 경감요소 행 추가
-                conclusionBadge.textContent = 'Exception';
-                conclusionBadge.className = 'badge bg-danger';
-
                 // 경감요소 행이 없으면 추가
                 if (!existingMitigationRow) {
                     const tbody = document.getElementById('sample-lines-tbody');
@@ -1350,13 +1343,14 @@
                     const mitigationRow = document.createElement('tr');
                     mitigationRow.id = `mitigation-row-${sampleNumber}`;
                     mitigationRow.innerHTML = `
-                        <td colspan="4" class="bg-light">
+                        <td colspan="3" class="bg-light">
                             <div class="p-2">
                                 <label class="form-label fw-bold mb-1" style="font-size: 0.875rem;">경감요소:</label>
                                 <input type="text" class="form-control form-control-sm"
                                        id="sample-mitigation-${sampleNumber}"
                                        placeholder="경감요소를 입력하세요"
                                        value=""
+                                       oninput="updateOverallConclusion()"
                                        style="height: 31px;" />
                             </div>
                         </td>
@@ -1365,9 +1359,6 @@
                 }
             } else {
                 // No Exception 선택 시 경감요소 행 제거
-                conclusionBadge.textContent = 'OK';
-                conclusionBadge.className = 'badge bg-success';
-
                 if (existingMitigationRow) {
                     existingMitigationRow.remove();
                 }
@@ -1377,35 +1368,12 @@
             updateOverallConclusion();
         }
 
-        // 개별 표본 결론 업데이트
-        function updateSampleConclusion(sampleNumber) {
-            const resultSelect = document.getElementById(`sample-result-${sampleNumber}`);
-            const mitigationTextarea = document.getElementById(`sample-mitigation-${sampleNumber}`);
-            const conclusionBadge = document.getElementById(`sample-conclusion-${sampleNumber}`);
-
-            if (resultSelect.value === 'exception') {
-                const hasMitigation = mitigationTextarea.value.trim().length > 0;
-                if (hasMitigation) {
-                    // 경감요소가 있으면 조건부 OK
-                    conclusionBadge.textContent = 'OK*';
-                    conclusionBadge.className = 'badge bg-warning';
-                } else {
-                    // 경감요소 없으면 Exception
-                    conclusionBadge.textContent = 'EX';
-                    conclusionBadge.className = 'badge bg-danger';
-                }
-            }
-
-            // 전체 결론 업데이트
-            updateOverallConclusion();
-        }
-
         // 전체 결론 자동 계산
         function updateOverallConclusion() {
-            const tbody = document.getElementById('sample-lines-tbody');
-            const rows = tbody.querySelectorAll('tr');
+            const sampleSizeInput = document.getElementById('sample_size');
+            const sampleSize = parseInt(sampleSizeInput.value) || 0;
 
-            if (rows.length === 0) {
+            if (sampleSize === 0) {
                 return;
             }
 
@@ -1413,29 +1381,31 @@
             let exceptionWithMitigationCount = 0;
             let exceptionWithoutMitigationCount = 0;
 
-            rows.forEach((row, index) => {
-                const sampleNumber = index + 1;
-                const resultSelect = document.getElementById(`sample-result-${sampleNumber}`);
-                const mitigationTextarea = document.getElementById(`sample-mitigation-${sampleNumber}`);
+            // 표본 크기만큼 각 표본 확인
+            for (let i = 1; i <= sampleSize; i++) {
+                const resultSelect = document.getElementById(`sample-result-${i}`);
+                const mitigationTextarea = document.getElementById(`sample-mitigation-${i}`);
+
+                if (!resultSelect) continue;
 
                 if (resultSelect.value === 'no_exception') {
                     noExceptionCount++;
                 } else if (resultSelect.value === 'exception') {
-                    const hasMitigation = mitigationTextarea.value.trim().length > 0;
+                    const hasMitigation = mitigationTextarea && mitigationTextarea.value.trim().length > 0;
                     if (hasMitigation) {
                         exceptionWithMitigationCount++;
                     } else {
                         exceptionWithoutMitigationCount++;
                     }
                 }
-            });
+            }
 
             const conclusionSpan = document.getElementById('overall-conclusion');
             const summaryDiv = document.getElementById('conclusion-summary');
 
-            // 경감요소 없는 Exception이 하나라도 있으면 전체 Exception
+            // 경감요소 없는 Exception이 하나라도 있으면 Ineffective
             if (exceptionWithoutMitigationCount > 0) {
-                conclusionSpan.textContent = 'Exception';
+                conclusionSpan.textContent = 'Ineffective';
                 conclusionSpan.className = 'badge bg-danger ms-2';
                 summaryDiv.innerHTML = `
                     <small>
