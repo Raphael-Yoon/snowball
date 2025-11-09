@@ -210,17 +210,16 @@
                                 <tr>
                                     <th width="5%">코드</th>
                                     <th width="20%">이름</th>
-                                    <th width="42%">설명</th>
+                                    <th width="50%">설명</th>
                                     <th width="5%">주기</th>
                                     <th width="5%">핵심</th>
                                     <th width="5%">구분</th>
-                                    <th width="8%">기준통제</th>
-                                    <th width="7%">결과</th>
+                                    <th width="10%">결과</th>
                                 </tr>
                             </thead>
                             <tbody id="designEvaluationTableBody">
                                 <tr>
-                                    <td colspan="8" class="text-center py-4">
+                                    <td colspan="7" class="text-center py-4">
                                         <i class="fas fa-spinner fa-spin me-2"></i>설계평가 데이터를 불러오는 중...
                                     </td>
                                 </tr>
@@ -294,6 +293,22 @@
                             </div>
                         </div>
 
+                        <!-- 설계평가 결과로 대체 옵션 (연간 통제 또는 자동 통제만) -->
+                        <div class="mb-3" id="use-design-evaluation-section" style="display: none;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="use_design_evaluation" name="use_design_evaluation" onchange="toggleUseDesignEvaluation()">
+                                <label class="form-check-label" for="use_design_evaluation">
+                                    <strong>설계평가 결과로 운영평가 대체</strong>
+                                    <small class="text-muted d-block">설계평가에서 이미 증빙을 확인한 경우 (연간 통제 또는 자동 통제) 체크하세요</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 설계평가 정보 표시 섹션 -->
+                        <div id="design-evaluation-info-section" style="display: none;" class="mb-3">
+                            <div id="design-evaluation-info"></div>
+                        </div>
+
                         <div id="evaluation-fields">
                             <!-- 표본 크기 입력 -->
                             <div class="row mb-3">
@@ -342,12 +357,12 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3" id="exception-details-section" style="display: none;">
                             <label for="exception_details" class="form-label fw-bold">예외사항 세부내용</label>
                             <textarea class="form-control" id="exception_details" name="exception_details" rows="3" placeholder="발견된 예외사항의 세부내용을 기록하세요"></textarea>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3" id="improvement-plan-section" style="display: none;">
                             <label for="improvement_plan" class="form-label fw-bold">개선계획</label>
                             <textarea class="form-control" id="improvement_plan" name="improvement_plan" rows="3" placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
                         </div>
@@ -1003,6 +1018,24 @@
             currentControlFrequency = controlFrequency;
             recommendedSampleSize = getDefaultSampleSize(controlFrequency, controlType);
 
+            // 설계평가 대체 옵션 표시 여부 결정 (연간 통제 또는 자동 통제만)
+            const useDesignEvaluationSection = document.getElementById('use-design-evaluation-section');
+            const isAnnually = controlFrequency && (controlFrequency === 'Annually' || controlFrequency === 'A' || controlFrequency === '연간');
+            const isAutomated = controlNatureCode && (controlNatureCode === 'A' || controlNatureCode === '자동' || controlNature === 'Automated');
+
+            if (useDesignEvaluationSection) {
+                if (isAnnually || isAutomated) {
+                    useDesignEvaluationSection.style.display = 'block';
+                } else {
+                    useDesignEvaluationSection.style.display = 'none';
+                    // 체크박스도 초기화
+                    const useDesignEvaluationEl = document.getElementById('use_design_evaluation');
+                    if (useDesignEvaluationEl) {
+                        useDesignEvaluationEl.checked = false;
+                    }
+                }
+            }
+
             // 기존 평가 데이터 로드
             const noOccurrenceEl = document.getElementById('no_occurrence');
             const noOccurrenceReasonEl = document.getElementById('no_occurrence_reason');
@@ -1032,6 +1065,25 @@
                     if (exceptionDetailsEl) exceptionDetailsEl.value = data.exception_details || '';
                     if (conclusionEl) conclusionEl.value = data.conclusion || '';
                     if (improvementPlanEl) improvementPlanEl.value = data.improvement_plan || '';
+
+                    // 설계평가 대체 체크박스 복원
+                    const useDesignEvaluationEl = document.getElementById('use_design_evaluation');
+                    if (useDesignEvaluationEl) {
+                        useDesignEvaluationEl.checked = data.use_design_evaluation || false;
+                        // 체크되어 있으면 필드 비활성화
+                        if (data.use_design_evaluation) {
+                            disableEvaluationFields(true);
+                            const designEvaluationInfoSection = document.getElementById('design-evaluation-info-section');
+                            if (designEvaluationInfoSection) {
+                                designEvaluationInfoSection.style.display = 'block';
+                                // 설계평가 정보 재표시
+                                const infoDiv = document.getElementById('design-evaluation-info');
+                                if (infoDiv) {
+                                    infoDiv.innerHTML = '<div class="alert alert-info"><small>설계평가 결과로 운영평가를 대체하였습니다.</small></div>';
+                                }
+                            }
+                        }
+                    }
                 }
             } else {
                 // 폼 초기화
@@ -1045,6 +1097,9 @@
                 if (evaluationFieldsEl) evaluationFieldsEl.style.display = 'block';
                 if (noOccurrenceReasonSectionEl) noOccurrenceReasonSectionEl.style.display = 'none';
                 if (typeof disableEvaluationFields === 'function') disableEvaluationFields(false);
+
+                // 예외사항 관련 필드 숨기기 (초기 상태)
+                toggleExceptionFields(false);
             }
 
             // 기존 평가 데이터가 없거나 표본수가 비어있는 경우 자동 설정
@@ -1243,9 +1298,30 @@
             }
 
             const tbody = document.getElementById('sample-lines-tbody');
-            tbody.innerHTML = ''; // 기존 라인 초기화
 
-            // 기존 샘플 데이터 가져오기
+            // ⭐ 기존 라인을 초기화하기 전에 현재 화면의 입력값을 먼저 수집
+            const currentInputData = [];
+            const existingRows = tbody.querySelectorAll('tr:not([id^="mitigation-row"])');
+            existingRows.forEach((row, index) => {
+                const sampleNumber = index + 1;
+                const evidenceEl = document.getElementById(`sample-evidence-${sampleNumber}`);
+                const resultEl = document.getElementById(`sample-result-${sampleNumber}`);
+                const mitigationEl = document.getElementById(`sample-mitigation-${sampleNumber}`);
+
+                if (evidenceEl && resultEl) {
+                    currentInputData.push({
+                        sample_number: sampleNumber,
+                        evidence: evidenceEl.value || '',
+                        result: resultEl.value || 'no_exception',
+                        mitigation: mitigationEl ? (mitigationEl.value || '') : ''
+                    });
+                }
+            });
+
+            // 이제 기존 라인 초기화
+            tbody.innerHTML = '';
+
+            // 기존 샘플 데이터 가져오기 (DB에서 로드된 데이터)
             console.log('===========================================');
             console.log('[generateSampleLines] START');
             console.log('[generateSampleLines] currentControlCode:', currentControlCode);
@@ -1258,6 +1334,8 @@
             const existingSampleLines = existingData?.sample_lines || [];
             console.log('[generateSampleLines] existingSampleLines:', existingSampleLines);
             console.log('[generateSampleLines] existingSampleLines.length:', existingSampleLines.length);
+            console.log('[generateSampleLines] currentInputData:', currentInputData);
+            console.log('[generateSampleLines] currentInputData.length:', currentInputData.length);
 
             // SQL 쿼리 시뮬레이션 출력
             if (existingData && existingData.line_id) {
@@ -1272,12 +1350,14 @@
 
             // 표본 크기만큼 라인 생성
             for (let i = 1; i <= sampleSize; i++) {
-                // 기존 데이터에서 해당 표본 번호의 데이터 찾기
+                // 우선순위: 1) 현재 화면 입력값, 2) DB에서 로드된 데이터
+                const currentInput = currentInputData.find(s => s.sample_number === i);
                 const existingSample = existingSampleLines.find(s => s.sample_number === i);
 
-                const evidence = existingSample?.evidence || '';
-                const result = existingSample?.result || 'no_exception';
-                const mitigation = existingSample?.mitigation || '';
+                // 현재 화면에 입력된 값이 있으면 우선 사용, 없으면 DB 데이터 사용
+                const evidence = currentInput?.evidence || existingSample?.evidence || '';
+                const result = currentInput?.result || existingSample?.result || 'no_exception';
+                const mitigation = currentInput?.mitigation || existingSample?.mitigation || '';
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -1287,6 +1367,7 @@
                                id="sample-evidence-${i}"
                                placeholder="예: 증빙서류 확인"
                                value="${evidence}"
+                               oninput="updateOverallConclusion()"
                                style="height: 31px;" />
                     </td>
                     <td class="align-middle">
@@ -1372,21 +1453,34 @@
         function updateOverallConclusion() {
             const sampleSizeInput = document.getElementById('sample_size');
             const sampleSize = parseInt(sampleSizeInput.value) || 0;
+            const conclusionSpan = document.getElementById('overall-conclusion');
+            const summaryDiv = document.getElementById('conclusion-summary');
 
             if (sampleSize === 0) {
+                // 표본 크기가 0이면 결론을 표시하지 않음
+                conclusionSpan.textContent = '-';
+                conclusionSpan.className = 'badge bg-secondary ms-2';
+                summaryDiv.innerHTML = `<small>표본별 결과를 입력하면 자동으로 계산됩니다.</small>`;
                 return;
             }
 
             let noExceptionCount = 0;
             let exceptionWithMitigationCount = 0;
             let exceptionWithoutMitigationCount = 0;
+            let evidenceFilledCount = 0;  // 증빙 내용이 입력된 표본 수
 
             // 표본 크기만큼 각 표본 확인
             for (let i = 1; i <= sampleSize; i++) {
                 const resultSelect = document.getElementById(`sample-result-${i}`);
+                const evidenceInput = document.getElementById(`sample-evidence-${i}`);
                 const mitigationTextarea = document.getElementById(`sample-mitigation-${i}`);
 
                 if (!resultSelect) continue;
+
+                // 증빙 내용이 입력되었는지 확인
+                if (evidenceInput && evidenceInput.value.trim().length > 0) {
+                    evidenceFilledCount++;
+                }
 
                 if (resultSelect.value === 'no_exception') {
                     noExceptionCount++;
@@ -1400,8 +1494,31 @@
                 }
             }
 
-            const conclusionSpan = document.getElementById('overall-conclusion');
-            const summaryDiv = document.getElementById('conclusion-summary');
+            // 설계평가 대체 모드 확인
+            const useDesignEvaluationCheckbox = document.getElementById('use_design_evaluation');
+            const isUsingDesignEvaluation = useDesignEvaluationCheckbox && useDesignEvaluationCheckbox.checked;
+
+            // 증빙 내용이 하나도 입력되지 않은 경우 (데이터 미입력 상태)
+            // 단, 설계평가 대체 모드일 때는 예외 처리
+            if (evidenceFilledCount === 0 && !isUsingDesignEvaluation) {
+                conclusionSpan.textContent = '-';
+                conclusionSpan.className = 'badge bg-secondary ms-2';
+                summaryDiv.innerHTML = `
+                    <small>
+                        <i class="fas fa-info-circle text-muted me-1"></i>
+                        증빙 내용을 입력해주세요 (${sampleSize}개 표본)
+                    </small>
+                `;
+                // 예외 관련 필드 숨기기
+                toggleExceptionFields(false);
+                return;
+            }
+
+            // Exception이 있는지 확인 (경감요소 유무 무관)
+            const hasAnyException = (exceptionWithMitigationCount + exceptionWithoutMitigationCount) > 0;
+
+            // Exception이 있을 때만 예외사항 세부내용과 개선계획 필드 표시
+            toggleExceptionFields(hasAnyException);
 
             // 경감요소 없는 Exception이 하나라도 있으면 Ineffective
             if (exceptionWithoutMitigationCount > 0) {
@@ -1423,6 +1540,27 @@
                         No Exception: ${noExceptionCount}건, 경감요소 있는 Exception: ${exceptionWithMitigationCount}건
                     </small>
                 `;
+            }
+        }
+
+        // 예외사항 관련 필드 표시/숨기기
+        function toggleExceptionFields(show) {
+            const exceptionDetailsSection = document.getElementById('exception-details-section');
+            const improvementPlanSection = document.getElementById('improvement-plan-section');
+
+            if (exceptionDetailsSection) {
+                exceptionDetailsSection.style.display = show ? 'block' : 'none';
+            }
+            if (improvementPlanSection) {
+                improvementPlanSection.style.display = show ? 'block' : 'none';
+            }
+
+            // Exception이 없을 때는 필드 내용도 초기화
+            if (!show) {
+                const exceptionDetailsTextarea = document.getElementById('exception_details');
+                const improvementPlanTextarea = document.getElementById('improvement_plan');
+                if (exceptionDetailsTextarea) exceptionDetailsTextarea.value = '';
+                if (improvementPlanTextarea) improvementPlanTextarea.value = '';
             }
         }
 
@@ -1502,10 +1640,16 @@
         // 당기 발생사실 없음 체크 시 필드 토글
         function toggleNoOccurrenceFields() {
             const noOccurrenceCheckbox = document.getElementById('no_occurrence');
+            const useDesignEvaluationCheckbox = document.getElementById('use_design_evaluation');
             const evaluationFields = document.getElementById('evaluation-fields');
             const noOccurrenceReasonSection = document.getElementById('no-occurrence-reason-section');
 
             if (noOccurrenceCheckbox.checked) {
+                // 설계평가 대체 체크박스 해제
+                if (useDesignEvaluationCheckbox) {
+                    useDesignEvaluationCheckbox.checked = false;
+                }
+
                 // 평가 필드 숨기고 비활성화
                 evaluationFields.style.display = 'none';
                 disableEvaluationFields(true);
@@ -1520,6 +1664,138 @@
                 // 발생하지 않은 사유 입력란 숨김
                 noOccurrenceReasonSection.style.display = 'none';
             }
+        }
+
+        // 설계평가 결과로 대체 체크 시 필드 토글 및 데이터 로드
+        function toggleUseDesignEvaluation() {
+            const useDesignEvaluationCheckbox = document.getElementById('use_design_evaluation');
+            const noOccurrenceCheckbox = document.getElementById('no_occurrence');
+            const evaluationFields = document.getElementById('evaluation-fields');
+            const designEvaluationInfoSection = document.getElementById('design-evaluation-info-section');
+
+            if (useDesignEvaluationCheckbox.checked) {
+                // 당기 발생사실 없음 체크박스 해제
+                if (noOccurrenceCheckbox) {
+                    noOccurrenceCheckbox.checked = false;
+                    toggleNoOccurrenceFields();
+                }
+
+                // 평가 필드 비활성화 (읽기 전용)
+                disableEvaluationFields(true);
+
+                // 설계평가 데이터 표시 섹션 보이기
+                if (designEvaluationInfoSection) {
+                    designEvaluationInfoSection.style.display = 'block';
+                }
+
+                // 설계평가 데이터 로드
+                loadDesignEvaluationData();
+            } else {
+                // 평가 필드 활성화
+                disableEvaluationFields(false);
+
+                // 설계평가 데이터 표시 섹션 숨기기
+                if (designEvaluationInfoSection) {
+                    designEvaluationInfoSection.style.display = 'none';
+                }
+            }
+        }
+
+        // 설계평가 데이터 로드
+        function loadDesignEvaluationData() {
+            // 현재 통제의 설계평가 데이터 가져오기
+            fetch(`/api/design-evaluation/get?rcm_id=${currentRcmId}&design_evaluation_session=${currentEvaluationSession}&control_code=${currentControlCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.design_evaluation) {
+                        const designEval = data.design_evaluation;
+                        const infoDiv = document.getElementById('design-evaluation-info');
+
+                        // 설계평가 정보 표시
+                        let infoHtml = '<div class="alert alert-info">';
+                        infoHtml += '<h6 class="fw-bold"><i class="fas fa-info-circle me-2"></i>설계평가 결과</h6>';
+                        infoHtml += `<p class="mb-1"><strong>평가 결과:</strong> <span class="badge ${designEval.conclusion === 'effective' ? 'bg-success' : 'bg-danger'}">${designEval.conclusion === 'effective' ? 'Effective' : 'Ineffective'}</span></p>`;
+
+                        if (designEval.deficiency_details) {
+                            infoHtml += `<p class="mb-1"><strong>미비사항:</strong> ${designEval.deficiency_details}</p>`;
+                        }
+                        if (designEval.improvement_plan) {
+                            infoHtml += `<p class="mb-1"><strong>개선계획:</strong> ${designEval.improvement_plan}</p>`;
+                        }
+                        if (designEval.test_procedure) {
+                            infoHtml += `<p class="mb-1"><strong>테스트 절차:</strong> ${designEval.test_procedure}</p>`;
+                        }
+
+                        // 연간 통제 등 설계평가 시점에 증빙이 없었을 수 있음을 안내
+                        infoHtml += '<p class="mb-0 mt-2"><small class="text-muted">💡 <strong>연간 통제의 경우</strong> 설계평가 시점에 실제 증빙이 없었다면, 이제 운영평가에서 실제 증빙을 확인하고 입력하세요.</small></p>';
+                        infoHtml += '</div>';
+
+                        if (infoDiv) {
+                            infoDiv.innerHTML = infoHtml;
+                        }
+
+                        // 표본 크기는 1로 설정 (연간 통제 등)
+                        const sampleSizeInput = document.getElementById('sample_size');
+                        if (sampleSizeInput) {
+                            sampleSizeInput.value = 1;
+                        }
+
+                        // 표본 라인 생성
+                        generateSampleLines();
+
+                        // 증빙 내용 자동 입력
+                        const evidenceInput = document.getElementById('sample-evidence-1');
+                        if (evidenceInput) {
+                            // 설계평가 시점에 증빙이 있었다면 "설계평가에서 확인됨"
+                            // 없었다면 빈 칸으로 두고 사용자가 직접 입력하도록 함
+                            if (designEval.test_procedure && designEval.test_procedure.trim().length > 10) {
+                                evidenceInput.value = '설계평가 테스트 절차에 따라 확인됨';
+                            } else {
+                                evidenceInput.value = '';  // 사용자가 직접 입력
+                                evidenceInput.placeholder = '실제 증빙 내용을 입력하세요 (예: 2024년 연간 보고서 검토 완료)';
+                            }
+                        }
+
+                        // 결과 설정 - 설계평가 결론과 동일하게 설정
+                        const resultSelect = document.getElementById('sample-result-1');
+                        if (resultSelect) {
+                            if (designEval.conclusion === 'effective') {
+                                // 설계평가 Effective → 운영평가 No Exception
+                                resultSelect.value = 'no_exception';
+                            } else {
+                                // 설계평가 Ineffective → 운영평가 Exception (경감요소 없음)
+                                // 따라서 전체 결론도 Ineffective가 됨
+                                resultSelect.value = 'exception';
+                                // Exception 선택 시 경감요소 행이 나타나도록 트리거
+                                handleSampleResultChange(1);
+                                // 미비사항은 참고용으로 표시하되, 경감요소로 간주하지 않음
+                                // (경감요소 필드는 비워둠 → Ineffective 유지)
+                            }
+                        }
+
+                        // 전체 결론 업데이트
+                        setTimeout(() => {
+                            updateOverallConclusion();
+                        }, 200);
+
+                    } else {
+                        showWarningToast('설계평가 데이터를 찾을 수 없습니다. 설계평가를 먼저 완료해주세요.');
+                        const checkbox = document.getElementById('use_design_evaluation');
+                        if (checkbox) {
+                            checkbox.checked = false;
+                            toggleUseDesignEvaluation();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('설계평가 데이터 로드 오류:', error);
+                    showErrorToast('설계평가 데이터를 불러오는 중 오류가 발생했습니다.');
+                    const checkbox = document.getElementById('use_design_evaluation');
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        toggleUseDesignEvaluation();
+                    }
+                });
         }
 
         // 평가 필드 활성화/비활성화
@@ -1642,6 +1918,10 @@
                 const noOccurrenceEl = document.getElementById('no_occurrence');
                 const noOccurrence = noOccurrenceEl ? noOccurrenceEl.checked : false;
 
+                // 설계평가 대체 체크 확인
+                const useDesignEvaluationEl = document.getElementById('use_design_evaluation');
+                const useDesignEvaluation = useDesignEvaluationEl ? useDesignEvaluationEl.checked : false;
+
                 let evaluationData;
 
                 if (noOccurrence) {
@@ -1655,27 +1935,16 @@
                         conclusion: 'effective',
                         improvement_plan: '',
                         no_occurrence: true,
-                        no_occurrence_reason: noOccurrenceReason.trim()
+                        no_occurrence_reason: noOccurrenceReason.trim(),
+                        use_design_evaluation: false
                     };
                 } else {
                     // 일반 평가인 경우
-                    const exceptionCount = parseInt(formData.get('exception_count')) || 0;
-                    const mitigatingFactors = formData.get('mitigating_factors') || '';
-                    const userConclusion = formData.get('conclusion');
-
-                    // 결론 결정: 경감요소가 있으면 사용자 선택, 없으면 자동
-                    let finalConclusion;
-                    if (exceptionCount > 0 && mitigatingFactors.trim().length > 0) {
-                        // 경감요소가 있는 경우 사용자가 선택한 결론 사용
-                        finalConclusion = userConclusion;
-                    } else {
-                        // 자동 결정
-                        finalConclusion = exceptionCount > 0 ? 'exception' : 'effective';
-                    }
-
                     // 표본 라인별 데이터 수집
                     const sampleSize = parseInt(formData.get('sample_size')) || 0;
                     const sampleLines = [];
+                    let exceptionCount = 0;
+                    let exceptionWithoutMitigationCount = 0;
 
                     for (let i = 1; i <= sampleSize; i++) {
                         const evidenceEl = document.getElementById(`sample-evidence-${i}`);
@@ -1683,24 +1952,42 @@
                         const mitigationEl = document.getElementById(`sample-mitigation-${i}`);
 
                         if (evidenceEl && resultEl) {
+                            const result = resultEl.value || 'no_exception';
+                            const mitigation = mitigationEl ? mitigationEl.value || '' : '';
+
                             sampleLines.push({
                                 sample_number: i,
                                 evidence: evidenceEl.value || '',
-                                result: resultEl.value || 'no_exception',
-                                mitigation: mitigationEl ? mitigationEl.value || '' : ''
+                                result: result,
+                                mitigation: mitigation
                             });
+
+                            // Exception 카운트 계산
+                            if (result === 'exception') {
+                                exceptionCount++;
+                                // 경감요소 없는 Exception 카운트
+                                if (!mitigation.trim()) {
+                                    exceptionWithoutMitigationCount++;
+                                }
+                            }
                         }
                     }
 
+                    // 결론 결정: 표본별 결과를 기반으로 자동 계산
+                    // 경감요소 없는 Exception이 하나라도 있으면 'exception' (Ineffective)
+                    // 그 외에는 'effective' (Effective)
+                    const finalConclusion = exceptionWithoutMitigationCount > 0 ? 'exception' : 'effective';
+
                     evaluationData = {
                         sample_size: sampleSize,
-                        exception_count: exceptionCount,
-                        mitigating_factors: mitigatingFactors,
+                        exception_count: exceptionCount,  // 표본별로 계산된 값
+                        mitigating_factors: '',  // 더 이상 사용 안 함 (표본별로 관리)
                         exception_details: formData.get('exception_details'),
-                        conclusion: finalConclusion,
+                        conclusion: finalConclusion,  // 표본별 결과 기반 자동 계산
                         improvement_plan: formData.get('improvement_plan'),
                         no_occurrence: false,
                         no_occurrence_reason: '',
+                        use_design_evaluation: useDesignEvaluation,  // 설계평가 대체 여부
                         sample_lines: sampleLines  // 표본 라인 데이터 추가
                     };
                 }
@@ -1872,7 +2159,7 @@
             modal.show();
 
             // 설계평가 데이터 조회
-            fetch(`/api/design-evaluation/get?rcm_id=${currentRcmId}&evaluation_session=${currentEvaluationSession}`)
+            fetch(`/api/design-evaluation/get?rcm_id=${currentRcmId}&design_evaluation_session=${currentEvaluationSession}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -1880,7 +2167,7 @@
                     } else {
                         document.getElementById('designEvaluationTableBody').innerHTML = `
                             <tr>
-                                <td colspan="8" class="text-center text-danger py-4">
+                                <td colspan="7" class="text-center text-danger py-4">
                                     <i class="fas fa-exclamation-triangle me-2"></i>${data.message || '설계평가 데이터를 불러올 수 없습니다.'}
                                 </td>
                             </tr>
@@ -1891,7 +2178,7 @@
                     console.error('Error:', error);
                     document.getElementById('designEvaluationTableBody').innerHTML = `
                         <tr>
-                            <td colspan="8" class="text-center text-danger py-4">
+                            <td colspan="7" class="text-center text-danger py-4">
                                 <i class="fas fa-exclamation-triangle me-2"></i>설계평가 데이터를 불러오는 중 오류가 발생했습니다.
                             </td>
                         </tr>
@@ -1905,7 +2192,7 @@
             if (!evaluations || evaluations.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">
+                        <td colspan="7" class="text-center text-muted py-4">
                             <i class="fas fa-info-circle me-2"></i>설계평가 데이터가 없습니다.
                         </td>
                     </tr>
@@ -1921,11 +2208,7 @@
                 };
                 const adequacy = adequacyMap[item.design_adequacy] || { text: item.design_adequacy || '-', class: 'bg-secondary' };
 
-                const stdControl = item.std_control_code
-                    ? `<span class="badge bg-info">${item.std_control_code}</span>`
-                    : '<span class="text-muted">-</span>';
-
-                const isKey = item.key_control || '-';
+                const isKey = item.key_control === 'Y' ? '핵심통제' : '-';
 
                 return `
                     <tr>
@@ -1936,10 +2219,9 @@
                                 ${item.control_description || '-'}
                             </div>
                         </td>
-                        <td style="font-size: 0.85rem;">${item.control_frequency_name || item.control_frequency || '-'}</td>
+                        <td style="font-size: 0.85rem;">${item.control_frequency || '-'}</td>
                         <td style="font-size: 0.85rem;">${isKey}</td>
-                        <td style="font-size: 0.85rem;">${item.control_nature_name || item.control_nature || '-'}</td>
-                        <td style="font-size: 0.85rem;">${stdControl}</td>
+                        <td style="font-size: 0.85rem;">${item.control_nature || '-'}</td>
                         <td style="font-size: 0.85rem;"><span class="badge ${adequacy.class}">${adequacy.text}</span></td>
                     </tr>
                 `;

@@ -154,6 +154,93 @@ def user_design_evaluation_rcm():
                          user_info=user_info,
                          remote_addr=request.remote_addr)
 
+@bp_link6.route('/api/design-evaluation/get', methods=['GET'])
+@login_required
+def get_design_evaluation_api():
+    """설계평가 결과 조회 API"""
+    user_info = get_user_info()
+
+    rcm_id = request.args.get('rcm_id')
+    design_evaluation_session = request.args.get('design_evaluation_session')
+    control_code = request.args.get('control_code')
+
+    # control_code가 없으면 전체 설계평가 목록 조회
+    if not control_code:
+        if not all([rcm_id, design_evaluation_session]):
+            return jsonify({'success': False, 'message': '필수 파라미터가 누락되었습니다.'}), 400
+
+        try:
+            # 전체 설계평가 목록 조회
+            with get_db() as conn:
+                evaluations = conn.execute('''
+                    SELECT
+                        l.control_code,
+                        rd.control_name,
+                        rd.control_description,
+                        rd.control_frequency,
+                        rd.control_type,
+                        rd.control_nature,
+                        rd.key_control,
+                        l.description_adequacy as design_adequacy,
+                        l.improvement_suggestion,
+                        l.overall_effectiveness as conclusion,
+                        l.evaluation_rationale,
+                        l.recommended_actions,
+                        l.evaluation_date
+                    FROM sb_design_evaluation_line l
+                    JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
+                    JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
+                    WHERE h.rcm_id = ? AND h.evaluation_session = ?
+                    ORDER BY l.control_code
+                ''', (rcm_id, design_evaluation_session)).fetchall()
+
+                return jsonify({
+                    'success': True,
+                    'evaluations': [dict(row) for row in evaluations]
+                })
+
+        except Exception as e:
+            print(f"설계평가 목록 조회 오류: {str(e)}")
+            return jsonify({'success': False, 'message': str(e)}), 500
+
+    # control_code가 있으면 단일 설계평가 조회
+    if not all([rcm_id, design_evaluation_session, control_code]):
+        return jsonify({'success': False, 'message': '필수 파라미터가 누락되었습니다.'}), 400
+
+    try:
+        # 단일 통제의 설계평가 데이터 조회
+        with get_db() as conn:
+            design_eval = conn.execute('''
+                SELECT
+                    l.description_adequacy,
+                    l.improvement_suggestion,
+                    l.overall_effectiveness as conclusion,
+                    l.evaluation_rationale,
+                    l.recommended_actions,
+                    l.evaluation_date
+                FROM sb_design_evaluation_line l
+                JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
+                WHERE h.rcm_id = ? AND h.evaluation_session = ? AND l.control_code = ?
+            ''', (rcm_id, design_evaluation_session, control_code)).fetchone()
+
+            if design_eval:
+                return jsonify({
+                    'success': True,
+                    'design_evaluation': {
+                        'conclusion': design_eval['conclusion'],
+                        'deficiency_details': design_eval['improvement_suggestion'],
+                        'improvement_plan': design_eval['recommended_actions'],
+                        'test_procedure': design_eval['evaluation_rationale'],
+                        'evaluated_at': design_eval['evaluation_date']
+                    }
+                })
+            else:
+                return jsonify({'success': False, 'message': '설계평가 데이터를 찾을 수 없습니다.'}), 404
+
+    except Exception as e:
+        print(f"설계평가 조회 오류: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @bp_link6.route('/api/design-evaluation/save', methods=['POST'])
 @login_required
 def save_design_evaluation_api():
