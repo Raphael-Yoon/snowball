@@ -618,3 +618,305 @@ for (let i = 1; i <= sampleSize; i++) {  // ✅ 정확한 샘플 개수만 반�
 - 경감요소 템플릿/자동완성 기능
 - 표본 크기별 권장값 자동 설정
 - 평가 진행률 실시간 표시
+
+---
+
+## 2025-01-09 - 운영평가 모달 UI/UX 개선 및 버그 수정
+
+### 1. 개요
+- **목적**: 운영평가 모달의 사용성 개선 및 저장 로직 버그 수정
+- **대상 파일**: `templates/link7_detail.jsp`, `gmail_schedule.py`
+- **주요 이슈**:
+  1. 데이터 미입력 시 "Effective" 표시 문제
+  2. Exception 선택했는데 목록에서 "Effective" 표시 문제
+  3. 예외사항 관련 필드 항상 표시 문제
+  4. 표본 크기 변경 시 입력 데이터 손실 문제
+
+### 2. 주요 변경 사항
+
+#### 2.1 예외사항 관련 필드 조건부 표시 ⭐
+- **문제**: "예외사항 세부내용"과 "개선계획" 필드가 항상 표시됨
+- **해결**: Exception이 있을 때만 필드 표시
+- **수정 위치**:
+  - HTML: lines 345-353 (ID 추가 및 초기 숨김)
+  - JavaScript: lines 1461-1480 (toggleExceptionFields 함수 추가)
+- **동작**:
+  - Exception 없음 → 필드 숨김 + 내용 초기화
+  - Exception 있음 → 필드 표시
+
+```javascript
+function toggleExceptionFields(show) {
+    const exceptionDetailsSection = document.getElementById('exception-details-section');
+    const improvementPlanSection = document.getElementById('improvement-plan-section');
+
+    if (exceptionDetailsSection) {
+        exceptionDetailsSection.style.display = show ? 'block' : 'none';
+    }
+    if (improvementPlanSection) {
+        improvementPlanSection.style.display = show ? 'block' : 'none';
+    }
+
+    // Exception이 없을 때는 필드 내용도 초기화
+    if (!show) {
+        document.getElementById('exception_details').value = '';
+        document.getElementById('improvement_plan').value = '';
+    }
+}
+```
+
+#### 2.2 전체 결론 자동 계산 로직 개선 ⭐⭐
+- **문제 1**: 아무 데이터도 입력하지 않았는데 "Effective" 표시
+- **문제 2**: 증빙 내용 입력 시 실시간 업데이트 안 됨
+- **해결**: 증빙 내용 입력 여부 확인 로직 추가
+- **수정 위치**: lines 1372-1459
+
+**결론 표시 규칙**:
+
+| 상태 | 결론 배지 | 메시지 | 예외 필드 |
+|------|----------|--------|----------|
+| 표본 크기 = 0 | `-` (회색) | "표본별 결과를 입력하면 자동으로 계산됩니다" | 숨김 |
+| 증빙 내용 미입력 | `-` (회색) | "증빙 내용을 입력해주세요 (N개 표본)" | 숨김 |
+| 경감요소 없는 예외 | `Ineffective` (빨강) | "경감요소 없는 예외 N건 발견" | 표시 |
+| 예외 없음 또는<br>모든 예외에 경감요소 | `Effective` (초록) | "No Exception: N건, 경감요소 있는 Exception: M건" | 조건부 표시 |
+
+```javascript
+// 증빙 내용이 입력되었는지 확인
+let evidenceFilledCount = 0;
+for (let i = 1; i <= sampleSize; i++) {
+    const evidenceInput = document.getElementById(`sample-evidence-${i}`);
+    if (evidenceInput && evidenceInput.value.trim().length > 0) {
+        evidenceFilledCount++;
+    }
+}
+
+// 증빙 내용이 하나도 없으면 결론 표시 안 함
+if (evidenceFilledCount === 0) {
+    conclusionSpan.textContent = '-';
+    toggleExceptionFields(false);
+    return;
+}
+```
+
+#### 2.3 저장 시 결론 계산 버그 수정 ⭐⭐⭐
+- **문제**: 표본별로 Exception을 선택했는데도 목록에서 "Effective"로 표시됨
+- **원인**: 저장 함수가 표본별 결과를 무시하고 `exception_count` 필드만 확인
+- **해결**: 표본별 결과를 집계하여 결론 자동 계산
+- **수정 위치**: lines 1716-1767
+
+**이전 로직 (잘못됨)**:
+```javascript
+// exception_count 필드 값으로만 판단
+const exceptionCount = parseInt(formData.get('exception_count')) || 0;
+finalConclusion = exceptionCount > 0 ? 'exception' : 'effective';
+```
+
+**수정된 로직 (올바름)**:
+```javascript
+// 표본 라인을 반복하면서 실제 결과 확인
+let exceptionCount = 0;
+let exceptionWithoutMitigationCount = 0;
+
+for (let i = 1; i <= sampleSize; i++) {
+    const result = resultEl.value || 'no_exception';
+    const mitigation = mitigationEl ? mitigationEl.value || '' : '';
+
+    if (result === 'exception') {
+        exceptionCount++;
+        // 경감요소 없는 Exception 카운트
+        if (!mitigation.trim()) {
+            exceptionWithoutMitigationCount++;
+        }
+    }
+}
+
+// 경감요소 없는 Exception이 하나라도 있으면 'exception'
+const finalConclusion = exceptionWithoutMitigationCount > 0 ? 'exception' : 'effective';
+```
+
+#### 2.4 표본 크기 변경 시 데이터 보존 ⭐⭐
+- **문제**: 표본 크기를 변경하면 기존에 입력한 증빙 내용이 삭제됨
+- **해결**: 표본 라인 재생성 전에 현재 화면의 입력값을 먼저 수집
+- **수정 위치**: lines 1250-1308
+
+**데이터 우선순위**:
+1. **1순위**: 현재 화면 입력값 (사용자가 지금 입력 중인 데이터)
+2. **2순위**: DB 저장 데이터 (이전에 저장한 데이터)
+3. **3순위**: 기본값 (빈 문자열 또는 'no_exception')
+
+```javascript
+// 기존 라인을 초기화하기 전에 현재 화면의 입력값을 먼저 수집
+const currentInputData = [];
+const existingRows = tbody.querySelectorAll('tr:not([id^="mitigation-row"])');
+existingRows.forEach((row, index) => {
+    const sampleNumber = index + 1;
+    const evidenceEl = document.getElementById(`sample-evidence-${sampleNumber}`);
+    const resultEl = document.getElementById(`sample-result-${sampleNumber}`);
+    const mitigationEl = document.getElementById(`sample-mitigation-${sampleNumber}`);
+
+    if (evidenceEl && resultEl) {
+        currentInputData.push({
+            sample_number: sampleNumber,
+            evidence: evidenceEl.value || '',
+            result: resultEl.value || 'no_exception',
+            mitigation: mitigationEl ? (mitigationEl.value || '') : ''
+        });
+    }
+});
+
+// 이제 기존 라인 초기화
+tbody.innerHTML = '';
+
+// 우선순위에 따라 데이터 복원
+const currentInput = currentInputData.find(s => s.sample_number === i);
+const existingSample = existingSampleLines.find(s => s.sample_number === i);
+
+const evidence = currentInput?.evidence || existingSample?.evidence || '';
+const result = currentInput?.result || existingSample?.result || 'no_exception';
+const mitigation = currentInput?.mitigation || existingSample?.mitigation || '';
+```
+
+#### 2.5 실시간 업데이트 추가
+- **증빙 내용 입력 시**: `oninput="updateOverallConclusion()"` 추가 (line 1290)
+- **결과 선택 시**: 기존 `onchange` 이벤트 유지
+- **경감요소 입력 시**: 기존 `oninput` 이벤트 유지
+- **효과**: 사용자가 데이터를 입력하는 즉시 결론이 자동으로 업데이트됨
+
+### 3. Gmail 스케줄러 개선
+
+#### 3.1 MySQL 동기화 결과 메일 전송
+- **파일**: `gmail_schedule.py`
+- **목적**: MySQL → SQLite 동기화 스크립트 실행 후 결과를 메일로 전송
+- **기능**:
+  1. `sync_mysql_to_sqlite.py` 스크립트 실행
+  2. 실행 로그 수집 (stdout, stderr)
+  3. 실행 결과를 이메일로 전송
+
+**주요 함수**:
+- `run_mysql_sync()`: subprocess로 스크립트 실행 및 결과 반환
+- `send_sync_result_email()`: 동기화 결과를 포함한 이메일 생성 및 전송
+
+**메일 내용 예시**:
+```
+MySQL to SQLite 동기화 실행 결과
+실행 일시: 2025-01-09 14:30:00
+
+============================================================
+상태: 성공
+반환 코드: 0
+============================================================
+
+[ 실행 로그 ]
+============================================================
+MySQL to SQLite Backup
+Started at: 2025-01-09 14:28:00
+============================================================
+Total rows backed up: 1234
+Completed at: 2025-01-09 14:29:45
+============================================================
+```
+
+### 4. 기술적 세부사항
+
+#### 4.1 JavaScript 함수 구조
+
+```
+openOperationEvaluationModal()  // 모달 열기
+  ├─ generateSampleLines()  // 표본 라인 생성
+  │   └─ updateOverallConclusion()  // 전체 결론 계산
+  │       └─ toggleExceptionFields()  // 예외 필드 표시/숨김
+  └─ handleSampleResultChange()  // 결과 변경 처리
+      └─ updateOverallConclusion()
+
+saveOperationEvaluation()  // 저장
+  ├─ 표본별 결과 집계
+  ├─ 결론 자동 계산
+  └─ API 호출
+```
+
+#### 4.2 상태 전이 다이어그램
+
+```
+[초기 상태]
+  ↓ 표본 크기 입력
+[표본 라인 생성] → 결론: "-" (회색)
+  ↓ 증빙 내용 입력
+[증빙 입력 완료] → 결론: 여전히 "-"
+  ↓ 결과 선택 (No Exception)
+[평가 완료] → 결론: "Effective" (초록), 예외 필드 숨김
+  ↓ 결과 변경 (Exception)
+[예외 발견] → 예외 필드 자동 표시, 결론: "Ineffective" (빨강)
+  ↓ 경감요소 입력
+[경감요소 입력] → 결론: "Effective" (초록), 예외 필드 유지
+```
+
+### 5. 테스트 시나리오
+
+#### 시나리오 1: 정상 케이스
+1. 평가 모달 열기 → 예외사항 필드 숨김
+2. 증빙 내용 입력 → 결론 여전히 `-`
+3. 결과를 "No Exception" 선택 → 결론 `Effective`, 예외 필드 숨김
+4. 결과를 "Exception" 변경 → 예외 필드 자동 표시
+5. 경감요소 입력 → 결론은 여전히 `Effective`
+6. 경감요소 삭제 → 결론 `Ineffective`
+
+#### 시나리오 2: 표본 크기 변경
+1. 표본 #1에 "증빙서류 확인" 입력
+2. 표본 크기를 3으로 변경
+3. ✅ 표본 #1의 "증빙서류 확인" **유지**
+4. ✅ 표본 #2, #3 새로 생성 (빈 상태)
+
+#### 시나리오 3: 저장 및 목록 표시
+1. Exception 선택 (경감요소 없음)
+2. 저장 버튼 클릭
+3. ✅ 모달에서 "Ineffective" 표시
+4. ✅ 목록에서도 "Ineffective" 표시 (버그 수정 완료)
+
+### 6. 파일 변경 요약
+
+**수정된 파일**:
+1. `templates/link7_detail.jsp` (+115줄, -29줄)
+2. `gmail_schedule.py` (+47줄, -12줄)
+
+**주요 변경 섹션** (link7_detail.jsp):
+- 예외사항 필드 HTML (lines 345-353)
+- 증빙 내용 입력 필드 (line 1290)
+- 표본 라인 생성 함수 (lines 1250-1308)
+- 전체 결론 계산 함수 (lines 1372-1459)
+- 예외 필드 토글 함수 (lines 1461-1480)
+- 저장 함수 (lines 1716-1767)
+
+### 7. 해결된 문제들
+
+1. ✅ 아무 데이터를 입력하지 않은 상태에서 결론이 Effective로 표시되던 문제
+2. ✅ Exception을 선택했는데도 목록에서 Effective로 나오던 문제
+3. ✅ 예외사항 관련 필드가 항상 표시되어 혼란스러웠던 문제
+4. ✅ 표본 크기 변경 시 입력한 데이터가 삭제되던 문제
+
+### 8. 추가 개선 사항
+
+1. ✅ 증빙 내용 입력 시 실시간 결론 업데이트
+2. ✅ Exception 여부에 따른 필드 자동 표시/숨김
+3. ✅ 표본별 결과 기반 정확한 결론 계산
+4. ✅ 데이터 입력 중 표본 크기 변경 시 데이터 보존
+
+### 9. 사용자 피드백 반영
+
+- 사용자: "아무 데이터를 입력하지 않은 상태에서는 결론을 Effective로 표시하면 안 될 것 같은데"
+  → ✅ 증빙 내용 미입력 시 결론 `-`로 표시
+
+- 사용자: "예외사항 세부내용과 개선계획은 Exception이 있을 때만 나오는게 좋지 않을까"
+  → ✅ Exception 있을 때만 필드 표시
+
+- 사용자: "표본별 테스트 결과에서 증빙 내용을 입력한 상태에서 표본 크기를 변경하면 입력한 데이터가 삭제되네"
+  → ✅ 현재 화면 입력값 우선 보존
+
+- 사용자: "C-EL-CA-10-02 통제는 Exception으로 입력했고 전체 결론도 Ineffective로 표시되었는데 통제 운영평가 List에는 Effective로 나오네"
+  → ✅ 표본별 결과 기반 결론 계산으로 수정
+
+### 10. 향후 개선 가능 사항
+
+- 표본별 테스트 결과 자동 저장 기능 (임시 저장)
+- 경감요소 템플릿/자동완성 기능
+- 표본 크기 변경 시 확인 다이얼로그 추가
+- 평가 진행률 실시간 표시
+- 증빙 내용 필수 입력 검증 추가

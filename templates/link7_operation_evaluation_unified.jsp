@@ -160,8 +160,8 @@
                                                         <td>
                                                             {% if session.eligible_control_count > 0 %}
                                                             <button class="btn btn-sm btn-success"
-                                                                    onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count or 0 }}, {{ session.eligible_control_count }})">
-                                                                <i class="fas fa-play me-1"></i>시작
+                                                                    onclick="window.location.href='/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}&session={{ session.evaluation_session }}'">
+                                                                <i class="fas fa-eye me-1"></i>설계평가 보기
                                                             </button>
                                                             {% else %}
                                                             -
@@ -237,17 +237,10 @@
                                                         <span class="text-muted">진행상황:</span>
                                                         <strong>{{ session.operation_completed_count }}/{{ session.eligible_control_count }}</strong> 통제
                                                     </div>
-                                                    {% if session.operation_completed_count > 0 %}
                                                     <button type="button" class="btn btn-warning btn-sm"
                                                             onclick="continueDirectly({{ rcm.rcm_id }}, '{{ session.evaluation_session }}')">
-                                                        <i class="fas fa-play-circle me-1"></i>계속하기
+                                                        <i class="fas fa-eye me-1"></i>운영평가 보기
                                                     </button>
-                                                    {% else %}
-                                                    <button type="button" class="btn btn-primary btn-sm"
-                                                            onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count }}, {{ session.eligible_control_count }})">
-                                                        <i class="fas fa-plus-circle me-1"></i>시작하기
-                                                    </button>
-                                                    {% endif %}
                                                 </div>
                                                 {% if session.operation_completed_count > 0 %}
                                                 <div class="progress" style="height: 20px;">
