@@ -920,3 +920,283 @@ saveOperationEvaluation()  // 저장
 - 표본 크기 변경 시 확인 다이얼로그 추가
 - 평가 진행률 실시간 표시
 - 증빙 내용 필수 입력 검증 추가
+
+---
+
+## 2025-01-10 - 평가 유형 선택 기능 및 데이터베이스 구조 개선
+
+### 배경
+
+Index 페이지에서 ELC, TLC, ITGC를 클릭할 때 진행 중인 운영평가가 있는 경우 사용자가 설계평가 또는 운영평가를 선택할 수 있도록 개선
+
+### 1. 평가 유형 선택 기능 구현
+
+#### 1.1 운영평가 확인 API 추가
+**파일**: [snowball.py:1034-1083](snowball.py#L1034-L1083)
+
+```python
+@app.route('/api/check-operation-evaluation/<control_type>')
+@login_required
+def check_operation_evaluation(control_type):
+    """진행 중인 운영평가가 있는지 확인하는 API"""
+```
+
+**기능**:
+- 사용자가 소유한 RCM 중 특정 control_type(ELC/TLC/ITGC)의 운영평가 존재 여부 확인
+- 진행 중인 운영평가 세션 목록 반환
+- RCM별, 세션별 정보 제공
+
+**응답 형식**:
+```json
+{
+    "has_operation_evaluation": true,
+    "evaluation_sessions": [
+        {
+            "rcm_id": 1,
+            "rcm_name": "쿠쿠홈시스_ELC",
+            "evaluation_session": "2024-Q4",
+            "design_evaluation_session": "2024-Q3"
+        }
+    ],
+    "control_type": "ELC"
+}
+```
+
+#### 1.2 Index 페이지 UI 수정
+**파일**: [templates/index.jsp](templates/index.jsp)
+
+**링크 수정** (154, 170, 186줄):
+```javascript
+// 기존: 직접 링크
+<a href="/elc/design-evaluation">
+
+// 변경: JavaScript 함수 호출
+<a href="#" onclick="event.preventDefault(); checkEvaluationType('ELC', '/elc/design-evaluation', '/elc/operation-evaluation');">
+```
+
+**JavaScript 함수 추가** (503-571줄):
+
+1. **checkEvaluationType()**: API 호출 및 분기 처리
+```javascript
+async function checkEvaluationType(controlType, designUrl, operationUrl) {
+    const response = await fetch(`/api/check-operation-evaluation/${controlType}`);
+    const data = await response.json();
+
+    if (data.has_operation_evaluation) {
+        showEvaluationTypeModal(...);  // 모달 표시
+    } else {
+        window.location.href = designUrl;  // 바로 설계평가로
+    }
+}
+```
+
+2. **showEvaluationTypeModal()**: 평가 유형 선택 모달 생성
+```javascript
+function showEvaluationTypeModal(controlType, designUrl, operationUrl, evaluationSessions) {
+    // Bootstrap 모달로 설계평가/운영평가 선택 UI 표시
+    // 진행 중인 세션 개수 표시
+}
+```
+
+**모달 UI**:
+```
+┌─────────────────────────────────┐
+│ ELC 평가 유형 선택            × │
+├─────────────────────────────────┤
+│ 진행하실 평가 유형을 선택해주세요:│
+│                                   │
+│ ┌───────────────────────────┐   │
+│ │  설계평가                   │   │
+│ │  통제 설계의 적정성을 평가  │   │
+│ └───────────────────────────┘   │
+│                                   │
+│ ┌───────────────────────────┐   │
+│ │  운영평가                   │   │
+│ │  통제 운영의 효과성을 평가  │   │
+│ │  ✓ 진행 중인 세션 2개      │   │
+│ └───────────────────────────┘   │
+└─────────────────────────────────┘
+```
+
+#### 1.3 트러블슈팅
+
+**문제 1**: 모달이 잠깐 나타났다가 사라짐
+- **원인**: `<a>` 태그의 기본 동작(페이지 이동)이 막히지 않음
+- **해결**: `return false;` → `event.preventDefault();`로 변경
+
+**문제 2**: `no such column: r.control_type`
+- **원인**: sb_rcm 테이블에 control_type 컬럼이 없음
+- **해결**: 데이터베이스 구조 개선 작업으로 이어짐
+
+### 2. 데이터베이스 구조 개선
+
+#### 2.1 문제 분석
+
+**기존 구조**:
+- `sb_rcm`: RCM 메타데이터만 (카테고리 정보 없음)
+- `sb_rcm_detail`: 개별 통제 항목 (control_category 있음)
+
+**문제점**:
+- RCM 레벨에서 ELC/TLC/ITGC 구분 불가
+- 필터링 시 서브쿼리 필요 (성능 저하)
+- 쿼리 복잡도 증가
+
+**실제 사용 패턴**:
+- 하나의 RCM은 단일 카테고리만 포함
+- "쿠쿠홈시스_ELC", "쿠쿠홈시스_TLC", "쿠쿠홈시스_ITGC" 형태로 완전 분리
+
+#### 2.2 마이그레이션 생성
+
+**파일**: [migrations/versions/012_add_control_category_to_rcm.py](migrations/versions/012_add_control_category_to_rcm.py)
+
+**작업 내용**:
+
+1. **컬럼 추가**:
+```sql
+ALTER TABLE sb_rcm
+ADD COLUMN control_category TEXT DEFAULT NULL
+```
+
+2. **RCM 이름 기반 카테고리 자동 설정**:
+```sql
+-- ITGC
+UPDATE sb_rcm SET control_category = 'ITGC'
+WHERE rcm_name LIKE '%ITGC%' OR rcm_name LIKE '%IT일반통제%'
+
+-- ELC
+UPDATE sb_rcm SET control_category = 'ELC'
+WHERE rcm_name LIKE '%ELC%' OR rcm_name LIKE '%전사수준통제%'
+
+-- TLC
+UPDATE sb_rcm SET control_category = 'TLC'
+WHERE rcm_name LIKE '%TLC%' OR rcm_name LIKE '%거래수준통제%'
+```
+
+3. **sb_rcm_detail 기반 보완 처리**:
+```sql
+-- 이름으로 판단 불가한 경우, detail의 다수결로 결정
+UPDATE sb_rcm
+SET control_category = (
+    SELECT control_category
+    FROM sb_rcm_detail
+    WHERE rcm_id = sb_rcm.rcm_id
+    GROUP BY control_category
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+)
+WHERE control_category IS NULL
+```
+
+4. **통계 출력**:
+```
+✅ 카테고리별 RCM 통계:
+   - ELC: 5개
+   - ITGC: 10개
+   - TLC: 1개
+```
+
+#### 2.3 API 쿼리 간소화
+
+**파일**: [snowball.py:1050-1065](snowball.py#L1050-L1065)
+
+**변경 전 (복잡)**:
+```sql
+SELECT DISTINCT
+    oeh.evaluation_session,
+    oeh.design_evaluation_session,
+    oeh.rcm_id,
+    r.rcm_name
+FROM sb_operation_evaluation_header oeh
+JOIN sb_rcm r ON oeh.rcm_id = r.rcm_id
+WHERE oeh.user_id = ?
+  AND EXISTS (
+      SELECT 1 FROM sb_rcm_detail rd
+      WHERE rd.rcm_id = oeh.rcm_id
+        AND rd.control_category = ?
+  )
+ORDER BY oeh.evaluation_session DESC
+```
+
+**변경 후 (간단)**:
+```sql
+SELECT DISTINCT
+    oeh.evaluation_session,
+    oeh.design_evaluation_session,
+    oeh.rcm_id,
+    r.rcm_name,
+    r.control_category
+FROM sb_operation_evaluation_header oeh
+JOIN sb_rcm r ON oeh.rcm_id = r.rcm_id
+WHERE oeh.user_id = ?
+  AND r.control_category = ?
+ORDER BY oeh.evaluation_session DESC
+```
+
+**개선 효과**:
+- EXISTS 서브쿼리 제거
+- 단순 JOIN 조건으로 변경
+- 쿼리 실행 속도 향상
+- 코드 가독성 향상
+
+### 3. 주요 파일 변경 내역
+
+| 파일 | 변경 유형 | 설명 |
+|------|----------|------|
+| `snowball.py` | 수정 | 운영평가 확인 API 추가 및 쿼리 간소화 |
+| `templates/index.jsp` | 수정 | 평가 유형 선택 UI 및 JavaScript 로직 추가 |
+| `migrations/versions/012_add_control_category_to_rcm.py` | 신규 | sb_rcm 테이블 구조 개선 마이그레이션 |
+
+### 4. 동작 흐름
+
+```
+사용자 클릭 (ELC/TLC/ITGC)
+         ↓
+checkEvaluationType() 실행
+         ↓
+API 호출: /api/check-operation-evaluation/{control_type}
+         ↓
+데이터베이스 쿼리: sb_rcm.control_category = ?
+         ↓
+        분기
+    ┌────┴────┐
+    ↓         ↓
+운영평가 있음  운영평가 없음
+    ↓         ↓
+모달 표시     설계평가로 이동
+    ↓
+사용자 선택
+    ↓
+해당 페이지로 이동
+```
+
+### 5. 개선 사항
+
+1. ✅ **사용자 경험 개선**: 운영평가 진행 중인지 자동 확인
+2. ✅ **선택권 제공**: 설계평가/운영평가 명시적 선택 가능
+3. ✅ **데이터베이스 구조 개선**: RCM 레벨에서 카테고리 관리
+4. ✅ **성능 향상**: 서브쿼리 제거, 단순 JOIN으로 변경
+5. ✅ **코드 가독성**: 쿼리가 간결하고 이해하기 쉬움
+6. ✅ **유지보수성**: RCM 생성 시 카테고리 지정 가능
+
+### 6. 배포 가이드
+
+**PythonAnywhere 배포 시**:
+1. 파일 업로드:
+   - `snowball.py`
+   - `templates/index.jsp`
+   - `migrations/versions/012_add_control_category_to_rcm.py`
+
+2. Bash 콘솔에서 마이그레이션 실행:
+```bash
+cd ~/mysite
+python migrations/migration_manager.py
+```
+
+3. Web App Reload
+
+### 7. 향후 고려사항
+
+- RCM 생성/수정 시 control_category 필수 입력 추가
+- RCM 목록 화면에서 카테고리별 필터링 기능
+- 카테고리 변경 시 sb_rcm_detail과의 일관성 체크
+- 혼합 카테고리 RCM 지원 여부 결정

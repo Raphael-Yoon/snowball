@@ -151,7 +151,7 @@
                             <h5 class="feature-title text-center"><i class="fas fa-building me-2"></i>ELC</h5>
                             <p class="feature-description">전사수준통제 설계평가 및 운영평가를 수행합니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="/elc/design-evaluation" class="feature-link"
+                                <a href="#" onclick="event.preventDefault(); checkEvaluationType('ELC', '/elc/design-evaluation', '/elc/operation-evaluation');" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
                                    title="<div>• Entity Level Controls 평가<br>• 설계평가 및 운영평가<br>• 수동통제 중심 평가<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
                             </div>
@@ -167,7 +167,7 @@
                             <h5 class="feature-title text-center"><i class="fas fa-exchange-alt me-2"></i>TLC</h5>
                             <p class="feature-description">거래수준통제 설계평가 및 운영평가를 수행합니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="/tlc/design-evaluation" class="feature-link"
+                                <a href="#" onclick="event.preventDefault(); checkEvaluationType('TLC', '/tlc/design-evaluation', '/tlc/operation-evaluation');" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
                                    title="<div>• Transaction Level Controls 평가<br>• 설계평가 및 운영평가<br>• 자동통제 포함 평가<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
                             </div>
@@ -183,7 +183,7 @@
                             <h5 class="feature-title text-center"><i class="fas fa-server me-2"></i>ITGC</h5>
                             <p class="feature-description">IT일반통제 설계평가 및 운영평가를 수행합니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="/user/design-evaluation" class="feature-link"
+                                <a href="#" onclick="event.preventDefault(); checkEvaluationType('ITGC', '/user/design-evaluation', '/user/operation-evaluation');" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
                                    title="<div>• IT General Controls 평가<br>• 설계평가 및 운영평가<br>• 자동통제 및 수동통제 평가<br>• 기준통제 매핑 및 리포트 생성</div>">자세히 보기</a>
                             </div>
@@ -499,9 +499,79 @@
             const modal = new bootstrap.Modal(document.getElementById('quickAccessModal'));
             modal.show();
         }
-        
+
+        // 평가 유형 선택 함수
+        async function checkEvaluationType(controlType, designUrl, operationUrl) {
+            try {
+                // API 호출하여 운영평가 존재 여부 확인
+                const response = await fetch(`/api/check-operation-evaluation/${controlType}`);
+                const data = await response.json();
+
+                if (data.has_operation_evaluation) {
+                    // 운영평가가 있으면 모달 표시
+                    showEvaluationTypeModal(controlType, designUrl, operationUrl, data.evaluation_sessions);
+                } else {
+                    // 운영평가가 없으면 바로 설계평가로 이동
+                    window.location.href = designUrl;
+                }
+            } catch (error) {
+                console.error('Error checking operation evaluation:', error);
+                // 에러 발생 시 기본 동작 (설계평가로 이동)
+                window.location.href = designUrl;
+            }
+        }
+
+        // 평가 유형 선택 모달 표시
+        function showEvaluationTypeModal(controlType, designUrl, operationUrl, evaluationSessions) {
+            const modalId = 'evaluationTypeModal';
+
+            // 기존 모달 제거
+            const existingModal = document.getElementById(modalId);
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            const modalHtml = `
+                <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title" id="${modalId}Label">
+                                    <i class="fas fa-clipboard-check me-2"></i>${controlType} 평가 유형 선택
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="mb-4">진행하실 평가 유형을 선택해주세요:</p>
+                                <div class="d-grid gap-3">
+                                    <a href="${designUrl}" class="btn btn-outline-primary btn-lg">
+                                        <i class="fas fa-pencil-ruler me-2"></i>설계평가
+                                        <small class="d-block mt-1 text-muted">통제 설계의 적정성을 평가합니다</small>
+                                    </a>
+                                    <a href="${operationUrl}" class="btn btn-outline-success btn-lg">
+                                        <i class="fas fa-tasks me-2"></i>운영평가
+                                        <small class="d-block mt-1 text-muted">통제 운영의 효과성을 평가합니다</small>
+                                        ${evaluationSessions.length > 0 ? `<small class="d-block mt-1 text-success"><i class="fas fa-check-circle me-1"></i>진행 중인 세션 ${evaluationSessions.length}개</small>` : ''}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = new bootstrap.Modal(document.getElementById(modalId));
+            modal.show();
+
+            // 모달 닫힐 때 제거
+            document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        }
+
     </script>
     <!-- <script src="{{ url_for('static', filename='js/session-manager.js') }}"></script> -->
-    
+
 </body>
 </html>

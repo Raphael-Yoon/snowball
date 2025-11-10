@@ -1031,6 +1031,53 @@ def api_user_rcm_list():
     from snowball_link5 import user_rcm_list
     return user_rcm_list()
 
+@app.route('/api/check-operation-evaluation/<control_type>')
+@login_required
+def check_operation_evaluation(control_type):
+    """진행 중인 운영평가가 있는지 확인하는 API
+
+    Args:
+        control_type: ELC, TLC, ITGC 중 하나
+
+    Returns:
+        JSON: {
+            "has_operation_evaluation": true/false,
+            "evaluation_sessions": [...] (있는 경우)
+        }
+    """
+    user_info = get_current_user()
+
+    with get_db() as conn:
+        # 특정 control_type의 RCM에 대한 운영평가 헤더 조회
+        # sb_rcm.control_category로 필터링 (훨씬 간단!)
+        headers = conn.execute('''
+            SELECT DISTINCT
+                oeh.evaluation_session,
+                oeh.design_evaluation_session,
+                oeh.rcm_id,
+                r.rcm_name,
+                r.control_category
+            FROM sb_operation_evaluation_header oeh
+            JOIN sb_rcm r ON oeh.rcm_id = r.rcm_id
+            WHERE oeh.user_id = ?
+              AND r.control_category = ?
+            ORDER BY oeh.evaluation_session DESC
+        ''', (user_info['user_id'], control_type.upper())).fetchall()
+
+        evaluation_sessions = []
+        for header in headers:
+            evaluation_sessions.append({
+                "rcm_id": header['rcm_id'],
+                "rcm_name": header['rcm_name'],
+                "evaluation_session": header['evaluation_session'],
+                "design_evaluation_session": header['design_evaluation_session']
+            })
+
+        return jsonify({
+            "has_operation_evaluation": len(evaluation_sessions) > 0,
+            "evaluation_sessions": evaluation_sessions,
+            "control_type": control_type.upper()
+        })
 
 
 app.register_blueprint(bp_link1)
