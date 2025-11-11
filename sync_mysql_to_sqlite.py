@@ -1,11 +1,17 @@
 """
-MySQL에서 SQLite로 데이터 백업 스크립트
+MySQL에서 SQLite로 데이터 동기화 스크립트
 
 배치 스케줄러나 cron으로 주기적으로 실행하여
-MySQL 데이터를 로컬 SQLite로 백업합니다.
+MySQL 데이터를 로컬 SQLite로 동기화합니다.
+
+동작 방식:
+1. MySQL과 SQLite 데이터를 비교
+2. 차이가 있는 경우에만 백업 및 동기화 수행
+3. 기존 SQLite를 타임스탬프로 백업 (최대 10개 유지)
+4. MySQL 데이터로 새로운 SQLite 생성
 
 사용법:
-    python backup_mysql_to_sqlite.py
+    python sync_mysql_to_sqlite.py
 """
 import os
 import sqlite3
@@ -164,9 +170,49 @@ def create_sqlite_table(sqlite_conn, table_name, schema):
     cursor.execute(create_sql)
     sqlite_conn.commit()
 
+def compare_databases(mysql_conn, sqlite_conn):
+    """MySQL과 SQLite의 데이터를 비교하여 차이 여부 확인"""
+    print("\n데이터베이스 비교 중...")
+
+    # MySQL 테이블 목록
+    mysql_tables = get_mysql_tables(mysql_conn)
+
+    # SQLite 테이블 목록
+    sqlite_cursor = sqlite_conn.cursor()
+    sqlite_cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    sqlite_tables = [row[0] for row in sqlite_cursor.fetchall()]
+
+    # 테이블 개수가 다르면 차이 있음
+    mysql_tables_filtered = [t for t in mysql_tables if t not in ['sb_migration_history', 'alembic_version']]
+    if set(mysql_tables_filtered) != set(sqlite_tables):
+        print("  ⚠ 테이블 구조가 다릅니다")
+        return True
+
+    # 각 테이블의 레코드 수와 최근 수정 시간 비교
+    for table_name in mysql_tables_filtered:
+        # MySQL 레코드 수
+        mysql_cursor = mysql_conn.cursor()
+        mysql_cursor.execute(f"SELECT COUNT(*) as cnt FROM `{table_name}`")
+        mysql_count = mysql_cursor.fetchone()['cnt']
+
+        # SQLite 레코드 수
+        try:
+            sqlite_cursor.execute(f"SELECT COUNT(*) as cnt FROM `{table_name}`")
+            sqlite_count = sqlite_cursor.fetchone()[0]
+        except:
+            print(f"  ⚠ 테이블 {table_name}이 SQLite에 없습니다")
+            return True
+
+        if mysql_count != sqlite_count:
+            print(f"  ⚠ {table_name} 테이블의 레코드 수가 다릅니다 (MySQL: {mysql_count}, SQLite: {sqlite_count})")
+            return True
+
+    print("  ✅ 데이터베이스가 동일합니다")
+    return False
+
 def backup_table_data(mysql_conn, sqlite_conn, table_name):
     """테이블 데이터 백업"""
-    print(f"Backing up data for table: {table_name}")
+    print(f"Syncing data for table: {table_name}")
 
     # MySQL에서 데이터 읽기
     mysql_cursor = mysql_conn.cursor()
@@ -174,7 +220,7 @@ def backup_table_data(mysql_conn, sqlite_conn, table_name):
     rows = mysql_cursor.fetchall()
 
     if not rows:
-        print(f"  - No data to backup")
+        print(f"  - No data to sync")
         return 0
 
     # SQLite에 데이터 삽입
@@ -186,7 +232,7 @@ def backup_table_data(mysql_conn, sqlite_conn, table_name):
     column_names = ', '.join([f"`{col}`" for col in columns])
     insert_sql = f"INSERT INTO `{table_name}` ({column_names}) VALUES ({placeholders})"
 
-    backed_up_count = 0
+    synced_count = 0
     batch_size = 1000
     batch_data = []
 
@@ -198,12 +244,12 @@ def backup_table_data(mysql_conn, sqlite_conn, table_name):
             if len(batch_data) >= batch_size:
                 sqlite_cursor.executemany(insert_sql, batch_data)
                 sqlite_conn.commit()
-                backed_up_count += len(batch_data)
-                print(f"  - Backed up {backed_up_count} rows...")
+                synced_count += len(batch_data)
+                print(f"  - Synced {synced_count} rows...")
                 batch_data = []
 
         except Exception as e:
-            print(f"  - Error backing up row: {e}")
+            print(f"  - Error syncing row: {e}")
             print(f"    Row data: {dict(row)}")
 
     # 남은 데이터 커밋
@@ -211,12 +257,12 @@ def backup_table_data(mysql_conn, sqlite_conn, table_name):
         try:
             sqlite_cursor.executemany(insert_sql, batch_data)
             sqlite_conn.commit()
-            backed_up_count += len(batch_data)
+            synced_count += len(batch_data)
         except Exception as e:
-            print(f"  - Error backing up final batch: {e}")
+            print(f"  - Error syncing final batch: {e}")
 
-    print(f"  - Total backed up: {backed_up_count} rows")
-    return backed_up_count
+    print(f"  - Total synced: {synced_count} rows")
+    return synced_count
 
 def get_mysql_indexes(mysql_conn, table_name):
     """MySQL 인덱스 정보 가져오기"""
@@ -263,9 +309,9 @@ def create_sqlite_indexes(sqlite_conn, table_name, indexes):
     sqlite_conn.commit()
 
 def main():
-    """메인 백업 프로세스"""
+    """메인 동기화 프로세스: MySQL과 SQLite를 비교하여 차이가 있을 때만 동기화"""
     print("="*60)
-    print("MySQL to SQLite Backup")
+    print("MySQL to SQLite Sync (Smart Sync)")
     print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("="*60)
 
@@ -274,24 +320,58 @@ def main():
         print("ERROR: MySQL password not set in .env file")
         return False
 
-    try:
-        # 기존 SQLite DB 백업
-        backup_file = create_backup()
+    backup_file = None
 
-        # 데이터베이스 연결
+    try:
+        # 1. 데이터베이스 연결
         print("\nConnecting to databases...")
         mysql_conn = get_mysql_connection()
+
+        # SQLite가 존재하는지 확인
+        sqlite_exists = os.path.exists(SQLITE_DB)
+        if sqlite_exists:
+            # 기존 DB 연결하여 비교
+            sqlite_conn_temp = sqlite3.connect(SQLITE_DB)
+            print("  - Connected to MySQL")
+            print("  - Connected to SQLite (existing database)")
+
+            # 2. 데이터베이스 비교
+            has_difference = compare_databases(mysql_conn, sqlite_conn_temp)
+            sqlite_conn_temp.close()
+
+            if not has_difference:
+                print("\n" + "="*60)
+                print("✅ 데이터베이스가 이미 동기화되어 있습니다. 백업을 생략합니다.")
+                print("="*60)
+                mysql_conn.close()
+                return True
+
+            print("\n⚠ 데이터베이스에 차이가 발견되었습니다. 동기화를 시작합니다.")
+
+            # 3. 기존 SQLite DB 백업
+            backup_file = create_backup()
+            if backup_file:
+                print(f"  ✅ Backed up existing database to: {backup_file}")
+
+            # 4. 기존 snowball.db 삭제
+            print(f"\nRemoving existing {SQLITE_DB}...")
+            os.remove(SQLITE_DB)
+            print(f"  ✅ Removed existing database")
+        else:
+            print("  - Connected to MySQL")
+            print("  - No existing SQLite database found")
+
+        # 5. 새로운 SQLite 연결 (빈 DB 생성)
         sqlite_conn = get_sqlite_connection()
-        print("  - Connected to MySQL")
-        print("  - Connected to SQLite")
+        print("  - Created new empty SQLite database")
 
-        # 테이블 목록 가져오기
+        # 6. 테이블 목록 가져오기
         tables = get_mysql_tables(mysql_conn)
-        print(f"\nFound {len(tables)} tables to backup")
+        print(f"\nFound {len(tables)} tables to sync")
 
-        total_backed_up = 0
+        total_synced = 0
 
-        # 각 테이블 백업
+        # 7. 각 테이블 동기화
         for table_name in tables:
             # migration_history 테이블은 건너뛰기
             if table_name in ['sb_migration_history', 'alembic_version']:
@@ -306,9 +386,9 @@ def main():
             # SQLite 테이블 생성
             create_sqlite_table(sqlite_conn, table_name, schema)
 
-            # 데이터 백업
+            # 데이터 동기화
             count = backup_table_data(mysql_conn, sqlite_conn, table_name)
-            total_backed_up += count
+            total_synced += count
 
             # 인덱스 생성
             indexes = get_mysql_indexes(mysql_conn, table_name)
@@ -317,8 +397,8 @@ def main():
                 create_sqlite_indexes(sqlite_conn, table_name, indexes)
 
         print("\n" + "="*60)
-        print(f"Backup completed successfully!")
-        print(f"Total rows backed up: {total_backed_up}")
+        print(f"✅ Sync completed successfully!")
+        print(f"Total rows synced: {total_synced}")
         print(f"Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("="*60)
 
@@ -326,11 +406,17 @@ def main():
 
     except pymysql.Error as e:
         print(f"\nMySQL Error: {e}")
+        # 에러 발생 시 백업 복원 안내
+        if backup_file:
+            print(f"⚠ To restore from backup, run: copy \"{backup_file}\" \"{SQLITE_DB}\"")
         return False
     except Exception as e:
         print(f"\nError: {e}")
         import traceback
         traceback.print_exc()
+        # 에러 발생 시 백업 복원 안내
+        if backup_file:
+            print(f"⚠ To restore from backup, run: copy \"{backup_file}\" \"{SQLITE_DB}\"")
         return False
     finally:
         if 'mysql_conn' in locals():

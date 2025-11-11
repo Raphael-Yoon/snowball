@@ -104,26 +104,9 @@
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
                                         <td>
-                                            {% if rcm.has_ongoing_evaluation %}
-                                            <a href="/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}{% if rcm.ongoing_session %}&session={{ rcm.ongoing_session }}{% endif %}" class="btn btn-sm btn-success me-1"
-                                               data-bs-toggle="tooltip" data-bs-placement="top" title="가장 최근에 작업한 세션으로 이동합니다 (세션: {{ rcm.ongoing_session or '없음' }})">
-                                                <i class="fas fa-play me-1"></i>설계평가 이어하기
+                                            <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
+                                                <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
                                             </a>
-                                            {% else %}
-                                            {% if rcm.control_category == 'ELC' %}
-                                            <a href="/elc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% elif rcm.control_category == 'TLC' %}
-                                            <a href="/tlc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% else %}
-                                            <a href="/design-evaluation?rcm_id={{ rcm.rcm_id }}&auto_start=true" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% endif %}
-                                            {% endif %}
                                             <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세
                                             </a>
@@ -181,26 +164,9 @@
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
                                         <td>
-                                            {% if rcm.has_ongoing_evaluation %}
-                                            <a href="/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}{% if rcm.ongoing_session %}&session={{ rcm.ongoing_session }}{% endif %}" class="btn btn-sm btn-success me-1"
-                                               data-bs-toggle="tooltip" data-bs-placement="top" title="가장 최근에 작업한 세션으로 이동합니다 (세션: {{ rcm.ongoing_session or '없음' }})">
-                                                <i class="fas fa-play me-1"></i>설계평가 이어하기
+                                            <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
+                                                <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
                                             </a>
-                                            {% else %}
-                                            {% if rcm.control_category == 'ELC' %}
-                                            <a href="/elc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% elif rcm.control_category == 'TLC' %}
-                                            <a href="/tlc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% else %}
-                                            <a href="/design-evaluation?rcm_id={{ rcm.rcm_id }}&auto_start=true" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% endif %}
-                                            {% endif %}
                                             <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세
                                             </a>
@@ -263,26 +229,9 @@
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
                                         <td>
-                                            {% if rcm.has_ongoing_evaluation %}
-                                            <a href="/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}{% if rcm.ongoing_session %}&session={{ rcm.ongoing_session }}{% endif %}" class="btn btn-sm btn-success me-1"
-                                               data-bs-toggle="tooltip" data-bs-placement="top" title="가장 최근에 작업한 세션으로 이동합니다 (세션: {{ rcm.ongoing_session or '없음' }})">
-                                                <i class="fas fa-play me-1"></i>설계평가 이어하기
+                                            <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
+                                                <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
                                             </a>
-                                            {% else %}
-                                            {% if rcm.control_category == 'ELC' %}
-                                            <a href="/elc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% elif rcm.control_category == 'TLC' %}
-                                            <a href="/tlc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% else %}
-                                            <a href="/design-evaluation?rcm_id={{ rcm.rcm_id }}&auto_start=true" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% endif %}
-                                            {% endif %}
                                             <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세
                                             </a>
@@ -345,26 +294,9 @@
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
                                         <td>
-                                            {% if rcm.has_ongoing_evaluation %}
-                                            <a href="/design-evaluation/rcm?rcm_id={{ rcm.rcm_id }}{% if rcm.ongoing_session %}&session={{ rcm.ongoing_session }}{% endif %}" class="btn btn-sm btn-success me-1"
-                                               data-bs-toggle="tooltip" data-bs-placement="top" title="가장 최근에 작업한 세션으로 이동합니다 (세션: {{ rcm.ongoing_session or '없음' }})">
-                                                <i class="fas fa-play me-1"></i>설계평가 이어하기
+                                            <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
+                                                <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
                                             </a>
-                                            {% else %}
-                                            {% if rcm.control_category == 'ELC' %}
-                                            <a href="/elc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% elif rcm.control_category == 'TLC' %}
-                                            <a href="/tlc/design-evaluation?rcm_id={{ rcm.rcm_id }}" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% else %}
-                                            <a href="/design-evaluation?rcm_id={{ rcm.rcm_id }}&auto_start=true" class="btn btn-sm btn-primary me-1">
-                                                <i class="fas fa-plus me-1"></i>설계평가 시작
-                                            </a>
-                                            {% endif %}
-                                            {% endif %}
                                             <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세
                                             </a>

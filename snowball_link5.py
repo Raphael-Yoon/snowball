@@ -94,25 +94,79 @@ def user_rcm():
     # 사용자가 접근 권한을 가진 RCM 목록 조회
     all_rcms = get_user_rcms(user_info['user_id'])
 
-    # 각 RCM의 설계평가 상태 조회
+    # 각 RCM의 설계평가 및 운영평가 상태 조회
     with get_db() as conn:
         for rcm in all_rcms:
-            # 진행 중인 설계평가가 있는지 확인
-            ongoing = conn.execute('''
+            # 설계평가 상태 확인
+            design_eval = conn.execute('''
                 SELECT evaluation_session, evaluation_status
                 FROM sb_design_evaluation_header
                 WHERE rcm_id = ? AND user_id = ?
-                AND evaluation_status NOT IN ('COMPLETED', 'ARCHIVED')
                 ORDER BY start_date DESC
                 LIMIT 1
             ''', (rcm['rcm_id'], user_info['user_id'])).fetchone()
 
-            if ongoing:
-                rcm['has_ongoing_evaluation'] = True
-                rcm['ongoing_session'] = ongoing['evaluation_session']
+            # 운영평가 상태 확인
+            operation_eval = conn.execute('''
+                SELECT evaluation_session, design_evaluation_session
+                FROM sb_operation_evaluation_header
+                WHERE rcm_id = ? AND user_id = ?
+                ORDER BY evaluation_session DESC
+                LIMIT 1
+            ''', (rcm['rcm_id'], user_info['user_id'])).fetchone()
+
+            # 설계평가 상태 설정
+            if design_eval:
+                rcm['design_status'] = design_eval['evaluation_status']
+                rcm['design_session'] = design_eval['evaluation_session']
             else:
-                rcm['has_ongoing_evaluation'] = False
-                rcm['ongoing_session'] = None
+                rcm['design_status'] = 'NONE'
+                rcm['design_session'] = None
+
+            # 운영평가 상태 설정
+            if operation_eval:
+                rcm['operation_status'] = 'IN_PROGRESS'  # 운영평가 존재
+                rcm['operation_session'] = operation_eval['evaluation_session']
+            else:
+                rcm['operation_status'] = 'NONE'
+                rcm['operation_session'] = None
+
+            # 관리 컬럼 버튼 결정
+            # 1. 설계평가 없음, 운영평가 없음 -> 설계평가 시작
+            if rcm['design_status'] == 'NONE' and rcm['operation_status'] == 'NONE':
+                rcm['action_type'] = 'start_design'
+                rcm['action_label'] = '설계 시작'
+                rcm['action_url'] = f"/user/design-evaluation?rcm_id={rcm['rcm_id']}"
+                rcm['action_class'] = 'btn-primary'
+
+            # 2. 설계평가 진행중, 운영평가 없음 -> 설계평가 계속
+            elif rcm['design_status'] == 'IN_PROGRESS' and rcm['operation_status'] == 'NONE':
+                rcm['action_type'] = 'continue_design'
+                rcm['action_label'] = '설계 계속'
+                rcm['action_url'] = f"/user/design-evaluation?rcm_id={rcm['rcm_id']}"
+                rcm['action_class'] = 'btn-warning'
+
+            # 3. 설계평가 완료, 운영평가 없음 -> 운영평가 시작
+            elif rcm['design_status'] == 'COMPLETED' and rcm['operation_status'] == 'NONE':
+                rcm['action_type'] = 'start_operation'
+                rcm['action_label'] = '운영 시작'
+                rcm['action_url'] = f"/user/operation-evaluation?rcm_id={rcm['rcm_id']}"
+                rcm['action_class'] = 'btn-success'
+
+            # 4. 설계평가 완료, 운영평가 진행중 -> 운영평가 계속
+            elif rcm['design_status'] == 'COMPLETED' and rcm['operation_status'] == 'IN_PROGRESS':
+                rcm['action_type'] = 'continue_operation'
+                rcm['action_label'] = '운영 계속'
+                rcm['action_url'] = f"/user/operation-evaluation?rcm_id={rcm['rcm_id']}"
+                rcm['action_class'] = 'btn-info'
+
+            # 5. 설계평가 완료, 운영평가 완료 -> 설계평가 시작 (새 세션)
+            # 또는 기타 상태
+            else:
+                rcm['action_type'] = 'start_design'
+                rcm['action_label'] = '설계 시작'
+                rcm['action_url'] = f"/user/design-evaluation?rcm_id={rcm['rcm_id']}"
+                rcm['action_class'] = 'btn-primary'
 
     # 카테고리별로 분류
     rcms_by_category = {
