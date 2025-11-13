@@ -572,17 +572,19 @@ def get_rcm_details(rcm_id, control_category=None):
             query += ' AND control_category = %s'
             params.append(control_category)
 
+        order_params = ['PWC%', 'APD%', 'PC%', 'CO%', 'PD%', 'ST%']
+        params.extend(order_params)
         params = tuple(params)
 
         query += '''
             ORDER BY
                 CASE
-                    WHEN control_code LIKE 'PWC%' THEN 1
-                    WHEN control_code LIKE 'APD%' THEN 2
-                    WHEN control_code LIKE 'PC%' THEN 3
-                    WHEN control_code LIKE 'CO%' THEN 4
-                    WHEN control_code LIKE 'PD%' THEN 5
-                    WHEN control_code LIKE 'ST%' THEN 6
+                    WHEN control_code LIKE %s THEN 1
+                    WHEN control_code LIKE %s THEN 2
+                    WHEN control_code LIKE %s THEN 3
+                    WHEN control_code LIKE %s THEN 4
+                    WHEN control_code LIKE %s THEN 5
+                    WHEN control_code LIKE %s THEN 6
                     ELSE 7
                 END,
                 control_code
@@ -623,17 +625,19 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
                 query += ' AND d.control_category = %s'
                 params.append(control_category)
 
+            order_params = ['PWC%', 'APD%', 'PC%', 'CO%', 'PD%', 'ST%']
+            params.extend(order_params)
             params = tuple(params)
 
             query += '''
                 ORDER BY
                     CASE
-                        WHEN d.control_code LIKE 'PWC%' THEN 1
-                        WHEN d.control_code LIKE 'APD%' THEN 2
-                        WHEN d.control_code LIKE 'PC%' THEN 3
-                        WHEN d.control_code LIKE 'CO%' THEN 4
-                        WHEN d.control_code LIKE 'PD%' THEN 5
-                        WHEN d.control_code LIKE 'ST%' THEN 6
+                        WHEN d.control_code LIKE %s THEN 1
+                        WHEN d.control_code LIKE %s THEN 2
+                        WHEN d.control_code LIKE %s THEN 3
+                        WHEN d.control_code LIKE %s THEN 4
+                        WHEN d.control_code LIKE %s THEN 5
+                        WHEN d.control_code LIKE %s THEN 6
                         ELSE 7
                     END,
                     d.control_code
@@ -652,17 +656,19 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
                 query += ' AND control_category = %s'
                 params.append(control_category)
 
+            order_params = ['PWC%', 'APD%', 'PC%', 'CO%', 'PD%', 'ST%']
+            params.extend(order_params)
             params = tuple(params)
 
             query += '''
                 ORDER BY
                     CASE
-                        WHEN control_code LIKE 'PWC%' THEN 1
-                        WHEN control_code LIKE 'APD%' THEN 2
-                        WHEN control_code LIKE 'PC%' THEN 3
-                        WHEN control_code LIKE 'CO%' THEN 4
-                        WHEN control_code LIKE 'PD%' THEN 5
-                        WHEN control_code LIKE 'ST%' THEN 6
+                        WHEN control_code LIKE %s THEN 1
+                        WHEN control_code LIKE %s THEN 2
+                        WHEN control_code LIKE %s THEN 3
+                        WHEN control_code LIKE %s THEN 4
+                        WHEN control_code LIKE %s THEN 5
+                        WHEN control_code LIKE %s THEN 6
                         ELSE 7
                     END,
                     control_code
