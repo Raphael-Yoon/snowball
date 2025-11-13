@@ -572,6 +572,8 @@ def get_rcm_details(rcm_id, control_category=None):
             query += ' AND control_category = %s'
             params.append(control_category)
 
+        params = tuple(params)
+
         query += '''
             ORDER BY
                 CASE
@@ -621,6 +623,8 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
                 query += ' AND d.control_category = %s'
                 params.append(control_category)
 
+            params = tuple(params)
+
             query += '''
                 ORDER BY
                     CASE
@@ -647,6 +651,8 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
             if control_category:
                 query += ' AND control_category = %s'
                 params.append(control_category)
+
+            params = tuple(params)
 
             query += '''
                 ORDER BY
