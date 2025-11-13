@@ -1,5 +1,4 @@
 import sqlite3
-import pymysql
 import random
 import string
 from datetime import datetime, timedelta
@@ -125,6 +124,13 @@ class DatabaseConnection:
 def get_db():
     """데이터베이스 연결 (MySQL 또는 SQLite)"""
     if USE_MYSQL:
+        try:
+            import pymysql
+        except ImportError as exc:
+            raise RuntimeError(
+                "MySQL 연결을 사용하려면 PyMySQL 패키지가 필요합니다. "
+                "로컬에서 SQLite만 사용할 경우 USE_MYSQL 환경 변수를 false로 설정하세요."
+            ) from exc
         # MySQL 연결
         conn = pymysql.connect(
             host=os.getenv('MYSQL_HOST', 'localhost'),
