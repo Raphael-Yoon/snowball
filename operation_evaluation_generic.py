@@ -399,7 +399,7 @@ def save_no_occurrence():
                 cursor = conn.execute('''
                     INSERT INTO sb_operation_evaluation_header
                     (rcm_id, user_id, evaluation_session, design_evaluation_session, created_date)
-                    VALUES (?, %s, %s, %s, datetime('now'))
+                    VALUES (%s, %s, %s, %s, datetime('now'))
                 ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session))
                 operation_header_id = cursor.lastrowid
                 conn.commit()

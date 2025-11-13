@@ -339,7 +339,7 @@ def log_user_activity(user_info, action_type, page_name, url_path, ip_address, u
                 INSERT INTO sb_user_activity_log 
                 (user_id, user_email, user_name, action_type, page_name, url_path, 
                  ip_address, user_agent, additional_info)
-                VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 user_info.get('user_id'),
                 user_info.get('user_email'),
@@ -369,7 +369,7 @@ def get_user_activity_logs(limit=100, offset=0, user_id=None):
             query += ' WHERE user_id = %s'
             params.append(user_id)
         
-        query += ' ORDER BY access_time DESC LIMIT ? OFFSET ?'
+        query += ' ORDER BY access_time DESC LIMIT %s OFFSET %s'
         params.extend([limit, offset])
         
         logs = conn.execute(query, params).fetchall()
@@ -472,7 +472,7 @@ def create_rcm(rcm_name, description, upload_user_id, original_filename=None, co
     with get_db() as conn:
         cursor = conn.execute('''
             INSERT INTO sb_rcm (rcm_name, description, upload_user_id, original_filename, control_category)
-            VALUES (?, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s)
         ''', (rcm_name, description, upload_user_id, original_filename, control_category))
         conn.commit()
         return cursor.lastrowid
@@ -724,7 +724,7 @@ def save_rcm_details(rcm_id, rcm_data, control_category='ITGC'):
                         key_control, control_frequency, control_type, control_nature,
                         population, population_completeness_check, population_count, test_procedure,
                         control_category
-                    ) VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (
                     rcm_id,
                     control_code,
@@ -755,7 +755,7 @@ def grant_rcm_access(user_id, rcm_id, permission_type, granted_by):
     with get_db() as conn:
         conn.execute('''
             INSERT OR REPLACE INTO sb_user_rcm (user_id, rcm_id, permission_type, granted_by)
-            VALUES (?, %s, %s, %s)
+            VALUES (%s, %s, %s, %s)
         ''', (user_id, rcm_id, permission_type, granted_by))
         conn.commit()
 
@@ -833,7 +833,7 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                     description_adequacy, improvement_suggestion,
                     overall_effectiveness, evaluation_rationale,
                     recommended_actions, evaluation_date, last_updated
-                ) VALUES (?, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             '''
             insert_params = (
                 header_id, control_code, control_sequence,
@@ -883,7 +883,7 @@ def create_evaluation_structure(rcm_id, user_id, evaluation_session):
                 INSERT INTO sb_design_evaluation_header (
                     rcm_id, user_id, evaluation_session, total_controls,
                     evaluated_controls, progress_percentage, evaluation_status
-                ) VALUES (?, %s, %s, %s, 0, 0.0, 'IN_PROGRESS')
+                ) VALUES (%s, %s, %s, %s, 0, 0.0, 'IN_PROGRESS')
             ''', (rcm_id, user_id, evaluation_session, total_controls))
             
             header_id = cursor.lastrowid
@@ -897,7 +897,7 @@ def create_evaluation_structure(rcm_id, user_id, evaluation_session):
                             header_id, control_code, control_sequence,
                             description_adequacy, improvement_suggestion, 
                             overall_effectiveness, evaluation_rationale, recommended_actions
-                        ) VALUES (?, %s, %s, '', '', '', '', '')
+                        ) VALUES (%s, %s, %s, '', '', '', '', '')
                     ''', (header_id, control['control_code'], idx))
                     created_lines += 1
                 except Exception as line_error:
@@ -1176,7 +1176,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     population_path, samples_path, test_results_path, population_count,
                     no_occurrence, no_occurrence_reason,
                     evaluation_date, last_updated
-                ) VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ''', (
                 header_id, control_code,
                 evaluation_data.get('sample_size'),
@@ -1204,7 +1204,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                 conn.execute('''
                     INSERT INTO sb_operation_evaluation_sample (
                         line_id, sample_number, evidence, has_exception, mitigation
-                    ) VALUES (?, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s)
                 ''', (
                     line_id,
                     sample.get('sample_number'),
@@ -1237,7 +1237,7 @@ def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_
     cursor = conn.execute('''
         INSERT INTO sb_operation_evaluation_header (
             rcm_id, user_id, evaluation_session, design_evaluation_session
-        ) VALUES (?, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s)
     ''', (rcm_id, user_id, evaluation_session, design_evaluation_session))
 
     return cursor.lastrowid
@@ -1480,7 +1480,7 @@ def save_rcm_standard_mapping(rcm_id, control_code, std_control_id, confidence, 
         conn.execute('''
             INSERT OR REPLACE INTO sb_rcm_standard_mapping
             (rcm_id, control_code, std_control_id, mapping_confidence, mapping_type, mapped_by)
-            VALUES (?, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
         ''', (rcm_id, control_code, std_control_id, confidence, mapping_type, mapped_by))
         conn.commit()
 
@@ -1565,7 +1565,7 @@ def evaluate_rcm_completeness(rcm_id, user_id):
             INSERT INTO sb_rcm_completeness_eval
             (rcm_id, total_controls, mapped_controls,
              completeness_score, eval_details, eval_by)
-            VALUES (?, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
         ''', (rcm_id, total_controls, mapped_controls,
               completeness_score, json.dumps(eval_details, ensure_ascii=False), user_id))
         conn.commit()

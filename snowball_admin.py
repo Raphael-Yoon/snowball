@@ -168,7 +168,7 @@ def admin_add_user():
             conn.execute('''
                 INSERT INTO sb_user (company_name, user_name, user_email, phone_number, 
                                    admin_flag, effective_start_date, effective_end_date)
-                VALUES (?, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             ''', (company_name, user_name, user_email, phone_number, 
                  admin_flag, effective_start_date, effective_end_date))
             conn.commit()
