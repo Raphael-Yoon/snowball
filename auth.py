@@ -1,17 +1,39 @@
 import sqlite3
+import pymysql
 import random
 import string
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import session, redirect, url_for, request, flash
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+
+# 환경 변수로 DB 타입 결정 (USE_MYSQL 또는 DB_TYPE 지원)
+USE_MYSQL = os.getenv('USE_MYSQL', 'false').lower() == 'true' or os.getenv('DB_TYPE', 'sqlite').lower() == 'mysql'
 DATABASE = 'snowball.db'
 
 def get_db():
-    """데이터베이스 연결"""
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """데이터베이스 연결 (MySQL 또는 SQLite)"""
+    if USE_MYSQL:
+        # MySQL 연결
+        conn = pymysql.connect(
+            host=os.getenv('MYSQL_HOST', 'localhost'),
+            user=os.getenv('MYSQL_USER', 'root'),
+            password=os.getenv('MYSQL_PASSWORD', ''),
+            database=os.getenv('MYSQL_DATABASE', 'snowball'),
+            port=int(os.getenv('MYSQL_PORT', '3306')),
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        # pymysql의 DictCursor는 이미 딕셔너리 형태로 반환
+        return conn
+    else:
+        # SQLite 연결 (로컬 개발용)
+        conn = sqlite3.connect(DATABASE)
+        conn.row_factory = sqlite3.Row
+        return conn
 
 # init_db() 함수는 삭제되었습니다.
 # 데이터베이스 초기화는 마이그레이션 시스템을 사용하세요:

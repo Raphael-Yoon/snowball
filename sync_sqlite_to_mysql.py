@@ -197,7 +197,7 @@ def migrate_schema(dry_run=True):
     try:
         mysql_conn = pymysql.connect(**MYSQL_CONFIG)
     except Exception as e:
-        print(f"\n❌ MySQL 연결 실패: {e}")
+        print(f"\n[ERROR] MySQL 연결 실패: {e}")
         print("\n다음을 확인하세요:")
         print("  - MySQL 서버 실행 여부")
         print("  - .env 파일의 MySQL 설정")
@@ -211,28 +211,28 @@ def migrate_schema(dry_run=True):
     changes = compare_schemas(sqlite_conn, mysql_conn)
 
     if changes['new_tables']:
-        print(f"\n  📋 New tables to create: {len(changes['new_tables'])}")
+        print(f"\n  [INFO] New tables to create: {len(changes['new_tables'])}")
         for table in changes['new_tables']:
             print(f"     - {table}")
 
     if changes['new_columns']:
-        print(f"\n  ➕ Tables with new columns: {len(changes['new_columns'])}")
+        print(f"\n  [+] Tables with new columns: {len(changes['new_columns'])}")
         for table, cols in changes['new_columns'].items():
             print(f"     - {table}: {', '.join(cols)}")
 
     if not changes['new_tables'] and not changes['new_columns']:
-        print("\n  ✅ No schema changes detected. MySQL is up to date!")
+        print("\n  [OK] No schema changes detected. MySQL is up to date!")
         return
 
     # Dry run 모드
     if dry_run:
         print("\n" + "=" * 80)
-        print("🔍 DRY RUN MODE - No changes will be applied")
+        print("[DRY-RUN] DRY RUN MODE - No changes will be applied")
         print("=" * 80)
         print("\nGenerated SQL statements:\n")
     else:
         print("\n" + "=" * 80)
-        print("🚀 APPLYING CHANGES TO MYSQL")
+        print("[APPLY] APPLYING CHANGES TO MYSQL")
         print("=" * 80)
 
     # 새 테이블 생성
@@ -248,9 +248,9 @@ def migrate_schema(dry_run=True):
         if not dry_run:
             try:
                 mysql_cursor.execute(create_sql)
-                print(f"  ✅ Created table: {table_name}")
+                print(f"  [OK] Created table: {table_name}")
             except Exception as e:
-                print(f"  ❌ Error creating table {table_name}: {e}")
+                print(f"  [ERROR] Error creating table {table_name}: {e}")
 
     # 새 컬럼 추가
     for table_name, new_cols in changes['new_columns'].items():
@@ -277,14 +277,14 @@ def migrate_schema(dry_run=True):
             if not dry_run:
                 try:
                     mysql_cursor.execute(alter_sql)
-                    print(f"  ✅ Added column: {table_name}.{col_name}")
+                    print(f"  [OK] Added column: {table_name}.{col_name}")
                 except Exception as e:
-                    print(f"  ❌ Error adding column {table_name}.{col_name}: {e}")
+                    print(f"  [ERROR] Error adding column {table_name}.{col_name}: {e}")
 
     if not dry_run:
         mysql_conn.commit()
         print("\n" + "=" * 80)
-        print("✅ Migration completed successfully!")
+        print("[OK] Migration completed successfully!")
         print("=" * 80)
     else:
         print("\n" + "=" * 80)
@@ -304,7 +304,7 @@ if __name__ == '__main__':
     dry_run = '--apply' not in sys.argv
 
     if dry_run:
-        print("\n⚠️  Running in DRY RUN mode (no changes will be applied)")
-        print("   To apply changes, run with --apply flag\n")
+        print("\n[WARNING] Running in DRY RUN mode (no changes will be applied)")
+        print("          To apply changes, run with --apply flag\n")
 
     migrate_schema(dry_run=dry_run)
