@@ -976,7 +976,7 @@ def upload_control_sample():
                         INSERT INTO sb_control_sample_files
                         (rcm_id, control_code, user_id, original_filename, stored_filename, 
                          file_path, file_size, description, upload_date)
-                        VALUES (?, %s, %s, %s, %s, %s, %s, %s, datetime('now'))
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, datetime('now'))
                     ''', (rcm_id, control_code, user_info['user_id'], file.filename, 
                           safe_filename, file_path, os.path.getsize(file_path), description))
                     conn.commit()

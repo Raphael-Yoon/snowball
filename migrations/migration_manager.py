@@ -82,7 +82,7 @@ class MigrationManager:
         with self._get_connection() as conn:
             conn.execute('''
                 INSERT INTO sb_migration_history (version, name, execution_time_ms, status)
-                VALUES (?, %s, %s, %s)
+                VALUES (%s, %s, %s, %s)
             ''', (version, name, execution_time_ms, status))
             conn.commit()
 

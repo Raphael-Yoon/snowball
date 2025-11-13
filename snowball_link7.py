@@ -183,7 +183,7 @@ def user_operation_evaluation_rcm():
                         conn.execute('''
                             INSERT INTO sb_operation_evaluation_line (
                                 header_id, control_code, control_sequence
-                            ) VALUES (?, %s, %s)
+                            ) VALUES (%s, %s, %s)
                         ''', (header_id, detail['control_code'], idx + 1))
                 sync_messages.append(f"📌 신규 추가: {len(new_controls)}개 (설계평가 부적정→적정)")
 
