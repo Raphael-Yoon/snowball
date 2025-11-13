@@ -23,9 +23,16 @@ class DatabaseConnection:
     def execute(self, query, params=None):
         """SQLite/MySQL 호환 execute 메서드"""
         if self._is_mysql:
-            # MySQL: ? → %s 변환
-            query = query.replace('?', '%s')
-            # CURRENT_TIMESTAMP는 MySQL에서도 동일하게 동작
+            # MySQL: ? → %s 변환 (파라미터 플레이스홀더만)
+            # 파라미터 개수 세기
+            if params:
+                param_count = len(params) if isinstance(params, (list, tuple)) else 1
+                # ? 문자 개수 세기
+                question_marks = query.count('?')
+                # 파라미터 개수만큼만 변환 (왼쪽부터)
+                for _ in range(min(param_count, question_marks)):
+                    query = query.replace('?', '%s', 1)
+
             cursor = self._conn.cursor()
             if params:
                 cursor.execute(query, params)
