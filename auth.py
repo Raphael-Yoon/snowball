@@ -14,31 +14,76 @@ load_dotenv()
 USE_MYSQL = os.getenv('USE_MYSQL', 'false').lower() == 'true' or os.getenv('DB_TYPE', 'sqlite').lower() == 'mysql'
 DATABASE = 'snowball.db'
 
+class DatabaseCursor:
+    """MySQL cursor 래퍼 - datetime을 문자열로 자동 변환"""
+    def __init__(self, cursor, db_conn):
+        self._cursor = cursor
+        self._db_conn = db_conn
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        return self._db_conn._convert_datetime_to_string(row)
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        return [self._db_conn._convert_datetime_to_string(row) for row in rows]
+
+    def fetchmany(self, size=None):
+        rows = self._cursor.fetchmany(size) if size else self._cursor.fetchmany()
+        return [self._db_conn._convert_datetime_to_string(row) for row in rows]
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
+    @property
+    def lastrowid(self):
+        return self._cursor.lastrowid
+
+    def __getitem__(self, index):
+        return self._cursor[index]
+
 class DatabaseConnection:
     """데이터베이스 연결 래퍼 클래스 (SQLite와 MySQL 호환성 제공)"""
     def __init__(self, conn, is_mysql=False):
         self._conn = conn
         self._is_mysql = is_mysql
 
+    def _convert_datetime_to_string(self, row):
+        """MySQL datetime 객체를 문자열로 변환"""
+        if not self._is_mysql or not row:
+            return row
+
+        from datetime import datetime, date
+
+        # 딕셔너리인 경우
+        if hasattr(row, 'keys'):
+            result = dict(row)
+            for key in result:
+                value = result[key]
+                if isinstance(value, datetime):
+                    result[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+                elif isinstance(value, date):
+                    result[key] = value.strftime('%Y-%m-%d')
+            return result
+
+        return row
+
     def execute(self, query, params=None):
         """SQLite/MySQL 호환 execute 메서드"""
         if self._is_mysql:
             # MySQL: ? → %s 변환 (파라미터 플레이스홀더만)
-            # 파라미터 개수 세기
-            if params:
-                param_count = len(params) if isinstance(params, (list, tuple)) else 1
-                # ? 문자 개수 세기
-                question_marks = query.count('?')
-                # 파라미터 개수만큼만 변환 (왼쪽부터)
-                for _ in range(min(param_count, question_marks)):
-                    query = query.replace('?', '%s', 1)
+            # ? 문자를 모두 %s로 변환
+            query = query.replace('?', '%s')
 
             cursor = self._conn.cursor()
             if params:
                 cursor.execute(query, params)
             else:
                 cursor.execute(query)
-            return cursor
+
+            # 원본 cursor를 래핑하여 fetchone/fetchall에서 datetime 자동 변환
+            return DatabaseCursor(cursor, self)
         else:
             # SQLite: 그대로 사용
             if params:
