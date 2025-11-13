@@ -121,6 +121,17 @@ class DatabaseConnection:
                 pass
         self._conn.close()
 
+def _get_first_value(row):
+    """fetchone 결과에서 첫 번째 값을 안전하게 추출"""
+    if row is None:
+        return None
+    if isinstance(row, dict):
+        return next(iter(row.values()), None)
+    try:
+        return row[0]
+    except (TypeError, KeyError, IndexError):
+        return None
+
 def get_db():
     """데이터베이스 연결 (MySQL 또는 SQLite)"""
     if USE_MYSQL:
@@ -385,10 +396,10 @@ def get_activity_log_count(user_id=None):
     """활동 로그 총 개수 조회"""
     with get_db() as conn:
         if user_id:
-            count = conn.execute('SELECT COUNT(*) FROM sb_user_activity_log WHERE user_id = %s', (user_id,)).fetchone()[0]
+            row = conn.execute('SELECT COUNT(*) FROM sb_user_activity_log WHERE user_id = %s', (user_id,)).fetchone()
         else:
-            count = conn.execute('SELECT COUNT(*) FROM sb_user_activity_log').fetchone()[0]
-        return count
+            row = conn.execute('SELECT COUNT(*) FROM sb_user_activity_log').fetchone()
+        return _get_first_value(row) or 0
 
 def check_ai_review_limit(user_email):
     """AI 검토 횟수 제한 확인"""
@@ -440,10 +451,11 @@ def get_unique_filename(filename):
     
     with get_db() as conn:
         # 현재 파일명이 중복되는지 확인
-        existing = conn.execute('''
+        existing_row = conn.execute('''
             SELECT COUNT(*) FROM sb_rcm 
             WHERE original_filename = %s AND is_active = 'Y'
-        ''', (filename,)).fetchone()[0]
+        ''', (filename,)).fetchone()
+        existing = _get_first_value(existing_row) or 0
         
         if existing == 0:
             # 중복이 없으면 원본 파일명 그대로 사용
@@ -460,10 +472,11 @@ def get_unique_filename(filename):
             else:
                 new_filename = f"{name}_{timestamp}_{i}{ext}"
             
-            existing = conn.execute('''
+            existing_row = conn.execute('''
                 SELECT COUNT(*) FROM sb_rcm 
                 WHERE original_filename = %s AND is_active = 'Y'
-            ''', (new_filename,)).fetchone()[0]
+            ''', (new_filename,)).fetchone()
+            existing = _get_first_value(existing_row) or 0
             
             if existing == 0:
                 return new_filename
@@ -1349,11 +1362,11 @@ def get_operation_evaluation_samples(line_id):
 def count_design_evaluations(rcm_id, user_id):
     """특정 RCM의 사용자별 설계평가 헤더 개수 조회 (평가 세션 개수)"""
     with get_db() as conn:
-        count = conn.execute('''
+        row = conn.execute('''
             SELECT COUNT(*) FROM sb_design_evaluation_header
             WHERE rcm_id = %s AND user_id = %s
-        ''', (rcm_id, user_id)).fetchone()[0]
-        return count
+        ''', (rcm_id, user_id)).fetchone()
+        return _get_first_value(row) or 0
 
 def count_operation_evaluations(rcm_id, user_id, evaluation_session=None, design_evaluation_session=None):
     """특정 RCM의 사용자별 운영평가 Header 존재 여부 조회 (세션별, Header-Line 구조)
@@ -1363,32 +1376,32 @@ def count_operation_evaluations(rcm_id, user_id, evaluation_session=None, design
     """
     with get_db() as conn:
         if evaluation_session and design_evaluation_session:
-            count = conn.execute('''
+            row = conn.execute('''
                 SELECT COUNT(*) FROM sb_operation_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
-            ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchone()[0]
+            ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchone()
         elif evaluation_session:
-            count = conn.execute('''
+            row = conn.execute('''
                 SELECT COUNT(*) FROM sb_operation_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
-            ''', (rcm_id, user_id, evaluation_session)).fetchone()[0]
+            ''', (rcm_id, user_id, evaluation_session)).fetchone()
         else:
             # 전체 운영평가 수량 조회 (세션 구분 없음)
-            count = conn.execute('''
+            row = conn.execute('''
                 SELECT COUNT(*) FROM sb_operation_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s
-            ''', (rcm_id, user_id)).fetchone()[0]
-        return count
+            ''', (rcm_id, user_id)).fetchone()
+        return _get_first_value(row) or 0
 
 def count_completed_operation_evaluations(header_id):
     """운영평가 헤더에 대해 완료된 통제 개수를 계산합니다."""
     with get_db() as conn:
         # conclusion이 NULL이 아닌 라인 수를 계산 (평가 완료의 명확한 지표)
-        count = conn.execute('''
+        row = conn.execute('''
             SELECT COUNT(*) FROM sb_operation_evaluation_line
             WHERE header_id = %s AND conclusion IS NOT NULL
-        ''', (header_id,)).fetchone()[0]
-        return count
+        ''', (header_id,)).fetchone()
+        return _get_first_value(row) or 0
 
 def get_completed_design_evaluation_sessions(rcm_id, user_id):
     """특정 RCM의 사용자별 완료된 설계평가 세션 목록 조회 (Archive된 세션 제외)"""
