@@ -82,7 +82,7 @@ class MigrationManager:
         with self._get_connection() as conn:
             conn.execute('''
                 INSERT INTO sb_migration_history (version, name, execution_time_ms, status)
-                VALUES (?, ?, ?, ?)
+                VALUES (?, %s, %s, %s)
             ''', (version, name, execution_time_ms, status))
             conn.commit()
 
@@ -90,7 +90,7 @@ class MigrationManager:
         """마이그레이션 이력 제거 (롤백 시)"""
         with self._get_connection() as conn:
             conn.execute('''
-                DELETE FROM sb_migration_history WHERE version = ?
+                DELETE FROM sb_migration_history WHERE version = %s
             ''', (version,))
             conn.commit()
 

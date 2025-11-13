@@ -33,7 +33,7 @@ def user_operation_evaluation():
             with get_db() as conn:
                 header = conn.execute('''
                     SELECT header_id FROM sb_operation_evaluation_header
-                    WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                    WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
                 ''', (rcm['rcm_id'], user_info['user_id'], operation_evaluation_session, session['evaluation_session'])).fetchone()
 
             if header:
@@ -170,7 +170,7 @@ def user_operation_evaluation_rcm():
             existing_lines = conn.execute('''
                 SELECT line_id, control_code
                 FROM sb_operation_evaluation_line
-                WHERE header_id = ?
+                WHERE header_id = %s
             ''', (header_id,)).fetchall()
 
             existing_control_codes = {line['control_code'] for line in existing_lines}
@@ -183,7 +183,7 @@ def user_operation_evaluation_rcm():
                         conn.execute('''
                             INSERT INTO sb_operation_evaluation_line (
                                 header_id, control_code, control_sequence
-                            ) VALUES (?, ?, ?)
+                            ) VALUES (?, %s, %s)
                         ''', (header_id, detail['control_code'], idx + 1))
                 sync_messages.append(f"📌 신규 추가: {len(new_controls)}개 (설계평가 부적정→적정)")
 
@@ -314,7 +314,7 @@ def save_operation_evaluation_api():
         with get_db() as conn:
             access_check = conn.execute('''
                 SELECT permission_type FROM sb_user_rcm
-                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
             ''', (user_info['user_id'], rcm_id)).fetchone()
 
             if not access_check:
@@ -411,7 +411,7 @@ def load_operation_evaluation_samples(line_id):
                 SELECT h.rcm_id, h.user_id
                 FROM sb_operation_evaluation_line l
                 JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
-                WHERE l.line_id = ?
+                WHERE l.line_id = %s
             ''', (line_id,)).fetchone()
 
             if not line_info:
@@ -482,7 +482,7 @@ def apd01_upload_population():
         with get_db() as conn:
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if not header:
@@ -573,7 +573,7 @@ def operation_evaluation_reset():
         with get_db() as conn:
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
 
@@ -584,7 +584,7 @@ def operation_evaluation_reset():
                 # DB 라인 데이터 삭제 (해당 통제만)
                 deleted_rows = conn.execute('''
                     DELETE FROM sb_operation_evaluation_line
-                    WHERE header_id = ? AND control_code = ?
+                    WHERE header_id = %s AND control_code = %s
                 ''', (operation_header_id, control_code))
                 conn.commit()
 
@@ -707,7 +707,7 @@ def user_operation_evaluation_apd07():
             # 운영평가 헤더 조회 (있으면)
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if header:
@@ -802,7 +802,7 @@ def apd07_upload_population():
         with get_db() as conn:
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if not header:
@@ -979,7 +979,7 @@ def user_operation_evaluation_apd09():
             # 운영평가 헤더 조회 (있으면)
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if header:
@@ -1069,7 +1069,7 @@ def upload_apd09_population():
         with get_db() as conn:
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if not header:
@@ -1244,7 +1244,7 @@ def user_operation_evaluation_apd12():
             # 운영평가 헤더 조회 (있으면)
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if header:
@@ -1334,7 +1334,7 @@ def upload_apd12_population():
         with get_db() as conn:
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if not header:
@@ -1507,7 +1507,7 @@ def elc_operation_evaluation():
             with get_db() as conn:
                 header = conn.execute('''
                     SELECT header_id FROM sb_operation_evaluation_header
-                    WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                    WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
                 ''', (rcm['rcm_id'], user_info['user_id'], operation_evaluation_session, session['evaluation_session'])).fetchone()
 
             if header:
@@ -1568,7 +1568,7 @@ def tlc_operation_evaluation():
             with get_db() as conn:
                 header = conn.execute('''
                     SELECT header_id FROM sb_operation_evaluation_header
-                    WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                    WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
                 ''', (rcm['rcm_id'], user_info['user_id'], operation_evaluation_session, session['evaluation_session'])).fetchone()
 
             if header:

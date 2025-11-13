@@ -52,7 +52,7 @@ def manual_control_evaluation(control_code):
             # 운영평가 헤더 조회
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if header:
@@ -73,7 +73,7 @@ def manual_control_evaluation(control_code):
                     eval_line = conn.execute('''
                         SELECT conclusion, no_occurrence, no_occurrence_reason
                         FROM sb_operation_evaluation_line
-                        WHERE header_id = ? AND control_code = ?
+                        WHERE header_id = %s AND control_code = %s
                         ORDER BY line_id DESC
                         LIMIT 1
                     ''', (operation_header_id, control_code_param)).fetchone()
@@ -87,7 +87,7 @@ def manual_control_evaluation(control_code):
                     eval_line = conn.execute('''
                         SELECT conclusion, no_occurrence, no_occurrence_reason
                         FROM sb_operation_evaluation_line
-                        WHERE header_id = ? AND control_code = ?
+                        WHERE header_id = %s AND control_code = %s
                         ORDER BY line_id DESC
                         LIMIT 1
                     ''', (operation_header_id, control_code_param)).fetchone()
@@ -198,7 +198,7 @@ def upload_manual_population(control_code):
         with get_db() as conn:
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if not header:
@@ -292,7 +292,7 @@ def save_manual_test_results(control_code):
             with get_db() as conn:
                 header = conn.execute('''
                     SELECT header_id FROM sb_operation_evaluation_header
-                    WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                    WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
                 ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
                 if not header:
@@ -391,7 +391,7 @@ def save_no_occurrence():
         with get_db() as conn:
             header = conn.execute('''
                 SELECT header_id FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if not header:
@@ -399,7 +399,7 @@ def save_no_occurrence():
                 cursor = conn.execute('''
                     INSERT INTO sb_operation_evaluation_header
                     (rcm_id, user_id, evaluation_session, design_evaluation_session, created_date)
-                    VALUES (?, ?, ?, ?, datetime('now'))
+                    VALUES (?, %s, %s, %s, datetime('now'))
                 ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session))
                 operation_header_id = cursor.lastrowid
                 conn.commit()

@@ -114,7 +114,7 @@ def test_user(app):
         with get_db() as conn:
             # Check if user already exists
             existing = conn.execute(
-                'SELECT * FROM sb_user WHERE user_email = ?',
+                'SELECT * FROM sb_user WHERE user_email = %s',
                 ('test@example.com',)
             ).fetchone()
 
@@ -125,7 +125,7 @@ def test_user(app):
             # Create new user
             cursor = conn.execute('''
                 INSERT INTO sb_user (user_email, user_name, company_name, phone_number, admin_flag)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, %s, %s, %s, %s)
             ''', ('test@example.com', 'Test User', 'Test Company', '010-1234-5678', 'N'))
             user_id = cursor.lastrowid
             conn.commit()
@@ -148,7 +148,7 @@ def admin_user(app):
         with get_db() as conn:
             # Check if user already exists
             existing = conn.execute(
-                'SELECT * FROM sb_user WHERE user_email = ?',
+                'SELECT * FROM sb_user WHERE user_email = %s',
                 ('admin@example.com',)
             ).fetchone()
 
@@ -159,7 +159,7 @@ def admin_user(app):
             # Create new user
             cursor = conn.execute('''
                 INSERT INTO sb_user (user_email, user_name, company_name, phone_number, admin_flag)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, %s, %s, %s, %s)
             ''', ('admin@example.com', 'Admin User', 'Admin Company', '010-9999-9999', 'Y'))
             user_id = cursor.lastrowid
             conn.commit()

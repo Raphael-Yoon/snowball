@@ -72,29 +72,12 @@ class DatabaseConnection:
     def execute(self, query, params=None):
         """SQLite/MySQL 호환 execute 메서드"""
         if self._is_mysql:
-            # MySQL 모드: ? → %s 변환 필요
-
-            # params 정규화
+            # MySQL: %s 플레이스홀더 그대로 사용
             if params is not None:
                 if isinstance(params, list):
                     params = tuple(params)
                 elif not isinstance(params, tuple):
                     params = (params,)
-                param_count = len(params)
-            else:
-                param_count = 0
-                params = None
-
-            # ? 를 %s 로 변환 (파라미터 개수만큼)
-            if '?' in query and param_count > 0:
-                parts = query.split('?')
-                result = parts[0]
-                for i in range(1, min(param_count + 1, len(parts))):
-                    result += '%s' + parts[i]
-                # 남은 ? 는 그대로 유지
-                for i in range(param_count + 1, len(parts)):
-                    result += '?' + parts[i]
-                query = result
 
             cursor = self._conn.cursor()
             if params:
@@ -102,10 +85,13 @@ class DatabaseConnection:
             else:
                 cursor.execute(query)
 
-            # 원본 cursor를 래핑하여 fetchone/fetchall에서 datetime 자동 변환
+            # datetime 자동 변환을 위한 cursor 래핑
             return DatabaseCursor(cursor, self)
         else:
-            # SQLite: 그대로 사용
+            # SQLite: %s → ? 변환
+            if '%s' in query:
+                query = query.replace('%s', '?')
+
             if params:
                 return self._conn.execute(query, params)
             else:
@@ -170,9 +156,9 @@ def find_user_by_email(email):
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         user = conn.execute('''
             SELECT * FROM sb_user 
-            WHERE user_email = ? 
-            AND effective_start_date <= ? 
-            AND (effective_end_date IS NULL OR effective_end_date >= ?)
+            WHERE user_email = %s 
+            AND effective_start_date <= %s 
+            AND (effective_end_date IS NULL OR effective_end_date >= %s)
         ''', (email, current_time, current_time)).fetchone()
         return dict(user) if user else None
 
@@ -190,8 +176,8 @@ def send_otp(user_email, method='email'):
     with get_db() as conn:
         conn.execute('''
             UPDATE sb_user 
-            SET otp_code = ?, otp_expires_at = ?, otp_attempts = 0, otp_method = ?
-            WHERE user_email = ?
+            SET otp_code = %s, otp_expires_at = %s, otp_attempts = 0, otp_method = %s
+            WHERE user_email = %s
         ''', (otp_code, expires_at, method, user_email))
         conn.commit()
     
@@ -245,9 +231,9 @@ def verify_otp(email, otp_code):
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         user = conn.execute('''
             SELECT * FROM sb_user 
-            WHERE user_email = ? 
-            AND effective_start_date <= ? 
-            AND (effective_end_date IS NULL OR effective_end_date >= ?)
+            WHERE user_email = %s 
+            AND effective_start_date <= %s 
+            AND (effective_end_date IS NULL OR effective_end_date >= %s)
         ''', (email, current_time, current_time)).fetchone()
         
         if not user:
@@ -268,7 +254,7 @@ def verify_otp(email, otp_code):
                 UPDATE sb_user 
                 SET otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0,
                     last_login_date = CURRENT_TIMESTAMP
-                WHERE user_email = ?
+                WHERE user_email = %s
             ''', (email,))
             conn.commit()
             return True, dict(user)
@@ -277,7 +263,7 @@ def verify_otp(email, otp_code):
             conn.execute('''
                 UPDATE sb_user 
                 SET otp_attempts = otp_attempts + 1
-                WHERE user_email = ?
+                WHERE user_email = %s
             ''', (email,))
             conn.commit()
             remaining = 3 - (user['otp_attempts'] + 1)
@@ -299,7 +285,7 @@ def get_current_user():
     
     with get_db() as conn:
         user = conn.execute(
-            'SELECT * FROM sb_user WHERE user_id = ?', (session['user_id'],)
+            'SELECT * FROM sb_user WHERE user_id = %s', (session['user_id'],)
         ).fetchone()
         return dict(user) if user else None
 
@@ -308,8 +294,8 @@ def set_user_effective_period(user_email, start_date, end_date):
     with get_db() as conn:
         conn.execute('''
             UPDATE sb_user 
-            SET effective_start_date = ?, effective_end_date = ?
-            WHERE user_email = ?
+            SET effective_start_date = %s, effective_end_date = %s
+            WHERE user_email = %s
         ''', (start_date, end_date, user_email))
         conn.commit()
 
@@ -324,8 +310,8 @@ def enable_user_permanently(user_email):
     with get_db() as conn:
         conn.execute('''
             UPDATE sb_user 
-            SET effective_start_date = ?, effective_end_date = NULL
-            WHERE user_email = ?
+            SET effective_start_date = %s, effective_end_date = NULL
+            WHERE user_email = %s
         ''', (current_time, user_email))
         conn.commit()
 
@@ -353,7 +339,7 @@ def log_user_activity(user_info, action_type, page_name, url_path, ip_address, u
                 INSERT INTO sb_user_activity_log 
                 (user_id, user_email, user_name, action_type, page_name, url_path, 
                  ip_address, user_agent, additional_info)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 user_info.get('user_id'),
                 user_info.get('user_email'),
@@ -380,7 +366,7 @@ def get_user_activity_logs(limit=100, offset=0, user_id=None):
         params = []
         
         if user_id:
-            query += ' WHERE user_id = ?'
+            query += ' WHERE user_id = %s'
             params.append(user_id)
         
         query += ' ORDER BY access_time DESC LIMIT ? OFFSET ?'
@@ -393,7 +379,7 @@ def get_activity_log_count(user_id=None):
     """활동 로그 총 개수 조회"""
     with get_db() as conn:
         if user_id:
-            count = conn.execute('SELECT COUNT(*) FROM sb_user_activity_log WHERE user_id = ?', (user_id,)).fetchone()[0]
+            count = conn.execute('SELECT COUNT(*) FROM sb_user_activity_log WHERE user_id = %s', (user_id,)).fetchone()[0]
         else:
             count = conn.execute('SELECT COUNT(*) FROM sb_user_activity_log').fetchone()[0]
         return count
@@ -402,7 +388,7 @@ def check_ai_review_limit(user_email):
     """AI 검토 횟수 제한 확인"""
     with get_db() as conn:
         user = conn.execute(
-            'SELECT ai_review_count, ai_review_limit FROM sb_user WHERE user_email = ?',
+            'SELECT ai_review_count, ai_review_limit FROM sb_user WHERE user_email = %s',
             (user_email,)
         ).fetchone()
         
@@ -418,7 +404,7 @@ def increment_ai_review_count(user_email):
     """AI 검토 횟수 증가"""
     with get_db() as conn:
         conn.execute(
-            'UPDATE sb_user SET ai_review_count = COALESCE(ai_review_count, 0) + 1 WHERE user_email = ?',
+            'UPDATE sb_user SET ai_review_count = COALESCE(ai_review_count, 0) + 1 WHERE user_email = %s',
             (user_email,)
         )
         conn.commit()
@@ -427,7 +413,7 @@ def get_ai_review_status(user_email):
     """AI 검토 현황 조회"""
     with get_db() as conn:
         user = conn.execute(
-            'SELECT ai_review_count, ai_review_limit FROM sb_user WHERE user_email = ?',
+            'SELECT ai_review_count, ai_review_limit FROM sb_user WHERE user_email = %s',
             (user_email,)
         ).fetchone()
         
@@ -450,7 +436,7 @@ def get_unique_filename(filename):
         # 현재 파일명이 중복되는지 확인
         existing = conn.execute('''
             SELECT COUNT(*) FROM sb_rcm 
-            WHERE original_filename = ? AND is_active = 'Y'
+            WHERE original_filename = %s AND is_active = 'Y'
         ''', (filename,)).fetchone()[0]
         
         if existing == 0:
@@ -470,7 +456,7 @@ def get_unique_filename(filename):
             
             existing = conn.execute('''
                 SELECT COUNT(*) FROM sb_rcm 
-                WHERE original_filename = ? AND is_active = 'Y'
+                WHERE original_filename = %s AND is_active = 'Y'
             ''', (new_filename,)).fetchone()[0]
             
             if existing == 0:
@@ -486,7 +472,7 @@ def create_rcm(rcm_name, description, upload_user_id, original_filename=None, co
     with get_db() as conn:
         cursor = conn.execute('''
             INSERT INTO sb_rcm (rcm_name, description, upload_user_id, original_filename, control_category)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, %s, %s, %s, %s)
         ''', (rcm_name, description, upload_user_id, original_filename, control_category))
         conn.commit()
         return cursor.lastrowid
@@ -495,7 +481,7 @@ def get_user_rcms(user_id):
     """사용자가 접근 가능한 RCM 목록 조회"""
     with get_db() as conn:
         # 먼저 사용자가 관리자인지 확인
-        user = conn.execute('SELECT admin_flag FROM sb_user WHERE user_id = ?', (user_id,)).fetchone()
+        user = conn.execute('SELECT admin_flag FROM sb_user WHERE user_id = %s', (user_id,)).fetchone()
         is_admin = user and user['admin_flag'] == 'Y'
         
         if is_admin:
@@ -523,7 +509,7 @@ def get_user_rcms(user_id):
                 FROM sb_rcm r
                 INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
                 INNER JOIN sb_user u ON r.upload_user_id = u.user_id
-                WHERE ur.user_id = ? AND ur.is_active = 'Y' AND r.is_active = 'Y'
+                WHERE ur.user_id = %s AND ur.is_active = 'Y' AND r.is_active = 'Y'
                 ORDER BY u.company_name,
                          CASE r.control_category
                              WHEN 'ELC' THEN 1
@@ -543,7 +529,7 @@ def get_rcm_info(rcm_id):
             SELECT r.*, u.user_name as uploader_name, u.company_name
             FROM sb_rcm r
             LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
-            WHERE r.rcm_id = ?
+            WHERE r.rcm_id = %s
         ''', (rcm_id,)).fetchone()
         return dict(rcm) if rcm else None
 
@@ -551,14 +537,14 @@ def has_rcm_access(user_id, rcm_id):
     """사용자가 특정 RCM에 접근 권한이 있는지 확인"""
     with get_db() as conn:
         # 먼저 사용자가 관리자인지 확인
-        user = conn.execute('SELECT admin_flag FROM sb_user WHERE user_id = ?', (user_id,)).fetchone()
+        user = conn.execute('SELECT admin_flag FROM sb_user WHERE user_id = %s', (user_id,)).fetchone()
         if user and user['admin_flag'] == 'Y':
             return True
         
         # 일반 사용자는 권한 테이블 확인
         access = conn.execute('''
             SELECT 1 FROM sb_user_rcm 
-            WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+            WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
         ''', (user_id, rcm_id)).fetchone()
         
         return access is not None
@@ -577,13 +563,13 @@ def get_rcm_details(rcm_id, control_category=None):
         query = '''
             SELECT *
             FROM sb_rcm_detail_v
-            WHERE rcm_id = ?
+            WHERE rcm_id = %s
         '''
         params = [rcm_id]
 
         # 통제 카테고리 필터 추가
         if control_category:
-            query += ' AND control_category = ?'
+            query += ' AND control_category = %s'
             params.append(control_category)
 
         query += '''
@@ -623,16 +609,16 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
                 FROM sb_rcm_detail_v d
                 INNER JOIN sb_design_evaluation_header h ON d.rcm_id = h.rcm_id
                 INNER JOIN sb_design_evaluation_line l ON h.header_id = l.header_id AND d.control_code = l.control_code
-                WHERE d.rcm_id = ?
+                WHERE d.rcm_id = %s
                     AND (d.key_control = 'Y' OR d.key_control = '핵심' OR d.key_control = 'KEY')
-                    AND h.user_id = ?
-                    AND h.evaluation_session = ?
+                    AND h.user_id = %s
+                    AND h.evaluation_session = %s
                     AND l.overall_effectiveness = 'effective'
             '''
             params = [rcm_id, user_id, design_evaluation_session]
 
             if control_category:
-                query += ' AND d.control_category = ?'
+                query += ' AND d.control_category = %s'
                 params.append(control_category)
 
             query += '''
@@ -654,12 +640,12 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
             query = '''
                 SELECT *
                 FROM sb_rcm_detail_v
-                WHERE rcm_id = ? AND (key_control = 'Y' OR key_control = '핵심' OR key_control = 'KEY')
+                WHERE rcm_id = %s AND (key_control = 'Y' OR key_control = '핵심' OR key_control = 'KEY')
             '''
             params = [rcm_id]
 
             if control_category:
-                query += ' AND control_category = ?'
+                query += ' AND control_category = %s'
                 params.append(control_category)
 
             query += '''
@@ -696,25 +682,25 @@ def save_rcm_details(rcm_id, rcm_data, control_category='ITGC'):
             # 기존 데이터 확인
             existing = conn.execute('''
                 SELECT detail_id FROM sb_rcm_detail
-                WHERE rcm_id = ? AND control_code = ?
+                WHERE rcm_id = %s AND control_code = %s
             ''', (rcm_id, control_code)).fetchone()
 
             if existing:
                 # 기존 데이터가 있으면 UPDATE
                 conn.execute('''
                     UPDATE sb_rcm_detail SET
-                        control_name = ?,
-                        control_description = ?,
-                        key_control = ?,
-                        control_frequency = ?,
-                        control_type = ?,
-                        control_nature = ?,
-                        population = ?,
-                        population_completeness_check = ?,
-                        population_count = ?,
-                        test_procedure = ?,
-                        control_category = ?
-                    WHERE rcm_id = ? AND control_code = ?
+                        control_name = %s,
+                        control_description = %s,
+                        key_control = %s,
+                        control_frequency = %s,
+                        control_type = %s,
+                        control_nature = %s,
+                        population = %s,
+                        population_completeness_check = %s,
+                        population_count = %s,
+                        test_procedure = %s,
+                        control_category = %s
+                    WHERE rcm_id = %s AND control_code = %s
                 ''', (
                     data.get('control_name', ''),
                     data.get('control_description', ''),
@@ -738,7 +724,7 @@ def save_rcm_details(rcm_id, rcm_data, control_category='ITGC'):
                         key_control, control_frequency, control_type, control_nature,
                         population, population_completeness_check, population_count, test_procedure,
                         control_category
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (
                     rcm_id,
                     control_code,
@@ -759,7 +745,7 @@ def save_rcm_details(rcm_id, rcm_data, control_category='ITGC'):
         conn.execute('''
             UPDATE sb_rcm
             SET completion_date = CURRENT_TIMESTAMP
-            WHERE rcm_id = ?
+            WHERE rcm_id = %s
         ''', (rcm_id,))
 
         conn.commit()
@@ -769,7 +755,7 @@ def grant_rcm_access(user_id, rcm_id, permission_type, granted_by):
     with get_db() as conn:
         conn.execute('''
             INSERT OR REPLACE INTO sb_user_rcm (user_id, rcm_id, permission_type, granted_by)
-            VALUES (?, ?, ?, ?)
+            VALUES (?, %s, %s, %s)
         ''', (user_id, rcm_id, permission_type, granted_by))
         conn.commit()
 
@@ -799,7 +785,7 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
         # 먼저 해당 line_id 찾기
         line_record = conn.execute('''
             SELECT line_id FROM sb_design_evaluation_line
-            WHERE header_id = ? AND control_code = ?
+            WHERE header_id = %s AND control_code = %s
         ''', (header_id, control_code)).fetchone()
         
         if line_record:
@@ -808,11 +794,11 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
             
             update_query = '''
                 UPDATE sb_design_evaluation_line SET
-                    description_adequacy = ?, improvement_suggestion = ?,
-                    overall_effectiveness = ?, evaluation_rationale = ?,
-                    recommended_actions = ?, evaluation_date = CURRENT_TIMESTAMP,
+                    description_adequacy = %s, improvement_suggestion = %s,
+                    overall_effectiveness = %s, evaluation_rationale = %s,
+                    recommended_actions = %s, evaluation_date = CURRENT_TIMESTAMP,
                     last_updated = CURRENT_TIMESTAMP
-                WHERE line_id = ?
+                WHERE line_id = %s
             '''
             update_params = (
                 evaluation_data.get('description_adequacy'),
@@ -847,7 +833,7 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                     description_adequacy, improvement_suggestion,
                     overall_effectiveness, evaluation_rationale,
                     recommended_actions, evaluation_date, last_updated
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (?, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             '''
             insert_params = (
                 header_id, control_code, control_sequence,
@@ -877,12 +863,12 @@ def create_evaluation_structure(rcm_id, user_id, evaluation_session):
             # 1. 기존 동일한 세션이 있는지 확인하고 삭제
             existing_header = conn.execute('''
                 SELECT header_id FROM sb_design_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
             ''', (rcm_id, user_id, evaluation_session)).fetchone()
             
             if existing_header:
-                conn.execute('DELETE FROM sb_design_evaluation_line WHERE header_id = ?', (existing_header['header_id'],))
-                conn.execute('DELETE FROM sb_design_evaluation_header WHERE header_id = ?', (existing_header['header_id'],))
+                conn.execute('DELETE FROM sb_design_evaluation_line WHERE header_id = %s', (existing_header['header_id'],))
+                conn.execute('DELETE FROM sb_design_evaluation_header WHERE header_id = %s', (existing_header['header_id'],))
             
             # 2. RCM 상세 정보 조회
             rcm_details = get_rcm_details(rcm_id)
@@ -897,7 +883,7 @@ def create_evaluation_structure(rcm_id, user_id, evaluation_session):
                 INSERT INTO sb_design_evaluation_header (
                     rcm_id, user_id, evaluation_session, total_controls,
                     evaluated_controls, progress_percentage, evaluation_status
-                ) VALUES (?, ?, ?, ?, 0, 0.0, 'IN_PROGRESS')
+                ) VALUES (?, %s, %s, %s, 0, 0.0, 'IN_PROGRESS')
             ''', (rcm_id, user_id, evaluation_session, total_controls))
             
             header_id = cursor.lastrowid
@@ -911,7 +897,7 @@ def create_evaluation_structure(rcm_id, user_id, evaluation_session):
                             header_id, control_code, control_sequence,
                             description_adequacy, improvement_suggestion, 
                             overall_effectiveness, evaluation_rationale, recommended_actions
-                        ) VALUES (?, ?, ?, '', '', '', '', '')
+                        ) VALUES (?, %s, %s, '', '', '', '', '')
                     ''', (header_id, control['control_code'], idx))
                     created_lines += 1
                 except Exception as line_error:
@@ -919,7 +905,7 @@ def create_evaluation_structure(rcm_id, user_id, evaluation_session):
                     continue
             
             if created_lines == 0:
-                conn.execute('DELETE FROM sb_design_evaluation_header WHERE header_id = ?', (header_id,))
+                conn.execute('DELETE FROM sb_design_evaluation_header WHERE header_id = %s', (header_id,))
                 raise ValueError("평가 라인을 생성할 수 없습니다.")
             
             conn.commit()
@@ -938,7 +924,7 @@ def get_or_create_evaluation_header(conn, rcm_id, user_id, evaluation_session):
     # 기존 헤더 확인
     header = conn.execute('''
         SELECT header_id FROM sb_design_evaluation_header
-        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
     ''', (rcm_id, user_id, evaluation_session)).fetchone()
     
     if header:
@@ -953,7 +939,7 @@ def update_evaluation_progress(conn, header_id):
     result = conn.execute('''
         SELECT COUNT(*) as evaluated_count
         FROM sb_design_evaluation_line
-        WHERE header_id = ? AND evaluation_date IS NOT NULL
+        WHERE header_id = %s AND evaluation_date IS NOT NULL
     ''', (header_id,)).fetchone()
     
     evaluated_count = result['evaluated_count']
@@ -961,7 +947,7 @@ def update_evaluation_progress(conn, header_id):
     # 헤더 정보 조회
     header = conn.execute('''
         SELECT total_controls FROM sb_design_evaluation_header
-        WHERE header_id = ?
+        WHERE header_id = %s
     ''', (header_id,)).fetchone()
     
     total_controls = header['total_controls']
@@ -971,11 +957,11 @@ def update_evaluation_progress(conn, header_id):
     # 헤더 업데이트 (completed_date는 수동으로만 설정)
     conn.execute('''
         UPDATE sb_design_evaluation_header
-        SET evaluated_controls = ?, 
-            progress_percentage = ?,
-            evaluation_status = ?,
+        SET evaluated_controls = %s, 
+            progress_percentage = %s,
+            evaluation_status = %s,
             last_updated = CURRENT_TIMESTAMP
-        WHERE header_id = ?
+        WHERE header_id = %s
     ''', (evaluated_count, progress, status, header_id))
 
 def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
@@ -989,10 +975,10 @@ def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
                 SELECT l.*, h.evaluation_session, h.start_date, h.evaluation_status
                 FROM sb_design_evaluation_line l
                 JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
-                WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ?
+                WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s
                       AND h.header_id = (
                           SELECT header_id FROM sb_design_evaluation_header
-                          WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                          WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
                           ORDER BY start_date DESC LIMIT 1
                       )
                 ORDER BY l.control_sequence, l.control_code
@@ -1006,10 +992,10 @@ def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
                     SELECT l.*, h.evaluation_session, h.start_date, h.evaluation_status
                     FROM sb_design_evaluation_line l
                     JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
-                    WHERE h.rcm_id = ? AND h.user_id = ?
+                    WHERE h.rcm_id = %s AND h.user_id = %s
                           AND h.header_id = (
                               SELECT header_id FROM sb_design_evaluation_header
-                              WHERE rcm_id = ? AND user_id = ?
+                              WHERE rcm_id = %s AND user_id = %s
                               ORDER BY start_date DESC LIMIT 1
                           )
                     ORDER BY l.control_sequence, l.control_code
@@ -1042,7 +1028,7 @@ def get_design_evaluations_by_header_id(rcm_id, user_id, header_id):
             SELECT l.*, h.evaluation_session, h.start_date, h.evaluation_status
             FROM sb_design_evaluation_line l
             JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
-            WHERE l.header_id = ?
+            WHERE l.header_id = %s
             ORDER BY l.control_sequence, l.control_code
             '''
             params = (header_id,)
@@ -1080,7 +1066,7 @@ def get_user_evaluation_sessions(rcm_id, user_id):
                    h.evaluated_controls, h.total_controls, h.progress_percentage,
                    h.evaluation_status, h.completed_date
             FROM sb_design_evaluation_header h
-            WHERE h.rcm_id = ? AND h.user_id = ?
+            WHERE h.rcm_id = %s AND h.user_id = %s
             ORDER BY h.start_date DESC
         ''', (rcm_id, user_id)).fetchall()
         return [dict(session) for session in sessions]
@@ -1091,7 +1077,7 @@ def delete_evaluation_session(rcm_id, user_id, evaluation_session):
         # 헤더 조회
         header = conn.execute('''
             SELECT header_id FROM sb_design_evaluation_header
-            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
         ''', (rcm_id, user_id, evaluation_session)).fetchone()
         
         if not header:
@@ -1102,13 +1088,13 @@ def delete_evaluation_session(rcm_id, user_id, evaluation_session):
         # 1. 먼저 line 레코드들 삭제
         conn.execute('''
             DELETE FROM sb_design_evaluation_line 
-            WHERE header_id = ?
+            WHERE header_id = %s
         ''', (header_id,))
         
         # 2. header 레코드 삭제
         cursor = conn.execute('''
             DELETE FROM sb_design_evaluation_header 
-            WHERE header_id = ?
+            WHERE header_id = %s
         ''', (header_id,))
         deleted_count = cursor.rowcount
         conn.commit()
@@ -1142,7 +1128,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
         # 기존 Line 데이터 확인
         existing_line = conn.execute('''
             SELECT line_id FROM sb_operation_evaluation_line
-            WHERE header_id = ? AND control_code = ?
+            WHERE header_id = %s AND control_code = %s
         ''', (header_id, control_code)).fetchone()
 
         line_id = None
@@ -1151,21 +1137,21 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
             # 업데이트
             conn.execute('''
                 UPDATE sb_operation_evaluation_line
-                SET sample_size = ?,
-                    exception_count = ?,
-                    mitigating_factors = ?,
-                    exception_details = ?,
-                    conclusion = ?,
-                    improvement_plan = ?,
-                    population_path = ?,
-                    samples_path = ?,
-                    test_results_path = ?,
-                    population_count = ?,
-                    no_occurrence = ?,
-                    no_occurrence_reason = ?,
+                SET sample_size = %s,
+                    exception_count = %s,
+                    mitigating_factors = %s,
+                    exception_details = %s,
+                    conclusion = %s,
+                    improvement_plan = %s,
+                    population_path = %s,
+                    samples_path = %s,
+                    test_results_path = %s,
+                    population_count = %s,
+                    no_occurrence = %s,
+                    no_occurrence_reason = %s,
                     evaluation_date = CURRENT_TIMESTAMP,
                     last_updated = CURRENT_TIMESTAMP
-                WHERE line_id = ?
+                WHERE line_id = %s
             ''', (
                 evaluation_data.get('sample_size'),
                 evaluation_data.get('exception_count'),
@@ -1190,7 +1176,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     population_path, samples_path, test_results_path, population_count,
                     no_occurrence, no_occurrence_reason,
                     evaluation_date, last_updated
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ''', (
                 header_id, control_code,
                 evaluation_data.get('sample_size'),
@@ -1211,14 +1197,14 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
         # Sample 데이터 저장 (새 테이블 구조)
         if sample_lines and line_id:
             # 기존 샘플 데이터 삭제
-            conn.execute('DELETE FROM sb_operation_evaluation_sample WHERE line_id = ?', (line_id,))
+            conn.execute('DELETE FROM sb_operation_evaluation_sample WHERE line_id = %s', (line_id,))
 
             # 새 샘플 데이터 삽입
             for sample in sample_lines:
                 conn.execute('''
                     INSERT INTO sb_operation_evaluation_sample (
                         line_id, sample_number, evidence, has_exception, mitigation
-                    ) VALUES (?, ?, ?, ?, ?)
+                    ) VALUES (?, %s, %s, %s, %s)
                 ''', (
                     line_id,
                     sample.get('sample_number'),
@@ -1231,7 +1217,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
         conn.execute('''
             UPDATE sb_operation_evaluation_header
             SET last_updated = CURRENT_TIMESTAMP
-            WHERE header_id = ?
+            WHERE header_id = %s
         ''', (header_id,))
 
         conn.commit()
@@ -1241,7 +1227,7 @@ def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_
     # 기존 헤더 조회
     header = conn.execute('''
         SELECT header_id FROM sb_operation_evaluation_header
-        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
     ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchone()
 
     if header:
@@ -1251,7 +1237,7 @@ def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_
     cursor = conn.execute('''
         INSERT INTO sb_operation_evaluation_header (
             rcm_id, user_id, evaluation_session, design_evaluation_session
-        ) VALUES (?, ?, ?, ?)
+        ) VALUES (?, %s, %s, %s)
     ''', (rcm_id, user_id, evaluation_session, design_evaluation_session))
 
     return cursor.lastrowid
@@ -1265,14 +1251,14 @@ def get_operation_evaluations(rcm_id, user_id, evaluation_session, design_evalua
     with get_db() as conn:
         if design_evaluation_session:
             # 특정 설계평가 세션에 대한 운영평가 조회
-            query = '''SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session FROM sb_operation_evaluation_line l JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ? AND h.design_evaluation_session = ? ORDER BY l.control_sequence, l.control_code'''
+            query = '''SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session FROM sb_operation_evaluation_line l JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s AND h.design_evaluation_session = %s ORDER BY l.control_sequence, l.control_code'''
             params = (rcm_id, user_id, evaluation_session, design_evaluation_session)
             print(f'[SQL] {query}')
             print(f'[PARAMS] {params}')
             evaluations = conn.execute(query, params).fetchall()
         else:
             # 운영평가 세션만으로 조회 (기존 호환성)
-            query = '''SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session FROM sb_operation_evaluation_line l JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ? ORDER BY l.control_sequence, l.control_code'''
+            query = '''SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session FROM sb_operation_evaluation_line l JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s ORDER BY l.control_sequence, l.control_code'''
             params = (rcm_id, user_id, evaluation_session)
             print(f'[SQL] {query}')
             print(f'[PARAMS] {params}')
@@ -1305,7 +1291,7 @@ def get_operation_evaluation_samples(line_id):
                    request_number, requester_name, requester_department,
                    approver_name, approver_department, approval_date
             FROM sb_operation_evaluation_sample
-            WHERE line_id = ?
+            WHERE line_id = %s
             ORDER BY sample_number
         '''
         # 쿼리를 한 줄로 변환하여 출력
@@ -1347,7 +1333,7 @@ def count_design_evaluations(rcm_id, user_id):
     with get_db() as conn:
         count = conn.execute('''
             SELECT COUNT(*) FROM sb_design_evaluation_header
-            WHERE rcm_id = ? AND user_id = ?
+            WHERE rcm_id = %s AND user_id = %s
         ''', (rcm_id, user_id)).fetchone()[0]
         return count
 
@@ -1361,18 +1347,18 @@ def count_operation_evaluations(rcm_id, user_id, evaluation_session=None, design
         if evaluation_session and design_evaluation_session:
             count = conn.execute('''
                 SELECT COUNT(*) FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchone()[0]
         elif evaluation_session:
             count = conn.execute('''
                 SELECT COUNT(*) FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
             ''', (rcm_id, user_id, evaluation_session)).fetchone()[0]
         else:
             # 전체 운영평가 수량 조회 (세션 구분 없음)
             count = conn.execute('''
                 SELECT COUNT(*) FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ?
+                WHERE rcm_id = %s AND user_id = %s
             ''', (rcm_id, user_id)).fetchone()[0]
         return count
 
@@ -1382,7 +1368,7 @@ def count_completed_operation_evaluations(header_id):
         # conclusion이 NULL이 아닌 라인 수를 계산 (평가 완료의 명확한 지표)
         count = conn.execute('''
             SELECT COUNT(*) FROM sb_operation_evaluation_line
-            WHERE header_id = ? AND conclusion IS NOT NULL
+            WHERE header_id = %s AND conclusion IS NOT NULL
         ''', (header_id,)).fetchone()[0]
         return count
 
@@ -1393,7 +1379,7 @@ def get_completed_design_evaluation_sessions(rcm_id, user_id):
             SELECT header_id, evaluation_session, completed_date, start_date,
                    evaluated_controls, total_controls, progress_percentage
             FROM sb_design_evaluation_header
-            WHERE rcm_id = ? AND user_id = ? AND completed_date IS NOT NULL
+            WHERE rcm_id = %s AND user_id = %s AND completed_date IS NOT NULL
             AND (evaluation_status != 'ARCHIVED' OR evaluation_status IS NULL)
             ORDER BY start_date DESC
         ''', (rcm_id, user_id)).fetchall()
@@ -1406,7 +1392,7 @@ def get_all_design_evaluation_sessions(rcm_id, user_id):
             SELECT header_id, evaluation_session, completed_date, start_date,
                    evaluated_controls, total_controls, progress_percentage, evaluation_status
             FROM sb_design_evaluation_header
-            WHERE rcm_id = ? AND user_id = ?
+            WHERE rcm_id = %s AND user_id = %s
             AND (evaluation_status != 'ARCHIVED' OR evaluation_status IS NULL)
             ORDER BY
                 CASE WHEN completed_date IS NULL THEN 0 ELSE 1 END,
@@ -1426,7 +1412,7 @@ def archive_design_evaluation_session(rcm_id, user_id, evaluation_session):
         header = conn.execute('''
             SELECT header_id, evaluation_status, completed_date
             FROM sb_design_evaluation_header
-            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
         ''', (rcm_id, user_id, evaluation_session)).fetchone()
 
         if not header:
@@ -1442,7 +1428,7 @@ def archive_design_evaluation_session(rcm_id, user_id, evaluation_session):
         conn.execute('''
             UPDATE sb_design_evaluation_header
             SET evaluation_status = 'ARCHIVED', last_updated = CURRENT_TIMESTAMP
-            WHERE header_id = ?
+            WHERE header_id = %s
         ''', (header['header_id'],))
 
         conn.commit()
@@ -1455,7 +1441,7 @@ def unarchive_design_evaluation_session(rcm_id, user_id, evaluation_session):
         header = conn.execute('''
             SELECT header_id, evaluation_status, completed_date
             FROM sb_design_evaluation_header
-            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
         ''', (rcm_id, user_id, evaluation_session)).fetchone()
 
         if not header:
@@ -1468,7 +1454,7 @@ def unarchive_design_evaluation_session(rcm_id, user_id, evaluation_session):
         conn.execute('''
             UPDATE sb_design_evaluation_header
             SET evaluation_status = 'COMPLETED', last_updated = CURRENT_TIMESTAMP
-            WHERE header_id = ?
+            WHERE header_id = %s
         ''', (header['header_id'],))
 
         conn.commit()
@@ -1494,7 +1480,7 @@ def save_rcm_standard_mapping(rcm_id, control_code, std_control_id, confidence, 
         conn.execute('''
             INSERT OR REPLACE INTO sb_rcm_standard_mapping
             (rcm_id, control_code, std_control_id, mapping_confidence, mapping_type, mapped_by)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, %s, %s, %s, %s, %s)
         ''', (rcm_id, control_code, std_control_id, confidence, mapping_type, mapped_by))
         conn.commit()
 
@@ -1505,7 +1491,7 @@ def get_rcm_standard_mappings(rcm_id):
             SELECT m.*, sc.control_name as std_control_name, sc.control_category
             FROM sb_rcm_standard_mapping m
             JOIN sb_standard_control sc ON m.std_control_id = sc.std_control_id
-            WHERE m.rcm_id = ? AND m.is_active = 'Y'
+            WHERE m.rcm_id = %s AND m.is_active = 'Y'
             ORDER BY m.control_code
         ''', (rcm_id,)).fetchall()
         return [dict(mapping) for mapping in mappings]
@@ -1579,7 +1565,7 @@ def evaluate_rcm_completeness(rcm_id, user_id):
             INSERT INTO sb_rcm_completeness_eval
             (rcm_id, total_controls, mapped_controls,
              completeness_score, eval_details, eval_by)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, %s, %s, %s, %s, %s)
         ''', (rcm_id, total_controls, mapped_controls,
               completeness_score, json.dumps(eval_details, ensure_ascii=False), user_id))
         conn.commit()
@@ -1599,17 +1585,17 @@ def save_rcm_mapping(rcm_id, detail_id, std_control_id, user_id):
                     SET mapped_std_control_id = NULL,
                         mapping_status = 'no_mapping',
                         mapped_date = CURRENT_TIMESTAMP,
-                        mapped_by = ?
-                    WHERE detail_id = ?
+                        mapped_by = %s
+                    WHERE detail_id = %s
                 ''', (user_id, detail_id))
             else:
                 cursor = conn.execute('''
                     UPDATE sb_rcm_detail
-                    SET mapped_std_control_id = ?,
+                    SET mapped_std_control_id = %s,
                         mapping_status = 'mapped',
                         mapped_date = CURRENT_TIMESTAMP,
-                        mapped_by = ?
-                    WHERE detail_id = ?
+                        mapped_by = %s
+                    WHERE detail_id = %s
                 ''', (std_control_id, user_id, detail_id))
             
             if cursor.rowcount == 0:
@@ -1641,7 +1627,7 @@ def delete_rcm_mapping(rcm_id, detail_id, user_id):
                     ai_review_recommendation = NULL,
                     ai_reviewed_date = NULL,
                     ai_reviewed_by = NULL
-                WHERE detail_id = ?
+                WHERE detail_id = %s
             ''', (detail_id,))
             
             if cursor.rowcount == 0:
@@ -1675,7 +1661,7 @@ def get_rcm_detail_mappings(rcm_id):
                 sc.control_category
             FROM sb_rcm_detail d
             LEFT JOIN sb_standard_control sc ON d.mapped_std_control_id = sc.std_control_id
-            WHERE d.rcm_id = ? AND d.mapped_std_control_id IS NOT NULL
+            WHERE d.rcm_id = %s AND d.mapped_std_control_id IS NOT NULL
             ORDER BY d.control_code
         ''', (rcm_id,)).fetchall()
         return [dict(mapping) for mapping in mappings]
@@ -1687,10 +1673,10 @@ def save_rcm_ai_review(rcm_id, detail_id, recommendation, user_id):
             cursor = conn.execute('''
                 UPDATE sb_rcm_detail
                 SET ai_review_status = 'completed',
-                    ai_review_recommendation = ?,
+                    ai_review_recommendation = %s,
                     ai_reviewed_date = CURRENT_TIMESTAMP,
-                    ai_reviewed_by = ?
-                WHERE detail_id = ?
+                    ai_reviewed_by = %s
+                WHERE detail_id = %s
             ''', (recommendation, user_id, detail_id))
             
             if cursor.rowcount == 0:
@@ -1725,7 +1711,7 @@ def get_control_review_result(rcm_id, detail_id):
                     ai_reviewed_date,
                     ai_reviewed_by
                 FROM sb_rcm_detail
-                WHERE detail_id = ?
+                WHERE detail_id = %s
             ''', (detail_id,))
             
             result = cursor.fetchone()
@@ -1755,14 +1741,14 @@ def save_control_review_result(rcm_id, detail_id, std_control_id, ai_review_reco
         with get_db() as conn:
             cursor = conn.execute('''
                 UPDATE sb_rcm_detail
-                SET mapped_std_control_id = ?,
+                SET mapped_std_control_id = %s,
                     mapped_date = CURRENT_TIMESTAMP,
-                    mapped_by = ?,
-                    ai_review_status = ?,
-                    ai_review_recommendation = ?,
+                    mapped_by = %s,
+                    ai_review_status = %s,
+                    ai_review_recommendation = %s,
                     ai_reviewed_date = CURRENT_TIMESTAMP,
-                    ai_reviewed_by = ?
-                WHERE detail_id = ?
+                    ai_reviewed_by = %s
+                WHERE detail_id = %s
             ''', (std_control_id, user_id, status, ai_review_recommendation, user_id, detail_id))
             
             if cursor.rowcount == 0:
@@ -1782,7 +1768,7 @@ def get_rcm_review_result(rcm_id):
         with get_db() as conn:
             # RCM 기본 정보
             rcm_info = conn.execute('''
-                SELECT rcm_id, rcm_name FROM sb_rcm WHERE rcm_id = ?
+                SELECT rcm_id, rcm_name FROM sb_rcm WHERE rcm_id = %s
             ''', (rcm_id,)).fetchone()
             
             if not rcm_info:
@@ -1798,7 +1784,7 @@ def get_rcm_review_result(rcm_id):
                 FROM sb_rcm_detail d
                 LEFT JOIN sb_user mu ON d.mapped_by = mu.user_id
                 LEFT JOIN sb_user au ON d.ai_reviewed_by = au.user_id
-                WHERE d.rcm_id = ?
+                WHERE d.rcm_id = %s
                 ORDER BY d.control_code
             ''', (rcm_id,)).fetchall()
             
@@ -1854,7 +1840,7 @@ def clear_rcm_review_result(rcm_id):
                     ai_review_recommendation = NULL,
                     ai_reviewed_date = NULL,
                     ai_reviewed_by = NULL
-                WHERE rcm_id = ?
+                WHERE rcm_id = %s
             ''', (rcm_id,))
             conn.commit()
             return True
@@ -1918,7 +1904,7 @@ def save_rcm_review_result(rcm_id, user_id, mapping_data, ai_review_data, status
             with get_db() as conn:
                 result = conn.execute('''
                     SELECT control_code FROM sb_rcm_detail
-                    WHERE rcm_id = ? AND mapped_std_control_id = ?
+                    WHERE rcm_id = %s AND mapped_std_control_id = %s
                 ''', (rcm_id, int(std_control_id))).fetchone()
                 
                 if result:
@@ -1933,7 +1919,7 @@ def clear_rcm_completion(rcm_id):
             conn.execute('''
                 UPDATE sb_rcm 
                 SET completion_date = NULL 
-                WHERE rcm_id = ?
+                WHERE rcm_id = %s
             ''', (rcm_id,))
             conn.commit()
             return True

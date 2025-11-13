@@ -65,7 +65,7 @@ def user_design_evaluation_rcm():
             # RCM의 실제 control_category를 조회하여 evaluation_type 설정
             with get_db() as conn:
                 rcm_category = conn.execute('''
-                    SELECT control_category FROM sb_rcm WHERE rcm_id = ?
+                    SELECT control_category FROM sb_rcm WHERE rcm_id = %s
                 ''', (rcm_id,)).fetchone()
 
                 if rcm_category and rcm_category['control_category']:
@@ -106,7 +106,7 @@ def user_design_evaluation_rcm():
                        u.user_name as upload_user_name, u.company_name, 'admin' as permission_type
                 FROM sb_rcm r
                 LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
-                WHERE r.rcm_id = ?
+                WHERE r.rcm_id = %s
             ''', (rcm_id,)).fetchone()
             if rcm_data:
                 rcm_info = dict(rcm_data)
@@ -132,7 +132,7 @@ def user_design_evaluation_rcm():
         category_stats = conn.execute('''
             SELECT control_category, COUNT(*) as count
             FROM sb_rcm_detail
-            WHERE rcm_id = ?
+            WHERE rcm_id = %s
             GROUP BY control_category
             ORDER BY control_category
         ''', (rcm_id,)).fetchall()
@@ -190,7 +190,7 @@ def get_design_evaluation_api():
                     FROM sb_design_evaluation_line l
                     JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
                     JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
-                    WHERE h.rcm_id = ? AND h.evaluation_session = ?
+                    WHERE h.rcm_id = %s AND h.evaluation_session = %s
                     ORDER BY l.control_code
                 ''', (rcm_id, design_evaluation_session)).fetchall()
 
@@ -220,7 +220,7 @@ def get_design_evaluation_api():
                     l.evaluation_date
                 FROM sb_design_evaluation_line l
                 JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
-                WHERE h.rcm_id = ? AND h.evaluation_session = ? AND l.control_code = ?
+                WHERE h.rcm_id = %s AND h.evaluation_session = %s AND l.control_code = %s
             ''', (rcm_id, design_evaluation_session, control_code)).fetchone()
 
             if design_eval:
@@ -301,7 +301,7 @@ def save_design_evaluation_api():
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
                 
                 if not access_check:
@@ -403,7 +403,7 @@ def reset_design_evaluations_api():
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
                 
                 if not access_check:
@@ -418,14 +418,14 @@ def reset_design_evaluations_api():
                 DELETE FROM sb_design_evaluation_line 
                 WHERE header_id IN (
                     SELECT header_id FROM sb_design_evaluation_header 
-                    WHERE rcm_id = ? AND user_id = ?
+                    WHERE rcm_id = %s AND user_id = %s
                 )
             ''', (rcm_id, user_info['user_id']))
             
             # 2. header 레코드 삭제
             cursor = conn.execute('''
                 DELETE FROM sb_design_evaluation_header 
-                WHERE rcm_id = ? AND user_id = ?
+                WHERE rcm_id = %s AND user_id = %s
             ''', (rcm_id, user_info['user_id']))
             deleted_count = cursor.rowcount
             
@@ -470,7 +470,7 @@ def get_evaluation_sessions_api(rcm_id):
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
                 
                 if not access_check:
@@ -507,7 +507,7 @@ def load_evaluation_data_api(rcm_id):
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
                 
                 if not access_check:
@@ -543,7 +543,7 @@ def load_evaluation_data_api(rcm_id):
                     with get_db() as conn:
                         result = conn.execute('''
                             SELECT header_id FROM sb_design_evaluation_header
-                            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
                         ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchone()
                         if result:
                             current_header_id = result['header_id']
@@ -609,12 +609,12 @@ def load_evaluation_data_api(rcm_id):
                 if header_id:
                     result = conn.execute('''
                         SELECT completed_date FROM sb_design_evaluation_header
-                        WHERE header_id = ?
+                        WHERE header_id = %s
                     ''', (int(header_id),)).fetchone()
                 elif evaluation_session:
                     result = conn.execute('''
                         SELECT completed_date FROM sb_design_evaluation_header
-                        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
                     ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchone()
                 else:
                     result = None
@@ -669,7 +669,7 @@ def delete_evaluation_session_api():
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
 
                 if not access_check:
@@ -682,7 +682,7 @@ def delete_evaluation_session_api():
             operation_check = conn.execute('''
                 SELECT COUNT(*) as count
                 FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND design_evaluation_session = ?
+                WHERE rcm_id = %s AND design_evaluation_session = %s
             ''', (rcm_id, evaluation_session)).fetchone()
 
             if operation_check and operation_check['count'] > 0:
@@ -737,7 +737,7 @@ def create_design_evaluation_api():
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
                 
                 if not access_check:
@@ -810,7 +810,7 @@ def complete_design_evaluation_api():
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
                 
                 if not access_check:
@@ -824,7 +824,7 @@ def complete_design_evaluation_api():
             # 현재 평가 세션이 존재하는지 확인
             header = conn.execute('''
                 SELECT header_id FROM sb_design_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchone()
             
             if not header:
@@ -839,8 +839,8 @@ def complete_design_evaluation_api():
             
             conn.execute('''
                 UPDATE sb_design_evaluation_header
-                SET completed_date = ?, evaluation_status = 'COMPLETED'
-                WHERE header_id = ?
+                SET completed_date = %s, evaluation_status = 'COMPLETED'
+                WHERE header_id = %s
             ''', (current_time, header['header_id']))
             
             conn.commit()
@@ -889,7 +889,7 @@ def cancel_design_evaluation_api():
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
                 
                 if not access_check:
@@ -903,7 +903,7 @@ def cancel_design_evaluation_api():
             # 현재 평가 세션이 존재하는지 확인
             header = conn.execute('''
                 SELECT header_id, completed_date FROM sb_design_evaluation_header
-                WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchone()
             
             if not header:
@@ -922,7 +922,7 @@ def cancel_design_evaluation_api():
             operation_check = conn.execute('''
                 SELECT COUNT(*) as cnt
                 FROM sb_operation_evaluation_header
-                WHERE design_evaluation_session = ? AND rcm_id = ? AND user_id = ?
+                WHERE design_evaluation_session = %s AND rcm_id = %s AND user_id = %s
             ''', (evaluation_session, rcm_id, user_info['user_id'])).fetchone()
 
             has_operation_evaluation = operation_check and operation_check['cnt'] > 0
@@ -931,7 +931,7 @@ def cancel_design_evaluation_api():
             conn.execute('''
                 UPDATE sb_design_evaluation_header
                 SET completed_date = NULL, evaluation_status = 'IN_PROGRESS'
-                WHERE header_id = ?
+                WHERE header_id = %s
             ''', (header['header_id'],))
 
             conn.commit()
@@ -1009,7 +1009,7 @@ def download_evaluation_excel(rcm_id):
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
                 
                 if not access_check:
@@ -1023,7 +1023,7 @@ def download_evaluation_excel(rcm_id):
                 SELECT r.rcm_name, r.original_filename, u.company_name
                 FROM sb_rcm r
                 LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
-                WHERE r.rcm_id = ?
+                WHERE r.rcm_id = %s
             ''', (rcm_id,)).fetchone()
             
             # 현재 사용자의 가장 최신 설계평가 세션명 조회
@@ -1032,7 +1032,7 @@ def download_evaluation_excel(rcm_id):
                 session_info = conn.execute('''
                     SELECT evaluation_session 
                     FROM sb_design_evaluation_header 
-                    WHERE rcm_id = ? AND user_id = ? 
+                    WHERE rcm_id = %s AND user_id = %s 
                     ORDER BY start_date DESC 
                     LIMIT 1
                 ''', (rcm_id, user_info['user_id'])).fetchone()
@@ -1053,7 +1053,7 @@ def download_evaluation_excel(rcm_id):
                 SELECT detail_id, control_code, control_name, control_frequency, control_type, 
                        test_procedure, control_description
                 FROM sb_rcm_detail 
-                WHERE rcm_id = ? 
+                WHERE rcm_id = %s 
                 ORDER BY detail_id
             ''', (rcm_id,)).fetchall()
             
@@ -1072,7 +1072,7 @@ def download_evaluation_excel(rcm_id):
                         SELECT l.control_code, l.evaluation_rationale, l.overall_effectiveness, h.header_id
                         FROM sb_design_evaluation_line l
                         JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
-                        WHERE h.rcm_id = ? AND h.user_id = ? AND h.evaluation_session = ?
+                        WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s
                         ORDER BY l.control_sequence, l.control_code
                     ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchall()
                     
@@ -1406,7 +1406,7 @@ def archive_design_evaluation_api():
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
 
                 if not access_check:
@@ -1467,7 +1467,7 @@ def unarchive_design_evaluation_api():
                 # 일반 사용자는 명시적 권한 확인
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
 
                 if not access_check:
@@ -1528,7 +1528,7 @@ def elc_design_evaluation():
                 h.evaluation_status
             FROM sb_design_evaluation_header h
             JOIN sb_rcm r ON h.rcm_id = r.rcm_id
-            WHERE h.user_id = ?
+            WHERE h.user_id = %s
             AND r.control_category = 'ELC'
             AND h.evaluation_status = 'COMPLETED'
             ORDER BY h.completed_date DESC
@@ -1597,7 +1597,7 @@ def download_design_evaluation():
             rcm_info = conn.execute('''
                 SELECT rcm_name, description
                 FROM sb_rcm
-                WHERE rcm_id = ?
+                WHERE rcm_id = %s
             ''', (rcm_id,)).fetchone()
 
             if not rcm_info:
@@ -1621,7 +1621,7 @@ def download_design_evaluation():
                 FROM sb_design_evaluation_line l
                 JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
                 JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
-                WHERE h.rcm_id = ? AND h.evaluation_session = ?
+                WHERE h.rcm_id = %s AND h.evaluation_session = %s
                 ORDER BY l.control_code
             ''', (rcm_id, evaluation_session)).fetchall()
 
@@ -1689,7 +1689,7 @@ def download_design_evaluation():
                 header = conn.execute('''
                     SELECT header_id
                     FROM sb_design_evaluation_header
-                    WHERE rcm_id = ? AND evaluation_session = ?
+                    WHERE rcm_id = %s AND evaluation_session = %s
                 ''', (rcm_id, evaluation_session)).fetchone()
 
                 if header:
@@ -1742,7 +1742,7 @@ def download_design_evaluation():
         # 다운로드 파일명 생성 (평가 세션명 사용)
         # 한글을 유지하면서 안전하지 않은 문자만 제거
         filename = f"{evaluation_session}.xlsx"
-        # 파일명에서 위험한 문자만 제거 (/, \, :, *, ?, ", <, >, |)
+        # 파일명에서 위험한 문자만 제거 (/, \, :, *, %s, ", <, >, |)
         unsafe_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
         for char in unsafe_chars:
             filename = filename.replace(char, '_')

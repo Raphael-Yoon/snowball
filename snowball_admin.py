@@ -15,7 +15,7 @@ def get_user_info():
     
     with get_db() as conn:
         user = conn.execute(
-            'SELECT * FROM sb_user WHERE user_id = ?', (user_id,)
+            'SELECT * FROM sb_user WHERE user_id = %s', (user_id,)
         ).fetchone()
         return dict(user) if user else None
 
@@ -168,7 +168,7 @@ def admin_add_user():
             conn.execute('''
                 INSERT INTO sb_user (company_name, user_name, user_email, phone_number, 
                                    admin_flag, effective_start_date, effective_end_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, %s, %s, %s, %s, %s, %s)
             ''', (company_name, user_name, user_email, phone_number, 
                  admin_flag, effective_start_date, effective_end_date))
             conn.commit()
@@ -202,9 +202,9 @@ def admin_edit_user(user_id):
         with get_db() as conn:
             conn.execute('''
                 UPDATE sb_user 
-                SET company_name = ?, user_name = ?, user_email = ?, phone_number = ?, 
-                    admin_flag = ?, effective_start_date = ?, effective_end_date = ?
-                WHERE user_id = ?
+                SET company_name = %s, user_name = %s, user_email = %s, phone_number = %s, 
+                    admin_flag = %s, effective_start_date = %s, effective_end_date = %s
+                WHERE user_id = %s
             ''', (company_name, user_name, user_email, phone_number, 
                  admin_flag, effective_start_date, effective_end_date, user_id))
             conn.commit()
@@ -224,7 +224,7 @@ def admin_delete_user(user_id):
     
     try:
         with get_db() as conn:
-            conn.execute('DELETE FROM sb_user WHERE user_id = ?', (user_id,))
+            conn.execute('DELETE FROM sb_user WHERE user_id = %s', (user_id,))
             conn.commit()
         
         flash('사용자가 성공적으로 삭제되었습니다.')
@@ -247,8 +247,8 @@ def admin_extend_user(user_id):
         with get_db() as conn:
             conn.execute('''
                 UPDATE sb_user 
-                SET effective_start_date = ?, effective_end_date = ?
-                WHERE user_id = ?
+                SET effective_start_date = %s, effective_end_date = %s
+                WHERE user_id = %s
             ''', (today, next_year, user_id))
             conn.commit()
         
@@ -459,7 +459,7 @@ def admin_rcm_mapping(rcm_id):
     # RCM 정보 조회
     with get_db() as conn:
         rcm_info = conn.execute(
-            'SELECT * FROM sb_rcm WHERE rcm_id = ?', (rcm_id,)
+            'SELECT * FROM sb_rcm WHERE rcm_id = %s', (rcm_id,)
         ).fetchone()
         
         if not rcm_info:
@@ -570,7 +570,7 @@ def admin_rcm_save_mapping():
                     SELECT r.original_filename, u.company_name 
                     FROM sb_rcm r
                     JOIN sb_user u ON r.upload_user_id = u.user_id
-                    WHERE r.rcm_id = ?
+                    WHERE r.rcm_id = %s
                 ''', (rcm_id,)).fetchone()
                 
                 if rcm_info and rcm_info['company_name'] and rcm_info['original_filename']:
@@ -593,8 +593,8 @@ def admin_rcm_save_mapping():
                     relative_path = os.path.join(company_name, original_filename)
                     conn.execute('''
                         UPDATE sb_rcm 
-                        SET original_filename = ?
-                        WHERE rcm_id = ?
+                        SET original_filename = %s
+                        WHERE rcm_id = %s
                     ''', (relative_path, rcm_id))
                     conn.commit()
                     
@@ -636,7 +636,7 @@ def admin_rcm_view(rcm_id):
             SELECT r.*, u.user_name as upload_user_name, u.company_name
             FROM sb_rcm r
             LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
-            WHERE r.rcm_id = ? AND r.is_active = 'Y'
+            WHERE r.rcm_id = %s AND r.is_active = 'Y'
         ''', (rcm_id,)).fetchone()
         
         if not rcm_info:
@@ -669,7 +669,7 @@ def admin_rcm_users(rcm_id):
             SELECT r.*, u.user_name as upload_user_name, u.company_name
             FROM sb_rcm r
             LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
-            WHERE r.rcm_id = ? AND r.is_active = 'Y'
+            WHERE r.rcm_id = %s AND r.is_active = 'Y'
         ''', (rcm_id,)).fetchone()
 
         if not rcm_info:
@@ -680,7 +680,7 @@ def admin_rcm_users(rcm_id):
         if not is_admin:
             user_permission = conn.execute('''
                 SELECT permission_type FROM sb_user_rcm
-                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
             ''', (user_info['user_id'], rcm_id)).fetchone()
 
             if not user_permission or user_permission['permission_type'] != 'admin':
@@ -694,7 +694,7 @@ def admin_rcm_users(rcm_id):
             FROM sb_user_rcm ur
             JOIN sb_user u ON ur.user_id = u.user_id
             LEFT JOIN sb_user gb ON ur.granted_by = gb.user_id
-            WHERE ur.rcm_id = ? AND ur.is_active = 'Y'
+            WHERE ur.rcm_id = %s AND ur.is_active = 'Y'
             AND (u.admin_flag IS NULL OR u.admin_flag != 'Y')
             ORDER BY ur.granted_date DESC
         ''', (rcm_id,)).fetchall()
@@ -710,7 +710,7 @@ def admin_rcm_users(rcm_id):
                 AND (admin_flag IS NULL OR admin_flag != 'Y')
                 AND user_id NOT IN (
                     SELECT user_id FROM sb_user_rcm
-                    WHERE rcm_id = ? AND is_active = 'Y'
+                    WHERE rcm_id = %s AND is_active = 'Y'
                 )
                 ORDER BY company_name, user_name
             ''', (rcm_id,)).fetchall()
@@ -721,11 +721,11 @@ def admin_rcm_users(rcm_id):
                 SELECT user_id, user_name, user_email, company_name
                 FROM sb_user
                 WHERE (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)
-                AND company_name = ?
+                AND company_name = %s
                 AND (admin_flag IS NULL OR admin_flag != 'Y')
                 AND user_id NOT IN (
                     SELECT user_id FROM sb_user_rcm
-                    WHERE rcm_id = ? AND is_active = 'Y'
+                    WHERE rcm_id = %s AND is_active = 'Y'
                 )
                 ORDER BY user_name
             ''', (user_company, rcm_id)).fetchall()
@@ -771,7 +771,7 @@ def admin_rcm_grant_access():
             if not is_admin:
                 user_permission = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
 
                 if not user_permission or user_permission['permission_type'] != 'admin':
@@ -780,7 +780,7 @@ def admin_rcm_grant_access():
                 # 일반 사용자는 본인 회사 사용자에게만 권한 부여 가능
                 user_company = user_info.get('company_name', '')
                 target_user = conn.execute('''
-                    SELECT company_name FROM sb_user WHERE user_id = ?
+                    SELECT company_name FROM sb_user WHERE user_id = %s
                 ''', (target_user_id,)).fetchone()
 
                 if not target_user or target_user['company_name'] != user_company:
@@ -829,7 +829,7 @@ def admin_rcm_change_permission():
             if not is_admin:
                 user_permission = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
 
                 if not user_permission or user_permission['permission_type'] != 'admin':
@@ -837,8 +837,8 @@ def admin_rcm_change_permission():
 
             conn.execute('''
                 UPDATE sb_user_rcm
-                SET permission_type = ?
-                WHERE rcm_id = ? AND user_id = ? AND is_active = 'Y'
+                SET permission_type = %s
+                WHERE rcm_id = %s AND user_id = %s AND is_active = 'Y'
             ''', (permission_type, rcm_id, target_user_id))
             conn.commit()
 
@@ -881,7 +881,7 @@ def admin_rcm_revoke_access():
             if not is_admin:
                 user_permission = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
 
                 if not user_permission or user_permission['permission_type'] != 'admin':
@@ -890,7 +890,7 @@ def admin_rcm_revoke_access():
             conn.execute('''
                 UPDATE sb_user_rcm
                 SET is_active = 'N', last_updated = CURRENT_TIMESTAMP
-                WHERE rcm_id = ? AND user_id = ? AND is_active = 'Y'
+                WHERE rcm_id = %s AND user_id = %s AND is_active = 'Y'
             ''', (rcm_id, target_user_id))
             conn.commit()
         
@@ -917,14 +917,14 @@ def admin_rcm_delete():
             conn.execute('''
                 UPDATE sb_rcm 
                 SET is_active = 'N'
-                WHERE rcm_id = ?
+                WHERE rcm_id = %s
             ''', (rcm_id,))
             
             # 관련 사용자 권한도 비활성화
             conn.execute('''
                 UPDATE sb_user_rcm 
                 SET is_active = 'N'
-                WHERE rcm_id = ?
+                WHERE rcm_id = %s
             ''', (rcm_id,))
             
             conn.commit()
@@ -1057,7 +1057,7 @@ def api_switch_user():
             target_user = conn.execute('''
                 SELECT user_id, company_name
                 FROM sb_user
-                WHERE user_id = ? AND (effective_end_date IS NULL OR effective_end_date > datetime('now'))
+                WHERE user_id = %s AND (effective_end_date IS NULL OR effective_end_date > datetime('now'))
             ''', (target_user_id,)).fetchone()
 
             if not target_user:

@@ -53,7 +53,7 @@ def internal_assessment():
         cursor = db.execute('''
             SELECT control_category, COUNT(*) as count
             FROM sb_rcm_detail
-            WHERE rcm_id = ?
+            WHERE rcm_id = %s
             GROUP BY control_category
         ''', (rcm['rcm_id'],))
 
@@ -73,7 +73,7 @@ def internal_assessment():
                 ON dh.rcm_id = oh.rcm_id
                 AND dh.evaluation_session = oh.design_evaluation_session
                 AND dh.user_id = oh.user_id
-            WHERE dh.rcm_id = ? AND dh.user_id = ?
+            WHERE dh.rcm_id = %s AND dh.user_id = %s
             AND dh.evaluation_status != 'ARCHIVED'
             ORDER BY dh.start_date DESC
         ''', (rcm['rcm_id'], user_info['user_id']))
@@ -187,7 +187,7 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
     design_detail = {}
     cursor = db.execute('''
         SELECT header_id FROM sb_design_evaluation_header
-        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
     ''', (rcm_id, user_info['user_id'], evaluation_session))
     design_header = cursor.fetchone()
 
@@ -199,7 +199,7 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
                 overall_effectiveness,
                 COUNT(*) as count
             FROM sb_design_evaluation_line
-            WHERE header_id = ? AND overall_effectiveness IS NOT NULL AND overall_effectiveness != ''
+            WHERE header_id = %s AND overall_effectiveness IS NOT NULL AND overall_effectiveness != ''
             GROUP BY overall_effectiveness
         ''', (header_id,))
         effectiveness_stats = {row[0]: row[1] for row in cursor.fetchall()}
@@ -211,7 +211,7 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
                 overall_effectiveness,
                 evaluation_rationale
             FROM sb_design_evaluation_line
-            WHERE header_id = ?
+            WHERE header_id = %s
             AND overall_effectiveness IN ('부적정', '일부 미흡')
             ORDER BY control_code
         ''', (header_id,))
@@ -228,7 +228,7 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
     operation_session = f"OP_{evaluation_session}"
     cursor = db.execute('''
         SELECT header_id FROM sb_operation_evaluation_header
-        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
     ''', (rcm_id, user_info['user_id'], operation_session))
     operation_header = cursor.fetchone()
 
@@ -240,7 +240,7 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
                 COUNT(*) as total,
                 COUNT(CASE WHEN conclusion IS NOT NULL AND conclusion != '' THEN 1 END) as evaluated
             FROM sb_operation_evaluation_line
-            WHERE header_id = ?
+            WHERE header_id = %s
         ''', (header_id,))
         counts = cursor.fetchone()
         total_controls = counts[0] if counts else 0
@@ -253,7 +253,7 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
                 conclusion,
                 COUNT(*) as count
             FROM sb_operation_evaluation_line
-            WHERE header_id = ? AND conclusion IS NOT NULL AND conclusion != ''
+            WHERE header_id = %s AND conclusion IS NOT NULL AND conclusion != ''
             GROUP BY conclusion
         ''', (header_id,))
         raw_stats = {row[0]: row[1] for row in cursor.fetchall()}
@@ -283,7 +283,7 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
                 conclusion,
                 exception_details
             FROM sb_operation_evaluation_line
-            WHERE header_id = ?
+            WHERE header_id = %s
             AND (conclusion IN ('예외사항 발견', 'ineffective', '비효과적')
                  OR (exception_details IS NOT NULL AND exception_details != ''))
             ORDER BY control_code
@@ -376,7 +376,7 @@ def save_assessment_progress(rcm_id):
         # 기존 데이터 확인 후 업데이트 또는 삽입
         cursor.execute('''
             SELECT assessment_id FROM sb_internal_assessment
-            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND step = ?
+            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND step = %s
         ''', (rcm_id, user_info['user_id'], evaluation_session, step))
 
         existing = cursor.fetchone()
@@ -385,15 +385,15 @@ def save_assessment_progress(rcm_id):
             # 업데이트
             cursor.execute('''
                 UPDATE sb_internal_assessment
-                SET progress_data = ?, status = ?, updated_date = ?
-                WHERE assessment_id = ?
+                SET progress_data = %s, status = %s, updated_date = %s
+                WHERE assessment_id = %s
             ''', (json.dumps(progress_data), status, datetime.now(), existing[0]))
         else:
             # 신규 삽입
             cursor.execute('''
                 INSERT INTO sb_internal_assessment
                 (rcm_id, user_id, evaluation_session, step, progress_data, status, created_date, updated_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, %s, %s, %s, %s, %s, %s, %s)
             ''', (rcm_id, user_info['user_id'], evaluation_session, step, json.dumps(progress_data),
                   status, datetime.now(), datetime.now()))
         
@@ -426,7 +426,7 @@ def get_assessment_progress(rcm_id, user_id, evaluation_session='DEFAULT'):
     cursor.execute('''
         SELECT step, status, updated_date
         FROM sb_internal_assessment
-        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
         ORDER BY step
     ''', (rcm_id, user_id, evaluation_session))
     
@@ -484,7 +484,7 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
         cursor = db.execute('''
             SELECT control_category, COUNT(*) as total_count
             FROM sb_rcm_detail
-            WHERE rcm_id = ?
+            WHERE rcm_id = %s
             GROUP BY control_category
         ''', (rcm_id,))
         category_stats = {row[0]: row[1] for row in cursor.fetchall()}
@@ -493,7 +493,7 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
         cursor = db.execute('''
             SELECT evaluation_status, total_controls, evaluated_controls, progress_percentage, header_id
             FROM sb_design_evaluation_header
-            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
         ''', (rcm_id, user_id, evaluation_session))
 
         design_eval = cursor.fetchone()
@@ -510,7 +510,7 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                 SELECT COUNT(*) as actual_total,
                        COUNT(CASE WHEN overall_effectiveness IS NOT NULL AND overall_effectiveness != '' THEN 1 END) as actual_evaluated
                 FROM sb_design_evaluation_line
-                WHERE header_id = ? AND control_code IS NOT NULL AND control_code != ''
+                WHERE header_id = %s AND control_code IS NOT NULL AND control_code != ''
             ''', (header_id,))
             actual_counts = cursor.fetchone()
             total_controls = actual_counts[0] if actual_counts else total_controls_header
@@ -526,8 +526,8 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                     SELECT COUNT(*) as total,
                            COUNT(CASE WHEN overall_effectiveness IS NOT NULL AND overall_effectiveness != '' THEN 1 END) as evaluated
                     FROM sb_design_evaluation_line line
-                    JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = ?
-                    WHERE line.header_id = ? AND detail.control_category = ?
+                    JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = %s
+                    WHERE line.header_id = %s AND detail.control_category = %s
                 ''', (rcm_id, header_id, category))
                 cat_data = cursor.fetchone()
                 if cat_data and cat_data[0] > 0:
@@ -561,7 +561,7 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                    SUM(CASE WHEN line.conclusion IS NOT NULL AND line.conclusion != '' THEN 1 ELSE 0 END) as completed
             FROM sb_operation_evaluation_line line
             JOIN sb_operation_evaluation_header header ON line.header_id = header.header_id
-            WHERE header.rcm_id = ? AND header.user_id = ? AND header.evaluation_session = ?
+            WHERE header.rcm_id = %s AND header.user_id = %s AND header.evaluation_session = %s
         ''', (rcm_id, user_id, operation_session))
 
         op_data = cursor.fetchone()
@@ -577,11 +577,11 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                     SELECT COUNT(*) as total,
                            COUNT(CASE WHEN line.conclusion IS NOT NULL AND line.conclusion != '' THEN 1 END) as completed
                     FROM sb_operation_evaluation_line line
-                    JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = ?
+                    JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = %s
                     WHERE line.header_id = (
                         SELECT header_id FROM sb_operation_evaluation_header
-                        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
-                    ) AND detail.control_category = ?
+                        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
+                    ) AND detail.control_category = %s
                 ''', (rcm_id, rcm_id, user_id, operation_session, category))
                 cat_data = cursor.fetchone()
                 if cat_data and cat_data[0] > 0:
@@ -624,7 +624,7 @@ def get_assessment_data(rcm_id, user_id, evaluation_session='DEFAULT'):
     cursor.execute('''
         SELECT step, progress_data, status
         FROM sb_internal_assessment
-        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
+        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
         ORDER BY step
     ''', (rcm_id, user_id, evaluation_session))
 
@@ -649,7 +649,7 @@ def get_step_data(rcm_id, user_id, step, evaluation_session='DEFAULT'):
     cursor.execute('''
         SELECT progress_data, status
         FROM sb_internal_assessment
-        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND step = ?
+        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND step = %s
     ''', (rcm_id, user_id, evaluation_session, step))
     
     result = cursor.fetchone()
