@@ -72,29 +72,29 @@ class DatabaseConnection:
     def execute(self, query, params=None):
         """SQLite/MySQL 호환 execute 메서드"""
         if self._is_mysql:
-            # MySQL 모드: pymysql은 ? 플레이스홀더를 지원하지 않음
-            # 그냥 에러 발생시키지 말고 최선을 다해 변환
+            # MySQL 모드: ? → %s 변환 필요
 
-            # params를 튜플로 변환 (pymysql은 튜플 필요)
-            if params:
+            # params 정규화
+            if params is not None:
                 if isinstance(params, list):
                     params = tuple(params)
                 elif not isinstance(params, tuple):
                     params = (params,)
-
-                # 파라미터 개수만큼 ? 를 %s 로 변환 (왼쪽부터)
                 param_count = len(params)
-                parts = query.split('?')
+            else:
+                param_count = 0
+                params = None
 
-                if len(parts) > 1:  # ? 가 있는 경우
-                    # 파라미터 개수 +1 개의 파트로 나뉨
-                    result = parts[0]
-                    for i in range(1, min(param_count + 1, len(parts))):
-                        result += '%s' + parts[i]
-                    # 남은 파트는 ? 그대로 유지
-                    for i in range(param_count + 1, len(parts)):
-                        result += '?' + parts[i]
-                    query = result
+            # ? 를 %s 로 변환 (파라미터 개수만큼)
+            if '?' in query and param_count > 0:
+                parts = query.split('?')
+                result = parts[0]
+                for i in range(1, min(param_count + 1, len(parts))):
+                    result += '%s' + parts[i]
+                # 남은 ? 는 그대로 유지
+                for i in range(param_count + 1, len(parts)):
+                    result += '?' + parts[i]
+                query = result
 
             cursor = self._conn.cursor()
             if params:
