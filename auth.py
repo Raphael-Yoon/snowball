@@ -73,8 +73,28 @@ class DatabaseConnection:
         """SQLite/MySQL 호환 execute 메서드"""
         if self._is_mysql:
             # MySQL: ? → %s 변환 (파라미터 플레이스홀더만)
-            # ? 문자를 모두 %s로 변환
+            original_query = query
             query = query.replace('?', '%s')
+
+            # params를 튜플로 변환 (pymysql은 튜플 필요)
+            if params:
+                if isinstance(params, list):
+                    params = tuple(params)
+                elif not isinstance(params, tuple):
+                    params = (params,)
+
+            # 파라미터 개수 확인
+            param_count = len(params) if params else 0
+            placeholder_count = query.count('%s')
+
+            if param_count != placeholder_count:
+                # 디버깅을 위한 로깅
+                import sys
+                print(f"[ERROR] Parameter count mismatch!", file=sys.stderr)
+                print(f"  Original query has {original_query.count('?')} '?' placeholders", file=sys.stderr)
+                print(f"  Converted query has {placeholder_count} '%s' placeholders", file=sys.stderr)
+                print(f"  But params has {param_count} values: {params}", file=sys.stderr)
+                print(f"  Query preview: {query[:200]}...", file=sys.stderr)
 
             cursor = self._conn.cursor()
             if params:
