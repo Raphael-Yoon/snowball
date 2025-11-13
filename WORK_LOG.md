@@ -1,5 +1,109 @@
 # Snowball 프로젝트 작업 로그
 
+## 2025-11-13 - 설계평가 엑셀 다운로드 기능 및 UI 개선
+
+### 1. 설계평가 엑셀 다운로드 기능 구현
+
+#### 1.1 기능 개요
+- **파일**: `snowball_link6.py` (1575-1745줄)
+- Design_Template.xlsx 템플릿 기반 다운로드 기능
+- 평가된 각 통제별로 별도 시트 생성
+
+#### 1.2 구현 내용
+- **템플릿 시트 활용**: `paper_templates/Design_Template.xlsx`의 Template 시트를 복사
+- **시트명**: 통제번호(control_code)로 설정
+- **데이터 매핑**:
+  - C2: 회사명 (company_name)
+  - C4: 작성자 (user_name)
+  - C7-C10: 통제번호, 통제명, 주기, 구분
+  - C11: 테스트 절차 (control_description)
+  - C12: 검토 결과 (evaluation_rationale)
+  - C13~: 증빙 이미지
+  - C14+: 결론 (이미지 개수에 따라 동적 위치)
+
+#### 1.3 자동 행 높이 조정
+- 텍스트 줄바꿈 개수를 기반으로 행 높이 자동 계산
+- C11(테스트 절차), C12(검토 결과) 행 높이 자동 조정
+- 공식: `15 + (줄수 × 15)`, 최대 300 포인트
+
+#### 1.4 이미지 삽입 기능
+- **라이브러리**: Pillow (Python 3.14용 설치 완료)
+- **위치**: C13부터 순차적으로 삽입
+- **이미지 크기**: 너비 300px로 자동 조정
+- **결론 위치**: 이미지 개수에 따라 동적 조정
+- **오류 처리**: 이미지 삽입 실패 시 파일명으로 대체
+
+#### 1.5 한글 파일명 지원
+- RFC 5987 표준 사용: `filename*=UTF-8''...`
+- Content-Disposition 헤더 직접 설정
+- 파일명: `{평가세션명}.xlsx` (예: FY25_내부평가.xlsx)
+
+### 2. UI 버그 수정
+
+#### 2.1 설계평가 완료 버튼 표시 문제
+- **문제**: 평가 완료 후 버튼이 "조회"로 변경되지 않음
+- **원인**:
+  1. 66개의 불필요한 fetch 로그 요청으로 인한 브라우저 과부하
+  2. API가 중복 호출됨 (`loadExistingEvaluationData` + `loadExistingEvaluations`)
+  3. 버튼 초기 HTML의 고정된 height: 24px
+- **해결**:
+  - fetch 로그를 console.log로 교체
+  - 중복 API 호출 제거
+  - 버튼 높이를 auto로 변경, white-space: nowrap 추가
+  - 초기 HTML에 텍스트 추가 ("평가")
+
+### 3. 데이터베이스 마이그레이션
+
+#### 3.1 RCM 테이블에 control_category 추가
+- **파일**: `migrations/versions/012_add_control_category_to_rcm.py`
+- sb_rcm 테이블에 control_category 컬럼 추가
+- 기존 RCM 데이터에 자동 카테고리 설정:
+  - RCM명 기반 자동 분류 (ITGC, ELC, TLC 키워드)
+  - detail의 control_category 다수결로 결정
+
+#### 3.2 스키마 마이그레이션 도구 생성
+- **파일**: `sync_sqlite_to_mysql.py` (신규)
+- SQLite 스키마를 MySQL로 동기화 (데이터는 제외)
+- **기능**:
+  - 새 테이블 감지 및 생성
+  - 새 컬럼 감지 및 추가
+  - 외래키 관계 보존
+  - Dry run 모드 지원 (--apply 옵션)
+- **사용법**:
+  ```bash
+  python sync_sqlite_to_mysql.py          # Dry run
+  python sync_sqlite_to_mysql.py --apply  # 실제 적용
+  ```
+
+### 4. 기술적 개선사항
+
+#### 4.1 Python 환경 관리
+- Python 3.14 환경에 Pillow 설치
+- 명령어: `py -3.14 -m pip install Pillow`
+
+#### 4.2 파일 네이밍 컨벤션
+- 기존: `sync_mysql_to_sqlite.py` (MySQL → SQLite)
+- 신규: `sync_sqlite_to_mysql.py` (SQLite → MySQL)
+- 일관된 네이밍으로 방향성 명확화
+
+### 5. 파일 변경 이력
+
+#### 수정된 파일:
+- `snowball_link6.py`: 다운로드 라우트 추가 (1575-1745줄)
+- `templates/link6_design_rcm_detail.jsp`: 버튼 UI 수정 (166-173줄, 1410-1558줄)
+
+#### 신규 파일:
+- `sync_sqlite_to_mysql.py`: 스키마 마이그레이션 도구
+- `migrations/versions/012_add_control_category_to_rcm.py`: RCM 카테고리 추가 마이그레이션
+
+### 6. 미해결 이슈
+- 설계평가 완료 버튼 표시 문제 (디버깅 중)
+  - API 데이터는 정상
+  - JavaScript updateEvaluationUI 함수 실행 확인됨
+  - 원인 파악 진행 중
+
+---
+
 ## 2024-11-02 - 설계평가/운영평가 페이지 개선 및 테스트 추가
 
 ### 1. 데이터베이스 수정
