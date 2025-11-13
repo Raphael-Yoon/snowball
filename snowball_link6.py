@@ -1537,6 +1537,12 @@ def elc_design_evaluation():
 
         recent_evaluations = [dict(row) for row in recent_evaluations]
 
+        # MySQL datetime 객체를 문자열로 변환 (템플릿 호환성)
+        from datetime import datetime
+        for eval in recent_evaluations:
+            if eval.get('completed_date') and isinstance(eval['completed_date'], datetime):
+                eval['completed_date'] = eval['completed_date'].strftime('%Y-%m-%d %H:%M:%S')
+
     log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 설계평가', '/elc/design-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
