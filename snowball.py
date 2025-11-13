@@ -179,7 +179,7 @@ def login():
             if True:
                 with get_db() as conn:
                     user = conn.execute(
-                        'SELECT * FROM sb_user WHERE user_email = ? AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
+                        'SELECT * FROM sb_user WHERE user_email = %s AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
                         ('snowball2727@naver.com',)
                     ).fetchone()
 
@@ -282,7 +282,7 @@ def login():
                         try:
                             with get_db() as conn:
                                 conn.execute(
-                                    'UPDATE sb_user SET last_login_date = CURRENT_TIMESTAMP WHERE user_email = ?',
+                                    'UPDATE sb_user SET last_login_date = CURRENT_TIMESTAMP WHERE user_email = %s',
                                     (email,)
                                 )
                                 conn.commit()
@@ -814,7 +814,7 @@ def user_design_evaluation():
 #         with get_db() as conn:
 #             access_check = conn.execute('''
 #                 SELECT permission_type FROM sb_user_rcm
-#                 WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+#                 WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
 #             ''', (user_info['user_id'], rcm_id)).fetchone()
 #             
 #             if not access_check:
@@ -871,7 +871,7 @@ def user_design_evaluation():
 #         with get_db() as conn:
 #             access_check = conn.execute('''
 #                 SELECT permission_type FROM sb_user_rcm
-#                 WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+#                 WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
 #             ''', (user_info['user_id'], rcm_id)).fetchone()
 #             
 #             if not access_check:
@@ -883,7 +883,7 @@ def user_design_evaluation():
 #             # 해당 사용자의 모든 설계평가 결과 삭제
 #             cursor = conn.execute('''
 #                 DELETE FROM sb_design_evaluation 
-#                 WHERE rcm_id = ? AND user_id = ?
+#                 WHERE rcm_id = %s AND user_id = %s
 #             ''', (rcm_id, user_info['user_id']))
 #             deleted_count = cursor.rowcount
 #             
@@ -941,7 +941,7 @@ def upload_control_sample():
         with get_db() as conn:
             access_check = conn.execute('''
                 SELECT permission_type FROM sb_user_rcm
-                WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
             ''', (user_info['user_id'], rcm_id)).fetchone()
             
             if not access_check:
@@ -976,7 +976,7 @@ def upload_control_sample():
                         INSERT INTO sb_control_sample_files
                         (rcm_id, control_code, user_id, original_filename, stored_filename, 
                          file_path, file_size, description, upload_date)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                        VALUES (?, %s, %s, %s, %s, %s, %s, %s, datetime('now'))
                     ''', (rcm_id, control_code, user_info['user_id'], file.filename, 
                           safe_filename, file_path, os.path.getsize(file_path), description))
                     conn.commit()
@@ -1059,8 +1059,8 @@ def check_operation_evaluation(control_type):
                 r.control_category
             FROM sb_operation_evaluation_header oeh
             JOIN sb_rcm r ON oeh.rcm_id = r.rcm_id
-            WHERE oeh.user_id = ?
-              AND r.control_category = ?
+            WHERE oeh.user_id = %s
+              AND r.control_category = %s
             ORDER BY oeh.evaluation_session DESC
         ''', (user_info['user_id'], control_type.upper())).fetchall()
 

@@ -40,7 +40,7 @@ def check_ongoing_evaluations(rcm_id, user_id=None):
             design_cursor = conn.execute('''
                 SELECT evaluation_session, evaluation_status, total_controls, evaluated_controls, user_id
                 FROM sb_design_evaluation_header
-                WHERE rcm_id = ? AND user_id = ?
+                WHERE rcm_id = %s AND user_id = %s
                 AND evaluation_status != 'COMPLETED'
                 AND evaluation_status != 'ARCHIVED'
             ''', (rcm_id, user_id))
@@ -49,7 +49,7 @@ def check_ongoing_evaluations(rcm_id, user_id=None):
             design_cursor = conn.execute('''
                 SELECT evaluation_session, evaluation_status, total_controls, evaluated_controls, user_id
                 FROM sb_design_evaluation_header
-                WHERE rcm_id = ?
+                WHERE rcm_id = %s
                 AND evaluation_status != 'COMPLETED'
                 AND evaluation_status != 'ARCHIVED'
             ''', (rcm_id,))
@@ -61,7 +61,7 @@ def check_ongoing_evaluations(rcm_id, user_id=None):
             operation_cursor = conn.execute('''
                 SELECT evaluation_session, evaluation_status, user_id
                 FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ?
+                WHERE rcm_id = %s AND user_id = %s
                 AND evaluation_status IN ('IN_PROGRESS', 'NOT_STARTED')
             ''', (rcm_id, user_id))
         else:
@@ -69,7 +69,7 @@ def check_ongoing_evaluations(rcm_id, user_id=None):
             operation_cursor = conn.execute('''
                 SELECT evaluation_session, evaluation_status, user_id
                 FROM sb_operation_evaluation_header
-                WHERE rcm_id = ?
+                WHERE rcm_id = %s
                 AND evaluation_status IN ('IN_PROGRESS', 'NOT_STARTED')
             ''', (rcm_id,))
         operation_sessions = [dict(row) for row in operation_cursor.fetchall()]
@@ -101,7 +101,7 @@ def user_rcm():
             design_eval = conn.execute('''
                 SELECT evaluation_session, evaluation_status
                 FROM sb_design_evaluation_header
-                WHERE rcm_id = ? AND user_id = ?
+                WHERE rcm_id = %s AND user_id = %s
                 ORDER BY start_date DESC
                 LIMIT 1
             ''', (rcm['rcm_id'], user_info['user_id'])).fetchone()
@@ -110,7 +110,7 @@ def user_rcm():
             operation_eval = conn.execute('''
                 SELECT evaluation_session, design_evaluation_session
                 FROM sb_operation_evaluation_header
-                WHERE rcm_id = ? AND user_id = ?
+                WHERE rcm_id = %s AND user_id = %s
                 ORDER BY evaluation_session DESC
                 LIMIT 1
             ''', (rcm['rcm_id'], user_info['user_id'])).fetchone()
@@ -241,7 +241,7 @@ def rcm_upload():
                 SELECT user_id, user_name, user_email, company_name
                 FROM sb_user
                 WHERE (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)
-                  AND company_name = ?
+                  AND company_name = %s
                 ORDER BY user_name
             ''', (user_info.get('company_name', ''),)).fetchall()
 
@@ -363,7 +363,7 @@ def rcm_process_upload():
                 for user_id in access_users:
                     if user_id:
                         check_user = conn.execute(
-                            'SELECT company_name FROM sb_user WHERE user_id = ?',
+                            'SELECT company_name FROM sb_user WHERE user_id = %s',
                             (int(user_id),)
                         ).fetchone()
                         if check_user and check_user[0] != user_company:
@@ -391,7 +391,7 @@ def rcm_process_upload():
         if not is_valid:
             # RCM 생성 롤백 (실패 시 삭제)
             with get_db() as conn:
-                conn.execute('DELETE FROM sb_rcm WHERE rcm_id = ?', (rcm_id,))
+                conn.execute('DELETE FROM sb_rcm WHERE rcm_id = %s', (rcm_id,))
                 conn.commit()
             return jsonify({'success': False, 'message': error_message})
 
@@ -441,7 +441,7 @@ def rcm_delete(rcm_id):
     try:
         with get_db() as conn:
             # RCM 정보 및 사용자 권한 조회
-            rcm = conn.execute('SELECT rcm_name, upload_user_id FROM sb_rcm WHERE rcm_id = ?', (rcm_id,)).fetchone()
+            rcm = conn.execute('SELECT rcm_name, upload_user_id FROM sb_rcm WHERE rcm_id = %s', (rcm_id,)).fetchone()
             if not rcm:
                 return jsonify({'success': False, 'message': 'RCM을 찾을 수 없습니다.'})
 
@@ -450,7 +450,7 @@ def rcm_delete(rcm_id):
                 # 사용자의 RCM 권한 확인
                 user_permission = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
-                    WHERE user_id = ? AND rcm_id = ? AND is_active = 'Y'
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], rcm_id)).fetchone()
 
                 if not user_permission or user_permission[0] != 'admin':
@@ -482,28 +482,28 @@ def rcm_delete(rcm_id):
             # 1-1. 설계평가 라인 삭제
             conn.execute('''
                 DELETE FROM sb_design_evaluation_line
-                WHERE header_id IN (SELECT header_id FROM sb_design_evaluation_header WHERE rcm_id = ?)
+                WHERE header_id IN (SELECT header_id FROM sb_design_evaluation_header WHERE rcm_id = %s)
             ''', (rcm_id,))
             # 1-2. 설계평가 헤더 삭제
-            conn.execute('DELETE FROM sb_design_evaluation_header WHERE rcm_id = ?', (rcm_id,))
+            conn.execute('DELETE FROM sb_design_evaluation_header WHERE rcm_id = %s', (rcm_id,))
 
             # 2. 운영평가 데이터 삭제
             # 2-1. 운영평가 라인 삭제
             conn.execute('''
                 DELETE FROM sb_operation_evaluation_line
-                WHERE header_id IN (SELECT header_id FROM sb_operation_evaluation_header WHERE rcm_id = ?)
+                WHERE header_id IN (SELECT header_id FROM sb_operation_evaluation_header WHERE rcm_id = %s)
             ''', (rcm_id,))
             # 2-2. 운영평가 헤더 삭제
-            conn.execute('DELETE FROM sb_operation_evaluation_header WHERE rcm_id = ?', (rcm_id,))
+            conn.execute('DELETE FROM sb_operation_evaluation_header WHERE rcm_id = %s', (rcm_id,))
 
             # 3. RCM 상세 데이터 삭제
-            conn.execute('DELETE FROM sb_rcm_detail WHERE rcm_id = ?', (rcm_id,))
+            conn.execute('DELETE FROM sb_rcm_detail WHERE rcm_id = %s', (rcm_id,))
 
             # 4. 사용자-RCM 매핑 삭제
-            conn.execute('DELETE FROM sb_user_rcm WHERE rcm_id = ?', (rcm_id,))
+            conn.execute('DELETE FROM sb_user_rcm WHERE rcm_id = %s', (rcm_id,))
 
             # 5. RCM 마스터 삭제
-            conn.execute('DELETE FROM sb_rcm WHERE rcm_id = ?', (rcm_id,))
+            conn.execute('DELETE FROM sb_rcm WHERE rcm_id = %s', (rcm_id,))
 
             conn.commit()
 
@@ -647,7 +647,7 @@ def rcm_mapping_api(rcm_id):
             with get_db() as conn:
                 result = conn.execute('''
                     SELECT detail_id FROM sb_rcm_detail 
-                    WHERE rcm_id = ? AND control_code = ?
+                    WHERE rcm_id = %s AND control_code = %s
                 ''', (rcm_id, control_code)).fetchone()
                 
                 if not result:
@@ -682,7 +682,7 @@ def rcm_mapping_api(rcm_id):
             with get_db() as conn:
                 result = conn.execute('''
                     SELECT detail_id FROM sb_rcm_detail 
-                    WHERE rcm_id = ? AND control_code = ?
+                    WHERE rcm_id = %s AND control_code = %s
                 ''', (rcm_id, control_code)).fetchone()
                 
                 if not result:
@@ -697,7 +697,7 @@ def rcm_mapping_api(rcm_id):
                     SET mapped_std_control_id = NULL,
                         mapped_date = NULL,
                         mapped_by = NULL
-                    WHERE rcm_id = ? AND detail_id = ?
+                    WHERE rcm_id = %s AND detail_id = %s
                 ''', (rcm_id, detail_id))
                 conn.commit()
             
@@ -862,7 +862,7 @@ def toggle_rcm_completion(rcm_id):
                 conn.execute('''
                     UPDATE sb_rcm 
                     SET completion_date = CURRENT_TIMESTAMP 
-                    WHERE rcm_id = ?
+                    WHERE rcm_id = %s
                 ''', (rcm_id,))
                 
                 # 활동 로그 기록
@@ -875,7 +875,7 @@ def toggle_rcm_completion(rcm_id):
                 conn.execute('''
                     UPDATE sb_rcm 
                     SET completion_date = NULL 
-                    WHERE rcm_id = ?
+                    WHERE rcm_id = %s
                 ''', (rcm_id,))
                 
                 # 활동 로그 기록
@@ -1131,7 +1131,7 @@ def delete_standard_control_mappings(rcm_id, std_control_id):
                 SET mapped_std_control_id = NULL,
                     mapped_date = NULL,
                     mapped_by = NULL
-                WHERE rcm_id = ? AND mapped_std_control_id = ?
+                WHERE rcm_id = %s AND mapped_std_control_id = %s
             ''', (rcm_id, std_control_id))
             
             affected_rows = result.rowcount
@@ -1768,8 +1768,8 @@ def update_rcm_name():
         with get_db() as conn:
             conn.execute('''
                 UPDATE sb_rcm
-                SET rcm_name = ?
-                WHERE rcm_id = ?
+                SET rcm_name = %s
+                WHERE rcm_id = %s
             ''', (rcm_name, rcm_id))
             conn.commit()
 

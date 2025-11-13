@@ -683,7 +683,7 @@ def test_rcm_upload_shows_only_company_users_for_regular_user(authenticated_clie
         assert response.status_code == 200
         # SQL에서 company_name 필터링 확인
         call_args = mock_conn.execute.call_args
-        assert 'company_name = ?' in str(call_args)
+        assert 'company_name = %s' in str(call_args)
 
 def test_rcm_process_upload_validates_file_type(authenticated_client, test_user):
     """Excel 파일만 업로드 가능"""
