@@ -14,6 +14,56 @@ load_dotenv()
 USE_MYSQL = os.getenv('USE_MYSQL', 'false').lower() == 'true' or os.getenv('DB_TYPE', 'sqlite').lower() == 'mysql'
 DATABASE = 'snowball.db'
 
+class DatabaseConnection:
+    """데이터베이스 연결 래퍼 클래스 (SQLite와 MySQL 호환성 제공)"""
+    def __init__(self, conn, is_mysql=False):
+        self._conn = conn
+        self._is_mysql = is_mysql
+
+    def execute(self, query, params=None):
+        """SQLite/MySQL 호환 execute 메서드"""
+        if self._is_mysql:
+            # MySQL: ? → %s 변환
+            query = query.replace('?', '%s')
+            # CURRENT_TIMESTAMP는 MySQL에서도 동일하게 동작
+            cursor = self._conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            return cursor
+        else:
+            # SQLite: 그대로 사용
+            if params:
+                return self._conn.execute(query, params)
+            else:
+                return self._conn.execute(query)
+
+    def commit(self):
+        """커밋"""
+        return self._conn.commit()
+
+    def rollback(self):
+        """롤백"""
+        return self._conn.rollback()
+
+    def close(self):
+        """연결 종료"""
+        return self._conn.close()
+
+    def __enter__(self):
+        """with 문 지원"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """with 문 종료 시 자동 커밋/종료"""
+        if exc_type is None:
+            try:
+                self._conn.commit()
+            except:
+                pass
+        self._conn.close()
+
 def get_db():
     """데이터베이스 연결 (MySQL 또는 SQLite)"""
     if USE_MYSQL:
@@ -27,13 +77,12 @@ def get_db():
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
         )
-        # pymysql의 DictCursor는 이미 딕셔너리 형태로 반환
-        return conn
+        return DatabaseConnection(conn, is_mysql=True)
     else:
         # SQLite 연결 (로컬 개발용)
         conn = sqlite3.connect(DATABASE)
         conn.row_factory = sqlite3.Row
-        return conn
+        return DatabaseConnection(conn, is_mysql=False)
 
 # init_db() 함수는 삭제되었습니다.
 # 데이터베이스 초기화는 마이그레이션 시스템을 사용하세요:
