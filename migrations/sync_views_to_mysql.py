@@ -35,40 +35,17 @@ SQLITE_DB = 'snowball.db'
 
 def convert_sqlite_to_mysql_sql(sqlite_sql, view_name):
     """SQLite SQL을 MySQL SQL로 변환"""
-    mysql_sql = sqlite_sql
-
-    # 1. CREATE VIEW 부분 정규화
+    # SQLite와 MySQL의 뷰 문법은 거의 동일
+    # CREATE VIEW만 CREATE OR REPLACE VIEW로 변경
     mysql_sql = re.sub(
-        r'CREATE\s+VIEW\s+.*?\s+AS',
+        r'CREATE\s+VIEW\s+(\w+)\s+AS',
         f'CREATE OR REPLACE VIEW `{view_name}` AS',
-        mysql_sql,
-        flags=re.IGNORECASE | re.DOTALL
+        sqlite_sql,
+        flags=re.IGNORECASE
     )
 
-    # 2. 테이블명에 백틱 추가 (이미 없는 경우에만)
-    # FROM/JOIN 뒤의 테이블명 찾기
-    def add_backticks(match):
-        table_name = match.group(1)
-        if '`' not in table_name and table_name.lower() not in ['select', 'where', 'group', 'order']:
-            return f'FROM `{table_name}`'
-        return match.group(0)
-
-    mysql_sql = re.sub(r'FROM\s+(\w+)', add_backticks, mysql_sql, flags=re.IGNORECASE)
-    mysql_sql = re.sub(r'JOIN\s+(\w+)', lambda m: f"JOIN `{m.group(1)}`", mysql_sql, flags=re.IGNORECASE)
-
-    # 3. 컬럼 별칭에 백틱 추가
-    # AS 뒤의 별칭 찾기
-    def add_alias_backticks(match):
-        alias = match.group(1)
-        if '`' not in alias:
-            return f' AS `{alias}`'
-        return match.group(0)
-
-    mysql_sql = re.sub(r'\s+AS\s+(\w+)', add_alias_backticks, mysql_sql, flags=re.IGNORECASE)
-
-    # 4. SQLite 특수 문법 변환
-    # UPPER() 함수는 MySQL에서도 동일
-    # COALESCE() 함수는 MySQL에서도 동일
+    # SQLite의 대부분 문법은 MySQL과 호환됨
+    # COALESCE, UPPER, LEFT JOIN 등은 모두 동일
 
     return mysql_sql
 
