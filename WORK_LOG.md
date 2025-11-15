@@ -1,5 +1,155 @@
 # Snowball 프로젝트 작업 로그
 
+## 2025-11-14 - MySQL/SQLite 호환성 개선 및 파일 정리
+
+### 1. DatabaseConnection 래퍼 클래스 개선
+
+#### 1.1 문제점
+- PythonAnywhere 운영 서버(MySQL)에서 `TypeError: not enough arguments for format string` 발생
+- 원인: `get_rcm_details()` 함수의 ORDER BY 절에 LIKE 패턴 6개 추가했으나 params에 포함 안 됨
+
+#### 1.2 해결 방법
+**파일**: `auth.py`
+
+**수정된 함수들**:
+1. `get_rcm_details()` (445-487줄)
+2. `get_key_controls()` (489-566줄)
+
+**변경 내용**:
+```python
+# ORDER BY LIKE 패턴을 params에 추가
+order_params = ['PWC%', 'APD%', 'PC%', 'CO%', 'PD%', 'ST%']
+params.extend(order_params)
+params = tuple(params)
+```
+
+#### 1.3 fetchone() 안전성 개선
+- **문제**: MySQL에서 `COUNT(*)` 반환값이 딕셔너리 형태 → 인덱스 접근 불가
+- **해결**: `_get_first_value()` 헬퍼 함수 추가
+  - 딕셔너리: 첫 번째 값 추출
+  - 튜플/리스트: `row[0]` 접근
+  - None 또는 에러: None 반환
+
+**수정된 함수들**:
+- `get_activity_log_count()` (271-278줄)
+- `generate_unique_filename()` (322-363줄)
+- `count_design_evaluations()` (1224-1231줄)
+- `count_operation_evaluations()` (1233-1256줄)
+- `count_completed_operation_evaluations()` (1258-1266줄)
+
+### 2. MySQL 연결 안정성 개선
+
+#### 2.1 PyMySQL 임포트 에러 처리
+**파일**: `auth.py` (135-160줄)
+
+```python
+if USE_MYSQL:
+    try:
+        import pymysql
+    except ImportError as exc:
+        raise RuntimeError(
+            "MySQL 연결을 사용하려면 PyMySQL 패키지가 필요합니다. "
+            "로컬에서 SQLite만 사용할 경우 USE_MYSQL 환경 변수를 false로 설정하세요."
+        ) from exc
+```
+
+**효과**:
+- 로컬 개발 시 PyMySQL 미설치 상태에서도 명확한 에러 메시지
+- 운영 서버와 로컬 환경 구분 명확화
+
+### 3. 뷰 동기화 스크립트 개선
+
+#### 3.1 sync_views_to_mysql.py
+**파일**: `migrations/sync_views_to_mysql.py`
+
+**기능**:
+- SQLite의 모든 뷰(VIEW)를 MySQL로 마이그레이션
+- 뷰 정의 SQL을 MySQL 문법으로 자동 변환
+- Dry run 모드 지원
+
+**사용법**:
+```bash
+python migrations/sync_views_to_mysql.py          # Dry run
+python migrations/sync_views_to_mysql.py --apply  # 실제 적용
+```
+
+**변환 로직**:
+- `CREATE VIEW` → `CREATE OR REPLACE VIEW`
+- SQLite와 MySQL 대부분 호환 (COALESCE, UPPER, LEFT JOIN 등)
+
+### 4. 파일 정리
+
+#### 4.1 삭제된 파일
+**SQL 파일** (불필요):
+- `migrations/add_evaluation_session_to_internal_assessment.sql`
+- `migrations/create_mysql_view.sql`
+
+**마크다운 파일** (WORK_LOG.md 제외 모두 삭제):
+- `README.md`
+- `migrations/README.md`
+- `migrations/README_MYSQL.md`
+- `tests/HOW_TO_RUN_TESTS.md`
+- `tests/README_NAVIGATION_TEST.md`
+- `tests/BUTTON_TEST_GUIDE.md`
+- `tests/README.md`
+- `tests/NAVIGATION_TEST_SUMMARY.md`
+
+#### 4.2 유지된 파일
+- `WORK_LOG.md` (이 파일) - 모든 작업 기록 통합
+
+### 5. 환경 설정
+
+#### 5.1 .env 파일
+```
+# 로컬 개발
+USE_MYSQL=false
+
+# PythonAnywhere 운영
+USE_MYSQL=true
+MYSQL_HOST=itap.mysql.pythonanywhere-services.com
+MYSQL_USER=itap
+MYSQL_PASSWORD=qpspelrxm1!
+MYSQL_DATABASE=itap$snowball
+MYSQL_PORT=3306
+```
+
+### 6. 주요 개선 사항
+
+1. ✅ **MySQL 호환성**: ORDER BY LIKE 패턴 매개변수화 완료
+2. ✅ **타입 안전성**: fetchone() 결과 안전하게 처리
+3. ✅ **에러 처리**: PyMySQL 임포트 에러 명확한 메시지
+4. ✅ **뷰 동기화**: SQLite 뷰를 MySQL로 자동 마이그레이션
+5. ✅ **파일 정리**: 불필요한 문서 제거, WORK_LOG.md로 통합
+
+### 7. 배포 체크리스트
+
+**PythonAnywhere 배포 시**:
+1. 파일 업로드:
+   - `auth.py` (DatabaseConnection 개선)
+   - `migrations/sync_views_to_mysql.py` (뷰 동기화)
+
+2. Bash 콘솔에서 뷰 동기화:
+```bash
+cd ~/snowball
+python migrations/sync_views_to_mysql.py --apply
+```
+
+3. Web App Reload
+
+### 8. 문제 해결 로그
+
+**에러**: `TypeError: not enough arguments for format string`
+- **위치**: `auth.py:591` (`get_rcm_details()`)
+- **원인**: ORDER BY LIKE %s 6개 추가했으나 params에 미포함
+- **해결**: `order_params` 리스트를 params에 extend
+
+**에러**: `'DictCursor' object is not subscriptable`
+- **위치**: `auth.py:275` (`get_activity_log_count()`)
+- **원인**: MySQL DictCursor는 `row[0]` 접근 불가
+- **해결**: `_get_first_value()` 헬퍼 함수로 안전한 값 추출
+
+---
+
 ## 2025-11-13 - 설계평가 엑셀 다운로드 기능 및 UI 개선
 
 ### 1. 설계평가 엑셀 다운로드 기능 구현

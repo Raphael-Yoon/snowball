@@ -136,7 +136,7 @@ def get_db():
     """데이터베이스 연결 (MySQL 또는 SQLite)"""
     if USE_MYSQL:
         try:
-            import pymysql
+            import pymysql  # type: ignore
         except ImportError as exc:
             raise RuntimeError(
                 "MySQL 연결을 사용하려면 PyMySQL 패키지가 필요합니다. "
@@ -627,8 +627,9 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
     with get_db() as conn:
         if user_id and design_evaluation_session:
             # 핵심통제이면서 설계평가 결과가 'effective'(적정)인 통제만 조회
+            # 설계평가 증빙도 함께 가져옴
             query = '''
-                SELECT DISTINCT d.*
+                SELECT DISTINCT d.*, l.evaluation_evidence
                 FROM sb_rcm_detail_v d
                 INNER JOIN sb_design_evaluation_header h ON d.rcm_id = h.rcm_id
                 INNER JOIN sb_design_evaluation_line l ON h.header_id = l.header_id AND d.control_code = l.control_code
@@ -826,15 +827,18 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
             update_query = '''
                 UPDATE sb_design_evaluation_line SET
                     description_adequacy = %s, improvement_suggestion = %s,
-                    overall_effectiveness = %s, evaluation_rationale = %s,
-                    recommended_actions = %s, evaluation_date = CURRENT_TIMESTAMP,
-                    last_updated = CURRENT_TIMESTAMP
+                    overall_effectiveness = %s, evaluation_evidence = %s,
+                    evaluation_evidence = %s,
+                    evaluation_rationale = %s, recommended_actions = %s,
+                    evaluation_date = CURRENT_TIMESTAMP, last_updated = CURRENT_TIMESTAMP
                 WHERE line_id = %s
             '''
             update_params = (
                 evaluation_data.get('description_adequacy'),
                 evaluation_data.get('improvement_suggestion'),
                 evaluation_data.get('overall_effectiveness'),
+                evaluation_data.get('evaluation_evidence'),
+                evaluation_data.get('evaluation_evidence'),
                 evaluation_data.get('evaluation_rationale'),
                 evaluation_data.get('recommended_actions'),
                 line_id
@@ -862,15 +866,19 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 INSERT INTO sb_design_evaluation_line (
                     header_id, control_code, control_sequence,
                     description_adequacy, improvement_suggestion,
-                    overall_effectiveness, evaluation_rationale,
-                    recommended_actions, evaluation_date, last_updated
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    overall_effectiveness, evaluation_evidence,
+                    evaluation_evidence,
+                    evaluation_rationale, recommended_actions,
+                    evaluation_date, last_updated
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             '''
             insert_params = (
                 header_id, control_code, control_sequence,
                 evaluation_data.get('description_adequacy'),
                 evaluation_data.get('improvement_suggestion'),
                 evaluation_data.get('overall_effectiveness'),
+                evaluation_data.get('evaluation_evidence'),
+                evaluation_data.get('evaluation_evidence'),
                 evaluation_data.get('evaluation_rationale'),
                 evaluation_data.get('recommended_actions')
             )
@@ -1244,12 +1252,8 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     sample.get('mitigation', '')
                 ))
 
-        # Header의 last_updated 갱신
-        conn.execute('''
-            UPDATE sb_operation_evaluation_header
-            SET last_updated = CURRENT_TIMESTAMP
-            WHERE header_id = %s
-        ''', (header_id,))
+        # Header의 last_updated 갱신 및 상태 업데이트
+        update_operation_evaluation_progress(conn, header_id)
 
         conn.commit()
 
