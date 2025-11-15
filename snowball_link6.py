@@ -184,6 +184,7 @@ def get_design_evaluation_api():
                         l.description_adequacy as design_adequacy,
                         l.improvement_suggestion,
                         l.overall_effectiveness as conclusion,
+                        l.evaluation_evidence,
                         l.evaluation_rationale,
                         l.recommended_actions,
                         l.evaluation_date
@@ -215,6 +216,7 @@ def get_design_evaluation_api():
                     l.description_adequacy,
                     l.improvement_suggestion,
                     l.overall_effectiveness as conclusion,
+                    l.evaluation_evidence,
                     l.evaluation_rationale,
                     l.recommended_actions,
                     l.evaluation_date
@@ -583,6 +585,7 @@ def load_evaluation_data_api(rcm_id):
             evaluation_dict[control_code] = {
                 'description_adequacy': eval_data['description_adequacy'],
                 'improvement_suggestion': eval_data['improvement_suggestion'],
+                'evaluation_evidence': eval_data.get('evaluation_evidence'), # 이 줄을 추가했습니다.
                 'overall_effectiveness': eval_data['overall_effectiveness'],
                 'evaluation_rationale': eval_data['evaluation_rationale'],
                 'recommended_actions': eval_data['recommended_actions'],
@@ -1069,15 +1072,16 @@ def download_evaluation_excel(rcm_id):
                 try:
                     # 해당 세션의 설계평가 결과 조회 (overall_effectiveness 포함)
                     eval_results = conn.execute('''
-                        SELECT l.control_code, l.evaluation_rationale, l.overall_effectiveness, h.header_id
+                        SELECT l.control_code, l.evaluation_evidence, l.evaluation_rationale, l.overall_effectiveness, h.header_id
                         FROM sb_design_evaluation_line l
                         JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
                         WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s
                         ORDER BY l.control_sequence, l.control_code
                     ''', (rcm_id, user_info['user_id'], evaluation_session)).fetchall()
-                    
+
                     for eval_result in eval_results:
                         control_code = eval_result['control_code']
+                        evidence = eval_result['evaluation_evidence'] or ''
                         rationale = eval_result['evaluation_rationale'] or ''
                         effectiveness = eval_result['overall_effectiveness'] or ''
                         header_id = eval_result['header_id']
@@ -1091,6 +1095,7 @@ def download_evaluation_excel(rcm_id):
                                 images_info = json.dumps([{'file': f, 'path': os.path.join(image_dir, f)} for f in image_files])
                         
                         evaluation_data[control_code] = {
+                            'evidence': evidence,
                             'rationale': rationale,
                             'effectiveness': effectiveness,
                             'images': images_info
@@ -1142,29 +1147,37 @@ def download_evaluation_excel(rcm_id):
             new_sheet['C10'] = detail['control_type']  # 통제구분
             new_sheet['C11'] = detail['test_procedure'] or ''  # 테스트 절차
             
-            # C12에 평가 근거, C13에 첨부 이미지, C14에 효과성 추가
+            # C12에 증빙, C13에 평가 근거, C14에 첨부 이미지, C15에 효과성 추가
             eval_info = evaluation_data.get(control_code, {})
+            evidence_value = eval_info.get('evidence', '')
             rationale_value = eval_info.get('rationale', '')
             effectiveness_value = eval_info.get('effectiveness', '')
-            
-            new_sheet['C12'] = rationale_value  # 평가 근거
-            
+
+            new_sheet['C12'] = evidence_value  # 증빙
+            new_sheet['C13'] = rationale_value  # 평가 근거
+
             # 여러 라인 텍스트가 있는 셀들의 높이 자동 조정
             # C11 (테스트 절차) 셀 설정
             c11_cell = new_sheet['C11']
             c11_cell.alignment = Alignment(wrap_text=True, vertical='top')
-            
-            # C12 (평가 근거) 셀 설정  
+
+            # C12 (증빙) 셀 설정
             c12_cell = new_sheet['C12']
             c12_cell.alignment = Alignment(wrap_text=True, vertical='top')
-            
+
+            # C13 (평가 근거) 셀 설정
+            c13_cell = new_sheet['C13']
+            c13_cell.alignment = Alignment(wrap_text=True, vertical='top')
+
             # 텍스트 길이에 따라 행 높이 자동 조정
             test_procedure_text = detail['test_procedure'] or ''
+            evidence_text = evidence_value or ''
             rationale_text = rationale_value or ''
-            
+
             # 줄바꿈 개수와 텍스트 길이를 기준으로 높이 계산
             c11_lines = max(1, len(test_procedure_text.split('\n'))) if test_procedure_text else 1
-            c12_lines = max(1, len(rationale_text.split('\n'))) if rationale_text else 1
+            c12_lines = max(1, len(evidence_text.split('\n'))) if evidence_text else 1
+            c13_lines = max(1, len(rationale_text.split('\n'))) if rationale_text else 1
             
             # 긴 텍스트의 경우 줄바꿈이 없어도 자동 줄바꿈으로 인해 여러 줄이 될 수 있음
             # 약 50자당 1줄로 가정 (엑셀 C열 기준)
@@ -1172,52 +1185,54 @@ def download_evaluation_excel(rcm_id):
                 estimated_c11_lines = max(c11_lines, (len(test_procedure_text) // 50) + 1)
             else:
                 estimated_c11_lines = c11_lines
-                
-            if rationale_text:
-                estimated_c12_lines = max(c12_lines, (len(rationale_text) // 50) + 1)
+
+            if evidence_text:
+                estimated_c12_lines = max(c12_lines, (len(evidence_text) // 50) + 1)
             else:
                 estimated_c12_lines = c12_lines
-            
+
+            if rationale_text:
+                estimated_c13_lines = max(c13_lines, (len(rationale_text) // 50) + 1)
+            else:
+                estimated_c13_lines = c13_lines
+
             # 최소 높이는 25pt, 최대 높이는 150pt로 제한 (기본 20pt + 줄 수 * 18pt)
             c11_height = max(25, min(150, 20 + (estimated_c11_lines - 1) * 18))
             c12_height = max(25, min(150, 20 + (estimated_c12_lines - 1) * 18))
-            
+            c13_height = max(25, min(150, 20 + (estimated_c13_lines - 1) * 18))
+
             new_sheet.row_dimensions[11].height = c11_height
             new_sheet.row_dimensions[12].height = c12_height
-            
-            # C14에 효과성 및 시트 탭 색상 설정
+            new_sheet.row_dimensions[13].height = c13_height
+
+            # C15에 효과성 및 시트 탭 색상 설정
             if effectiveness_value == '효과적' or effectiveness_value.lower() == 'effective':
-                new_sheet['C14'] = 'Effective'
-                # 효과적인 경우 시트 탭을 연한 녹색으로 설정
-                new_sheet.sheet_properties.tabColor = Color(rgb="90EE90")  # 연한 녹색
-            elif effectiveness_value == '부분적으로 효과적' or effectiveness_value.lower() == 'partially_effective':
-                new_sheet['C14'] = 'Partially Effective'
-                # 부분적으로 효과적인 경우 시트 탭을 노란색으로 설정
-                new_sheet.sheet_properties.tabColor = Color(rgb="FFD700")  # 금색/노란색
+                new_sheet['C15'] = 'Effective' # 효과적인 경우
+                new_sheet.sheet_properties.tabColor = Color(rgb="90EE90")
             else:
-                new_sheet['C14'] = 'Ineffective'
+                new_sheet['C15'] = 'Ineffective'
                 # 비효과적인 경우 시트 탭을 연한 빨간색으로 설정
                 new_sheet.sheet_properties.tabColor = Color(rgb="FFA0A0")  # 연한 빨간색
             
-            # 첫부 이미지 처리 (C13 셀에 이미지 삽입)
+            # 첨부 이미지 처리 (C14 셀에 이미지 삽입)
             images_info = eval_info.get('images', '')
             if images_info:
                 try:
                     from openpyxl.drawing.image import Image as ExcelImage
-                    
+
                     # JSON 형태로 저장된 이미지 정보 파싱
                     if images_info.startswith('['):
                         image_list = json.loads(images_info)
                         if image_list and len(image_list) > 0:
-                            # 최대 3개 이미지를 C13, D13, E13에 가로로 배치
-                            target_cells = ['C13', 'D13', 'E13']
+                            # 최대 3개 이미지를 C14, D14, E14에 가로로 배치
+                            target_cells = ['C14', 'D14', 'E14']
                             max_images = min(len(image_list), 3)
 
-                            # C13 셀 크기 기준으로 통일된 이미지 크기 계산
+                            # C14 셀 크기 기준으로 통일된 이미지 크기 계산
                             col_width = new_sheet.column_dimensions['C'].width or 8.43
                             cell_width_px = int(col_width * 7)  # 문자 단위를 픽셀로 변환
 
-                            row_height = new_sheet.row_dimensions[13].height or 15
+                            row_height = new_sheet.row_dimensions[14].height or 15
                             cell_height_px = int(row_height * 1.33)  # 포인트를 픽셀로 변환
 
                             # 셀 크기의 90%로 최대 크기 설정 (모든 이미지에 동일 적용)
@@ -1707,15 +1722,20 @@ def download_design_evaluation():
                                 try:
                                     # 이미지 객체 생성
                                     img = OpenpyxlImage(image_path)
-                                    # 이미지 크기 조정 (너비 300px로 제한)
-                                    if img.width > 300:
-                                        ratio = 300 / img.width
-                                        img.width = 300
+                                    # 이미지 크기 조정 (너비 280px로 제한하여 셀보다 작게)
+                                    max_width = 280
+                                    if img.width > max_width:
+                                        ratio = max_width / img.width
+                                        img.width = max_width
                                         img.height = int(img.height * ratio)
+                                    else:
+                                        # 원본이 280px보다 작으면 90%로 축소
+                                        img.width = int(img.width * 0.9)
+                                        img.height = int(img.height * 0.9)
                                     # 이미지를 C13, C14, C15... 위치에 삽입
                                     new_sheet.add_image(img, cell_position)
-                                    # 행 높이 조정 (이미지 높이에 맞춤)
-                                    new_sheet.row_dimensions[row_offset + idx].height = img.height * 0.75
+                                    # 행 높이 조정 (이미지 높이보다 약간 크게 여백 추가)
+                                    new_sheet.row_dimensions[row_offset + idx].height = (img.height * 0.75) + 5
                                     image_count += 1
                                     print(f"이미지 삽입 성공: {image_file} -> {cell_position}")
                                 except Exception as e:

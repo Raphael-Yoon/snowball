@@ -167,6 +167,7 @@
                                                     data-test-procedure="{{ detail.test_procedure|e }}"
                                                     data-std-control-id="{{ detail.mapped_std_control_id|e }}"
                                                     data-std-control-code="{{ rcm_mappings.get(detail.control_code).std_control_code if rcm_mappings.get(detail.control_code) else '' }}"
+                                                    data-design-evaluation-evidence="{{ detail.evaluation_evidence|e }}"
                                                     data-row-index="{{ loop.index }}"
                                                     onclick="openOperationEvaluationModal(this)">
                                                 <i class="fas fa-edit me-1"></i>평가
@@ -683,6 +684,7 @@
         let currentEvaluationSession = '{{ evaluation_session }}';
         let currentControlCode = '';
         let currentRowIndex = 0;
+        let currentDesignEvaluationEvidence = '';  // 설계평가 증빙
         let evaluated_controls = {{ evaluated_controls | tojson }};
 
         // Toast 헬퍼 함수
@@ -861,15 +863,18 @@
             const testProcedure = buttonElement.getAttribute('data-test-procedure');
             const stdControlId = buttonElement.getAttribute('data-std-control-id');
             const stdControlCode = buttonElement.getAttribute('data-std-control-code');
+            const designEvaluationEvidence = buttonElement.getAttribute('data-design-evaluation-evidence');
             const rowIndex = parseInt(buttonElement.getAttribute('data-row-index'));
 
             console.log('Control Code:', controlCode);
             console.log('Standard Control Code:', stdControlCode);
             console.log('Standard Control Code Type:', typeof stdControlCode);
             console.log('Control Nature Code:', controlNatureCode);
+            console.log('Design Evaluation Evidence:', designEvaluationEvidence);
 
             currentControlCode = controlCode;
             currentRowIndex = rowIndex;
+            currentDesignEvaluationEvidence = designEvaluationEvidence || '';
 
             // 자동통제 판별
             if (controlNatureCode === 'A' || controlNatureCode === '자동') {
@@ -1350,12 +1355,12 @@
 
             // 표본 크기만큼 라인 생성
             for (let i = 1; i <= sampleSize; i++) {
-                // 우선순위: 1) 현재 화면 입력값, 2) DB에서 로드된 데이터
+                // 우선순위: 1) 현재 화면 입력값, 2) DB에서 로드된 데이터, 3) 설계평가 증빙 (신규 생성 시)
                 const currentInput = currentInputData.find(s => s.sample_number === i);
                 const existingSample = existingSampleLines.find(s => s.sample_number === i);
 
-                // 현재 화면에 입력된 값이 있으면 우선 사용, 없으면 DB 데이터 사용
-                const evidence = currentInput?.evidence || existingSample?.evidence || '';
+                // 현재 화면에 입력된 값이 있으면 우선 사용, 없으면 DB 데이터 사용, 둘 다 없으면 설계평가 증빙 사용
+                const evidence = currentInput?.evidence || existingSample?.evidence || currentDesignEvaluationEvidence || '';
                 const result = currentInput?.result || existingSample?.result || 'no_exception';
                 const mitigation = currentInput?.mitigation || existingSample?.mitigation || '';
 

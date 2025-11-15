@@ -302,27 +302,45 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label for="overallEffectiveness" class="form-label">실제 통제 설계 효과성 *</label>
-                                <select class="form-select" id="overallEffectiveness" required disabled>
-                                    <option value="">평가 결과 선택</option>
-                                    <option value="effective">효과적 - 통제 설계가 적절하고 위험을 효과적으로 완화함</option>
-                                    <option value="partially_effective">부분적으로 효과적 - 통제 설계에 일부 보완이 필요함</option>
-                                    <option value="ineffective">비효과적 - 통제 설계가 위험을 충분히 완화하지 못함</option>
-                                </select>
-                                <div class="form-text text-muted" id="effectivenessHelpText">
-                                    통제활동 설명 적절성이 "적절함"으로 평가된 경우에만 입력 가능합니다.
+                                <label class="form-label">증빙 및 결과</label>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th width="10%">표본 #</th>
+                                                <th width="70%">증빙 내용</th>
+                                                <th width="20%">결과</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="text-center align-middle">#1</td>
+                                                <td class="align-middle">
+                                                    <input type="text" class="form-control form-control-sm"
+                                                           id="evaluationEvidence"
+                                                           placeholder="평가 시 확인한 증빙 자료를 입력하세요 (예: 업무 매뉴얼, 승인 기록, 시스템 로그, 문서번호 등)"
+                                                           style="height: 31px;" />
+                                                </td>
+                                                <td class="align-middle">
+                                                    <select class="form-select form-select-sm"
+                                                            id="overallEffectiveness"
+                                                            required
+                                                            disabled
+                                                            style="height: 31px;">
+                                                        <option value="">선택</option>
+                                                        <option value="effective">효과적</option>
+                                                        <option value="ineffective">비효과적</option>
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
-                            
-                            <div class="mb-3">
-                                <label for="evaluationRationale" class="form-label">평가 근거</label>
-                                <textarea class="form-control" id="evaluationRationale" rows="3" disabled
-                                          placeholder="현재 실무 상황을 관찰한 내용이나 담당자 면담 결과 등 구체적인 평가 근거를 기술하세요..."></textarea>
-                            </div>
-                            
+
                             <div class="mb-3">
                                 <label for="recommendedActions" class="form-label">권고 조치사항</label>
-                                <textarea class="form-control" id="recommendedActions" rows="2" 
+                                <textarea class="form-control" id="recommendedActions" rows="2"
                                           placeholder="실무와 문서 간 차이 해소나 통제 운영 개선을 위한 구체적인 조치사항을 제안하세요..."></textarea>
                             </div>
                             
@@ -694,7 +712,6 @@
             const adequacySelect = document.getElementById('descriptionAdequacy');
             const effectivenessSelect = document.getElementById('overallEffectiveness');
             const effectivenessSection = document.getElementById('effectivenessSection');
-            const evaluationRationale = document.getElementById('evaluationRationale');
             const recommendedActionsField = document.getElementById('recommendedActions');
 
             if (adequacySelect && effectivenessSelect) {
@@ -708,22 +725,18 @@
             }
 
             function toggleEffectivenessSection(adequacyValue) {
+                const evaluationEvidence = document.getElementById('evaluationEvidence');
                 if (adequacyValue === 'adequate') {
-                    // 적절함인 경우 활성화
+                    // 적절함인 경우 효과성 필드 활성화
                     effectivenessSelect.disabled = false;
-                    evaluationRationale.disabled = false;
                     effectivenessSection.style.opacity = '1';
-                    document.getElementById('effectivenessHelpText').style.display = 'none';
                 } else {
-                    // 적절함이 아닌 경우 비활성화 및 초기화
+                    // 적절함이 아닌 경우 효과성 필드 비활성화 및 초기화
                     effectivenessSelect.disabled = true;
                     effectivenessSelect.value = '';
-                    evaluationRationale.value = '';
-                    evaluationRationale.disabled = true;
                     recommendedActionsField.value = '';
                     recommendedActionsField.disabled = true;
                     effectivenessSection.style.opacity = '0.5';
-                    document.getElementById('effectivenessHelpText').style.display = 'block';
                 }
             }
         }
@@ -748,21 +761,19 @@
         function toggleRecommendedActions(effectivenessValue) {
             const recommendedActionsField = document.getElementById('recommendedActions');
             const container = recommendedActionsField.closest('.mb-3');
-            
+
             if (effectivenessValue === 'effective') {
-                // 효과적인 경우 비활성화 및 숨김
-                recommendedActionsField.disabled = true;
+                // 효과적인 경우 완전히 숨김
                 recommendedActionsField.value = '';
-                recommendedActionsField.placeholder = '효과적인 통제는 조치사항이 필요하지 않습니다.';
                 if (container) {
-                    container.style.opacity = '0.5';
+                    container.style.display = 'none';
                 }
             } else {
-                // 부분적으로 효과적이거나 비효과적인 경우 활성화
+                // 부분적으로 효과적이거나 비효과적인 경우 표시
                 recommendedActionsField.disabled = false;
-                recommendedActionsField.placeholder = '통제 설계 개선을 위한 구체적인 조치사항을 제안하세요...';
+                recommendedActionsField.placeholder = '실무와 문서 간 차이 해소나 통제 운영 개선을 위한 구체적인 조치사항을 제안하세요...';
                 if (container) {
-                    container.style.opacity = '1';
+                    container.style.display = 'block';
                 }
             }
         }
@@ -793,15 +804,15 @@
                 improvementField.disabled = true;
                 improvementField.value = '';
                 improvementField.placeholder = '현실 반영도가 적절하므로 개선사항이 필요하지 않습니다.';
-                if (container) {
-                    container.style.opacity = '0.5';
+                if (container) { // '적절함'일 경우 숨김
+                    container.style.display = 'none';
                 }
             } else {
                 // 부분적으로 적절, 부적절, 누락인 경우 활성화
                 improvementField.disabled = false;
                 improvementField.placeholder = '실제 업무와 차이가 있는 경우, RCM 문서 업데이트 방향이나 실무 개선 방안을 제안하세요...';
-                if (container) {
-                    container.style.opacity = '1';
+                if (container) { // 그 외의 경우 표시
+                    container.style.display = 'block';
                 }
             }
         }
@@ -1136,16 +1147,21 @@
             if (evaluationResults[index]) {
                 const result = evaluationResults[index];
                 console.log('DEBUG - Full result data:', result);
-                
+
                 document.getElementById('descriptionAdequacy').value = result.description_adequacy || '';
                 document.getElementById('improvementSuggestion').value = result.improvement_suggestion || '';
                 document.getElementById('overallEffectiveness').value = result.overall_effectiveness || '';
-                document.getElementById('evaluationRationale').value = result.evaluation_rationale || '';
+                document.getElementById('evaluationEvidence').value = result.evaluation_evidence || '';
                 document.getElementById('recommendedActions').value = result.recommended_actions || '';
 
                 // 적절성 값이 설정되면 효과성 필드 활성화 이벤트 발생
                 const adequacySelect = document.getElementById('descriptionAdequacy');
                 if (adequacySelect.value === 'adequate') {
+                    // 효과성 필드 활성화 후, 결론 값에 따라 권고 조치사항 필드 표시 여부 업데이트
+                    const effectivenessSelect = document.getElementById('overallEffectiveness');
+                    if (effectivenessSelect) {
+                        toggleRecommendedActions(effectivenessSelect.value);
+                    }
                     adequacySelect.dispatchEvent(new Event('change'));
                 }
 
@@ -1157,9 +1173,12 @@
                 document.getElementById('descriptionAdequacy').value = '';
                 document.getElementById('improvementSuggestion').value = '';
                 document.getElementById('overallEffectiveness').value = '';
-                document.getElementById('evaluationRationale').value = '';
+                document.getElementById('evaluationEvidence').value = '';
                 document.getElementById('recommendedActions').value = '';
-                
+
+                // 폼 초기화 시 권고 조치사항 필드 숨김
+                toggleRecommendedActions('');
+
                 // 이미지 초기화
                 displayExistingImages([]);
             }
@@ -1215,7 +1234,7 @@
                 document.getElementById('descriptionAdequacy').disabled = true;
                 document.getElementById('improvementSuggestion').disabled = true;
                 document.getElementById('overallEffectiveness').disabled = true;
-                document.getElementById('evaluationRationale').disabled = true;
+                document.getElementById('evaluationEvidence').disabled = true;
                 document.getElementById('recommendedActions').disabled = true;
             } else {
                 // 완료되지 않은 상태: 모든 입력 활성화
@@ -1232,7 +1251,7 @@
                 document.getElementById('descriptionAdequacy').disabled = false;
                 document.getElementById('improvementSuggestion').disabled = false;
                 document.getElementById('overallEffectiveness').disabled = false;
-                document.getElementById('evaluationRationale').disabled = false;
+                document.getElementById('evaluationEvidence').disabled = false;
                 document.getElementById('recommendedActions').disabled = false;
             }
 
@@ -1286,7 +1305,7 @@
                 description_adequacy: adequacy,
                 improvement_suggestion: document.getElementById('improvementSuggestion').value,
                 overall_effectiveness: effectiveness,
-                evaluation_rationale: document.getElementById('evaluationRationale').value,
+                evaluation_evidence: document.getElementById('evaluationEvidence').value,
                 recommended_actions: document.getElementById('recommendedActions').value
             };
             
@@ -1469,15 +1488,9 @@
                     }
                 }
                 
-                // 이미지가 있는지 확인
-                let imageDisplay = '';
-                if (evaluation.images && evaluation.images.length > 0) {
-                    const imageCount = evaluation.images.length;
-                    imageDisplay = `<br><small class="text-primary">
-                        <i class="fas fa-image me-1"></i>${imageCount}개 첨부파일
-                        <a href="#" onclick="showEvaluationImages(${index})" class="text-decoration-none ms-1">보기</a>
-                    </small>`;
-                }
+                // 첨부파일 유무 표시 제거
+                const imageDisplay = '';
+                resultElement.innerHTML = `<span class="badge ${resultClass}">${resultText}</span>`;
 
                 resultElement.innerHTML = `
                     <span class="badge ${resultClass}">${resultText}</span>
