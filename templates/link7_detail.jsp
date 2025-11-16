@@ -168,6 +168,8 @@
                                                     data-std-control-id="{{ detail.mapped_std_control_id|e }}"
                                                     data-std-control-code="{{ rcm_mappings.get(detail.control_code).std_control_code if rcm_mappings.get(detail.control_code) else '' }}"
                                                     data-design-evaluation-evidence="{{ detail.evaluation_evidence|e }}"
+                                                    data-design-evaluation-images='{{ detail.design_evaluation_images|tojson if detail.design_evaluation_images else "[]" }}'
+                                                    data-recommended-sample-size="{{ detail.recommended_sample_size or '' }}"
                                                     data-row-index="{{ loop.index }}"
                                                     onclick="openOperationEvaluationModal(this)">
                                                 <i class="fas fa-edit me-1"></i>평가
@@ -316,6 +318,7 @@
                                 <div class="col-md-3">
                                     <label for="sample_size" class="form-label fw-bold">표본 크기</label>
                                     <input type="number" class="form-control text-end" id="sample_size" name="sample_size" min="1" max="100" placeholder="통제주기에 따라 자동 설정" onchange="generateSampleLines()" onkeyup="if(event.key === 'Enter') generateSampleLines()">
+                                    <div id="sampleSizeMessage" class="mt-1" style="display: none;"></div>
                                 </div>
                                 <div class="col-md-9 d-flex align-items-end">
                                     <div class="form-text">
@@ -368,12 +371,18 @@
                             <textarea class="form-control" id="improvement_plan" name="improvement_plan" rows="3" placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
                         </div>
 
-                        <!-- 파일 첨부 섹션 -->
-                        <div class="mb-3">
-                            <label for="evaluationImages" class="form-label fw-bold">증빙 자료 (이미지)</label>
-                            <input type="file" class="form-control" id="evaluationImages" accept="image/*" multiple>
-                            <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
-                            <div id="imagePreview" class="mt-2"></div>
+                        <!-- 설계평가 이미지 표시 섹션 -->
+                        <div class="mb-3" id="designEvaluationImagesSection" style="display: none;">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-clipboard-check me-1"></i>설계평가 증빙 이미지
+                            </label>
+                            <div id="designEvaluationImagesPreview" class="border rounded p-2 bg-light"></div>
+                            <div class="form-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    설계평가 시 업로드된 이미지입니다. 클릭하면 원본 크기로 볼 수 있습니다.
+                                </small>
+                            </div>
                         </div>
 
                         <!-- 수동통제 전용: 엑셀 파일 업로드 -->
@@ -686,6 +695,14 @@
         let currentRowIndex = 0;
         let currentDesignEvaluationEvidence = '';  // 설계평가 증빙
         let evaluated_controls = {{ evaluated_controls | tojson }};
+        // 통제별 설계평가 이미지 데이터 저장 (control_code를 키로 사용)
+        let designEvaluationImagesData = {
+            {% if rcm_details %}
+            {% for detail in rcm_details %}
+            "{{ detail.control_code }}": {{ (detail.design_evaluation_images|tojson if detail.design_evaluation_images else '[]')|safe }}{% if not loop.last %},{% endif %}
+            {% endfor %}
+            {% endif %}
+        };
 
         // Toast 헬퍼 함수
         function showToast(type, message) {
@@ -852,6 +869,70 @@
             });
         }
 
+        // 설계평가 이미지 표시 함수
+        function displayDesignEvaluationImages(images) {
+            const section = document.getElementById('designEvaluationImagesSection');
+            const preview = document.getElementById('designEvaluationImagesPreview');
+
+            console.log('[displayDesignEvaluationImages] Called with images:', images);
+            console.log('[displayDesignEvaluationImages] Images type:', typeof images);
+            console.log('[displayDesignEvaluationImages] Images length:', images?.length);
+
+            if (!section || !preview) {
+                console.error('Design evaluation images section not found');
+                return;
+            }
+
+            // 이미지가 없으면 섹션 숨김
+            if (!images || images.length === 0) {
+                console.log('[displayDesignEvaluationImages] No images to display, hiding section');
+                section.style.display = 'none';
+                preview.innerHTML = '';
+                return;
+            }
+
+            // 이미지가 있으면 섹션 표시
+            console.log('[displayDesignEvaluationImages] Displaying images, showing section');
+            section.style.display = 'block';
+
+            // 이미지 미리보기 생성
+            preview.innerHTML = '';
+            images.forEach((imagePath, index) => {
+                console.log(`[displayDesignEvaluationImages] Image ${index + 1}:`, imagePath);
+
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'd-inline-block position-relative m-2';
+                imageContainer.style.width = '150px';
+
+                const img = document.createElement('img');
+                const fullPath = `/static/${imagePath}`;
+                console.log(`[displayDesignEvaluationImages] Full image path:`, fullPath);
+                img.src = fullPath;
+                img.className = 'img-thumbnail';
+                img.style.width = '150px';
+                img.style.height = '150px';
+                img.style.objectFit = 'cover';
+                img.style.cursor = 'pointer';
+                img.alt = `설계평가 이미지 ${index + 1}`;
+
+                // 이미지 로드 성공/실패 이벤트
+                img.onload = () => {
+                    console.log(`[displayDesignEvaluationImages] Image loaded successfully:`, fullPath);
+                };
+                img.onerror = () => {
+                    console.error(`[displayDesignEvaluationImages] Image failed to load:`, fullPath);
+                };
+
+                // 클릭 시 새 창에서 원본 이미지 보기
+                img.onclick = () => {
+                    window.open(fullPath, '_blank');
+                };
+
+                imageContainer.appendChild(img);
+                preview.appendChild(imageContainer);
+            });
+        }
+
         // 운영평가 모달 열기
         function openOperationEvaluationModal(buttonElement) {
             const controlCode = buttonElement.getAttribute('data-control-code');
@@ -864,13 +945,25 @@
             const stdControlId = buttonElement.getAttribute('data-std-control-id');
             const stdControlCode = buttonElement.getAttribute('data-std-control-code');
             const designEvaluationEvidence = buttonElement.getAttribute('data-design-evaluation-evidence');
+            const recommendedSampleSizeStr = buttonElement.getAttribute('data-recommended-sample-size');
             const rowIndex = parseInt(buttonElement.getAttribute('data-row-index'));
+            
+            // JavaScript 객체에서 설계평가 이미지 데이터 가져오기
+            let designEvaluationImages = [];
+            if (designEvaluationImagesData[controlCode]) {
+                designEvaluationImages = Array.isArray(designEvaluationImagesData[controlCode]) 
+                    ? designEvaluationImagesData[controlCode] 
+                    : [];
+            }
 
             console.log('Control Code:', controlCode);
             console.log('Standard Control Code:', stdControlCode);
             console.log('Standard Control Code Type:', typeof stdControlCode);
             console.log('Control Nature Code:', controlNatureCode);
             console.log('Design Evaluation Evidence:', designEvaluationEvidence);
+            console.log('Design Evaluation Images:', designEvaluationImages);
+            console.log('Design Evaluation Images (type):', typeof designEvaluationImages);
+            console.log('Design Evaluation Images (length):', designEvaluationImages?.length);
 
             currentControlCode = controlCode;
             currentRowIndex = rowIndex;
@@ -995,14 +1088,10 @@
             }
 
             // 파일 입력 초기화 (요소 존재 확인)
-            const evaluationImages = document.getElementById('evaluationImages');
             const sampleExcelFile = document.getElementById('sampleExcelFile');
-            const imagePreview = document.getElementById('imagePreview');
             const excelPreview = document.getElementById('excelPreview');
 
-            if (evaluationImages) evaluationImages.value = '';
             if (sampleExcelFile) sampleExcelFile.value = '';
-            if (imagePreview) imagePreview.innerHTML = '';
             if (excelPreview) excelPreview.innerHTML = '';
 
             const modalControlCode = document.getElementById('modal-control-code');
@@ -1020,8 +1109,15 @@
             if (modalTestProcedure) modalTestProcedure.textContent = testProcedure || '-';
 
             // 권장 표본수 계산 및 저장 (표본수 검증을 위해)
+            // 1순위: RCM에 설정된 권장 표본수
+            // 2순위: 통제 주기에 따른 기본값
             currentControlFrequency = controlFrequency;
-            recommendedSampleSize = getDefaultSampleSize(controlFrequency, controlType);
+            const rcmRecommendedSize = recommendedSampleSizeStr ? parseInt(recommendedSampleSizeStr) : null;
+            recommendedSampleSize = rcmRecommendedSize || getDefaultSampleSize(controlFrequency, controlType);
+
+            console.log('[권장 표본수] RCM 설정값:', rcmRecommendedSize);
+            console.log('[권장 표본수] 통제주기 기본값:', getDefaultSampleSize(controlFrequency, controlType));
+            console.log('[권장 표본수] 최종 사용값:', recommendedSampleSize);
 
             // 설계평가 대체 옵션 표시 여부 결정 (연간 통제 또는 자동 통제만)
             const useDesignEvaluationSection = document.getElementById('use-design-evaluation-section');
@@ -1107,10 +1203,27 @@
                 toggleExceptionFields(false);
             }
 
-            // 기존 평가 데이터가 없거나 표본수가 비어있는 경우 자동 설정
+            // 표본수 우선순위 설정
+            // 1순위: 운영평가 라인에 저장된 sample_size (사용자가 조정한 값)
+            // 2순위: RCM detail의 recommended_sample_size (관리자 설정)
+            // 3순위: 통제주기 기반 기본값
             if (!evaluated_controls[controlCode] || (!evaluated_controls[controlCode].sample_size && !evaluated_controls[controlCode].no_occurrence)) {
-                const defaultSampleSize = getDefaultSampleSize(controlFrequency, controlType);
-                if (sampleSizeEl) sampleSizeEl.value = defaultSampleSize;
+                let displaySampleSize;
+
+                if (recommendedSampleSize && recommendedSampleSize > 0) {
+                    // RCM에 설정된 권장 표본수 사용
+                    displaySampleSize = recommendedSampleSize;
+                    console.log('[표본수] RCM 권장 표본수 사용:', displaySampleSize);
+                } else {
+                    // 통제주기 기반 기본값
+                    displaySampleSize = getDefaultSampleSize(controlFrequency, controlType);
+                    console.log('[표본수] 통제주기 기반 기본값 사용:', displaySampleSize);
+                }
+
+                if (sampleSizeEl) sampleSizeEl.value = displaySampleSize;
+            } else if (evaluated_controls[controlCode] && evaluated_controls[controlCode].sample_size) {
+                // 운영평가 라인에 이미 저장된 값이 있으면 그대로 표시
+                console.log('[표본수] 운영평가 라인 저장값 사용:', evaluated_controls[controlCode].sample_size);
             }
 
             // 먼저 기존 샘플 테이블 완전히 비우기 (다른 통제의 데이터가 보이는 것 방지)
@@ -1224,6 +1337,9 @@
             if (typeof updateConclusionBasedOnExceptions === 'function') {
                 updateConclusionBasedOnExceptions();
             }
+
+            // 설계평가 이미지 표시
+            displayDesignEvaluationImages(designEvaluationImages);
 
             // 모달 표시
             const operationEvaluationModalEl = document.getElementById('operationEvaluationModal');
@@ -1341,6 +1457,7 @@
             console.log('[generateSampleLines] existingSampleLines.length:', existingSampleLines.length);
             console.log('[generateSampleLines] currentInputData:', currentInputData);
             console.log('[generateSampleLines] currentInputData.length:', currentInputData.length);
+            console.log('[generateSampleLines] currentDesignEvaluationEvidence:', currentDesignEvaluationEvidence);
 
             // SQL 쿼리 시뮬레이션 출력
             if (existingData && existingData.line_id) {
@@ -1359,8 +1476,8 @@
                 const currentInput = currentInputData.find(s => s.sample_number === i);
                 const existingSample = existingSampleLines.find(s => s.sample_number === i);
 
-                // 현재 화면에 입력된 값이 있으면 우선 사용, 없으면 DB 데이터 사용, 둘 다 없으면 설계평가 증빙 사용
-                const evidence = currentInput?.evidence || existingSample?.evidence || currentDesignEvaluationEvidence || '';
+                // 현재 화면에 입력된 값이 있으면 우선 사용, 없으면 DB 데이터 사용, 첫 번째 라인(#1)만 설계평가 증빙 사용
+                const evidence = currentInput?.evidence || existingSample?.evidence || (i === 1 ? currentDesignEvaluationEvidence : '') || '';
                 const result = currentInput?.result || existingSample?.result || 'no_exception';
                 const mitigation = currentInput?.mitigation || existingSample?.mitigation || '';
 
@@ -1589,6 +1706,7 @@
         function validateSampleSize() {
             const sampleSizeInput = document.getElementById('sample_size');
             const exceptionCountInput = document.getElementById('exception_count');
+            const messageDiv = document.getElementById('sampleSizeMessage');
             const inputValue = parseInt(sampleSizeInput.value) || 0;
 
             console.log('validateSampleSize 호출됨');
@@ -1605,8 +1723,29 @@
 
             // 통제주기 기반 권장 표본수와 비교
             if (recommendedSampleSize > 0 && inputValue !== recommendedSampleSize) {
-                const frequencyName = getFrequencyName(currentControlFrequency);
-                alert(`ℹ️ 안내\n\n통제주기: ${frequencyName}\n권장 표본수: ${recommendedSampleSize}개\n입력한 표본수: ${inputValue}개\n\n필요에 따라 조정하셨다면 그대로 진행하시면 됩니다.`);
+                let messageClass = 'text-warning';
+                let icon = 'fa-info-circle';
+                let message = '';
+
+                if (inputValue < recommendedSampleSize) {
+                    messageClass = 'text-danger';
+                    icon = 'fa-exclamation-triangle';
+                    message = `권장(${recommendedSampleSize}개)보다 적습니다`;
+                } else if (inputValue > recommendedSampleSize) {
+                    messageClass = 'text-info';
+                    icon = 'fa-info-circle';
+                    message = `권장(${recommendedSampleSize}개)보다 많습니다`;
+                }
+
+                messageDiv.innerHTML = `
+                    <small class="${messageClass}">
+                        <i class="fas ${icon} me-1"></i>${message}
+                    </small>
+                `;
+                messageDiv.style.display = 'block';
+            } else {
+                // 권장 표본수와 일치하면 메시지 숨김
+                messageDiv.style.display = 'none';
             }
         }
 
@@ -1811,7 +1950,6 @@
                 'mitigating_factors',
                 'exception_details',
                 'improvement_plan',
-                'evaluationImages',
                 'sampleExcelFile'
             ];
 
@@ -1827,30 +1965,6 @@
                 }
             });
         }
-
-        // 이미지 파일 미리보기
-        document.getElementById('evaluationImages').addEventListener('change', function(e) {
-            const preview = document.getElementById('imagePreview');
-            preview.innerHTML = '';
-            
-            const files = e.target.files;
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const div = document.createElement('div');
-                        div.className = 'd-inline-block position-relative me-2 mb-2';
-                        div.innerHTML = `
-                            <img src="${e.target.result}" style="max-width: 100px; max-height: 100px; border: 1px solid #ddd; border-radius: 4px;">
-                            <small class="d-block text-muted text-center" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis;">${file.name}</small>
-                        `;
-                        preview.appendChild(div);
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-        });
 
         // 엑셀 파일 미리보기
         document.getElementById('sampleExcelFile').addEventListener('change', function(e) {
@@ -2003,15 +2117,6 @@
                 uploadData.append('design_evaluation_session', currentEvaluationSession);
                 uploadData.append('control_code', currentControlCode);
                 uploadData.append('evaluation_data', JSON.stringify(evaluationData));
-
-                // 이미지 파일 추가 (요소 존재 확인)
-                const evaluationImagesEl = document.getElementById('evaluationImages');
-                if (evaluationImagesEl && evaluationImagesEl.files) {
-                    const imageFiles = evaluationImagesEl.files;
-                    for (let i = 0; i < imageFiles.length; i++) {
-                        uploadData.append('evaluation_image_' + i, imageFiles[i]);
-                    }
-                }
 
                 // 엑셀 파일 추가 (수동통제인 경우, 요소 존재 확인)
                 const sampleExcelFileEl = document.getElementById('sampleExcelFile');

@@ -31,7 +31,7 @@ def upgrade(conn):
         ADD COLUMN population_count INTEGER DEFAULT 0
     ''')
 
-    print("✅ 운영평가 파일 경로 컬럼 추가 완료")
+    print("[OK] 운영평가 파일 경로 컬럼 추가 완료")
 
 
 def downgrade(conn):

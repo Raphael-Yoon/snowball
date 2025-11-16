@@ -80,17 +80,20 @@ class MigrationManager:
     def _record_migration(self, version, name, execution_time_ms, status='success'):
         """마이그레이션 실행 이력 기록"""
         with self._get_connection() as conn:
+            # SQLite는 ? 플레이스홀더 사용
+            # 이미 존재하는 경우 업데이트
             conn.execute('''
-                INSERT INTO sb_migration_history (version, name, execution_time_ms, status)
-                VALUES (%s, %s, %s, %s)
+                INSERT OR REPLACE INTO sb_migration_history (version, name, execution_time_ms, status)
+                VALUES (?, ?, ?, ?)
             ''', (version, name, execution_time_ms, status))
             conn.commit()
 
     def _remove_migration_record(self, version):
         """마이그레이션 이력 제거 (롤백 시)"""
         with self._get_connection() as conn:
+            # SQLite는 ? 플레이스홀더 사용
             conn.execute('''
-                DELETE FROM sb_migration_history WHERE version = %s
+                DELETE FROM sb_migration_history WHERE version = ?
             ''', (version,))
             conn.commit()
 
@@ -113,7 +116,8 @@ class MigrationManager:
         for migration in available:
             version = migration['version']
             name = migration['name']
-            status = "✓ 적용됨" if version in applied else "  대기 중"
+            # Windows 인코딩 문제를 피하기 위해 ASCII 문자 사용
+            status = "[OK] 적용됨" if version in applied else "[  ] 대기 중"
             print(f"{status}  [{version}] {name}")
 
         print("-" * 70)
@@ -170,11 +174,11 @@ class MigrationManager:
                 # 이력 기록
                 self._record_migration(version, name, execution_time_ms, 'success')
 
-                print(f"✓ 완료 ({execution_time_ms}ms)")
+                print(f"[OK] 완료 ({execution_time_ms}ms)")
                 success_count += 1
 
             except Exception as e:
-                print(f"✗ 실패")
+                print(f"[FAIL] 실패")
                 print(f"  오류: {e}")
                 import traceback
                 traceback.print_exc()
@@ -225,7 +229,7 @@ class MigrationManager:
 
                 # downgrade 함수 확인
                 if not hasattr(module, 'downgrade'):
-                    print(f"✗ 실패 (downgrade 함수 없음)")
+                    print(f"[FAIL] 실패 (downgrade 함수 없음)")
                     return False
 
                 # downgrade 함수 실행
@@ -240,11 +244,11 @@ class MigrationManager:
                 # 이력 제거
                 self._remove_migration_record(version)
 
-                print(f"✓ 완료 ({execution_time_ms}ms)")
+                print(f"[OK] 완료 ({execution_time_ms}ms)")
                 success_count += 1
 
             except Exception as e:
-                print(f"✗ 실패")
+                print(f"[FAIL] 실패")
                 print(f"  오류: {e}")
                 import traceback
                 traceback.print_exc()

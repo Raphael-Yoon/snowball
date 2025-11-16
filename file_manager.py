@@ -389,7 +389,7 @@ def parse_population_excel(file_path, field_mapping):
         raise Exception(f"엑셀 파일 파싱 오류: {str(e)}")
 
 
-def parse_apd01_population(file_path, field_mapping):
+def parse_apd01_population(file_path, field_mapping, recommended_sample_size=None):
     """
     APD01 모집단 엑셀 파싱 (사용자 권한 부여)
 
@@ -402,6 +402,7 @@ def parse_apd01_population(file_path, field_mapping):
             'permission': 컬럼_참조,
             'grant_date': 컬럼_참조
         }
+        recommended_sample_size: 권장 표본 수 (None이면 자동 계산)
 
     Returns:
         dict: {
@@ -412,7 +413,12 @@ def parse_apd01_population(file_path, field_mapping):
     """
     population = parse_population_excel(file_path, field_mapping)
     count = len(population)
-    sample_size = calculate_sample_size(count)
+
+    # recommended_sample_size가 있으면 사용, 없으면 자동 계산
+    if recommended_sample_size is not None and recommended_sample_size > 0:
+        sample_size = min(recommended_sample_size, count)  # 모집단보다 클 수 없음
+    else:
+        sample_size = calculate_sample_size(count)
 
     return {
         'population': population,
@@ -421,7 +427,7 @@ def parse_apd01_population(file_path, field_mapping):
     }
 
 
-def parse_apd07_population(file_path, field_mapping):
+def parse_apd07_population(file_path, field_mapping, recommended_sample_size=None):
     """
     APD07 모집단 엑셀 파싱 (데이터 직접변경 승인)
 
@@ -435,6 +441,7 @@ def parse_apd07_population(file_path, field_mapping):
             'changed_by': 컬럼_참조,  # 변경자 (선택)
             'approval_date': 컬럼_참조  # 승인 일자 (선택)
         }
+        recommended_sample_size: 권장 표본 수 (None이면 자동 계산)
 
     Returns:
         dict: {
@@ -445,7 +452,12 @@ def parse_apd07_population(file_path, field_mapping):
     """
     population = parse_population_excel(file_path, field_mapping)
     count = len(population)
-    sample_size = calculate_sample_size(count)
+
+    # recommended_sample_size가 있으면 사용, 없으면 자동 계산
+    if recommended_sample_size is not None and recommended_sample_size > 0:
+        sample_size = min(recommended_sample_size, count)
+    else:
+        sample_size = calculate_sample_size(count)
 
     return {
         'population': population,
@@ -454,7 +466,7 @@ def parse_apd07_population(file_path, field_mapping):
     }
 
 
-def parse_apd09_population(file_path, field_mapping):
+def parse_apd09_population(file_path, field_mapping, recommended_sample_size=None):
     """
     APD09 모집단 엑셀 파싱 (OS 접근권한 부여 승인)
 
@@ -464,6 +476,7 @@ def parse_apd09_population(file_path, field_mapping):
             'account': 컬럼_참조,  # 접근권한 부여 계정 - 필수
             'grant_date': 컬럼_참조  # 권한부여일 - 필수
         }
+        recommended_sample_size: 권장 표본 수 (None이면 자동 계산)
 
     Returns:
         dict: {
@@ -474,7 +487,12 @@ def parse_apd09_population(file_path, field_mapping):
     """
     population = parse_population_excel(file_path, field_mapping)
     count = len(population)
-    sample_size = calculate_sample_size(count)
+
+    # recommended_sample_size가 있으면 사용, 없으면 자동 계산
+    if recommended_sample_size is not None and recommended_sample_size > 0:
+        sample_size = min(recommended_sample_size, count)
+    else:
+        sample_size = calculate_sample_size(count)
 
     return {
         'population': population,
@@ -483,7 +501,7 @@ def parse_apd09_population(file_path, field_mapping):
     }
 
 
-def parse_apd12_population(file_path, field_mapping):
+def parse_apd12_population(file_path, field_mapping, recommended_sample_size=None):
     """
     APD12 모집단 엑셀 파싱 (DB 접근권한 부여 승인)
 
@@ -493,6 +511,7 @@ def parse_apd12_population(file_path, field_mapping):
             'account': 컬럼_참조,  # 접근권한 부여 계정 - 필수
             'grant_date': 컬럼_참조  # 권한부여일 - 필수
         }
+        recommended_sample_size: 권장 표본 수 (None이면 자동 계산)
 
     Returns:
         dict: {
@@ -503,7 +522,12 @@ def parse_apd12_population(file_path, field_mapping):
     """
     population = parse_population_excel(file_path, field_mapping)
     count = len(population)
-    sample_size = calculate_sample_size(count)
+
+    # recommended_sample_size가 있으면 사용, 없으면 자동 계산
+    if recommended_sample_size is not None and recommended_sample_size > 0:
+        sample_size = min(recommended_sample_size, count)
+    else:
+        sample_size = calculate_sample_size(count)
 
     return {
         'population': population,
