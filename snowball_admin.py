@@ -646,6 +646,108 @@ def admin_rcm_view(rcm_id):
     # RCM 상세 데이터 조회
     rcm_details = get_rcm_details(rcm_id)
     
+    # 디버깅: detail_id 확인
+    if rcm_details:
+        print(f"[DEBUG] RCM {rcm_id} 상세 데이터 개수: {len(rcm_details)}")
+        print(f"[DEBUG] 첫 번째 항목의 키: {list(rcm_details[0].keys()) if rcm_details else 'N/A'}")
+        
+        # 실제 데이터베이스에서 detail_id 확인
+        with get_db() as conn:
+            db_type = 'mysql' if conn._is_mysql else 'sqlite'
+            
+            # 테이블 스키마 확인
+            if db_type == 'sqlite':
+                schema_query = "PRAGMA table_info(sb_rcm_detail)"
+                schema_result = conn.execute(schema_query).fetchall()
+                print(f"[DEBUG] sb_rcm_detail 테이블 스키마:")
+                for col in schema_result:
+                    print(f"  {col[1]} ({col[2]}) - PK: {col[5]}, NOT NULL: {col[3]}")
+            
+            # detail_id가 NULL인 레코드 개수 확인
+            if db_type == 'mysql':
+                null_count_query = '''
+                    SELECT COUNT(*) 
+                    FROM sb_rcm_detail
+                    WHERE rcm_id = %s AND detail_id IS NULL
+                '''
+            else:
+                null_count_query = '''
+                    SELECT COUNT(*) 
+                    FROM sb_rcm_detail
+                    WHERE rcm_id = ? AND detail_id IS NULL
+                '''
+            null_count = conn.execute(null_count_query, (rcm_id,)).fetchone()
+            print(f"[DEBUG] detail_id가 NULL인 레코드 개수: {null_count[0] if null_count else 0}")
+            
+            # 전체 레코드 개수 확인
+            if db_type == 'mysql':
+                total_count_query = '''
+                    SELECT COUNT(*) 
+                    FROM sb_rcm_detail
+                    WHERE rcm_id = %s
+                '''
+            else:
+                total_count_query = '''
+                    SELECT COUNT(*) 
+                    FROM sb_rcm_detail
+                    WHERE rcm_id = ?
+                '''
+            total_count = conn.execute(total_count_query, (rcm_id,)).fetchone()
+            print(f"[DEBUG] 전체 레코드 개수: {total_count[0] if total_count else 0}")
+            
+            if db_type == 'mysql':
+                test_query = '''
+                    SELECT detail_id, control_code, control_name, ROW_NUMBER() OVER (ORDER BY control_code) as row_num
+                    FROM sb_rcm_detail
+                    WHERE rcm_id = %s
+                    LIMIT 5
+                '''
+            else:
+                test_query = '''
+                    SELECT detail_id, control_code, control_name
+                    FROM sb_rcm_detail
+                    WHERE rcm_id = ?
+                    LIMIT 5
+                '''
+            test_results = conn.execute(test_query, (rcm_id,)).fetchall()
+            print(f"[DEBUG] 실제 테이블의 처음 5개 레코드:")
+            for i, row in enumerate(test_results):
+                if hasattr(row, 'keys'):
+                    row_dict = dict(row)
+                    print(f"  [{i+1}] detail_id: {row_dict.get('detail_id')}, control_code: {row_dict.get('control_code')}")
+                else:
+                    print(f"  [{i+1}] detail_id: {row[0]}, control_code: {row[1]}")
+            
+            # 뷰에서 직접 조회
+            if db_type == 'mysql':
+                view_query = '''
+                    SELECT detail_id, control_code
+                    FROM sb_rcm_detail_v
+                    WHERE rcm_id = %s
+                    LIMIT 5
+                '''
+            else:
+                view_query = '''
+                    SELECT detail_id, control_code
+                    FROM sb_rcm_detail_v
+                    WHERE rcm_id = ?
+                    LIMIT 5
+                '''
+            view_results = conn.execute(view_query, (rcm_id,)).fetchall()
+            print(f"[DEBUG] 뷰에서 조회한 처음 5개 레코드:")
+            for i, row in enumerate(view_results):
+                if hasattr(row, 'keys'):
+                    row_dict = dict(row)
+                    print(f"  [{i+1}] detail_id: {row_dict.get('detail_id')}, control_code: {row_dict.get('control_code')}")
+                else:
+                    print(f"  [{i+1}] detail_id: {row[0]}, control_code: {row[1]}")
+        
+        if rcm_details[0].get('detail_id') is None:
+            print(f"[WARNING] 첫 번째 항목의 detail_id가 None입니다!")
+            print(f"[WARNING] 첫 번째 항목 전체 데이터: {rcm_details[0]}")
+        else:
+            print(f"[DEBUG] 첫 번째 항목의 detail_id: {rcm_details[0].get('detail_id')}")
+    
     return render_template('admin_rcm_view.jsp',
                          rcm_info=dict(rcm_info),
                          rcm_details=rcm_details,
@@ -1080,3 +1182,88 @@ def api_switch_user():
             })
     except Exception as e:
         return jsonify({'success': False, 'message': f'사용자 전환 중 오류: {str(e)}'})
+
+@admin_bp.route('/rcm/detail/<int:detail_id>/sample-size', methods=['POST'])
+def update_recommended_sample_size(detail_id):
+    """통제 항목별 권장 표본수 저장"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'}), 403
+
+    try:
+        data = request.get_json()
+        recommended_sample_size = data.get('recommended_sample_size')
+
+        # NULL 값 처리
+        if recommended_sample_size is not None and recommended_sample_size != '':
+            recommended_sample_size = int(recommended_sample_size)
+        else:
+            recommended_sample_size = None
+
+        with get_db() as conn:
+            # DB 타입 확인 (DatabaseConnection 클래스의 _is_mysql 속성 사용)
+            db_type = 'mysql' if conn._is_mysql else 'sqlite'
+
+            # detail_id 존재 확인
+            if db_type == 'mysql':
+                detail = conn.execute('''
+                    SELECT detail_id FROM sb_rcm_detail WHERE detail_id = %s
+                ''', (detail_id,)).fetchone()
+            else:
+                detail = conn.execute('''
+                    SELECT detail_id FROM sb_rcm_detail WHERE detail_id = ?
+                ''', (detail_id,)).fetchone()
+
+            if not detail:
+                return jsonify({'success': False, 'message': '통제 항목을 찾을 수 없습니다.'}), 404
+
+            # recommended_sample_size 컬럼이 있는지 확인하고 없으면 추가
+            try:
+                if db_type == 'mysql':
+                    conn.execute('''
+                        UPDATE sb_rcm_detail
+                        SET recommended_sample_size = %s
+                        WHERE detail_id = %s
+                    ''', (recommended_sample_size, detail_id))
+                else:
+                    conn.execute('''
+                        UPDATE sb_rcm_detail
+                        SET recommended_sample_size = ?
+                        WHERE detail_id = ?
+                    ''', (recommended_sample_size, detail_id))
+                conn.commit()
+            except Exception as e:
+                # 컬럼이 없는 경우 추가
+                if 'no such column' in str(e).lower():
+                    conn.execute('''
+                        ALTER TABLE sb_rcm_detail
+                        ADD COLUMN recommended_sample_size INTEGER DEFAULT NULL
+                    ''')
+                    conn.commit()
+
+                    # 다시 시도
+                    if db_type == 'mysql':
+                        conn.execute('''
+                            UPDATE sb_rcm_detail
+                            SET recommended_sample_size = %s
+                            WHERE detail_id = %s
+                        ''', (recommended_sample_size, detail_id))
+                    else:
+                        conn.execute('''
+                            UPDATE sb_rcm_detail
+                            SET recommended_sample_size = ?
+                            WHERE detail_id = ?
+                        ''', (recommended_sample_size, detail_id))
+                    conn.commit()
+                else:
+                    raise
+
+        return jsonify({
+            'success': True,
+            'message': '권장 표본수가 저장되었습니다.'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'저장 중 오류가 발생했습니다: {str(e)}'}), 500

@@ -211,10 +211,25 @@ def upload_manual_population(control_code):
         file.save(temp_file.name)
         temp_file.close()
 
+        # RCM detail에서 recommended_sample_size 가져오기
+        with get_db() as conn:
+            rcm_detail = conn.execute('''
+                SELECT recommended_sample_size
+                FROM sb_rcm_detail
+                WHERE rcm_id = %s AND control_code = %s
+            ''', (rcm_id, control_code)).fetchone()
+
+        recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail else None
+
         # 모집단 파싱 (통합 함수 사용)
         population_data = file_manager.parse_population_excel(temp_file.name, field_mapping)
         count = len(population_data)
-        sample_size = file_manager.calculate_sample_size(count)
+
+        # recommended_sample_size가 있으면 사용, 없으면 자동 계산
+        if recommended_size is not None and recommended_size > 0:
+            sample_size = min(recommended_size, count)
+        else:
+            sample_size = file_manager.calculate_sample_size(count)
 
         # 표본 선택
         samples = file_manager.select_random_samples(population_data, sample_size)

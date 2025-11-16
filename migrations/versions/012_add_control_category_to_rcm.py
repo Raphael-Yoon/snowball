@@ -114,7 +114,7 @@ def upgrade(conn):
         print(f"    ⚠ 주의: 카테고리가 설정되지 않은 RCM {unset_count}개 존재")
 
     conn.commit()
-    print("  ✅ sb_rcm 테이블 control_category 추가 완료")
+    print("  [OK] sb_rcm 테이블 control_category 추가 완료")
 
 
 def downgrade(conn):
@@ -165,4 +165,4 @@ def downgrade(conn):
     conn.execute('DROP TABLE sb_rcm_backup')
 
     conn.commit()
-    print("  ✅ sb_rcm 테이블 control_category 제거 완료")
+    print("  [OK] sb_rcm 테이블 control_category 제거 완료")

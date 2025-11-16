@@ -10,7 +10,8 @@ def upgrade(conn):
         # SQLite는 ALTER TABLE DROP COLUMN을 직접 지원하지 않으므로
         # 테이블을 재생성해야 함
 
-        # 1. 기존 테이블 백업
+        # 1. 기존 테이블 백업 (이미 존재하면 삭제)
+        conn.execute('DROP TABLE IF EXISTS sb_operation_evaluation_line_backup')
         conn.execute('''
             CREATE TABLE sb_operation_evaluation_line_backup AS
             SELECT * FROM sb_operation_evaluation_line
@@ -66,15 +67,15 @@ def upgrade(conn):
         # 5. 백업 테이블 삭제
         conn.execute('DROP TABLE sb_operation_evaluation_line_backup')
 
-        print("✅ sb_operation_evaluation_line 테이블에서 operating_effectiveness 컬럼 제거 완료")
+        print("[OK] sb_operation_evaluation_line 테이블에서 operating_effectiveness 컬럼 제거 완료")
 
     except Exception as e:
-        print(f"❌ operating_effectiveness 컬럼 제거 실패: {e}")
+        print(f"[FAIL] operating_effectiveness 컬럼 제거 실패: {e}")
         # 백업이 있으면 복원 시도
         try:
             conn.execute('DROP TABLE IF EXISTS sb_operation_evaluation_line')
             conn.execute('ALTER TABLE sb_operation_evaluation_line_backup RENAME TO sb_operation_evaluation_line')
-            print("⚠️ 백업에서 복원됨")
+            print("[WARN] 백업에서 복원됨")
         except:
             pass
         raise
@@ -84,7 +85,8 @@ def downgrade(conn):
     """operating_effectiveness 컬럼 복원"""
 
     try:
-        # 1. 기존 테이블 백업
+        # 1. 기존 테이블 백업 (이미 존재하면 삭제)
+        conn.execute('DROP TABLE IF EXISTS sb_operation_evaluation_line_backup')
         conn.execute('''
             CREATE TABLE sb_operation_evaluation_line_backup AS
             SELECT * FROM sb_operation_evaluation_line
@@ -158,15 +160,15 @@ def downgrade(conn):
         # 5. 백업 테이블 삭제
         conn.execute('DROP TABLE sb_operation_evaluation_line_backup')
 
-        print("✅ sb_operation_evaluation_line 테이블에 operating_effectiveness 컬럼 복원 완료")
+        print("[OK] sb_operation_evaluation_line 테이블에 operating_effectiveness 컬럼 복원 완료")
 
     except Exception as e:
-        print(f"❌ operating_effectiveness 컬럼 복원 실패: {e}")
+        print(f"[FAIL] operating_effectiveness 컬럼 복원 실패: {e}")
         # 백업이 있으면 복원 시도
         try:
             conn.execute('DROP TABLE IF EXISTS sb_operation_evaluation_line')
             conn.execute('ALTER TABLE sb_operation_evaluation_line_backup RENAME TO sb_operation_evaluation_line')
-            print("⚠️ 백업에서 복원됨")
+            print("[WARN] 백업에서 복원됨")
         except:
             pass
         raise

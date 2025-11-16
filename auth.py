@@ -579,38 +579,97 @@ def get_rcm_details(rcm_id, control_category=None):
         RCM 상세 데이터 목록
     """
     with get_db() as conn:
-        query = '''
-            SELECT *
-            FROM sb_rcm_detail_v
-            WHERE rcm_id = %s
-        '''
-        params = [rcm_id]
+        # DB 타입 확인 (DatabaseConnection 클래스의 _is_mysql 속성 사용)
+        db_type = 'mysql' if conn._is_mysql else 'sqlite'
 
-        # 통제 카테고리 필터 추가
-        if control_category:
-            query += ' AND control_category = %s'
-            params.append(control_category)
+        if db_type == 'mysql':
+            query = '''
+                SELECT *
+                FROM sb_rcm_detail_v
+                WHERE rcm_id = %s
+            '''
+            params = [rcm_id]
 
-        order_params = ['PWC%', 'APD%', 'PC%', 'CO%', 'PD%', 'ST%']
-        params.extend(order_params)
-        params = tuple(params)
+            # 통제 카테고리 필터 추가
+            if control_category:
+                query += ' AND control_category = %s'
+                params.append(control_category)
 
-        query += '''
-            ORDER BY
-                CASE
-                    WHEN control_code LIKE %s THEN 1
-                    WHEN control_code LIKE %s THEN 2
-                    WHEN control_code LIKE %s THEN 3
-                    WHEN control_code LIKE %s THEN 4
-                    WHEN control_code LIKE %s THEN 5
-                    WHEN control_code LIKE %s THEN 6
-                    ELSE 7
-                END,
-                control_code
-        '''
+            order_params = ['PWC%', 'APD%', 'PC%', 'CO%', 'PD%', 'ST%']
+            params.extend(order_params)
+            params = tuple(params)
+
+            query += '''
+                ORDER BY
+                    CASE
+                        WHEN control_code LIKE %s THEN 1
+                        WHEN control_code LIKE %s THEN 2
+                        WHEN control_code LIKE %s THEN 3
+                        WHEN control_code LIKE %s THEN 4
+                        WHEN control_code LIKE %s THEN 5
+                        WHEN control_code LIKE %s THEN 6
+                        ELSE 7
+                    END,
+                    control_code
+            '''
+        else:
+            # SQLite
+            query = '''
+                SELECT *
+                FROM sb_rcm_detail_v
+                WHERE rcm_id = ?
+            '''
+            params = [rcm_id]
+
+            # 통제 카테고리 필터 추가
+            if control_category:
+                query += ' AND control_category = ?'
+                params.append(control_category)
+
+            order_params = ['PWC%', 'APD%', 'PC%', 'CO%', 'PD%', 'ST%']
+            params.extend(order_params)
+            params = tuple(params)
+
+            query += '''
+                ORDER BY
+                    CASE
+                        WHEN control_code LIKE ? THEN 1
+                        WHEN control_code LIKE ? THEN 2
+                        WHEN control_code LIKE ? THEN 3
+                        WHEN control_code LIKE ? THEN 4
+                        WHEN control_code LIKE ? THEN 5
+                        WHEN control_code LIKE ? THEN 6
+                        ELSE 7
+                    END,
+                    control_code
+            '''
 
         details = conn.execute(query, params).fetchall()
-        return [dict(detail) for detail in details]
+        
+        # 디버깅: 첫 번째 항목의 키와 detail_id 확인
+        if details:
+            first_detail = details[0]
+            if hasattr(first_detail, 'keys'):
+                keys = list(first_detail.keys())
+                print(f"[DEBUG get_rcm_details] 첫 번째 항목의 키: {keys}")
+                if 'detail_id' in keys:
+                    # sqlite3.Row는 .get() 대신 인덱스나 키로 직접 접근
+                    try:
+                        detail_id_value = first_detail['detail_id'] if 'detail_id' in keys else None
+                        print(f"[DEBUG get_rcm_details] detail_id 값: {detail_id_value}")
+                    except (KeyError, TypeError):
+                        print(f"[WARNING get_rcm_details] detail_id 접근 실패")
+                else:
+                    print(f"[WARNING get_rcm_details] detail_id 키가 없습니다!")
+        
+        result = [dict(detail) for detail in details]
+        
+        # 디버깅: dict 변환 후 확인
+        if result:
+            print(f"[DEBUG get_rcm_details] dict 변환 후 첫 번째 항목의 키: {list(result[0].keys())}")
+            print(f"[DEBUG get_rcm_details] dict 변환 후 detail_id 값: {result[0].get('detail_id')}")
+        
+        return result
 
 def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, control_category=None):
     """핵심통제만 조회하는 RCM 상세 데이터 조회 (운영평가용)
@@ -624,12 +683,14 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
     Returns:
         핵심통제 목록. user_id와 design_evaluation_session이 제공되면 설계평가 결과가 '적정'인 통제만 반환.
     """
+    import os
+
     with get_db() as conn:
         if user_id and design_evaluation_session:
             # 핵심통제이면서 설계평가 결과가 'effective'(적정)인 통제만 조회
             # 설계평가 증빙도 함께 가져옴
             query = '''
-                SELECT DISTINCT d.*, l.evaluation_evidence
+                SELECT DISTINCT d.*, l.evaluation_evidence, h.header_id
                 FROM sb_rcm_detail_v d
                 INNER JOIN sb_design_evaluation_header h ON d.rcm_id = h.rcm_id
                 INNER JOIN sb_design_evaluation_line l ON h.header_id = l.header_id AND d.control_code = l.control_code
@@ -663,6 +724,29 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
                     d.control_code
             '''
             details = conn.execute(query, params).fetchall()
+
+            # 각 통제별 설계평가 이미지 파일 목록 추가
+            result = []
+            for detail in details:
+                detail_dict = dict(detail)
+                header_id = detail_dict.get('header_id')
+                control_code = detail_dict.get('control_code')
+
+                # 이미지 파일 경로 스캔
+                image_paths = []
+                if header_id and control_code:
+                    image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(header_id), control_code)
+                    if os.path.exists(image_dir):
+                        image_files = [f for f in os.listdir(image_dir)
+                                     if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'))]
+                        for img_file in image_files:
+                            relative_path = f"uploads/design_evaluations/{rcm_id}/{header_id}/{control_code}/{img_file}"
+                            image_paths.append(relative_path)
+
+                detail_dict['design_evaluation_images'] = image_paths
+                result.append(detail_dict)
+
+            return result
         else:
             # 모든 핵심통제 조회 (기존 동작)
             query = '''
@@ -694,7 +778,7 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
                     control_code
             '''
             details = conn.execute(query, params).fetchall()
-        return [dict(detail) for detail in details]
+            return [dict(detail) for detail in details]
 
 def save_rcm_details(rcm_id, rcm_data, control_category='ITGC'):
     """RCM 상세 데이터 저장 (추가 방식)

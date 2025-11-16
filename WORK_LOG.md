@@ -1454,3 +1454,528 @@ python migrations/migration_manager.py
 - RCM 목록 화면에서 카테고리별 필터링 기능
 - 카테고리 변경 시 sb_rcm_detail과의 일관성 체크
 - 혼합 카테고리 RCM 지원 여부 결정
+
+---
+
+## 2025-11-16 - 권장 표본수 기능 추가 및 UI/UX 개선
+
+### 1. 개요
+- **목적**: 관리자가 RCM detail에서 통제별 권장 표본수를 설정하고, 운영평가 시 자동으로 적용
+- **대상**: Admin RCM 상세보기, 운영평가 모집단 업로드, 운영평가 라인 생성
+
+### 2. 데이터베이스 변경
+
+#### 2.1 recommended_sample_size 컬럼 추가
+**마이그레이션**: `migrations/versions/014_add_recommended_sample_size.py`
+
+**변경 내용**:
+```sql
+-- MySQL
+ALTER TABLE sb_rcm_detail
+ADD COLUMN recommended_sample_size INT DEFAULT NULL
+
+-- SQLite
+ALTER TABLE sb_rcm_detail
+ADD COLUMN recommended_sample_size INTEGER DEFAULT NULL
+```
+
+**특징**:
+- MySQL/SQLite 자동 감지 및 호환 처리
+- DB 타입 확인: `conn.execute("SELECT VERSION()")` 시도
+
+#### 2.2 뷰에 recommended_sample_size 추가
+**마이그레이션**: `migrations/versions/015_add_recommended_sample_size_to_view.py`
+
+**변경 내용**:
+```sql
+CREATE VIEW sb_rcm_detail_v AS
+SELECT
+    d.detail_id,
+    d.rcm_id,
+    d.control_code,
+    -- ... other columns ...
+    d.recommended_sample_size,
+    d.control_frequency AS control_frequency_code,
+    d.control_type AS control_type_code,
+    d.control_nature AS control_nature_code,
+    lf.lookup_name AS control_frequency_name,
+    lt.lookup_name AS control_type_name,
+    ln.lookup_name AS control_nature_name
+FROM sb_rcm_detail d
+LEFT JOIN sb_lookup lf ON lf.lookup_type = 'control_frequency'
+    AND UPPER(lf.lookup_code) = UPPER(d.control_frequency)
+-- ... other joins ...
+```
+
+**이유**:
+- sb_rcm_detail_v 뷰에서 직접 recommended_sample_size 조회 가능
+- 기존 코드에서 뷰를 사용하는 부분 수정 불필요
+
+### 3. Admin RCM 상세보기 UI 개선
+
+#### 3.1 일괄 저장 버튼 추가
+**파일**: `templates/admin_rcm_view.jsp` (lines 115-117)
+
+**변경 내용**:
+- 개별 저장 버튼 제거
+- 상단에 Excel 다운로드 버튼 옆에 일괄 저장 버튼 배치
+- 동일한 스타일 적용 (btn-outline-primary)
+
+**버튼**:
+```html
+<button class="btn btn-sm btn-outline-primary me-2" id="saveAllSampleSizesBtn" onclick="saveAllSampleSizes()">
+    <i class="fas fa-save me-1"></i>저장
+</button>
+```
+
+#### 3.2 핵심통제 컬럼 위치 이동
+**파일**: `templates/admin_rcm_view.jsp` (line 135)
+
+**변경 전 순서**:
+통제코드 → 통제명 → ... → 핵심통제 → 모집단 → ...
+
+**변경 후 순서**:
+통제코드 → 통제명 → ... → 통제구분 → 핵심통제 → 모집단 → ...
+
+**이유**: 핵심통제가 통제구분과 모집단 사이에 있는 것이 더 자연스러움
+
+#### 3.3 권장표본수 입력 필드 추가
+**파일**: `templates/admin_rcm_view.jsp` (lines 195-207)
+
+```html
+<td class="text-center">
+    <input type="number"
+           class="form-control form-control-sm text-center sample-size-input"
+           data-detail-id="{{ detail.detail_id }}"
+           data-control-code="{{ detail.control_code }}"
+           data-control-frequency="{{ detail.control_frequency or '' }}"
+           data-original-value="{{ detail.recommended_sample_size or '' }}"
+           value="{{ detail.recommended_sample_size or '' }}"
+           min="1" max="100" placeholder="자동" style="width: 60px;">
+</td>
+```
+
+**특징**:
+- placeholder="자동": 비어있으면 통제주기 기반 자동 계산
+- data-original-value: 변경 감지용
+- data-control-frequency: 기본값 계산용
+
+#### 3.4 Toast 알림 추가
+**파일**: `templates/admin_rcm_view.jsp` (lines 44-54, 294-333)
+
+**변경 내용**:
+- alert() 팝업 대신 Bootstrap Toast 사용
+- 성공, 오류, 경고, 정보 4가지 타입 지원
+- 3초 후 자동 닫힘
+
+**Toast 컨테이너**:
+```html
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+    <div id="saveToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="fas fa-info-circle me-2 toast-icon"></i>
+            <strong class="me-auto toast-title">알림</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body"></div>
+    </div>
+</div>
+```
+
+**Toast 함수**:
+```javascript
+function showToast(message, type = 'info') {
+    const toastEl = document.getElementById('saveToast');
+    // 타입에 따라 아이콘과 색상 변경
+    // bg-success, bg-danger, bg-warning, bg-info
+    const toast = new bootstrap.Toast(toastEl, {
+        autohide: true,
+        delay: 3000
+    });
+    toast.show();
+}
+```
+
+#### 3.5 일괄 저장 로직
+**파일**: `templates/admin_rcm_view.jsp` (lines 336-471)
+
+**동작 흐름**:
+1. 모든 입력 필드 순회
+2. data-original-value와 현재 value 비교
+3. 변경된 항목만 changes 배열에 수집
+4. 각 항목을 Promise.all로 병렬 저장
+5. 성공/실패 카운트 후 결과 토스트 표시
+
+**변경 감지 로직**:
+```javascript
+const originalValue = input.getAttribute('data-original-value') || '';
+const currentValue = input.value || '';
+
+// 값 정규화 (빈 문자열과 null 동일하게 처리)
+const normalizedOriginal = originalValue.trim() === '' ? null : originalValue.trim();
+const normalizedCurrent = currentValue.trim() === '' ? null : String(input.valueAsNumber || currentValue);
+
+// 변경된 경우만 추가
+if (normalizedOriginal !== normalizedCurrent) {
+    changes.push({
+        detail_id: detailId,
+        sample_size: normalizedCurrent ? parseInt(normalizedCurrent) : null
+    });
+}
+```
+
+### 4. Backend API 추가
+
+#### 4.1 recommended_sample_size 저장 API
+**파일**: `snowball_admin.py` (lines 1110-1163)
+
+**엔드포인트**: `POST /admin/rcm/detail/<detail_id>/sample-size`
+
+**로직**:
+```python
+@admin_bp.route('/rcm/detail/<int:detail_id>/sample-size', methods=['POST'])
+@admin_required
+def update_recommended_sample_size(detail_id):
+    data = request.get_json()
+    recommended_sample_size = data.get('recommended_sample_size')
+
+    with get_db() as conn:
+        db_type = 'mysql' if conn._is_mysql else 'sqlite'
+
+        # detail_id 존재 확인
+        if db_type == 'mysql':
+            detail = conn.execute('SELECT detail_id FROM sb_rcm_detail WHERE detail_id = %s', (detail_id,)).fetchone()
+        else:
+            detail = conn.execute('SELECT detail_id FROM sb_rcm_detail WHERE detail_id = ?', (detail_id,)).fetchone()
+
+        if not detail:
+            return jsonify({'success': False, 'message': 'detail_id를 찾을 수 없습니다.'})
+
+        # recommended_sample_size 업데이트
+        if db_type == 'mysql':
+            conn.execute('UPDATE sb_rcm_detail SET recommended_sample_size = %s WHERE detail_id = %s',
+                        (recommended_sample_size, detail_id))
+        else:
+            conn.execute('UPDATE sb_rcm_detail SET recommended_sample_size = ? WHERE detail_id = ?',
+                        (recommended_sample_size, detail_id))
+
+        conn.commit()
+
+    return jsonify({'success': True, 'message': '권장 표본수가 저장되었습니다.'})
+```
+
+**특징**:
+- MySQL/SQLite placeholder 자동 전환 (%s vs ?)
+- DatabaseConnection의 _is_mysql 속성 활용
+- detail_id 유효성 검증
+
+#### 4.2 auth.py get_rcm_details() 수정
+**파일**: `auth.py` (lines 571-654)
+
+**변경 내용**:
+- DB 타입 확인 로직 개선: `db_type = 'mysql' if conn._is_mysql else 'sqlite'`
+- cursor() 호출 제거 (DatabaseConnection에 없음)
+- MySQL/SQLite 조건부 쿼리 실행
+
+### 5. 운영평가 라인 생성 시 recommended_sample_size 적용
+
+#### 5.1 신규 통제 추가 시
+**파일**: `snowball_link7.py` (lines 178-191)
+
+**로직**:
+```python
+# 신규 추가된 통제 (설계평가 부적정→적정 변경)
+new_controls = current_control_codes - existing_control_codes
+if new_controls:
+    for idx, detail in enumerate(rcm_details):
+        if detail['control_code'] in new_controls:
+            # recommended_sample_size 가져오기 (있으면 사용)
+            recommended_size = detail.get('recommended_sample_size')
+
+            conn.execute('''
+                INSERT INTO sb_operation_evaluation_line (
+                    header_id, control_code, control_sequence, sample_size
+                ) VALUES (%s, %s, %s, %s)
+            ''', (header_id, detail['control_code'], idx + 1, recommended_size))
+```
+
+**효과**: 새로 추가된 통제는 관리자가 설정한 권장 표본수로 자동 설정
+
+### 6. 모집단 업로드 시 recommended_sample_size 적용
+
+#### 6.1 APD01/APD07/APD09/APD12 공통 로직
+**파일**: `snowball_link7.py`
+- APD01: lines 500-511
+- APD07: lines 820-831
+- APD09: lines 1087-1098
+- APD12: lines 1352-1363
+
+**패턴**:
+```python
+# RCM detail에서 recommended_sample_size 가져오기
+with get_db() as conn:
+    rcm_detail = conn.execute('''
+        SELECT recommended_sample_size
+        FROM sb_rcm_detail
+        WHERE rcm_id = %s AND control_code = %s
+    ''', (rcm_id, control_code)).fetchone()
+
+recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail else None
+
+# 모집단 파싱 (recommended_sample_size 전달)
+result = file_manager.parse_apd01_population(temp_file.name, field_mapping, recommended_size)
+```
+
+#### 6.2 file_manager.py 파싱 함수 수정
+**파일**: `file_manager.py`
+
+**함수**: parse_apd01_population, parse_apd07_population, parse_apd09_population, parse_apd12_population
+
+**변경 내용**:
+```python
+def parse_apd01_population(file_path, field_mapping, recommended_sample_size=None):
+    """APD01 모집단 엑셀 파싱 (사용자 권한 부여)"""
+    population = parse_population_excel(file_path, field_mapping)
+    count = len(population)
+
+    # recommended_sample_size가 있으면 사용, 없으면 자동 계산
+    if recommended_sample_size is not None and recommended_sample_size > 0:
+        sample_size = min(recommended_sample_size, count)  # 모집단보다 클 수 없음
+    else:
+        sample_size = calculate_sample_size(count)
+
+    return {
+        'population': population,
+        'count': count,
+        'sample_size': sample_size
+    }
+```
+
+**우선순위**:
+1. recommended_sample_size (관리자 설정값)
+2. calculate_sample_size() (통제주기 기반 자동 계산)
+
+#### 6.3 Generic 모집단 업로드
+**파일**: `operation_evaluation_generic.py` (lines 214-232)
+
+**로직**:
+```python
+# RCM detail에서 recommended_sample_size 가져오기
+with get_db() as conn:
+    rcm_detail = conn.execute('''
+        SELECT recommended_sample_size
+        FROM sb_rcm_detail
+        WHERE rcm_id = %s AND control_code = %s
+    ''', (rcm_id, control_code)).fetchone()
+
+recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail else None
+
+# 모집단 파싱
+population_data = file_manager.parse_population_excel(temp_file.name, field_mapping)
+count = len(population_data)
+
+# recommended_sample_size가 있으면 사용, 없으면 자동 계산
+if recommended_size is not None and recommended_size > 0:
+    sample_size = min(recommended_size, count)
+else:
+    sample_size = file_manager.calculate_sample_size(count)
+```
+
+### 7. 운영평가 UI 표본수 표시 로직 개선
+
+#### 7.1 표본수 표시 우선순위
+**파일**: `templates/link7_detail.jsp` (lines 1206-1227)
+
+**우선순위**:
+1. **1순위**: 운영평가 라인에 저장된 sample_size (사용자가 직접 조정한 값)
+2. **2순위**: RCM detail의 recommended_sample_size (관리자 설정)
+3. **3순위**: 통제주기 기반 기본값
+
+**로직**:
+```javascript
+// 표본수 우선순위 설정
+if (!evaluated_controls[controlCode] || (!evaluated_controls[controlCode].sample_size && !evaluated_controls[controlCode].no_occurrence)) {
+    let displaySampleSize;
+
+    if (recommendedSampleSize && recommendedSampleSize > 0) {
+        // RCM에 설정된 권장 표본수 사용
+        displaySampleSize = recommendedSampleSize;
+        console.log('[표본수] RCM 권장 표본수 사용:', displaySampleSize);
+    } else {
+        // 통제주기 기반 기본값
+        displaySampleSize = getDefaultSampleSize(controlFrequency, controlType);
+        console.log('[표본수] 통제주기 기반 기본값 사용:', displaySampleSize);
+    }
+
+    if (sampleSizeEl) sampleSizeEl.value = displaySampleSize;
+} else if (evaluated_controls[controlCode] && evaluated_controls[controlCode].sample_size) {
+    // 운영평가 라인에 이미 저장된 값이 있으면 그대로 표시
+    console.log('[표본수] 운영평가 라인 저장값 사용:', evaluated_controls[controlCode].sample_size);
+}
+```
+
+### 8. 트러블슈팅
+
+#### 8.1 AttributeError: 'DatabaseConnection' object has no attribute 'cursor'
+**문제**: 코드에서 conn.cursor() 호출
+**원인**: DatabaseConnection wrapper에는 cursor() 메서드 없음
+**해결**: DB 타입 확인 로직을 `conn._is_mysql` 속성 사용으로 변경
+
+**수정 전**:
+```python
+cursor = conn.cursor()
+db_type = 'sqlite'
+try:
+    cursor.execute("SELECT VERSION()")
+    db_type = 'mysql'
+except:
+    pass
+```
+
+**수정 후**:
+```python
+db_type = 'mysql' if conn._is_mysql else 'sqlite'
+```
+
+#### 8.2 "유효하지 않은 detail_id" 오류
+**문제**: 브라우저 콘솔에 "유효하지 않은 detail_id" 메시지
+**원인**: sb_rcm_detail_v 뷰에 recommended_sample_size 컬럼이 없음
+**해결**: Migration 015 생성하여 뷰에 컬럼 추가
+
+#### 8.3 SQLite placeholder 호환성 문제
+**문제**: MySQL placeholder (%s) 사용으로 SQLite에서 에러
+**원인**: DB 타입 확인 없이 MySQL 문법 사용
+**해결**: 조건부로 올바른 placeholder 사용
+
+**수정된 파일**:
+- `snowball_admin.py`: update_recommended_sample_size()
+- `auth.py`: get_rcm_details()
+- `migrations/versions/014_add_recommended_sample_size.py`
+
+#### 8.4 Migration 010 백업 테이블 충돌
+**문제**: "table sb_operation_evaluation_line_backup already exists"
+**원인**: 이전 마이그레이션 실패로 백업 테이블 남아있음
+**상태**: 미해결 - 사용자가 수동으로 DROP TABLE 필요
+
+#### 8.5 운영평가 표본수 표시 문제
+**문제**: RCM detail에 4로 설정했는데 운영평가에서 2로 표시
+**원인**: 표본수 표시 로직이 우선순위를 구분하지 않음
+**해결**: 우선순위 로직 추가 (운영평가 라인 → RCM 권장값 → 기본값)
+
+### 9. 주요 파일 변경 요약
+
+| 파일 | 변경 내용 | 라인수 |
+|------|----------|--------|
+| `migrations/versions/014_add_recommended_sample_size.py` | 신규 마이그레이션 | 122줄 |
+| `migrations/versions/015_add_recommended_sample_size_to_view.py` | 뷰 업데이트 마이그레이션 | 신규 |
+| `templates/admin_rcm_view.jsp` | UI 개선, 일괄 저장, Toast | ~500줄 수정 |
+| `snowball_admin.py` | 저장 API 추가 | +54줄 |
+| `auth.py` | DB 타입 확인 로직 개선 | ~100줄 수정 |
+| `snowball_link7.py` | 라인 생성 시 권장값 적용 | +12줄 × 5 |
+| `file_manager.py` | 파싱 함수에 권장값 파라미터 추가 | +10줄 × 4 |
+| `operation_evaluation_generic.py` | Generic 업로드 권장값 적용 | +19줄 |
+| `templates/link7_detail.jsp` | 표본수 표시 우선순위 로직 | +22줄 |
+
+### 10. 기능 흐름도
+
+```
+┌──────────────────────────────────────────────┐
+│ 관리자: RCM 상세보기                          │
+│ - 권장 표본수 입력 (예: 4)                     │
+│ - 일괄 저장 버튼 클릭                          │
+│ - Toast 알림 표시                              │
+└──────────────┬───────────────────────────────┘
+               ↓ DB 저장
+┌──────────────────────────────────────────────┐
+│ sb_rcm_detail.recommended_sample_size = 4    │
+└──────────────┬───────────────────────────────┘
+               ↓
+        ┌──────┴───────┐
+        ↓              ↓
+┌──────────────┐  ┌──────────────────────┐
+│ 운영평가 시작 │  │ 모집단 업로드        │
+│ - 신규 통제   │  │ - APD01/07/09/12    │
+│   라인 생성   │  │ - Generic           │
+└──────┬───────┘  └──────┬───────────────┘
+       ↓                 ↓
+┌──────────────────────────────────┐
+│ file_manager 파싱 함수            │
+│ - recommended_sample_size 우선    │
+│ - 없으면 자동 계산                │
+└──────┬───────────────────────────┘
+       ↓
+┌──────────────────────────────────┐
+│ 운영평가 UI                       │
+│ 표본수 표시 우선순위:              │
+│ 1. 라인 저장값 (사용자 조정)       │
+│ 2. RCM 권장값 (관리자 설정)        │
+│ 3. 기본값 (통제주기 기반)          │
+└──────────────────────────────────┘
+```
+
+### 11. 배포 가이드
+
+#### 11.1 운영 서버 마이그레이션 적용
+
+**명령어**:
+```bash
+python migrate.py upgrade
+```
+
+**적용되는 마이그레이션**:
+- 014: sb_rcm_detail 테이블에 recommended_sample_size 컬럼 추가
+- 015: sb_rcm_detail_v 뷰에 recommended_sample_size 컬럼 포함
+
+**권장 사항**:
+1. 데이터베이스 백업 (MySQL):
+```bash
+mysqldump -u [username] -p [database_name] > backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+2. 마이그레이션 상태 확인:
+```bash
+python migrate.py status
+```
+
+3. 마이그레이션 적용:
+```bash
+python migrate.py upgrade
+```
+
+4. 롤백 필요 시:
+```bash
+python migrate.py downgrade --target 013
+```
+
+#### 11.2 불필요한 파일 정리
+
+**삭제 권장**:
+- `fix_detail_id.py` - 일회성 수정 스크립트 (마이그레이션으로 대체됨)
+- `migrations/fix_missing_view.py` - 일회성 수정 스크립트
+
+**이유**: 마이그레이션 시스템(014, 015)으로 구조적으로 해결됨
+
+### 12. 개선 사항
+
+1. ✅ **관리자 기능**: RCM detail에서 통제별 권장 표본수 설정 가능
+2. ✅ **자동 적용**: 운영평가 시작/모집단 업로드 시 자동으로 권장값 사용
+3. ✅ **유연성**: 사용자가 필요 시 표본수 수동 조정 가능
+4. ✅ **우선순위**: 사용자 조정값 → 관리자 설정값 → 기본값 순서
+5. ✅ **UI/UX**: 일괄 저장, Toast 알림, 컬럼 재배치
+6. ✅ **DB 호환성**: MySQL/SQLite 자동 감지 및 적용
+
+### 13. 사용자 피드백 반영
+
+1. ✅ "저장 버튼은 통제별로 두지 말고 상단에 다운로드 옆에 같은 스타일로"
+2. ✅ "핵심통제 컬럼은 통제구분과 모집단 컬럼 사이로"
+3. ✅ "저장할때 alert 메시지 대신 토스트 메시지로"
+4. ✅ "운영평가 라인수가 조정이 안되는데? 일부러 갯수를 조정해서 저장하면 그 갯수대로 보여주고, 그렇지 않으면 rcm_detail에 저장한 갯수를 보여줘야지"
+5. ✅ "fix_detail.py같은건 안쓰는거 아닌가" - 삭제 권장
+6. ✅ "DB 구조 변경한거는 운영서버에 어떤 스크립트로 적용하지?" - migrate.py 사용
+
+### 14. 향후 개선 가능 사항
+
+- 권장 표본수 일괄 설정 기능 (통제주기별, RCM별)
+- 권장 표본수 설정 이력 추적
+- 표본수 설정 시 모집단 크기 자동 확인
+- 권장 표본수 설정 권한 세분화 (admin vs super admin)

@@ -21,10 +21,10 @@ def upgrade(conn):
             WHERE last_updated IS NULL
         ''')
 
-        print("✅ 운영평가 Line 테이블에 last_updated 컬럼 추가 완료")
+        print("[OK] 운영평가 Line 테이블에 last_updated 컬럼 추가 완료")
     except Exception as e:
         if "duplicate column name" in str(e).lower():
-            print("✅ last_updated 컬럼이 이미 존재합니다 (스킵)")
+            print("[OK] last_updated 컬럼이 이미 존재합니다 (스킵)")
         else:
             raise
 

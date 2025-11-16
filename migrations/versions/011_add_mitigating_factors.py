@@ -13,14 +13,14 @@ def upgrade(conn):
             ADD COLUMN mitigating_factors TEXT
         ''')
 
-        print("✅ sb_operation_evaluation_line 테이블에 mitigating_factors 컬럼 추가 완료")
+        print("[OK] sb_operation_evaluation_line 테이블에 mitigating_factors 컬럼 추가 완료")
 
     except Exception as e:
         # 이미 컬럼이 존재하는 경우
         if 'duplicate column name' in str(e).lower():
-            print("✅ mitigating_factors 컬럼이 이미 존재합니다 (스킵)")
+            print("[OK] mitigating_factors 컬럼이 이미 존재합니다 (스킵)")
         else:
-            print(f"❌ mitigating_factors 컬럼 추가 실패: {e}")
+            print(f"[FAIL] mitigating_factors 컬럼 추가 실패: {e}")
             raise
 
 
@@ -84,15 +84,15 @@ def downgrade(conn):
         # 5. 백업 테이블 삭제
         conn.execute('DROP TABLE sb_operation_evaluation_line_backup')
 
-        print("✅ sb_operation_evaluation_line 테이블에서 mitigating_factors 컬럼 제거 완료")
+        print("[OK] sb_operation_evaluation_line 테이블에서 mitigating_factors 컬럼 제거 완료")
 
     except Exception as e:
-        print(f"❌ mitigating_factors 컬럼 제거 실패: {e}")
+        print(f"[FAIL] mitigating_factors 컬럼 제거 실패: {e}")
         # 백업이 있으면 복원 시도
         try:
             conn.execute('DROP TABLE IF EXISTS sb_operation_evaluation_line')
             conn.execute('ALTER TABLE sb_operation_evaluation_line_backup RENAME TO sb_operation_evaluation_line')
-            print("⚠️ 백업에서 복원됨")
+            print("[WARN] 백업에서 복원됨")
         except:
             pass
         raise

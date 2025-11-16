@@ -63,10 +63,10 @@ def main():
             success = manager.upgrade(target_version=args.target)
 
             if success:
-                print("\n마이그레이션이 성공적으로 완료되었습니다! ✓")
+                print("\n마이그레이션이 성공적으로 완료되었습니다! [OK]")
                 return 0
             else:
-                print("\n마이그레이션 실패! ✗")
+                print("\n마이그레이션 실패! [FAIL]")
                 return 1
 
         elif args.command == 'downgrade':
@@ -89,10 +89,10 @@ def main():
             success = manager.downgrade(target_version=args.target)
 
             if success:
-                print("\n롤백이 성공적으로 완료되었습니다! ✓")
+                print("\n롤백이 성공적으로 완료되었습니다! [OK]")
                 return 0
             else:
-                print("\n롤백 실패! ✗")
+                print("\n롤백 실패! [FAIL]")
                 return 1
 
     except KeyboardInterrupt:

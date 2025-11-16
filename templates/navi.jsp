@@ -22,10 +22,14 @@
         .navbar {
             z-index: 10 !important;
         }
+        /* 고정된 navbar로 인해 컨텐츠가 가려지지 않도록 body에 padding 추가 */
+        body {
+            padding-top: 70px;
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg">
+    <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
             <a class="navbar-brand" href="/">
                 <img src="{{ url_for('static', filename='img/logo.jpg')}}" class="logo" alt="SnowBall Logo" style="max-height: 40px; width: auto;">

@@ -180,11 +180,14 @@ def user_operation_evaluation_rcm():
             if new_controls:
                 for idx, detail in enumerate(rcm_details):
                     if detail['control_code'] in new_controls:
+                        # recommended_sample_size 가져오기 (있으면 사용)
+                        recommended_size = detail.get('recommended_sample_size')
+
                         conn.execute('''
                             INSERT INTO sb_operation_evaluation_line (
-                                header_id, control_code, control_sequence
-                            ) VALUES (%s, %s, %s)
-                        ''', (header_id, detail['control_code'], idx + 1))
+                                header_id, control_code, control_sequence, sample_size
+                            ) VALUES (%s, %s, %s, %s)
+                        ''', (header_id, detail['control_code'], idx + 1, recommended_size))
                 sync_messages.append(f"📌 신규 추가: {len(new_controls)}개 (설계평가 부적정→적정)")
 
             conn.commit()
@@ -497,8 +500,18 @@ def apd01_upload_population():
         file.save(temp_file.name)
         temp_file.close()
 
-        # 모집단 파싱
-        result = file_manager.parse_apd01_population(temp_file.name, field_mapping)
+        # RCM detail에서 recommended_sample_size 가져오기
+        with get_db() as conn:
+            rcm_detail = conn.execute('''
+                SELECT recommended_sample_size
+                FROM sb_rcm_detail
+                WHERE rcm_id = %s AND control_code = %s
+            ''', (rcm_id, control_code)).fetchone()
+
+        recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail else None
+
+        # 모집단 파싱 (recommended_sample_size 전달)
+        result = file_manager.parse_apd01_population(temp_file.name, field_mapping, recommended_size)
 
         # 표본 선택
         samples = file_manager.select_random_samples(result['population'], result['sample_size'])
@@ -817,8 +830,18 @@ def apd07_upload_population():
         file.save(temp_file.name)
         temp_file.close()
 
-        # 모집단 파싱 (APD07용)
-        result = file_manager.parse_apd07_population(temp_file.name, field_mapping)
+        # RCM detail에서 recommended_sample_size 가져오기
+        with get_db() as conn:
+            rcm_detail = conn.execute('''
+                SELECT recommended_sample_size
+                FROM sb_rcm_detail
+                WHERE rcm_id = %s AND control_code = %s
+            ''', (rcm_id, control_code)).fetchone()
+
+        recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail else None
+
+        # 모집단 파싱 (APD07용, recommended_sample_size 전달)
+        result = file_manager.parse_apd07_population(temp_file.name, field_mapping, recommended_size)
 
         # 표본 선택
         samples = file_manager.select_random_samples(result['population'], result['sample_size'])
@@ -1084,8 +1107,18 @@ def upload_apd09_population():
         file.save(temp_file.name)
         temp_file.close()
 
-        # 모집단 파싱 (APD09용)
-        result = file_manager.parse_apd09_population(temp_file.name, field_mapping)
+        # RCM detail에서 recommended_sample_size 가져오기
+        with get_db() as conn:
+            rcm_detail = conn.execute('''
+                SELECT recommended_sample_size
+                FROM sb_rcm_detail
+                WHERE rcm_id = %s AND control_code = %s
+            ''', (rcm_id, control_code)).fetchone()
+
+        recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail else None
+
+        # 모집단 파싱 (APD09용, recommended_sample_size 전달)
+        result = file_manager.parse_apd09_population(temp_file.name, field_mapping, recommended_size)
 
         # 표본 선택
         samples = file_manager.select_random_samples(result['population'], result['sample_size'])
@@ -1349,8 +1382,18 @@ def upload_apd12_population():
         file.save(temp_file.name)
         temp_file.close()
 
-        # 모집단 파싱 (APD12용)
-        result = file_manager.parse_apd12_population(temp_file.name, field_mapping)
+        # RCM detail에서 recommended_sample_size 가져오기
+        with get_db() as conn:
+            rcm_detail = conn.execute('''
+                SELECT recommended_sample_size
+                FROM sb_rcm_detail
+                WHERE rcm_id = %s AND control_code = %s
+            ''', (rcm_id, control_code)).fetchone()
+
+        recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail else None
+
+        # 모집단 파싱 (APD12용, recommended_sample_size 전달)
+        result = file_manager.parse_apd12_population(temp_file.name, field_mapping, recommended_size)
 
         # 표본 선택
         samples = file_manager.select_random_samples(result['population'], result['sample_size'])
