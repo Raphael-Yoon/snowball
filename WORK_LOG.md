@@ -1,5 +1,107 @@
 # Snowball 프로젝트 작업 로그
 
+## 2025-11-16 - 권장 표본수 0 지원 (모집단 업로드 모드)
+
+### 1. 문제 상황
+- RCM에서 `recommended_sample_size = 0`으로 저장했지만 운영평가에서 1로 표시됨
+- 0 값이 JavaScript와 Jinja2 템플릿에서 falsy로 취급되어 손실됨
+- "모집단 업로드 모드" 기능을 위해 0을 유효한 값으로 처리 필요
+
+### 2. 해결 방법
+
+#### 2.1 Jinja2 템플릿 수정 (ROOT CAUSE)
+**파일**: `templates/link7_detail.jsp:172`
+
+**문제**:
+```jinja2
+data-recommended-sample-size="{{ detail.recommended_sample_size or '' }}"
+```
+- Python의 `or` 연산자가 0을 falsy로 취급하여 빈 문자열 반환
+
+**수정**:
+```jinja2
+data-recommended-sample-size="{{ detail.recommended_sample_size if detail.recommended_sample_size is not none else '' }}"
+```
+- `is not none` 명시적 체크로 0도 정상 전달
+
+#### 2.2 JavaScript 조건문 수정
+**파일**: `templates/link7_detail.jsp`
+
+**수정 1** (line 1211): 표본수 우선순위 판단 로직
+```javascript
+// Before:
+if (!evaluated_controls[controlCode] || (!evaluated_controls[controlCode].sample_size && !evaluated_controls[controlCode].no_occurrence))
+
+// After:
+if (!evaluated_controls[controlCode] || ((evaluated_controls[controlCode].sample_size === null || evaluated_controls[controlCode].sample_size === undefined) && !evaluated_controls[controlCode].no_occurrence))
+```
+
+**수정 2** (line 1225-1229): 저장된 값 표시 로직
+```javascript
+// Before:
+} else if (evaluated_controls[controlCode] && evaluated_controls[controlCode].sample_size) {
+    console.log('[표본수] 운영평가 라인 저장값 사용:', ...);
+}
+
+// After:
+} else if (evaluated_controls[controlCode] && (evaluated_controls[controlCode].sample_size !== null && evaluated_controls[controlCode].sample_size !== undefined)) {
+    const savedSampleSize = evaluated_controls[controlCode].sample_size;
+    if (sampleSizeEl) sampleSizeEl.value = savedSampleSize;
+    console.log('[표본수] 운영평가 라인 저장값 사용:', savedSampleSize);
+}
+```
+
+### 3. 수정 효과
+✅ RCM에 0으로 저장된 권장 표본수가 운영평가에서 정상 표시
+✅ 운영평가 라인에 0으로 저장된 값도 정상 로드
+✅ "모집단 업로드 모드" (표본수 0 = 모집단 크기 기반 자동 결정) 정상 작동
+
+### 4. 향후 작업 필요 사항
+
+#### 4.1 일반 통제 모집단 업로드 UI 추가
+**문제**: 현재 APD01/APD07/APD09/APD12 등 특정 표준통제만 전용 업로드 UI 보유
+- 일반 통제(ELC 등)에서 표본수 0 설정 시 모집단 업로드 기능 없음
+- 표본 라인 테이블만 비워지고 파일 업로드 UI가 표시되지 않음
+
+**필요 작업**:
+1. `link7_detail.jsp` 운영평가 모달에 일반 통제용 모집단 업로드 섹션 추가
+2. 표본수가 0일 때 파일 업로드 input 및 업로드 버튼 표시
+3. 업로드된 파일에서 모집단 크기 파싱하여 자동 표본 크기 계산
+4. 백엔드 API 엔드포인트 추가 (예: `/api/operation-evaluation/upload-population`)
+5. `file_manager.py`에 일반 모집단 파싱 함수 추가
+
+**참고 코드 위치**:
+- APD01 업로드 UI: `link7_detail.jsp:488-498` (APD01 모달)
+- APD01 업로드 로직: `snowball_link7.py:460-540` (`upload_apd01_population_api`)
+- 표본 크기 자동 계산: `file_manager.py:392-427` (`parse_apd01_population`)
+
+**구현 방향**:
+```javascript
+// link7_detail.jsp 운영평가 모달 내 추가할 섹션
+// 표본수가 0일 때만 표시
+<div class="mb-3" id="populationUploadSection" style="display: none;">
+    <label for="populationFile" class="form-label fw-bold">
+        <i class="fas fa-upload me-1"></i>모집단 파일 업로드
+    </label>
+    <input type="file" class="form-control" id="populationFile"
+           accept=".xlsx,.xls" onchange="uploadPopulationFile()">
+    <div class="form-text">
+        모집단 엑셀 파일을 업로드하면 자동으로 표본 크기가 결정됩니다.
+    </div>
+</div>
+```
+
+#### 4.2 구현 시 고려사항
+1. **파일 형식 표준화**: 일반 통제의 모집단 파일 컬럼 구조 정의 필요
+2. **필드 매핑**: 사용자가 컬럼 매핑 설정할 수 있는 UI (APD01과 유사)
+3. **표본 추출**: 무작위 표본 추출 로직 재사용 (`file_manager.select_random_samples()`)
+4. **진행 상태 표시**: 파일 업로드 및 파싱 중 로딩 인디케이터
+5. **에러 처리**: 파일 형식 오류, 필수 컬럼 누락 등 검증
+
+---
+
+# Snowball 프로젝트 작업 로그
+
 ## 2025-11-14 - MySQL/SQLite 호환성 개선 및 파일 정리
 
 ### 1. DatabaseConnection 래퍼 클래스 개선
