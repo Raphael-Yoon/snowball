@@ -36,6 +36,25 @@
         input[type=number] {
             -moz-appearance: textfield;
         }
+
+        /* 인라인 편집 스타일 */
+        .editable-cell:hover {
+            border-color: #0d6efd !important;
+            background-color: #f8f9fa;
+            cursor: text;
+        }
+
+        .editable-cell:focus {
+            outline: none;
+            border-color: #0d6efd !important;
+            background-color: #fff;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+
+        .editable-cell.modified {
+            background-color: #fff3cd !important;
+            border-color: #ffc107 !important;
+        }
     </style>
 </head>
 <body>
@@ -131,8 +150,11 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="fas fa-list me-2"></i>통제 상세 목록</h5>
                         <div>
+                            <button class="btn btn-sm btn-success me-2" id="saveTestProcedureBtn" onclick="saveTestProcedure()" style="display: none;">
+                                <i class="fas fa-save me-1"></i>테스트절차 저장
+                            </button>
                             <button class="btn btn-sm btn-outline-primary me-2" id="saveAllSampleSizesBtn" onclick="saveAllSampleSizes()">
-                                <i class="fas fa-save me-1"></i>저장
+                                <i class="fas fa-save me-1"></i>표본수 저장
                             </button>
                             <button class="btn btn-sm btn-outline-secondary me-2" onclick="exportToExcel()">
                                 <i class="fas fa-file-excel me-1"></i>Excel 다운로드
@@ -146,20 +168,20 @@
                     </div>
                     <div class="card-body">
                         {% if rcm_details %}
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover" id="rcmTable">
+                        <div class="table-responsive" style="overflow-x: auto;">
+                            <table class="table table-striped table-hover" id="rcmTable" style="min-width: 1200px;">
                                 <thead>
                                     <tr>
-                                        <th width="6%">통제코드</th>
-                                        <th width="11%">통제명</th>
-                                        <th width="19%">통제활동 설명</th>
-                                        <th width="8%">통제주기</th>
-                                        <th width="8%">통제유형</th>
-                                        <th width="8%">통제구분</th>
-                                        <th width="7%">핵심통제</th>
-                                        <th width="11%">모집단</th>
-                                        <th width="15%">테스트절차</th>
-                                        <th width="7%">표본수</th>
+                                        <th style="min-width: 80px;">통제코드</th>
+                                        <th style="min-width: 150px;">통제명</th>
+                                        <th style="min-width: 200px;">통제활동 설명</th>
+                                        <th style="min-width: 100px;">통제주기</th>
+                                        <th style="min-width: 100px;">통제유형</th>
+                                        <th style="min-width: 100px;">통제구분</th>
+                                        <th style="min-width: 90px;">핵심통제</th>
+                                        <th style="min-width: 120px;">모집단</th>
+                                        <th style="min-width: 180px;">테스트절차</th>
+                                        <th style="min-width: 80px;">표본수</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -210,13 +232,15 @@
                                             </span>
                                         </td>
                                         <td>
-                                            {% if detail.test_procedure %}
-                                                <span class="text-truncate-custom" title="{{ detail.test_procedure }}">
-                                                    {{ detail.test_procedure }}
-                                                </span>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
+                                            <div class="editable-cell"
+                                                 contenteditable="true"
+                                                 data-field="test_procedure"
+                                                 data-detail-id="{{ detail.detail_id }}"
+                                                 data-original="{{ detail.test_procedure or '' }}"
+                                                 title="{{ detail.test_procedure or '' }}"
+                                                 style="padding: 4px; border: 1px solid transparent; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                {{ detail.test_procedure or '-' }}
+                                            </div>
                                         </td>
                                         <td class="text-center">
                                             <input type="text"
@@ -443,11 +467,112 @@
             XLSX.writeFile(wb, fileName);
         }
 
+        // 테스트절차 인라인 편집 기능
+        const modifiedTestProcedures = new Map();
+
+        function updateSaveButton() {
+            const saveBtn = document.getElementById('saveTestProcedureBtn');
+            if (modifiedTestProcedures.size > 0) {
+                saveBtn.style.display = 'inline-block';
+            } else {
+                saveBtn.style.display = 'none';
+            }
+        }
+
+        function handleTestProcedureChange(cell) {
+            const detailId = cell.dataset.detailId;
+            const originalValue = cell.dataset.original;
+            const newValue = cell.textContent.trim() === '-' ? '' : cell.textContent.trim();
+
+            if (newValue !== originalValue) {
+                cell.classList.add('modified');
+                modifiedTestProcedures.set(detailId, newValue);
+            } else {
+                cell.classList.remove('modified');
+                modifiedTestProcedures.delete(detailId);
+            }
+            updateSaveButton();
+        }
+
+        async function saveTestProcedure() {
+            if (modifiedTestProcedures.size === 0) {
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveTestProcedureBtn');
+            const originalHtml = saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>저장 중...';
+
+            try {
+                const updates = [];
+                modifiedTestProcedures.forEach((value, detailId) => {
+                    updates.push({
+                        detail_id: parseInt(detailId),
+                        fields: {
+                            test_procedure: value
+                        }
+                    });
+                });
+
+                const response = await fetch('/api/rcm/update_controls', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ updates: updates })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    updates.forEach(update => {
+                        const cell = document.querySelector(`.editable-cell[data-detail-id="${update.detail_id}"]`);
+                        if (cell) {
+                            cell.classList.remove('modified');
+                            cell.dataset.original = update.fields.test_procedure;
+                        }
+                    });
+
+                    modifiedTestProcedures.clear();
+                    updateSaveButton();
+                    showToast('테스트절차가 저장되었습니다.', 'success');
+                } else {
+                    showToast(result.message || '저장에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('저장 중 오류가 발생했습니다.', 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalHtml;
+            }
+        }
+
         // 툴팁 초기화
         document.addEventListener('DOMContentLoaded', function() {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
             var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // 테스트절차 편집 가능 셀 이벤트 리스너
+            document.querySelectorAll('.editable-cell').forEach(cell => {
+                cell.addEventListener('input', function() {
+                    handleTestProcedureChange(this);
+                });
+
+                cell.addEventListener('blur', function() {
+                    if (this.textContent.trim() === '') {
+                        this.textContent = '-';
+                    }
+                });
+
+                cell.addEventListener('focus', function() {
+                    if (this.textContent.trim() === '-') {
+                        this.textContent = '';
+                    }
+                });
             });
 
             // 각 입력란에 이벤트 리스너 추가

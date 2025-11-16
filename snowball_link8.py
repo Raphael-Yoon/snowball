@@ -371,26 +371,25 @@ def save_assessment_progress(rcm_id):
 
         # 데이터베이스에 저장
         db = get_db()
-        cursor = db.cursor()
 
         # 기존 데이터 확인 후 업데이트 또는 삽입
-        cursor.execute('''
+        existing_cursor = db.execute('''
             SELECT assessment_id FROM sb_internal_assessment
             WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND step = %s
         ''', (rcm_id, user_info['user_id'], evaluation_session, step))
 
-        existing = cursor.fetchone()
+        existing = existing_cursor.fetchone()
 
         if existing:
             # 업데이트
-            cursor.execute('''
+            db.execute('''
                 UPDATE sb_internal_assessment
                 SET progress_data = %s, status = %s, updated_date = %s
                 WHERE assessment_id = %s
             ''', (json.dumps(progress_data), status, datetime.now(), existing[0]))
         else:
             # 신규 삽입
-            cursor.execute('''
+            db.execute('''
                 INSERT INTO sb_internal_assessment
                 (rcm_id, user_id, evaluation_session, step, progress_data, status, created_date, updated_date)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -420,17 +419,16 @@ def save_assessment_progress(rcm_id):
 def get_assessment_progress(rcm_id, user_id, evaluation_session='DEFAULT'):
     """특정 RCM의 특정 설계평가 세션에 대한 내부평가 진행 상황 조회"""
     db = get_db()
-    cursor = db.cursor()
 
     # 각 단계별 상태 조회 (세션별로)
-    cursor.execute('''
+    steps_cursor = db.execute('''
         SELECT step, status, updated_date
         FROM sb_internal_assessment
         WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
         ORDER BY step
     ''', (rcm_id, user_id, evaluation_session))
     
-    steps_data = cursor.fetchall()
+    steps_data = steps_cursor.fetchall()
 
     # 2단계 순차적 워크플로우 초기화 (설계평가 → 운영평가)
     progress = {
@@ -619,9 +617,8 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
 def get_assessment_data(rcm_id, user_id, evaluation_session='DEFAULT'):
     """특정 RCM의 특정 세션에 대한 내부평가 데이터 조회"""
     db = get_db()
-    cursor = db.cursor()
 
-    cursor.execute('''
+    data_cursor = db.execute('''
         SELECT step, progress_data, status
         FROM sb_internal_assessment
         WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
@@ -629,7 +626,7 @@ def get_assessment_data(rcm_id, user_id, evaluation_session='DEFAULT'):
     ''', (rcm_id, user_id, evaluation_session))
 
     data = {}
-    for row in cursor.fetchall():
+    for row in data_cursor.fetchall():
         step, progress_data, status = row
         try:
             data[step] = {
@@ -644,15 +641,14 @@ def get_assessment_data(rcm_id, user_id, evaluation_session='DEFAULT'):
 def get_step_data(rcm_id, user_id, step, evaluation_session='DEFAULT'):
     """특정 단계의 데이터 조회"""
     db = get_db()
-    cursor = db.cursor()
 
-    cursor.execute('''
+    result_cursor = db.execute('''
         SELECT progress_data, status
         FROM sb_internal_assessment
         WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND step = %s
     ''', (rcm_id, user_id, evaluation_session, step))
     
-    result = cursor.fetchone()
+    result = result_cursor.fetchone()
     if result:
         progress_data, status = result
         try:

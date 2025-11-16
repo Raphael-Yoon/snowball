@@ -107,24 +107,8 @@
                     <h2 class="section-title"><i class="fas fa-lock me-2"></i>Private</h2>
                 </div>
 
-                <!-- 위 2개: RCM, Dashboard -->
+                <!-- 위 2개: Dashboard, RCM (순서 변경) -->
                 <div class="col-lg-3 col-md-6 offset-lg-3">
-                    <div class="feature-card border-primary h-100">
-                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
-                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
-                        <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center"><i class="fas fa-database me-2"></i>RCM</h5>
-                            <p class="feature-description">위험통제매트릭스(RCM) 데이터를 조회하고 관리할 수 있습니다.</p>
-                            <div class="text-center mt-auto">
-                                <a href="/user/rcm" class="feature-link"
-                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• 통제항목별 상세 정보 확인<br>• 카테고리별 RCM 관리 (ELC/TLC/ITGC)<br>• 엑셀 업로드 및 다운로드 지원</div>">자세히 보기</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-info h-100">
                         <img src="{{ url_for('static', filename='img/dashboard.jpg')}}" class="feature-img" alt="Dashboard"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
@@ -135,6 +119,22 @@
                                 <a href="/user/internal-assessment" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
                                    title="<div>• ELC, TLC, ITGC 통합 결과 조회<br>• 통제 현황 종합 분석<br>• 자동 리포트 생성<br>• 트렌드 분석 및 인사이트</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-primary h-100">
+                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-database me-2"></i>RCM</h5>
+                            <p class="feature-description">위험통제매트릭스(RCM) 데이터를 조회하고 관리할 수 있습니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/user/rcm" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• 통제항목별 상세 정보 확인<br>• 카테고리별 RCM 관리 (ELC/TLC/ITGC)<br>• 엑셀 업로드 및 다운로드 지원</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -294,24 +294,8 @@
                     </div>
                 </div>
 
-                <!-- 위 2개: RCM, Dashboard -->
+                <!-- 위 2개: Dashboard, RCM (순서 변경) -->
                 <div class="col-lg-3 col-md-6 offset-lg-3">
-                    <div class="feature-card border-primary h-100">
-                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
-                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
-                        <div class="card-body p-4 d-flex flex-column">
-                            <h5 class="feature-title text-center"><i class="fas fa-database me-2"></i>RCM</h5>
-                            <p class="feature-description">위험통제매트릭스(RCM) 데이터를 조회하고 관리할 수 있습니다.</p>
-                            <div class="text-center mt-auto">
-                                <a href="/user/rcm" class="feature-link"
-                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• 통제항목별 상세 정보 확인<br>• 카테고리별 RCM 관리 (ELC/TLC/ITGC)<br>• 엑셀 업로드 및 다운로드 지원</div>">자세히 보기</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-info h-100">
                         <img src="{{ url_for('static', filename='img/dashboard.jpg')}}" class="feature-img" alt="Dashboard"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
@@ -322,6 +306,22 @@
                                 <a href="/user/internal-assessment" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
                                    title="<div>• ELC, TLC, ITGC 통합 결과 조회<br>• 통제 현황 종합 분석<br>• 자동 리포트 생성<br>• 트렌드 분석 및 인사이트</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-primary h-100">
+                        <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-database me-2"></i>RCM</h5>
+                            <p class="feature-description">위험통제매트릭스(RCM) 데이터를 조회하고 관리할 수 있습니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/user/rcm" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• 통제항목별 상세 정보 확인<br>• 카테고리별 RCM 관리 (ELC/TLC/ITGC)<br>• 엑셀 업로드 및 다운로드 지원</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
