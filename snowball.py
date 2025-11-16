@@ -146,16 +146,22 @@ def index():
     user_name = user_info['user_name'] if user_info else "Guest"
     
     # 로그인한 사용자만 활동 로그 기록
-    if is_logged_in():
-        log_user_activity(user_info, 'PAGE_ACCESS', '메인 페이지', '/', 
-                         request.remote_addr, request.headers.get('User-Agent'))
-    
-    return render_template('index.jsp', 
+    host = request.headers.get('Host', '')
+    # 로컬 환경에서는 로그인 로그 기록 안함
+    if is_logged_in() and host.startswith('snowball.pythonanywhere.com'):
+        log_user_activity(user_info, 'PAGE_ACCESS', '메인 페이지', '/',
+                          request.remote_addr, request.headers.get('User-Agent'))
+
+    # 카드 순서 정의 (Dashboard를 RCM 앞으로)
+    card_order = ['dashboard', 'rcm', 'interview', 'design_evaluation', 'operation_evaluation']
+
+    return render_template('index.jsp',
                          user_name=user_name, 
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          return_code=0, 
-                         remote_addr=request.remote_addr)
+                         remote_addr=request.remote_addr,
+                         card_order=card_order)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1030,6 +1036,91 @@ def api_user_rcm_list():
     """사용자 RCM 목록 조회 API"""
     from snowball_link5 import user_rcm_list
     return user_rcm_list()
+
+@app.route('/api/rcm/update_controls', methods=['POST'])
+@login_required
+def api_rcm_update_controls():
+    """RCM 통제 정보 업데이트 API (인라인 편집)"""
+    user_info = get_current_user()
+
+    try:
+        data = request.get_json()
+        updates = data.get('updates', [])
+
+        if not updates:
+            return jsonify({'success': False, 'message': '업데이트할 데이터가 없습니다.'}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+        updated_count = 0
+
+        # 각 통제에 대해 업데이트 수행
+        for update in updates:
+            detail_id = update.get('detail_id')
+            fields = update.get('fields', {})
+
+            if not detail_id or not fields:
+                continue
+
+            # 해당 통제가 속한 RCM에 대한 접근 권한 확인
+            cursor.execute('''
+                SELECT rcm_id FROM sb_rcm_detail WHERE detail_id = %s
+            ''', (detail_id,))
+            rcm_check = cursor.fetchone()
+
+            if not rcm_check:
+                continue
+
+            rcm_id = rcm_check[0]
+
+            # 권한 확인
+            cursor.execute('''
+                SELECT permission_type
+                FROM sb_rcm_access
+                WHERE rcm_id = %s AND user_id = %s
+            ''', (rcm_id, user_info['user_id']))
+
+            access = cursor.fetchone()
+            if not access:
+                return jsonify({'success': False, 'message': '해당 RCM에 대한 접근 권한이 없습니다.'}), 403
+
+            # 허용된 필드만 업데이트 (통제코드와 통제명은 제외)
+            allowed_fields = [
+                'control_description', 'key_control', 'control_frequency',
+                'control_type', 'control_nature', 'process_area',
+                'risk_description', 'risk_impact', 'risk_likelihood',
+                'population', 'population_completeness_check', 'population_count',
+                'test_procedure', 'control_owner', 'control_performer',
+                'evidence_type'
+            ]
+
+            # SQL UPDATE 문 생성
+            update_fields = []
+            update_values = []
+
+            for field, value in fields.items():
+                if field in allowed_fields:
+                    update_fields.append(f"{field} = %s")
+                    update_values.append(value if value else None)
+
+            if update_fields:
+                update_values.append(detail_id)
+                sql = f"UPDATE sb_rcm_detail SET {', '.join(update_fields)} WHERE detail_id = %s"
+                cursor.execute(sql, update_values)
+                updated_count += 1
+
+        conn.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'{updated_count}개 통제 정보가 업데이트되었습니다.',
+            'updated_count': updated_count
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'업데이트 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @app.route('/api/check-operation-evaluation/<control_type>')
 @login_required
