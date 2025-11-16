@@ -1,5 +1,4 @@
 # etc
-*.db
 *.env
 *.pickle
 credentials.json

@@ -169,7 +169,7 @@
                                                     data-std-control-code="{{ rcm_mappings.get(detail.control_code).std_control_code if rcm_mappings.get(detail.control_code) else '' }}"
                                                     data-design-evaluation-evidence="{{ detail.evaluation_evidence|e }}"
                                                     data-design-evaluation-images='{{ detail.design_evaluation_images|tojson if detail.design_evaluation_images else "[]" }}'
-                                                    data-recommended-sample-size="{{ detail.recommended_sample_size or '' }}"
+                                                    data-recommended-sample-size="{{ detail.recommended_sample_size if detail.recommended_sample_size is not none else '' }}"
                                                     data-row-index="{{ loop.index }}"
                                                     onclick="openOperationEvaluationModal(this)">
                                                 <i class="fas fa-edit me-1"></i>평가
@@ -317,12 +317,12 @@
                             <div class="row mb-3">
                                 <div class="col-md-3">
                                     <label for="sample_size" class="form-label fw-bold">표본 크기</label>
-                                    <input type="number" class="form-control text-end" id="sample_size" name="sample_size" min="1" max="100" placeholder="통제주기에 따라 자동 설정" onchange="generateSampleLines()" onkeyup="if(event.key === 'Enter') generateSampleLines()">
+                                    <input type="number" class="form-control text-end" id="sample_size" name="sample_size" min="0" max="100" placeholder="공란: 모집단 크기 기반 자동 결정" onchange="generateSampleLines()" onkeyup="if(event.key === 'Enter') generateSampleLines()">
                                     <div id="sampleSizeMessage" class="mt-1" style="display: none;"></div>
                                 </div>
                                 <div class="col-md-9 d-flex align-items-end">
                                     <div class="form-text">
-                                        <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1). 입력 후 자동으로 표본 라인이 생성됩니다.</small>
+                                        <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1). 입력 후 자동으로 표본 라인이 생성됩니다. <strong>0 또는 공란으로 두면 모집단 업로드 시 크기에 따라 자동 결정됩니다.</strong></small>
                                     </div>
                                 </div>
                             </div>
@@ -1109,11 +1109,12 @@
             if (modalTestProcedure) modalTestProcedure.textContent = testProcedure || '-';
 
             // 권장 표본수 계산 및 저장 (표본수 검증을 위해)
-            // 1순위: RCM에 설정된 권장 표본수
+            // 1순위: RCM에 설정된 권장 표본수 (0 포함)
             // 2순위: 통제 주기에 따른 기본값
             currentControlFrequency = controlFrequency;
             const rcmRecommendedSize = recommendedSampleSizeStr ? parseInt(recommendedSampleSizeStr) : null;
-            recommendedSampleSize = rcmRecommendedSize || getDefaultSampleSize(controlFrequency, controlType);
+            // 0도 유효한 값이므로 null/undefined 체크로 변경
+            recommendedSampleSize = rcmRecommendedSize !== null ? rcmRecommendedSize : getDefaultSampleSize(controlFrequency, controlType);
 
             console.log('[권장 표본수] RCM 설정값:', rcmRecommendedSize);
             console.log('[권장 표본수] 통제주기 기본값:', getDefaultSampleSize(controlFrequency, controlType));
@@ -1204,14 +1205,14 @@
             }
 
             // 표본수 우선순위 설정
-            // 1순위: 운영평가 라인에 저장된 sample_size (사용자가 조정한 값)
-            // 2순위: RCM detail의 recommended_sample_size (관리자 설정)
+            // 1순위: 운영평가 라인에 저장된 sample_size (사용자가 조정한 값, 0 포함)
+            // 2순위: RCM detail의 recommended_sample_size (관리자 설정, 0 포함)
             // 3순위: 통제주기 기반 기본값
-            if (!evaluated_controls[controlCode] || (!evaluated_controls[controlCode].sample_size && !evaluated_controls[controlCode].no_occurrence)) {
+            if (!evaluated_controls[controlCode] || ((evaluated_controls[controlCode].sample_size === null || evaluated_controls[controlCode].sample_size === undefined) && !evaluated_controls[controlCode].no_occurrence)) {
                 let displaySampleSize;
 
-                if (recommendedSampleSize && recommendedSampleSize > 0) {
-                    // RCM에 설정된 권장 표본수 사용
+                if (recommendedSampleSize !== null && recommendedSampleSize !== undefined) {
+                    // RCM에 설정된 권장 표본수 사용 (0 포함)
                     displaySampleSize = recommendedSampleSize;
                     console.log('[표본수] RCM 권장 표본수 사용:', displaySampleSize);
                 } else {
@@ -1221,9 +1222,11 @@
                 }
 
                 if (sampleSizeEl) sampleSizeEl.value = displaySampleSize;
-            } else if (evaluated_controls[controlCode] && evaluated_controls[controlCode].sample_size) {
-                // 운영평가 라인에 이미 저장된 값이 있으면 그대로 표시
-                console.log('[표본수] 운영평가 라인 저장값 사용:', evaluated_controls[controlCode].sample_size);
+            } else if (evaluated_controls[controlCode] && (evaluated_controls[controlCode].sample_size !== null && evaluated_controls[controlCode].sample_size !== undefined)) {
+                // 운영평가 라인에 이미 저장된 값이 있으면 그대로 표시 (0 포함)
+                const savedSampleSize = evaluated_controls[controlCode].sample_size;
+                if (sampleSizeEl) sampleSizeEl.value = savedSampleSize;
+                console.log('[표본수] 운영평가 라인 저장값 사용:', savedSampleSize);
             }
 
             // 먼저 기존 샘플 테이블 완전히 비우기 (다른 통제의 데이터가 보이는 것 방지)
@@ -1400,25 +1403,37 @@
         // 표본 크기 변경 시 자동으로 라인 생성
         function autoGenerateSampleLines() {
             const sampleSizeInput = document.getElementById('sample_size');
-            const sampleSize = parseInt(sampleSizeInput?.value) || 0;
+            const sampleSizeValue = sampleSizeInput?.value?.trim() || '';
 
-            // 유효한 표본 크기인 경우에만 자동 생성
-            if (sampleSize >= 1 && sampleSize <= 100) {
-                generateSampleLines();
+            // 공란, 0이거나 유효한 숫자인 경우 자동 생성
+            if (sampleSizeValue === '' || sampleSizeValue === '0') {
+                generateSampleLines(); // 공란/0 처리 (모집단 업로드 모드)
+            } else {
+                const sampleSize = parseInt(sampleSizeValue);
+                if (!isNaN(sampleSize) && sampleSize >= 1 && sampleSize <= 100) {
+                    generateSampleLines();
+                }
             }
         }
 
         // 표본 라인 생성
         function generateSampleLines() {
             const sampleSizeInput = document.getElementById('sample_size');
-            const sampleSize = parseInt(sampleSizeInput.value) || 0;
+            const sampleSizeValue = sampleSizeInput.value.trim();
 
-            if (sampleSize < 1 || sampleSize > 100) {
-                alert('표본 크기는 1에서 100 사이여야 합니다.');
+            // 공란 또는 0인 경우 테이블을 비우고 종료 (모집단 업로드 모드)
+            const tbody = document.getElementById('sample-lines-tbody');
+            if (sampleSizeValue === '' || sampleSizeValue === '0') {
+                tbody.innerHTML = '';
                 return;
             }
 
-            const tbody = document.getElementById('sample-lines-tbody');
+            const sampleSize = parseInt(sampleSizeValue);
+
+            if (isNaN(sampleSize) || sampleSize < 1 || sampleSize > 100) {
+                alert('표본 크기는 1에서 100 사이여야 합니다. 0 또는 공란으로 두면 모집단 업로드 시 크기에 따라 자동 결정됩니다.');
+                return;
+            }
 
             // ⭐ 기존 라인을 초기화하기 전에 현재 화면의 입력값을 먼저 수집
             const currentInputData = [];
