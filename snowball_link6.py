@@ -1197,7 +1197,7 @@ def download_evaluation_excel(rcm_id):
                 estimated_c13_lines = c13_lines
 
             # 최소 높이는 25pt, 최대 높이는 150pt로 제한 (기본 20pt + 줄 수 * 18pt)
-            c11_height = max(25, min(150, 20 + (estimated_c11_lines - 1) * 18))
+            c11_height = max(25, min(300, 20 + (estimated_c11_lines - 1) * 18))
             c12_height = max(25, min(150, 20 + (estimated_c12_lines - 1) * 18))
             c13_height = max(25, min(150, 20 + (estimated_c13_lines - 1) * 18))
 

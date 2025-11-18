@@ -12,19 +12,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         #rcmTable {
-            table-layout: fixed;
-            width: 100%;
+            table-layout: auto; /* 내용에 따라 너비 자동 조정 */
+            min-width: 1200px;  /* 테이블의 최소 너비 설정 */
         }
         #rcmTable th, #rcmTable td {
             word-wrap: break-word;
             overflow-wrap: break-word;
             vertical-align: top;
+            white-space: normal; /* 자동 줄바꿈 허용 */
         }
         .text-truncate-custom {
             display: block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
         /* 숫자 입력 필드의 스피너(화살표) 제거 */
         input[type=number]::-webkit-inner-spin-button,
@@ -140,15 +138,16 @@
                                 <thead>
                                     <tr>
                                         <th width="6%">통제코드</th>
-                                        <th width="11%">통제명</th>
-                                        <th width="19%">통제활동설명</th>
-                                        <th width="8%">통제주기</th>
-                                        <th width="8%">통제유형</th>
-                                        <th width="8%">통제구분</th>
-                                        <th width="7%">핵심통제</th>
-                                        <th width="11%">모집단</th>
-                                        <th width="15%">테스트절차</th>
+                                        <th width="10%">통제명</th>
+                                        <th width="17%">통제활동설명</th>
+                                        <th width="7%">통제주기</th>
+                                        <th width="7%">통제유형</th>
+                                        <th width="7%">통제구분</th>
+                                        <th width="6%">핵심통제</th>
+                                        <th width="10%">모집단</th>
+                                        <th width="13%">테스트절차</th>
                                         <th width="7%">권장표본수</th>
+                                        <th width="10%">Attribute 설정</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -220,6 +219,23 @@
                                                    placeholder="자동"
                                                    style="width: 60px;">
                                         </td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    onclick="openAttributeModal('{{ detail.detail_id }}', '{{ detail.control_code }}', '{{ detail.control_name }}')">
+                                                <i class="fas fa-cog me-1"></i>설정
+                                            </button>
+                                            <div id="attribute-summary-{{ detail.detail_id }}" class="mt-1 small text-muted">
+                                                {% set attr_count = 0 %}
+                                                {% for i in range(10) %}
+                                                    {% if detail['attribute' ~ i] %}
+                                                        {% set attr_count = attr_count + 1 %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% if attr_count > 0 %}
+                                                    <span class="badge bg-info">{{ attr_count }}개 설정됨</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -233,6 +249,79 @@
                         </div>
                         {% endif %}
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attribute 설정 모달 -->
+    <div class="modal fade" id="attributeModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-cog me-2"></i>Attribute 설정
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>통제코드:</strong> <code id="modal-control-code"></code><br>
+                        <strong>통제명:</strong> <span id="modal-control-name"></span>
+                    </div>
+                    <hr>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        모집단과 증빙 항목으로 사용할 attribute 필드를 설정하세요.
+                    </div>
+                    <div class="mb-3">
+                        <label for="population-attr-count" class="form-label">
+                            <strong>모집단 항목 수</strong>
+                            <small class="text-muted">(attribute0부터 시작, 나머지는 증빙 항목)</small>
+                        </label>
+                        <input type="number"
+                               class="form-control form-control-sm"
+                               id="population-attr-count"
+                               min="1"
+                               max="10"
+                               value="2"
+                               style="width: 100px;"
+                               placeholder="예: 2">
+                        <small class="text-muted">
+                            예: 2로 설정 시 attribute0~1은 모집단, attribute2~9는 증빙
+                        </small>
+                    </div>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th width="20%">Attribute</th>
+                                <th width="80%">필드명</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i in range(10) %}
+                            <tr>
+                                <td><strong>attribute{{ i }}</strong></td>
+                                <td>
+                                    <input type="text"
+                                           class="form-control form-control-sm attribute-input"
+                                           id="attr-input-{{ i }}"
+                                           data-index="{{ i }}"
+                                           placeholder="예: 완료예정일, 완료여부, 승인자 등"
+                                           maxlength="100">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>취소
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="saveAttributes()">
+                        <i class="fas fa-save me-1"></i>저장
+                    </button>
                 </div>
             </div>
         </div>
@@ -476,6 +565,125 @@
                     saveBtn.disabled = false;
                 }
             });
+        }
+
+        // Attribute 설정 모달 관련 변수
+        let currentDetailId = null;
+        let attributeModalInstance = null;
+
+        // Attribute 모달 열기
+        function openAttributeModal(detailId, controlCode, controlName) {
+            currentDetailId = detailId;
+
+            // 모달 정보 표시
+            document.getElementById('modal-control-code').textContent = controlCode;
+            document.getElementById('modal-control-name').textContent = controlName;
+
+            // 기존 attribute 값 로드
+            loadAttributes(detailId);
+
+            // 모달 표시
+            const modalEl = document.getElementById('attributeModal');
+            if (!attributeModalInstance) {
+                attributeModalInstance = new bootstrap.Modal(modalEl);
+            }
+            attributeModalInstance.show();
+        }
+
+        // 기존 attribute 값 로드
+        function loadAttributes(detailId) {
+            fetch(`/admin/rcm/detail/${detailId}/attributes`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const attributes = data.attributes || {};
+
+                        // attribute 필드 로드
+                        for (let i = 0; i < 10; i++) {
+                            const input = document.getElementById(`attr-input-${i}`);
+                            if (input) {
+                                input.value = attributes[`attribute${i}`] || '';
+                            }
+                        }
+
+                        // population_attribute_count 로드
+                        const popCountInput = document.getElementById('population-attr-count');
+                        if (popCountInput) {
+                            popCountInput.value = data.population_attribute_count || 2;
+                        }
+                    } else {
+                        console.error('Failed to load attributes:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading attributes:', error);
+                });
+        }
+
+        // Attribute 저장
+        function saveAttributes() {
+            if (!currentDetailId) {
+                showToast('오류: 통제 ID가 없습니다.', 'error');
+                return;
+            }
+
+            // attribute 값 수집
+            const attributes = {};
+            for (let i = 0; i < 10; i++) {
+                const input = document.getElementById(`attr-input-${i}`);
+                if (input && input.value.trim()) {
+                    attributes[`attribute${i}`] = input.value.trim();
+                }
+            }
+
+            // population_attribute_count 수집
+            const popCountInput = document.getElementById('population-attr-count');
+            const populationAttributeCount = popCountInput ? parseInt(popCountInput.value) : 2;
+
+            // 서버에 저장
+            fetch(`/admin/rcm/detail/${currentDetailId}/attributes`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    attributes,
+                    population_attribute_count: populationAttributeCount
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Attribute 설정이 저장되었습니다.', 'success');
+
+                    // 모달 닫기
+                    if (attributeModalInstance) {
+                        attributeModalInstance.hide();
+                    }
+
+                    // 요약 업데이트
+                    updateAttributeSummary(currentDetailId, attributes);
+                } else {
+                    showToast('저장 실패: ' + (data.message || '알 수 없는 오류'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving attributes:', error);
+                showToast('저장 중 오류가 발생했습니다.', 'error');
+            });
+        }
+
+        // Attribute 요약 업데이트
+        function updateAttributeSummary(detailId, attributes) {
+            const summaryEl = document.getElementById(`attribute-summary-${detailId}`);
+            if (!summaryEl) return;
+
+            const count = Object.keys(attributes).length;
+            if (count > 0) {
+                summaryEl.innerHTML = `<span class="badge bg-info">${count}개 설정됨</span>`;
+            } else {
+                summaryEl.innerHTML = '';
+            }
         }
 
         // 권장 표본수 초기화

@@ -646,108 +646,6 @@ def admin_rcm_view(rcm_id):
     # RCM 상세 데이터 조회
     rcm_details = get_rcm_details(rcm_id)
     
-    # 디버깅: detail_id 확인
-    if rcm_details:
-        print(f"[DEBUG] RCM {rcm_id} 상세 데이터 개수: {len(rcm_details)}")
-        print(f"[DEBUG] 첫 번째 항목의 키: {list(rcm_details[0].keys()) if rcm_details else 'N/A'}")
-        
-        # 실제 데이터베이스에서 detail_id 확인
-        with get_db() as conn:
-            db_type = 'mysql' if conn._is_mysql else 'sqlite'
-            
-            # 테이블 스키마 확인
-            if db_type == 'sqlite':
-                schema_query = "PRAGMA table_info(sb_rcm_detail)"
-                schema_result = conn.execute(schema_query).fetchall()
-                print(f"[DEBUG] sb_rcm_detail 테이블 스키마:")
-                for col in schema_result:
-                    print(f"  {col[1]} ({col[2]}) - PK: {col[5]}, NOT NULL: {col[3]}")
-            
-            # detail_id가 NULL인 레코드 개수 확인
-            if db_type == 'mysql':
-                null_count_query = '''
-                    SELECT COUNT(*) 
-                    FROM sb_rcm_detail
-                    WHERE rcm_id = %s AND detail_id IS NULL
-                '''
-            else:
-                null_count_query = '''
-                    SELECT COUNT(*) 
-                    FROM sb_rcm_detail
-                    WHERE rcm_id = ? AND detail_id IS NULL
-                '''
-            null_count = conn.execute(null_count_query, (rcm_id,)).fetchone()
-            print(f"[DEBUG] detail_id가 NULL인 레코드 개수: {null_count[0] if null_count else 0}")
-            
-            # 전체 레코드 개수 확인
-            if db_type == 'mysql':
-                total_count_query = '''
-                    SELECT COUNT(*) 
-                    FROM sb_rcm_detail
-                    WHERE rcm_id = %s
-                '''
-            else:
-                total_count_query = '''
-                    SELECT COUNT(*) 
-                    FROM sb_rcm_detail
-                    WHERE rcm_id = ?
-                '''
-            total_count = conn.execute(total_count_query, (rcm_id,)).fetchone()
-            print(f"[DEBUG] 전체 레코드 개수: {total_count[0] if total_count else 0}")
-            
-            if db_type == 'mysql':
-                test_query = '''
-                    SELECT detail_id, control_code, control_name, ROW_NUMBER() OVER (ORDER BY control_code) as row_num
-                    FROM sb_rcm_detail
-                    WHERE rcm_id = %s
-                    LIMIT 5
-                '''
-            else:
-                test_query = '''
-                    SELECT detail_id, control_code, control_name
-                    FROM sb_rcm_detail
-                    WHERE rcm_id = ?
-                    LIMIT 5
-                '''
-            test_results = conn.execute(test_query, (rcm_id,)).fetchall()
-            print(f"[DEBUG] 실제 테이블의 처음 5개 레코드:")
-            for i, row in enumerate(test_results):
-                if hasattr(row, 'keys'):
-                    row_dict = dict(row)
-                    print(f"  [{i+1}] detail_id: {row_dict.get('detail_id')}, control_code: {row_dict.get('control_code')}")
-                else:
-                    print(f"  [{i+1}] detail_id: {row[0]}, control_code: {row[1]}")
-            
-            # 뷰에서 직접 조회
-            if db_type == 'mysql':
-                view_query = '''
-                    SELECT detail_id, control_code
-                    FROM sb_rcm_detail_v
-                    WHERE rcm_id = %s
-                    LIMIT 5
-                '''
-            else:
-                view_query = '''
-                    SELECT detail_id, control_code
-                    FROM sb_rcm_detail_v
-                    WHERE rcm_id = ?
-                    LIMIT 5
-                '''
-            view_results = conn.execute(view_query, (rcm_id,)).fetchall()
-            print(f"[DEBUG] 뷰에서 조회한 처음 5개 레코드:")
-            for i, row in enumerate(view_results):
-                if hasattr(row, 'keys'):
-                    row_dict = dict(row)
-                    print(f"  [{i+1}] detail_id: {row_dict.get('detail_id')}, control_code: {row_dict.get('control_code')}")
-                else:
-                    print(f"  [{i+1}] detail_id: {row[0]}, control_code: {row[1]}")
-        
-        if rcm_details[0].get('detail_id') is None:
-            print(f"[WARNING] 첫 번째 항목의 detail_id가 None입니다!")
-            print(f"[WARNING] 첫 번째 항목 전체 데이터: {rcm_details[0]}")
-        else:
-            print(f"[DEBUG] 첫 번째 항목의 detail_id: {rcm_details[0].get('detail_id')}")
-    
     return render_template('admin_rcm_view.jsp',
                          rcm_info=dict(rcm_info),
                          rcm_details=rcm_details,
@@ -1261,6 +1159,113 @@ def update_recommended_sample_size(detail_id):
         return jsonify({
             'success': True,
             'message': '권장 표본수가 저장되었습니다.'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'저장 중 오류가 발생했습니다: {str(e)}'}), 500
+
+
+# Attribute 조회 API
+@admin_bp.route('/rcm/detail/<int:detail_id>/attributes', methods=['GET'])
+@login_required
+def get_rcm_detail_attributes(detail_id):
+    """RCM 통제의 attribute 설정 조회"""
+    try:
+        db = get_db()
+        db_type = db.execute("SELECT 1").connection.vendor if hasattr(db.execute("SELECT 1").connection, 'vendor') else 'sqlite'
+
+        # attribute 값 조회
+        with db:
+            if db_type == 'mysql':
+                cursor = db.execute('''
+                    SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
+                           attribute5, attribute6, attribute7, attribute8, attribute9,
+                           population_attribute_count
+                    FROM sb_rcm_detail
+                    WHERE detail_id = %s
+                ''', (detail_id,))
+            else:
+                cursor = db.execute('''
+                    SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
+                           attribute5, attribute6, attribute7, attribute8, attribute9,
+                           population_attribute_count
+                    FROM sb_rcm_detail
+                    WHERE detail_id = ?
+                ''', (detail_id,))
+
+            row = cursor.fetchone()
+
+        if not row:
+            return jsonify({'success': False, 'message': '통제를 찾을 수 없습니다.'}), 404
+
+        # attribute 값 딕셔너리로 변환
+        attributes = {}
+        for i in range(10):
+            value = row[i]
+            if value:
+                attributes[f'attribute{i}'] = value
+
+        # population_attribute_count 조회 (기본값 2)
+        population_attr_count = row[10] if len(row) > 10 and row[10] is not None else 2
+
+        return jsonify({
+            'success': True,
+            'attributes': attributes,
+            'population_attribute_count': population_attr_count
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'조회 중 오류가 발생했습니다: {str(e)}'}), 500
+
+
+# Attribute 저장 API
+@admin_bp.route('/rcm/detail/<int:detail_id>/attributes', methods=['POST'])
+@login_required
+def save_rcm_detail_attributes(detail_id):
+    """RCM 통제의 attribute 설정 저장"""
+    try:
+        data = request.get_json()
+        attributes = data.get('attributes', {})
+        population_attribute_count = data.get('population_attribute_count', 2)
+
+        db = get_db()
+        db_type = db.execute("SELECT 1").connection.vendor if hasattr(db.execute("SELECT 1").connection, 'vendor') else 'sqlite'
+
+        # attribute 값 준비 (attribute0~9)
+        attr_values = []
+        for i in range(10):
+            attr_key = f'attribute{i}'
+            attr_values.append(attributes.get(attr_key, None))
+
+        # UPDATE 쿼리 실행
+        with db:
+            if db_type == 'mysql':
+                db.execute('''
+                    UPDATE sb_rcm_detail
+                    SET attribute0 = %s, attribute1 = %s, attribute2 = %s, attribute3 = %s, attribute4 = %s,
+                        attribute5 = %s, attribute6 = %s, attribute7 = %s, attribute8 = %s, attribute9 = %s,
+                        population_attribute_count = %s
+                    WHERE detail_id = %s
+                ''', (*attr_values, population_attribute_count, detail_id))
+            else:
+                db.execute('''
+                    UPDATE sb_rcm_detail
+                    SET attribute0 = ?, attribute1 = ?, attribute2 = ?, attribute3 = ?, attribute4 = ?,
+                        attribute5 = ?, attribute6 = ?, attribute7 = ?, attribute8 = ?, attribute9 = ?,
+                        population_attribute_count = ?
+                    WHERE detail_id = ?
+                ''', (*attr_values, population_attribute_count, detail_id))
+            db.commit()
+
+        print(f'[admin] Attribute 저장 완료 - detail_id: {detail_id}, attributes: {attributes}, population_attribute_count: {population_attribute_count}')
+
+        return jsonify({
+            'success': True,
+            'message': 'Attribute 설정이 저장되었습니다.'
         })
 
     except Exception as e:

@@ -1,5 +1,14 @@
 # Snowball 프로젝트 작업 로그
 
+표본수가 0인 통제에 대한 작동 방식
+1. 엑셀파일을 업로드한다
+2. 번호와 설명 컬럼을 매핑한다
+3. 업로드한 데이터의 갯수에 따라 표본수를 자동으로 설정한다
+4. attribute0부터 9까지 중 사용할 필드를 체크하고 필드명을 입력한다
+5. 모집단에서 표본수만큼 랜덤하게 표본을 추출하여 화면에 보여준다
+6. 표본의 오른쪽에 사용할 attribute만큼 텍스트박스를 만들고 필드명은 4번의 데이터를 이용한다
+7. 각 표본에 대한 증빙을 입력하고 저장한다
+
 ## 2025-11-16 - 권장 표본수 0 지원 (모집단 업로드 모드)
 
 ### 1. 문제 상황
@@ -2081,3 +2090,178 @@ python migrate.py downgrade --target 013
 - 권장 표본수 설정 이력 추적
 - 표본수 설정 시 모집단 크기 자동 확인
 - 권장 표본수 설정 권한 세분화 (admin vs super admin)
+---
+
+## 2025-11-19: Flask 템플릿 캐싱 문제 해결
+
+### 문제 상황
+
+**증상**:
+- [link7_detail.jsp](templates/link7_detail.jsp) 파일을 수정했지만 브라우저에서 이전 코드가 계속 실행됨
+- 콘솔에 파일에 존재하지 않는 텍스트 (`"다이얼 비우기"`)가 출력됨
+- 하드 리프레시(Ctrl+Shift+R), 시크릿 모드에서도 동일한 문제 발생
+- 서버 재시작 후에도 문제 지속
+
+**수정된 코드 (실행 안 됨)**:
+```javascript
+// link7_detail.jsp 라인 1234-1250
+if (recommendedSampleSize > 0) {
+    const sampleSizeEl = document.getElementById('sample_size');
+    if (sampleSizeEl) {
+        sampleSizeEl.value = recommendedSampleSize;
+        console.log('[openOperationEvaluationModal] sample_size 필드에 설정:', recommendedSampleSize);
+        
+        // change 이벤트 발생시켜 onchange 핸들러 실행 (generateSampleLines() 호출)
+        const event = new Event('change', { bubbles: true });
+        sampleSizeEl.dispatchEvent(event);
+        console.log('[openOperationEvaluationModal] change 이벤트 발생 완료');
+    }
+}
+```
+
+**구 코드 (계속 실행됨)**:
+```javascript
+console.log('[openOperationEvaluationModal] 샘플 데이터 없음 (0개) - 다이얼 비우기');
+```
+
+### 근본 원인 분석
+
+**Flask 템플릿 캐싱**:
+- Flask는 기본적으로 Jinja2 템플릿을 컴파일하여 캐싱함
+- `TEMPLATES_AUTO_RELOAD` 설정이 없으면 템플릿 파일 변경을 감지하지 않음
+- Python `__pycache__` 디렉토리에 컴파일된 템플릿이 저장됨
+- 서버 재시작만으로는 캐시가 초기화되지 않음
+
+**브라우저 캐싱이 아닌 이유**:
+1. API 직접 호출 시 정상 응답: `{"samples":[],"success":true}`
+2. 시크릿 모드에서도 동일한 문제
+3. 하드 리프레시로도 해결 안 됨
+4. 파일에 존재하지 않는 코드가 실행됨 (서버 측 캐싱 증거)
+
+### 해결 방법
+
+#### 1. Flask 템플릿 자동 리로드 설정
+
+**파일**: [snowball.py:48-53](snowball.py#L48-L53)
+
+```python
+app.config.update(
+    SESSION_COOKIE_SECURE=is_production,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_MAX_AGE=timedelta(hours=24).total_seconds(),  # 24시간
+    # 템플릿 자동 리로드 설정 (개발 환경)
+    TEMPLATES_AUTO_RELOAD=True  # 추가
+)
+
+# Jinja2 템플릿 자동 리로드 강제 설정
+app.jinja_env.auto_reload = True  # 추가
+```
+
+**효과**:
+- 템플릿 파일 변경 시 자동으로 재컴파일
+- 서버 재시작 없이도 템플릿 변경사항 즉시 반영
+- 개발 환경에서 빠른 반복 개발 가능
+
+#### 2. Python 캐시 디렉토리 삭제
+
+```bash
+cd /c/Pythons/snowball
+rm -rf ./__pycache__ ./migrations/__pycache__ ./migrations/versions/__pycache__
+```
+
+**이유**:
+- 기존 컴파일된 템플릿 파일 제거
+- Python bytecode 캐시 초기화
+- 깨끗한 상태에서 재시작
+
+#### 3. 서버 프로세스 완전 종료 및 재시작
+
+```bash
+# 기존 Flask 서버 프로세스 찾기
+netstat -ano | findstr :5001  # PID: 32068
+
+# 프로세스 강제 종료
+taskkill //F //PID 32068
+
+# 새 서버 시작
+python snowball.py
+```
+
+**확인**:
+- 새 프로세스 PID: 36872
+- 서버 주소: http://127.0.0.1:5001, http://192.168.0.49:5001
+
+### 적용 결과
+
+**서버 시작 로그**:
+```
+세션 설정 - Production: False, Secure: False
+Flask 앱 시작 - Secret Key: 150606...
+환경 변수(초기 로드 전) - PYTHONANYWHERE_AUTH_CODE: undefined
+환경 변수 - PYTHONANYWHERE_AUTH_CODE: 150606
+ * Serving Flask app 'snowball'
+ * Debug mode: off
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.49:5001
+```
+
+**예상 동작**:
+1. 브라우저에서 http://127.0.0.1:5001/operation-evaluation/rcm/18 접속
+2. C-EL-RA-09-01 통제의 "평가" 버튼 클릭
+3. 콘솔에 새로운 로그 출력:
+   - `[openOperationEvaluationModal] sample_size 필드에 설정: 4`
+   - `[openOperationEvaluationModal] change 이벤트 발생 완료`
+4. 4개의 빈 샘플 라인 자동 생성
+
+### 참고 파일
+
+- [snowball.py](snowball.py) - Flask 설정 파일
+- [templates/link7_detail.jsp](templates/link7_detail.jsp) - 운영평가 템플릿
+- [snowball_link7.py:244](snowball_link7.py#L244) - link7_detail.jsp 렌더링 라우트
+
+### 교훈
+
+1. **템플릿 캐싱 설정의 중요성**:
+   - 개발 환경에서는 항상 `TEMPLATES_AUTO_RELOAD=True` 설정
+   - 운영 환경에서는 성능을 위해 캐싱 활성화 (False)
+
+2. **브라우저 vs 서버 캐싱 구분**:
+   - 파일에 없는 코드가 실행되면 서버 측 캐싱 문제
+   - API 직접 호출로 서버/클라이언트 문제 구분 가능
+
+3. **캐시 초기화 완전성**:
+   - 서버 재시작만으로는 불충분
+   - `__pycache__` 디렉토리도 함께 삭제 필요
+   - 프로세스 완전 종료 후 재시작
+
+4. **디버깅 방법**:
+   - `grep` 명령으로 파일 내 텍스트 존재 여부 확인
+   - API 직접 테스트로 서버 로직 검증
+   - 프로세스 ID 변경 확인으로 재시작 검증
+
+### 향후 권장사항
+
+**개발 환경 설정**:
+```python
+# snowball.py
+if not is_production:
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # 정적 파일도 캐싱 안 함
+    app.jinja_env.auto_reload = True
+```
+
+**운영 환경 설정**:
+```python
+# snowball.py
+if is_production:
+    app.config['TEMPLATES_AUTO_RELOAD'] = False  # 성능 향상
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 3600  # 1시간 캐싱
+```
+
+### 관련 이슈
+
+- 이전 문제: 브라우저 캐시로 오인했으나 실제로는 서버 측 템플릿 캐싱
+- 사용자 피드백: "캐시때문에 문제가 된적이 없다니까" - 정확한 지적이었음
+- 해결 키워드: Flask TEMPLATES_AUTO_RELOAD, Jinja2 auto_reload, `__pycache__`

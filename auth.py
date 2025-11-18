@@ -1324,22 +1324,91 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
 
             # 새 샘플 데이터 삽입
             for sample in sample_lines:
+                attributes = sample.get('attributes', {})
                 conn.execute('''
                     INSERT INTO sb_operation_evaluation_sample (
-                        line_id, sample_number, evidence, has_exception, mitigation
-                    ) VALUES (%s, %s, %s, %s, %s)
+                        line_id, sample_number, evidence, has_exception, mitigation,
+                        attribute0, attribute1, attribute2, attribute3, attribute4,
+                        attribute5, attribute6, attribute7, attribute8, attribute9
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (
                     line_id,
                     sample.get('sample_number'),
                     sample.get('evidence', ''),
                     1 if sample.get('result') == 'exception' else 0,
-                    sample.get('mitigation', '')
+                    sample.get('mitigation', ''),
+                    attributes.get('attribute0'), attributes.get('attribute1'),
+                    attributes.get('attribute2'), attributes.get('attribute3'),
+                    attributes.get('attribute4'), attributes.get('attribute5'),
+                    attributes.get('attribute6'), attributes.get('attribute7'),
+                    attributes.get('attribute8'), attributes.get('attribute9')
                 ))
 
         # Header의 last_updated 갱신 및 상태 업데이트
         update_operation_evaluation_progress(conn, header_id)
 
         conn.commit()
+
+def update_operation_evaluation_progress(conn, header_id):
+    """운영평가 진행률 업데이트"""
+    # 완료된 평가 수 계산 (evaluation_date 기준)
+    result = conn.execute('''
+        SELECT COUNT(*) as evaluated_count
+        FROM sb_operation_evaluation_line
+        WHERE header_id = %s AND evaluation_date IS NOT NULL
+    ''', (header_id,)).fetchone()
+    
+    evaluated_count = result['evaluated_count'] if result else 0
+    
+    # 헤더 정보 조회
+    header = conn.execute('''
+        SELECT total_controls FROM sb_operation_evaluation_header
+        WHERE header_id = %s
+    ''', (header_id,)).fetchone()
+    
+    total_controls = header['total_controls'] if header and header['total_controls'] else 0
+    
+    # total_controls가 0이면 설계평가에서 운영평가 대상 통제 수를 계산
+    if total_controls == 0:
+        # 설계평가 세션에서 운영평가 대상 통제 수 계산
+        design_session_result = conn.execute('''
+            SELECT h.design_evaluation_session, h.rcm_id
+            FROM sb_operation_evaluation_header h
+            WHERE h.header_id = %s
+        ''', (header_id,)).fetchone()
+        
+        if design_session_result:
+            design_session = design_session_result['design_evaluation_session']
+            rcm_id = design_session_result['rcm_id']
+            
+            # 설계평가에서 '적정'으로 평가된 핵심통제 수 계산
+            total_result = conn.execute('''
+                SELECT COUNT(DISTINCT d.detail_id) as total
+                FROM sb_rcm_detail d
+                JOIN sb_design_evaluation_line del ON d.control_code = del.control_code
+                JOIN sb_design_evaluation_header deh ON del.header_id = deh.header_id
+                WHERE d.rcm_id = %s
+                  AND deh.rcm_id = %s
+                  AND deh.evaluation_session = %s
+                  AND (d.key_control = 'Y' OR d.key_control = '핵심' OR d.key_control = 'KEY')
+                  AND del.overall_effectiveness = 'effective'
+            ''', (rcm_id, rcm_id, design_session)).fetchone()
+            
+            total_controls = total_result['total'] if total_result else 0
+    
+    progress = (evaluated_count / total_controls * 100) if total_controls > 0 else 0
+    status = 'COMPLETED' if progress >= 100 and total_controls > 0 else 'IN_PROGRESS'
+    
+    # 헤더 업데이트 (completed_date는 수동으로만 설정)
+    conn.execute('''
+        UPDATE sb_operation_evaluation_header
+        SET evaluated_controls = %s,
+            total_controls = %s,
+            progress_percentage = %s,
+            evaluation_status = %s,
+            last_updated = CURRENT_TIMESTAMP
+        WHERE header_id = %s
+    ''', (evaluated_count, total_controls, progress, status, header_id))
 
 def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_session, design_evaluation_session):
     """운영평가 헤더 생성 또는 조회"""
@@ -1406,17 +1475,17 @@ def get_operation_evaluation_samples(line_id):
     with get_db() as conn:
         # 실제 실행될 SQL 쿼리 출력 (파라미터 바인딩 포함)
         sample_query = '''
-            SELECT sample_id, sample_number, evidence, has_exception, mitigation,
-                   request_number, requester_name, requester_department,
-                   approver_name, approver_department, approval_date
+            SELECT sample_id, sample_number, evidence, has_exception, mitigation, request_number,
+                   requester_name, requester_department, approver_name, approver_department, approval_date,
+                   attribute0, attribute1, attribute2, attribute3, attribute4,
+                   attribute5, attribute6, attribute7, attribute8, attribute9
             FROM sb_operation_evaluation_sample
             WHERE line_id = %s
             ORDER BY sample_number
         '''
         # 쿼리를 한 줄로 변환하여 출력
-        query_oneline = ' '.join(sample_query.split())
+        query_oneline = ' '.join(sample_query.replace('\n', ' ').split())
         print(f'[SQL Query] {query_oneline} -- Parameters: line_id={line_id}')
-        print(f'[SQL Query - Expanded] SELECT sample_id, sample_number, evidence, has_exception, mitigation, request_number, requester_name, requester_department, approver_name, approver_department, approval_date FROM sb_operation_evaluation_sample WHERE line_id = {line_id} ORDER BY sample_number')
 
         samples = conn.execute(sample_query, (line_id,)).fetchall()
 
@@ -1432,17 +1501,21 @@ def get_operation_evaluation_samples(line_id):
         # 샘플 데이터를 sample_lines 형식으로 변환
         sample_lines = []
         for sample in samples:
+            attributes = {f'attribute{i}': sample[f'attribute{i}'] for i in range(10) if sample[f'attribute{i}'] is not None}
             sample_lines.append({
                 'sample_number': sample['sample_number'],
                 'evidence': sample['evidence'],
                 'result': 'exception' if sample['has_exception'] else 'no_exception',
                 'mitigation': sample['mitigation'] or '',
+                # 수동통제용 필드
                 'request_number': sample['request_number'],
                 'requester_name': sample['requester_name'],
                 'requester_department': sample['requester_department'],
                 'approver_name': sample['approver_name'],
                 'approver_department': sample['approver_department'],
-                'approval_date': sample['approval_date']
+                'approval_date': sample['approval_date'],
+                # 범용 속성
+                'attributes': attributes
             })
 
         return sample_lines

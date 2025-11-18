@@ -12,8 +12,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         #rcmTable {
-            table-layout: fixed;
-            width: 100%;
+            table-layout: auto; /* 내용에 따라 너비 자동 조정 */
+            width: 100%; /* 부모 요소에 맞춤 */
         }
         #rcmTable th, #rcmTable td {
             word-wrap: break-word;
@@ -21,10 +21,7 @@
             vertical-align: top;
         }
         .text-truncate-custom {
-            display: block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            /* 이 클래스는 더 이상 사용되지 않으므로 스타일을 제거하거나 비워둡니다. */
         }
         /* Chrome, Safari, Edge, Opera - 숫자 입력 필드 화살표 제거 */
         input[type=number]::-webkit-inner-spin-button,
@@ -50,6 +47,41 @@
             background-color: #fff;
             box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
         }
+
+        /* 컬럼 고정 스타일 */
+        #rcmTable th:nth-child(1),
+        #rcmTable td:nth-child(1) {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+        }
+
+        #rcmTable th:nth-child(2),
+        #rcmTable td:nth-child(2) {
+            position: sticky;
+            left: 80px; /* 첫 번째 컬럼의 min-width와 동일하게 설정 */
+            z-index: 2;
+        }
+
+        #rcmTable th:nth-child(9),
+        #rcmTable td:nth-child(9) {
+            position: sticky;
+            right: 0;
+            z-index: 2;
+        }
+
+        /* 고정된 헤더의 배경색을 지정하여 스크롤 시 내용이 비치지 않도록 함 */
+        #rcmTable thead th {
+            background-color: #f8f9fa; /* thead 배경색 */
+        }
+
+        /* 고정된 바디 셀의 배경색을 지정 (줄무늬 테이블 고려) */
+        #rcmTable tbody tr td:nth-child(1), 
+        #rcmTable tbody tr td:nth-child(2),
+        #rcmTable tbody tr td:nth-child(9) { background-color: #fff; }
+        #rcmTable tbody tr:nth-of-type(odd) td:nth-child(1), 
+        #rcmTable tbody tr:nth-of-type(odd) td:nth-child(2),
+        #rcmTable tbody tr:nth-of-type(odd) td:nth-child(9) { background-color: #f9f9f9; }
 
         .editable-cell.modified {
             background-color: #fff3cd !important;
@@ -111,14 +143,6 @@
                                         <th>설명:</th>
                                         <td>{{ rcm_info.description or '없음' }}</td>
                                     </tr>
-                                    <tr>
-                                        <th>내 권한:</th>
-                                        <td>
-                                            <span class="badge bg-{{ 'danger' if rcm_info.permission_type == 'admin' else 'success' }}">
-                                                {{ '관리자' if rcm_info.permission_type == 'admin' else '읽기' }}
-                                            </span>
-                                        </td>
-                                    </tr>
                                 </table>
                             </div>
                             <div class="col-md-6">
@@ -150,11 +174,8 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="fas fa-list me-2"></i>통제 상세 목록</h5>
                         <div>
-                            <button class="btn btn-sm btn-success me-2" id="saveTestProcedureBtn" onclick="saveTestProcedure()" style="display: none;">
-                                <i class="fas fa-save me-1"></i>테스트절차 저장
-                            </button>
-                            <button class="btn btn-sm btn-outline-primary me-2" id="saveAllSampleSizesBtn" onclick="saveAllSampleSizes()">
-                                <i class="fas fa-save me-1"></i>표본수 저장
+                            <button class="btn btn-sm btn-success me-2" id="saveAllChangesBtn" onclick="saveAllChanges()">
+                                <i class="fas fa-save me-1"></i>변경사항 저장
                             </button>
                             <button class="btn btn-sm btn-outline-secondary me-2" onclick="exportToExcel()">
                                 <i class="fas fa-file-excel me-1"></i>Excel 다운로드
@@ -169,19 +190,19 @@
                     <div class="card-body">
                         {% if rcm_details %}
                         <div class="table-responsive" style="overflow-x: auto;">
-                            <table class="table table-striped table-hover" id="rcmTable" style="min-width: 1200px;">
+                            <table class="table table-striped table-hover" id="rcmTable" style="min-width: 1800px;">
                                 <thead>
                                     <tr>
                                         <th style="min-width: 80px;">통제코드</th>
                                         <th style="min-width: 150px;">통제명</th>
                                         <th style="min-width: 200px;">통제활동 설명</th>
                                         <th style="min-width: 100px;">통제주기</th>
-                                        <th style="min-width: 100px;">통제유형</th>
                                         <th style="min-width: 100px;">통제구분</th>
                                         <th style="min-width: 90px;">핵심통제</th>
                                         <th style="min-width: 120px;">모집단</th>
-                                        <th style="min-width: 180px;">테스트절차</th>
+                                        <th style="min-width: 540px;">테스트절차</th>
                                         <th style="min-width: 80px;">표본수</th>
+                                        <th style="min-width: 120px;">Attribute 설정</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -208,11 +229,6 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="text-truncate-custom" title="{{ detail.control_type_name or detail.control_type or '-' }}">
-                                                {{ detail.control_type_name or detail.control_type or '-' }}
-                                            </span>
-                                        </td>
-                                        <td>
                                             <span class="text-truncate-custom" title="{{ detail.control_nature_name or detail.control_nature or '-' }}">
                                                 {{ detail.control_nature_name or detail.control_nature or '-' }}
                                             </span>
@@ -232,20 +248,13 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <div class="editable-cell"
-                                                 contenteditable="true"
-                                                 data-field="test_procedure"
-                                                 data-detail-id="{{ detail.detail_id }}"
-                                                 data-original="{{ detail.test_procedure or '' }}"
-                                                 title="{{ detail.test_procedure or '' }}"
-                                                 style="padding: 4px; border: 1px solid transparent; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                {{ detail.test_procedure or '-' }}
-                                            </div>
+                                            <div style="display: block; width: 100%; padding: 4px; min-height: 2.5em; white-space: pre-wrap; word-wrap: break-word; max-height: 150px; overflow-y: auto;">{{ detail.test_procedure or '-' }}</div>
                                         </td>
                                         <td class="text-center">
                                             <input type="text"
                                                    class="form-control form-control-sm text-center sample-size-input"
                                                    data-detail-id="{{ detail.detail_id if detail.detail_id is not none else '' }}"
+                                                   data-field="recommended_sample_size"
                                                    data-control-code="{{ detail.control_code }}"
                                                    data-control-frequency="{{ detail.control_frequency or '' }}"
                                                    data-original-value="{{ detail.recommended_sample_size if detail.recommended_sample_size is not none else '' }}"
@@ -254,6 +263,23 @@
                                                    placeholder="자동"
                                                    title="0: 모집단 업로드 모드"
                                                    style="width: 60px;">
+                                        </td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    onclick="openAttributeModal('{{ detail.detail_id }}', '{{ detail.control_code }}', '{{ detail.control_name }}')">
+                                                <i class="fas fa-cog me-1"></i>설정
+                                            </button>
+                                            <div id="attribute-summary-{{ detail.detail_id }}" class="mt-1 small text-muted">
+                                                {% set attr_count = 0 %}
+                                                {% for i in range(10) %}
+                                                    {% if detail['attribute' ~ i] %}
+                                                        {% set attr_count = attr_count + 1 %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% if attr_count > 0 %}
+                                                    <span class="badge bg-info">{{ attr_count }}개 설정됨</span>
+                                                {% endif %}
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -268,6 +294,79 @@
                         </div>
                         {% endif %}
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attribute 설정 모달 -->
+    <div class="modal fade" id="attributeModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-cog me-2"></i>Attribute 설정
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>통제코드:</strong> <code id="modal-control-code"></code><br>
+                        <strong>통제명:</strong> <span id="modal-control-name"></span>
+                    </div>
+                    <hr>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        증빙 항목으로 사용할 attribute 필드를 설정하세요. (예: 완료예정일, 완료여부, 승인자 등)
+                    </div>
+                    <div class="mb-3">
+                        <label for="population-attr-count" class="form-label">
+                            <strong>모집단 항목 수</strong>
+                            <small class="text-muted">(attribute0부터 시작, 나머지는 증빙 항목)</small>
+                        </label>
+                        <input type="number"
+                               class="form-control form-control-sm"
+                               id="population-attr-count"
+                               min="1"
+                               max="10"
+                               value="2"
+                               style="width: 100px;"
+                               placeholder="예: 2">
+                        <small class="text-muted">
+                            예: 2로 설정 시 attribute0~1은 모집단, attribute2~9는 증빙
+                        </small>
+                    </div>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th width="20%">Attribute</th>
+                                <th width="80%">필드명</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i in range(10) %}
+                            <tr>
+                                <td><strong>attribute{{ i }}</strong></td>
+                                <td>
+                                    <input type="text"
+                                           class="form-control form-control-sm attribute-input"
+                                           id="attr-input-{{ i }}"
+                                           data-index="{{ i }}"
+                                           placeholder="예: 완료예정일, 완료여부, 승인자 등"
+                                           maxlength="100">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>취소
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="saveAttributes()">
+                        <i class="fas fa-save me-1"></i>저장
+                    </button>
                 </div>
             </div>
         </div>
@@ -332,133 +431,6 @@
             toast.show();
         }
 
-        // 일괄 저장 기능
-        function saveAllSampleSizes() {
-            const saveBtn = document.getElementById('saveAllSampleSizesBtn');
-            const inputs = document.querySelectorAll('.sample-size-input');
-
-            console.log(`[DEBUG] 총 ${inputs.length}개의 입력 필드 발견`);
-
-            // 변경된 항목만 수집
-            const changes = [];
-            inputs.forEach((input, index) => {
-                const detailId = input.getAttribute('data-detail-id');
-                const originalValue = input.getAttribute('data-original-value') || '';
-                const currentValue = input.value || '';
-                const currentValueNum = parseInt(currentValue);
-
-                console.log(`[DEBUG ${index}] detail_id: ${detailId}, originalValue: "${originalValue}", currentValue: "${currentValue}", parsedValue: ${currentValueNum}`);
-
-                // detail_id 유효성 검증
-                if (!detailId || detailId === 'None' || detailId === 'null' || detailId.trim() === '') {
-                    console.error(`[DEBUG ${index}] 유효하지 않은 detail_id:`, detailId);
-                    return;
-                }
-
-                // 값 정규화 (빈 문자열과 null을 동일하게 처리)
-                const normalizedOriginal = originalValue.trim() === '' ? null : originalValue.trim();
-                let normalizedCurrent;
-                if (currentValue.trim() === '') {
-                    normalizedCurrent = null;
-                } else if (!isNaN(currentValueNum) && currentValueNum >= 0 && currentValueNum <= 100) {
-                    // 0~100 사이의 숫자만 허용 (0 포함)
-                    normalizedCurrent = String(currentValueNum);
-                } else {
-                    normalizedCurrent = currentValue.trim();
-                }
-
-                // 값이 변경된 경우만 추가
-                if (normalizedOriginal !== normalizedCurrent) {
-                    console.log(`[변경 감지 ${index}] detail_id: ${detailId}, 원본: "${normalizedOriginal}", 현재: "${normalizedCurrent}"`);
-                    changes.push({
-                        detail_id: detailId,
-                        sample_size: normalizedCurrent !== null ? parseInt(normalizedCurrent) : null
-                    });
-                } else {
-                    console.log(`[변경 없음 ${index}] detail_id: ${detailId}, 원본: "${normalizedOriginal}", 현재: "${normalizedCurrent}"`);
-                }
-            });
-
-            console.log(`[DEBUG] 총 ${changes.length}개의 변경사항 발견`);
-
-            if (changes.length === 0) {
-                showToast('변경된 항목이 없습니다.', 'info');
-                return;
-            }
-
-            // 버튼 비활성화 및 로딩 표시
-            const originalHtml = saveBtn.innerHTML;
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>저장 중...';
-
-            // 모든 변경사항을 순차적으로 저장
-            let successCount = 0;
-            let failCount = 0;
-            const promises = changes.map(change => {
-                return fetch(`/admin/rcm/detail/${change.detail_id}/sample-size`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        recommended_sample_size: change.sample_size
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            try {
-                                return JSON.parse(text);
-                            } catch (e) {
-                                return {
-                                    success: false,
-                                    message: `서버 오류 (${response.status}): ${response.statusText}`
-                                };
-                            }
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        successCount++;
-                        const input = document.querySelector(`.sample-size-input[data-detail-id="${change.detail_id}"]`);
-                        if (input) {
-                            input.setAttribute('data-original-value', change.sample_size || '');
-                        }
-                    } else {
-                        failCount++;
-                        console.error('저장 실패:', data.message || '알 수 없는 오류');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    failCount++;
-                });
-            });
-
-            Promise.all(promises).then(() => {
-                if (failCount === 0) {
-                    saveBtn.classList.remove('btn-outline-primary');
-                    saveBtn.classList.add('btn-success');
-                    saveBtn.innerHTML = '<i class="fas fa-check me-1"></i>저장 완료';
-
-                    showToast(`${successCount}개 항목이 성공적으로 저장되었습니다.`, 'success');
-
-                    setTimeout(() => {
-                        saveBtn.classList.remove('btn-success');
-                        saveBtn.classList.add('btn-outline-primary');
-                        saveBtn.innerHTML = originalHtml;
-                        saveBtn.disabled = false;
-                    }, 2000);
-                } else {
-                    showToast(`저장 완료: ${successCount}개 성공, ${failCount}개 실패`, 'warning');
-                    saveBtn.innerHTML = originalHtml;
-                    saveBtn.disabled = false;
-                }
-            });
-        }
-
         // Excel 다운로드 기능
         function exportToExcel() {
             const table = document.getElementById('rcmTable');
@@ -467,88 +439,7 @@
             XLSX.writeFile(wb, fileName);
         }
 
-        // 테스트절차 인라인 편집 기능
-        const modifiedTestProcedures = new Map();
-
-        function updateSaveButton() {
-            const saveBtn = document.getElementById('saveTestProcedureBtn');
-            if (modifiedTestProcedures.size > 0) {
-                saveBtn.style.display = 'inline-block';
-            } else {
-                saveBtn.style.display = 'none';
-            }
-        }
-
-        function handleTestProcedureChange(cell) {
-            const detailId = cell.dataset.detailId;
-            const originalValue = cell.dataset.original;
-            const newValue = cell.textContent.trim() === '-' ? '' : cell.textContent.trim();
-
-            if (newValue !== originalValue) {
-                cell.classList.add('modified');
-                modifiedTestProcedures.set(detailId, newValue);
-            } else {
-                cell.classList.remove('modified');
-                modifiedTestProcedures.delete(detailId);
-            }
-            updateSaveButton();
-        }
-
-        async function saveTestProcedure() {
-            if (modifiedTestProcedures.size === 0) {
-                return;
-            }
-
-            const saveBtn = document.getElementById('saveTestProcedureBtn');
-            const originalHtml = saveBtn.innerHTML;
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>저장 중...';
-
-            try {
-                const updates = [];
-                modifiedTestProcedures.forEach((value, detailId) => {
-                    updates.push({
-                        detail_id: parseInt(detailId),
-                        fields: {
-                            test_procedure: value
-                        }
-                    });
-                });
-
-                const response = await fetch('/api/rcm/update_controls', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ updates: updates })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    updates.forEach(update => {
-                        const cell = document.querySelector(`.editable-cell[data-detail-id="${update.detail_id}"]`);
-                        if (cell) {
-                            cell.classList.remove('modified');
-                            cell.dataset.original = update.fields.test_procedure;
-                        }
-                    });
-
-                    modifiedTestProcedures.clear();
-                    updateSaveButton();
-                    showToast('테스트절차가 저장되었습니다.', 'success');
-                } else {
-                    showToast(result.message || '저장에 실패했습니다.', 'error');
-                }
-            } catch (error) {
-                console.error('Save error:', error);
-                showToast('저장 중 오류가 발생했습니다.', 'error');
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = originalHtml;
-            }
-        }
-
+        // 변경사항 통합 저장 기능
         // 툴팁 초기화
         document.addEventListener('DOMContentLoaded', function() {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
@@ -556,12 +447,17 @@
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
 
-            // 테스트절차 편집 가능 셀 이벤트 리스너
             document.querySelectorAll('.editable-cell').forEach(cell => {
-                cell.addEventListener('input', function() {
-                    handleTestProcedureChange(this);
+                cell.addEventListener('keydown', function(e) {
+                    // Enter 키를 누르면 줄바꿈 문자를 삽입
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault(); // 기본 동작(div/p 태그 생성) 방지
+                        document.execCommand('insertLineBreak');
+                    }
                 });
+            });
 
+            document.querySelectorAll('.editable-cell').forEach(cell => {
                 cell.addEventListener('blur', function() {
                     if (this.textContent.trim() === '') {
                         this.textContent = '-';
@@ -575,9 +471,7 @@
                 });
             });
 
-            // 각 입력란에 이벤트 리스너 추가
             document.querySelectorAll('.sample-size-input').forEach(input => {
-                // placeholder를 자동 계산된 값으로 설정
                 if (!input.value) {
                     const controlFrequency = input.getAttribute('data-control-frequency');
                     const defaultSize = getDefaultSampleSize(controlFrequency);
@@ -612,6 +506,190 @@
                 });
             });
         });
+
+        async function saveAllChanges() {
+            const saveBtn = document.getElementById('saveAllChangesBtn');
+            const originalHtml = saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>저장 중...';
+
+            try {
+                const dataToSave = new Map();
+
+                // 모든 '테스트 절차' 데이터 수집
+                document.querySelectorAll('.editable-cell[data-field="test_procedure"]').forEach(cell => {
+                    const detailId = cell.dataset.detailId;
+                    const value = cell.textContent.trim() === '-' ? '' : cell.textContent.trim();
+                    if (!dataToSave.has(detailId)) dataToSave.set(detailId, {});
+                    dataToSave.get(detailId).test_procedure = value;
+                });
+
+                // 모든 '표본수' 데이터 수집
+                document.querySelectorAll('.sample-size-input[data-field="recommended_sample_size"]').forEach(input => {
+                    const detailId = input.dataset.detailId;
+                    const value = input.value;
+                    if (!dataToSave.has(detailId)) dataToSave.set(detailId, {});
+                    dataToSave.get(detailId).recommended_sample_size = value;
+                });
+
+                const updates = [];
+                dataToSave.forEach((fields, detailId) => {
+                    updates.push({
+                        detail_id: parseInt(detailId),
+                        fields: fields
+                    });
+                });
+
+                if (updates.length === 0) {
+                    showToast('저장할 데이터가 없습니다.', 'info');
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalHtml;
+                    return;
+                }
+
+                const response = await fetch('/api/rcm/update_controls', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ updates: updates })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast('변경사항이 저장되었습니다.', 'success');
+                } else {
+                    showToast(result.message || '저장에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('저장 중 오류가 발생했습니다.', 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalHtml;
+            }
+        }
+
+        // Attribute 설정 모달 관련 변수
+        let currentDetailId = null;
+        let attributeModalInstance = null;
+
+        // Attribute 모달 열기
+        function openAttributeModal(detailId, controlCode, controlName) {
+            currentDetailId = detailId;
+
+            // 모달 정보 표시
+            document.getElementById('modal-control-code').textContent = controlCode;
+            document.getElementById('modal-control-name').textContent = controlName;
+
+            // 기존 attribute 값 로드
+            loadAttributes(detailId);
+
+            // 모달 표시
+            const modalEl = document.getElementById('attributeModal');
+            if (!attributeModalInstance) {
+                attributeModalInstance = new bootstrap.Modal(modalEl);
+            }
+            attributeModalInstance.show();
+        }
+
+        // 기존 attribute 값 로드
+        function loadAttributes(detailId) {
+            fetch(`/api/rcm/detail/${detailId}/attributes`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const attributes = data.attributes || {};
+
+                        // attribute 필드 로드
+                        for (let i = 0; i < 10; i++) {
+                            const input = document.getElementById(`attr-input-${i}`);
+                            if (input) {
+                                input.value = attributes[`attribute${i}`] || '';
+                            }
+                        }
+
+                        // population_attribute_count 로드
+                        const popCountInput = document.getElementById('population-attr-count');
+                        if (popCountInput) {
+                            popCountInput.value = data.population_attribute_count || 2;
+                        }
+                    } else {
+                        console.error('Failed to load attributes:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading attributes:', error);
+                });
+        }
+
+        // Attribute 저장
+        function saveAttributes() {
+            if (!currentDetailId) {
+                showToast('오류: 통제 ID가 없습니다.', 'error');
+                return;
+            }
+
+            // attribute 값 수집
+            const attributes = {};
+            for (let i = 0; i < 10; i++) {
+                const input = document.getElementById(`attr-input-${i}`);
+                if (input && input.value.trim()) {
+                    attributes[`attribute${i}`] = input.value.trim();
+                }
+            }
+
+            // population_attribute_count 수집
+            const popCountInput = document.getElementById('population-attr-count');
+            const populationAttributeCount = popCountInput ? parseInt(popCountInput.value) : 2;
+
+            // 서버에 저장
+            fetch(`/api/rcm/detail/${currentDetailId}/attributes`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    attributes,
+                    population_attribute_count: populationAttributeCount
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Attribute 설정이 저장되었습니다.', 'success');
+
+                    // 모달 닫기
+                    if (attributeModalInstance) {
+                        attributeModalInstance.hide();
+                    }
+
+                    // 요약 업데이트
+                    updateAttributeSummary(currentDetailId, attributes);
+                } else {
+                    showToast('저장 실패: ' + (data.message || '알 수 없는 오류'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving attributes:', error);
+                showToast('저장 중 오류가 발생했습니다.', 'error');
+            });
+        }
+
+        // Attribute 요약 업데이트
+        function updateAttributeSummary(detailId, attributes) {
+            const summaryEl = document.getElementById(`attribute-summary-${detailId}`);
+            if (!summaryEl) return;
+
+            const count = Object.keys(attributes).length;
+            if (count > 0) {
+                summaryEl.innerHTML = `<span class="badge bg-info">${count}개 설정됨</span>`;
+            } else {
+                summaryEl.innerHTML = '';
+            }
+        }
+
     </script>
 </body>
 </html>

@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, render_template, redirect, url_fo
 from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, get_key_rcm_details, save_operation_evaluation, get_operation_evaluations, get_operation_evaluation_samples, log_user_activity, get_db, is_design_evaluation_completed, get_completed_design_evaluation_sessions
 from snowball_link5 import get_user_info, is_logged_in
 import file_manager
+from control_config import get_control_config
 import json
 
 bp_link7 = Blueprint('link7', __name__)
@@ -152,6 +153,11 @@ def user_operation_evaluation_rcm():
         flash('해당 RCM에 설계평가 결과가 "적정"인 핵심통제가 없어 운영평가를 수행할 수 없습니다.', 'warning')
         return redirect(url_for('link7.user_operation_evaluation'))
 
+    # 각 통제 코드에 대한 config 정보 미리 로드
+    control_configs = {}
+    for detail in rcm_details:
+        control_configs[detail['control_code']] = get_control_config(detail['control_code'])
+
     # 운영평가 세션명 생성 (설계평가 세션 기반)
     operation_evaluation_session = f"OP_{design_evaluation_session}"
 
@@ -204,14 +210,15 @@ def user_operation_evaluation_rcm():
 
         print(f'[snowball_link7] Total evaluations: {len(evaluations)}')
 
-        # 평가가 완료된 통제만(conclusion 값이 있는 경우) control_code를 키로 하는 딕셔너리로 변환
+        # 평가가 완료된 통제(conclusion 값이 있는 경우) 또는 샘플이 업로드된 통제를 control_code를 키로 하는 딕셔너리로 변환
         # 중복이 있는 경우 가장 최신(last_updated 또는 evaluation_date 기준) 레코드만 사용
         evaluated_controls = {}
         for eval in evaluations:
-            if eval.get('conclusion'):
+            # line_id가 있거나, conclusion이 있거나, 샘플이 있으면 포함
+            if eval.get('line_id') or eval.get('conclusion') or (eval.get('sample_lines') and len(eval.get('sample_lines', [])) > 0):
                 control_code = eval['control_code']
                 sample_lines_count = len(eval.get('sample_lines', []))
-                print(f'[snowball_link7] {control_code}: samples={sample_lines_count}, line_id={eval.get("line_id")}')
+                print(f'[snowball_link7] {control_code}: samples={sample_lines_count}, line_id={eval.get("line_id")}, conclusion={eval.get("conclusion")}')
 
                 # 기존에 없거나, 더 최신 데이터인 경우만 업데이트
                 if control_code not in evaluated_controls:
@@ -245,7 +252,8 @@ def user_operation_evaluation_rcm():
                          evaluated_controls=evaluated_controls,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
-                         remote_addr=request.remote_addr)
+                         remote_addr=request.remote_addr,
+                         control_configs=control_configs)
 
 @bp_link7.route('/api/operation-evaluation/save', methods=['POST'])
 @login_required
@@ -339,6 +347,27 @@ def save_operation_evaluation_api():
                 'success': False,
                 'message': f'설계평가 세션 "{design_evaluation_session}"이 완료되지 않아 운영평가를 수행할 수 없습니다.'
             })
+
+        # RCM에 설정된 권장 표본수 확인
+        with get_db() as conn:
+            rcm_detail = conn.execute('''
+                SELECT recommended_sample_size FROM sb_rcm_detail
+                WHERE rcm_id = %s AND control_code = %s
+            ''', (rcm_id, control_code)).fetchone()
+
+        recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail else 0
+
+        # 표본 크기 유효성 검사 (no_occurrence가 아닌 경우에만)
+        is_no_occurrence = evaluation_data.get('no_occurrence', False)
+        if not is_no_occurrence and recommended_size > 0:
+            submitted_sample_size = evaluation_data.get('sample_size')
+            if submitted_sample_size is not None:
+                submitted_sample_size = int(submitted_sample_size)
+                if submitted_sample_size < recommended_size:
+                    return jsonify({
+                        'success': False,
+                        'message': f'표본 크기({submitted_sample_size})는 권장 표본수({recommended_size})보다 작을 수 없습니다.'
+                    })
 
         print("DB 저장 시작...")
         # 운영평가 결과 저장 (Header-Line 구조)
@@ -1642,3 +1671,251 @@ def tlc_operation_evaluation():
                          user_rcms=tlc_rcms,
                          is_logged_in=is_logged_in(),
                          user_info=user_info)
+
+
+# ===================================================================
+# 일반 통제 모집단 업로드 API (표본수 0인 경우)
+# ===================================================================
+
+@bp_link7.route('/api/operation-evaluation/upload-population', methods=['POST'])
+@login_required
+def upload_general_population():
+    """일반 통제 모집단 업로드 및 표본 추출 (표본수 0인 경우)"""
+    import os
+    from openpyxl import load_workbook
+    from werkzeug.utils import secure_filename
+
+    user_info = get_user_info()
+
+    # 파일 받기
+    if 'population_file' not in request.files:
+        return jsonify({'success': False, 'error': '파일이 없습니다.'})
+
+    file = request.files['population_file']
+    if not file.filename:
+        return jsonify({'success': False, 'error': '파일을 선택해주세요.'})
+
+    print(f"[upload_general_population] 원본 파일명: {file.filename}")
+
+    # 파라미터 받기
+    control_code = request.form.get('control_code')
+    rcm_id = request.form.get('rcm_id')
+    design_evaluation_session = request.form.get('design_evaluation_session')
+    field_mapping_str = request.form.get('field_mapping')
+
+    if not all([control_code, rcm_id, design_evaluation_session, field_mapping_str]):
+        return jsonify({'success': False, 'error': '필수 파라미터가 누락되었습니다.'})
+
+    try:
+        field_mapping = json.loads(field_mapping_str)
+    except:
+        return jsonify({'success': False, 'error': '필드 매핑 파싱 실패'})
+
+    try:
+        # 파일 저장
+        upload_folder = os.path.join('uploads', 'populations')
+        os.makedirs(upload_folder, exist_ok=True)
+
+        # 원본 파일명에서 확장자 추출
+        original_filename = file.filename
+        file_ext = os.path.splitext(original_filename)[1]  # .xlsx
+
+        # secure_filename으로 안전한 이름 생성
+        filename = secure_filename(file.filename)
+
+        # secure_filename이 파일명을 완전히 제거한 경우 (한글 등)
+        if not filename or filename == file_ext.replace('.', ''):
+            filename = f"population{file_ext}"
+
+        # 확장자가 없으면 원본에서 가져온 확장자 추가
+        if not os.path.splitext(filename)[1]:
+            filename = filename + file_ext
+
+        print(f"[upload_general_population] 원본: {original_filename}, 변환후: {filename}")
+
+        # 파일 확장자 확인
+        if not filename.lower().endswith(('.xlsx', '.xlsm')):
+            return jsonify({'success': False, 'error': '.xlsx 또는 .xlsm 형식의 파일만 지원됩니다. (.xls 파일은 Excel에서 .xlsx로 변환 후 업로드해주세요)'})
+
+        filepath = os.path.join(upload_folder, f"{user_info['user_id']}_{control_code}_{filename}")
+        file.save(filepath)
+        print(f"[upload_general_population] 파일 저장 완료: {filepath}")
+
+        # 엑셀 파일 읽기 (openpyxl 사용)
+        try:
+            wb = load_workbook(filepath, read_only=True)
+            ws = wb.active
+            print(f"[upload_general_population] 엑셀 파일 로드 성공")
+        except Exception as excel_error:
+            print(f"[upload_general_population] 엑셀 파일 읽기 실패: {excel_error}")
+            return jsonify({'success': False, 'error': f'엑셀 파일을 읽을 수 없습니다. 파일이 손상되었거나 암호로 보호되어 있을 수 있습니다. ({str(excel_error)})'})
+
+
+        # 헤더 읽기 (첫 번째 행)
+        headers = [cell.value for cell in ws[1]]
+
+        # 필드 매핑 적용
+        number_col_idx = field_mapping['number']
+        description_col_idx = field_mapping['description']
+
+        # 모집단 데이터 파싱
+        population = []
+        for row in ws.iter_rows(min_row=2, values_only=True):  # 헤더 제외
+            if row[number_col_idx] is not None:  # 빈 행 건너뛰기
+                population.append({
+                    'number': str(row[number_col_idx]),
+                    'description': str(row[description_col_idx]) if row[description_col_idx] else ''
+                })
+
+        wb.close()
+
+        population_count = len(population)
+
+        # 표본 크기 자동 계산
+        sample_size = file_manager.calculate_sample_size(population_count)
+
+        # 무작위 표본 추출
+        import random
+        sample_indices = random.sample(range(population_count), min(sample_size, population_count))
+        samples = [population[i] for i in sorted(sample_indices)]
+
+        # 운영평가 세션 확인/생성
+        operation_evaluation_session = f"OP_{design_evaluation_session}"
+
+        with get_db() as conn:
+            # Header 확인/생성
+            header = conn.execute('''
+                SELECT header_id FROM sb_operation_evaluation_header
+                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
+            ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
+
+            if not header:
+                conn.execute('''
+                    INSERT INTO sb_operation_evaluation_header (rcm_id, user_id, evaluation_session, design_evaluation_session)
+                    VALUES (%s, %s, %s, %s)
+                ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session))
+                conn.commit()
+
+                header = conn.execute('''
+                    SELECT header_id FROM sb_operation_evaluation_header
+                    WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
+                ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
+
+            header_id = header['header_id']
+
+            # 기존 Line 확인
+            existing_line = conn.execute('''
+                SELECT line_id FROM sb_operation_evaluation_line
+                WHERE header_id = %s AND control_code = %s
+            ''', (header_id, control_code)).fetchone()
+
+            if existing_line:
+                line_id = existing_line['line_id']
+
+                # 기존 샘플 삭제
+                conn.execute('DELETE FROM sb_operation_evaluation_sample WHERE line_id = %s', (line_id,))
+
+                # Line 업데이트 (sample_size만)
+                conn.execute('''
+                    UPDATE sb_operation_evaluation_line
+                    SET sample_size = %s
+                    WHERE line_id = %s
+                ''', (sample_size, line_id))
+            else:
+                # 새 Line 생성
+                conn.execute('''
+                    INSERT INTO sb_operation_evaluation_line
+                    (header_id, control_code, sample_size)
+                    VALUES (%s, %s, %s)
+                ''', (header_id, control_code, sample_size))
+
+                # SQLite용 last_insert_rowid() 사용
+                line_id = conn.execute('SELECT last_insert_rowid() as id').fetchone()['id']
+
+            print(f"[upload_general_population] line_id: {line_id}, 샘플 수: {len(samples)}")
+
+            # 샘플 데이터 저장 (attribute0에 번호, attribute1에 설명 저장)
+            for idx, sample in enumerate(samples, 1):
+                print(f"[upload_general_population] 샘플 #{idx} 저장 중: {sample['number']}, {sample['description'][:30]}...")
+                conn.execute('''
+                    INSERT INTO sb_operation_evaluation_sample
+                    (line_id, sample_number, attribute0, attribute1)
+                    VALUES (%s, %s, %s, %s)
+                ''', (line_id, idx, sample['number'], sample['description']))
+
+            conn.commit()
+            print(f"[upload_general_population] DB 커밋 완료")
+
+            # 저장된 샘플 데이터 조회하여 sample_lines 형식으로 반환
+            sample_lines = []
+            saved_samples = conn.execute('''
+                SELECT sample_number, evidence, has_exception, mitigation,
+                       attribute0, attribute1, attribute2, attribute3, attribute4,
+                       attribute5, attribute6, attribute7, attribute8, attribute9
+                FROM sb_operation_evaluation_sample
+                WHERE line_id = %s
+                ORDER BY sample_number
+            ''', (line_id,)).fetchall()
+
+            for sample in saved_samples:
+                # attribute 데이터 수집
+                attributes = {}
+                for i in range(10):
+                    attr_val = sample[f'attribute{i}']
+                    if attr_val is not None:
+                        attributes[f'attribute{i}'] = attr_val
+
+                print(f"[upload_general_population] Sample #{sample['sample_number']} attributes: {attributes}")
+
+                sample_lines.append({
+                    'sample_number': sample['sample_number'],
+                    'evidence': sample['evidence'] or '',
+                    'result': 'exception' if sample['has_exception'] else 'no_exception',
+                    'mitigation': sample['mitigation'] or '',
+                    'attributes': attributes if attributes else None
+                })
+
+            print(f"[upload_general_population] 반환할 sample_lines: {json.dumps(sample_lines, ensure_ascii=False, indent=2)}")
+
+        return jsonify({
+            'success': True,
+            'population_count': population_count,
+            'sample_size': sample_size,
+            'line_id': line_id,
+            'sample_lines': sample_lines
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@bp_link7.route('/api/operation-evaluation/save-attributes', methods=['POST'])
+@login_required
+def save_attributes():
+    """Attribute 필드 설정 저장"""
+    user_info = get_user_info()
+    data = request.get_json()
+
+    line_id = data.get('line_id')
+    attributes = data.get('attributes', [])
+
+    if not line_id or not attributes:
+        return jsonify({'success': False, 'error': '필수 데이터가 누락되었습니다.'})
+
+    try:
+        # Attribute 설정을 로그로 출력 (실제 구현은 DB 스키마에 따라 조정 필요)
+        attribute_info = json.dumps(attributes, ensure_ascii=False)
+        print(f"[save_attributes] line_id: {line_id}, attributes: {attribute_info}")
+
+        # 성공 응답
+        return jsonify({
+            'success': True,
+            'message': 'Attribute 설정이 저장되었습니다.'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})

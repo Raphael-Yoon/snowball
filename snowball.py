@@ -43,9 +43,14 @@ app.config.update(
     SESSION_COOKIE_SECURE=is_production,  # 운영환경(HTTPS)에서만 True
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
-    # 브라우저 종료 후에도 세션 유지되도록 설정 
+    # 브라우저 종료 후에도 세션 유지되도록 설정
     SESSION_COOKIE_MAX_AGE=timedelta(hours=24).total_seconds(),  # 24시간
+    # 템플릿 자동 리로드 설정 (개발 환경)
+    TEMPLATES_AUTO_RELOAD=True
 )
+
+# Jinja2 템플릿 자동 리로드 강제 설정
+app.jinja_env.auto_reload = True
 
 print(f"세션 설정 - Production: {is_production}, Secure: {app.config['SESSION_COOKIE_SECURE']}")
 
@@ -1050,66 +1055,63 @@ def api_rcm_update_controls():
         if not updates:
             return jsonify({'success': False, 'message': '업데이트할 데이터가 없습니다.'}), 400
 
-        conn = get_db()
-        cursor = conn.cursor()
-        updated_count = 0
+        with get_db() as conn: # with 문으로 DB 연결을 안전하게 관리
+            updated_count = 0
 
-        # 각 통제에 대해 업데이트 수행
-        for update in updates:
-            detail_id = update.get('detail_id')
-            fields = update.get('fields', {})
+            # 각 통제에 대해 업데이트 수행
+            for update in updates:
+                detail_id = update.get('detail_id')
+                fields = update.get('fields', {})
 
-            if not detail_id or not fields:
-                continue
+                if not detail_id or not fields:
+                    continue
 
-            # 해당 통제가 속한 RCM에 대한 접근 권한 확인
-            cursor.execute('''
-                SELECT rcm_id FROM sb_rcm_detail WHERE detail_id = %s
-            ''', (detail_id,))
-            rcm_check = cursor.fetchone()
+                # 해당 통제가 속한 RCM에 대한 접근 권한 확인
+                rcm_check_result = conn.execute('''
+                    SELECT rcm_id FROM sb_rcm_detail WHERE detail_id = %s
+                ''', (detail_id,)).fetchone()
 
-            if not rcm_check:
-                continue
+                if not rcm_check_result:
+                    continue
 
-            rcm_id = rcm_check[0]
+                rcm_id = rcm_check_result['rcm_id']
 
-            # 권한 확인
-            cursor.execute('''
-                SELECT permission_type
-                FROM sb_rcm_access
-                WHERE rcm_id = %s AND user_id = %s
-            ''', (rcm_id, user_info['user_id']))
+                # 권한 확인 로직을 반복문 안으로 이동
+                access = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE rcm_id = %s AND user_id = %s
+                ''', (rcm_id, user_info['user_id'])).fetchone()
 
-            access = cursor.fetchone()
-            if not access:
-                return jsonify({'success': False, 'message': '해당 RCM에 대한 접근 권한이 없습니다.'}), 403
+                # admin 또는 edit 권한이 있는지 확인
+                if not access or access['permission_type'] not in ('admin', 'edit'):
+                    continue
 
-            # 허용된 필드만 업데이트 (통제코드와 통제명은 제외)
-            allowed_fields = [
-                'control_description', 'key_control', 'control_frequency',
-                'control_type', 'control_nature', 'process_area',
-                'risk_description', 'risk_impact', 'risk_likelihood',
-                'population', 'population_completeness_check', 'population_count',
-                'test_procedure', 'control_owner', 'control_performer',
-                'evidence_type'
-            ]
+                # 허용된 필드만 업데이트 (통제코드와 통제명은 제외)
+                allowed_fields = [
+                    'control_description', 'key_control', 'control_frequency',
+                    'control_type', 'control_nature', 'process_area',
+                    'risk_description', 'risk_impact', 'risk_likelihood', 'population',
+                    'population_completeness_check', 'population_count', 'test_procedure',
+                    'control_owner', 'control_performer', 'evidence_type',
+                    'recommended_sample_size'  # 권장 표본수 필드 추가
+                ]
 
-            # SQL UPDATE 문 생성
-            update_fields = []
-            update_values = []
+                # SQL UPDATE 문 생성
+                update_fields = []
+                update_values = []
 
-            for field, value in fields.items():
-                if field in allowed_fields:
-                    update_fields.append(f"{field} = %s")
-                    update_values.append(value if value else None)
+                for field, value in fields.items():
+                    if field in allowed_fields:
+                        update_fields.append(f"{field} = %s")
+                        update_values.append(value if value else None)
 
-            if update_fields:
-                update_values.append(detail_id)
-                sql = f"UPDATE sb_rcm_detail SET {', '.join(update_fields)} WHERE detail_id = %s"
-                cursor.execute(sql, update_values)
-                updated_count += 1
+                if update_fields:
+                    update_values.append(detail_id)
+                    sql = f"UPDATE sb_rcm_detail SET {', '.join(update_fields)} WHERE detail_id = %s"
+                    conn.execute(sql, update_values)
+                    updated_count += 1
 
-        conn.commit()
+            # 모든 업데이트가 끝난 후 한 번만 커밋
 
         return jsonify({
             'success': True,

@@ -196,17 +196,11 @@ def user_rcm_view(rcm_id):
     if not has_rcm_access(user_info['user_id'], rcm_id):
         flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
         return redirect(url_for('link5.user_rcm'))
-    
-    # 사용자 RCM 목록 조회 (RCM 정보 포함)
-    user_rcms = get_user_rcms(user_info['user_id'])
-    
+
     # RCM 기본 정보 조회
-    rcm_info = None
-    for rcm in user_rcms:
-        if rcm['rcm_id'] == rcm_id:
-            rcm_info = rcm
-            break
-    
+    from auth import get_rcm_info
+    rcm_info = get_rcm_info(rcm_id)
+
     # RCM 상세 데이터 조회
     rcm_details = get_rcm_details(rcm_id)
     
@@ -1781,3 +1775,109 @@ def update_rcm_name():
     except Exception as e:
         return jsonify({'success': False, 'message': f'오류가 발생했습니다: {str(e)}'})
 
+
+# Attribute 조회 API
+@bp_link5.route('/api/rcm/detail/<int:detail_id>/attributes', methods=['GET'])
+@login_required
+def get_rcm_detail_attributes(detail_id):
+    """RCM 통제의 attribute 설정 조회"""
+    try:
+        db = get_db()
+        db_type = db.execute("SELECT 1").connection.vendor if hasattr(db.execute("SELECT 1").connection, 'vendor') else 'sqlite'
+
+        # attribute 값 조회
+        with db:
+            if db_type == 'mysql':
+                cursor = db.execute('''
+                    SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
+                           attribute5, attribute6, attribute7, attribute8, attribute9,
+                           population_attribute_count
+                    FROM sb_rcm_detail
+                    WHERE detail_id = %s
+                ''', (detail_id,))
+            else:
+                cursor = db.execute('''
+                    SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
+                           attribute5, attribute6, attribute7, attribute8, attribute9,
+                           population_attribute_count
+                    FROM sb_rcm_detail
+                    WHERE detail_id = ?
+                ''', (detail_id,))
+
+            row = cursor.fetchone()
+
+        if not row:
+            return jsonify({'success': False, 'message': '통제를 찾을 수 없습니다.'}), 404
+
+        # attribute 값 딕셔너리로 변환
+        attributes = {}
+        for i in range(10):
+            value = row[i]
+            if value:
+                attributes[f'attribute{i}'] = value
+
+        # population_attribute_count 조회 (기본값 2)
+        population_attr_count = row[10] if len(row) > 10 and row[10] is not None else 2
+
+        return jsonify({
+            'success': True,
+            'attributes': attributes,
+            'population_attribute_count': population_attr_count
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'조회 중 오류가 발생했습니다: {str(e)}'}), 500
+
+
+# Attribute 저장 API
+@bp_link5.route('/api/rcm/detail/<int:detail_id>/attributes', methods=['POST'])
+@login_required
+def save_rcm_detail_attributes(detail_id):
+    """RCM 통제의 attribute 설정 저장"""
+    try:
+        data = request.get_json()
+        attributes = data.get('attributes', {})
+        population_attribute_count = data.get('population_attribute_count', 2)
+
+        db = get_db()
+        db_type = db.execute("SELECT 1").connection.vendor if hasattr(db.execute("SELECT 1").connection, 'vendor') else 'sqlite'
+
+        # attribute 값 준비 (attribute0~9)
+        attr_values = []
+        for i in range(10):
+            attr_key = f'attribute{i}'
+            attr_values.append(attributes.get(attr_key, None))
+
+        # UPDATE 쿼리 실행
+        with db:
+            if db_type == 'mysql':
+                db.execute('''
+                    UPDATE sb_rcm_detail
+                    SET attribute0 = %s, attribute1 = %s, attribute2 = %s, attribute3 = %s, attribute4 = %s,
+                        attribute5 = %s, attribute6 = %s, attribute7 = %s, attribute8 = %s, attribute9 = %s,
+                        population_attribute_count = %s
+                    WHERE detail_id = %s
+                ''', (*attr_values, population_attribute_count, detail_id))
+            else:
+                db.execute('''
+                    UPDATE sb_rcm_detail
+                    SET attribute0 = ?, attribute1 = ?, attribute2 = ?, attribute3 = ?, attribute4 = ?,
+                        attribute5 = ?, attribute6 = ?, attribute7 = ?, attribute8 = ?, attribute9 = ?,
+                        population_attribute_count = ?
+                    WHERE detail_id = ?
+                ''', (*attr_values, population_attribute_count, detail_id))
+            db.commit()
+
+        print(f'[link5] Attribute 저장 완료 - detail_id: {detail_id}, attributes: {attributes}, population_attribute_count: {population_attribute_count}')
+
+        return jsonify({
+            'success': True,
+            'message': 'Attribute 설정이 저장되었습니다.'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'저장 중 오류가 발생했습니다: {str(e)}'}), 500
