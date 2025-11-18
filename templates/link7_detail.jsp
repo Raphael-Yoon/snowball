@@ -158,6 +158,7 @@
                                         <td>{{ detail.control_nature_name or detail.control_nature or '-' }}</td>
                                         <td>
                                             <button class="btn btn-warning btn-sm w-100"
+                                                    data-detail-id="{{ detail.detail_id }}"
                                                     data-control-code="{{ detail.control_code }}"
                                                     data-control-name="{{ detail.control_name }}"
                                                     data-control-frequency="{{ detail.control_frequency_name or detail.control_frequency|e }}"
@@ -166,7 +167,7 @@
                                                     data-control-nature-code="{{ detail.control_nature|e }}"
                                                     data-test-procedure="{{ detail.test_procedure|e }}"
                                                     data-std-control-id="{{ detail.mapped_std_control_id|e }}"
-                                                    data-std-control-code="{{ rcm_mappings.get(detail.control_code).std_control_code if rcm_mappings.get(detail.control_code) else '' }}"
+                                                    data-std-control-code="{% if detail['control_code'] in rcm_mappings %}{{ rcm_mappings[detail['control_code']].std_control_code }}{% else %}{% endif %}"
                                                     data-design-evaluation-evidence="{{ detail.evaluation_evidence|e }}"
                                                     data-design-evaluation-images='{{ detail.design_evaluation_images|tojson if detail.design_evaluation_images else "[]" }}'
                                                     data-recommended-sample-size="{{ detail.recommended_sample_size if detail.recommended_sample_size is not none else '' }}"
@@ -277,7 +278,7 @@
                                 <div class="col-12">
                                     <strong>테스트절차:</strong>
                                     <div class="mt-1 p-2 border rounded bg-white" style="max-height: 120px; overflow-y: auto;">
-                                        <span id="modal-test-procedure" class="text-muted">-</span>
+                                        <span id="modal-test-procedure" class="text-muted" style="white-space: pre-line;">-</span>
                                     </div>
                                 </div>
                             </div>
@@ -296,20 +297,34 @@
                             </div>
                         </div>
 
-                        <!-- 설계평가 결과로 대체 옵션 (연간 통제 또는 자동 통제만) -->
-                        <div class="mb-3" id="use-design-evaluation-section" style="display: none;">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="use_design_evaluation" name="use_design_evaluation" onchange="toggleUseDesignEvaluation()">
-                                <label class="form-check-label" for="use_design_evaluation">
-                                    <strong>설계평가 결과로 운영평가 대체</strong>
-                                    <small class="text-muted d-block">설계평가에서 이미 증빙을 확인한 경우 (연간 통제 또는 자동 통제) 체크하세요</small>
-                                </label>
+                        <!-- 모집단 업로드 섹션 (표본수 0인 경우) -->
+                        <div id="population-upload-section" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>모집단 업로드 모드</strong>: 표본 크기가 0으로 설정되어 있습니다.
+                                모집단 엑셀 파일을 업로드하면 자동으로 표본이 추출됩니다.
                             </div>
-                        </div>
 
-                        <!-- 설계평가 정보 표시 섹션 -->
-                        <div id="design-evaluation-info-section" style="display: none;" class="mb-3">
-                            <div id="design-evaluation-info"></div>
+                            <div class="mb-3">
+                                <label for="populationFile" class="form-label fw-bold">
+                                    <i class="fas fa-upload me-1"></i>모집단 엑셀 파일
+                                </label>
+                                <input type="file" class="form-control" id="populationFile" accept=".xlsx,.xlsm" onchange="handlePopulationFileSelected()">
+                                <div class="form-text">
+                                    <strong>.xlsx 또는 .xlsm</strong> 형식의 엑셀 파일을 업로드하세요. (.xls 파일은 Excel에서 .xlsx로 변환 후 업로드)
+                                </div>
+                            </div>
+
+                            <div id="populationFieldMapping" style="display: none;">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">필드 매핑</label>
+                                    <div class="form-text mb-2">엑셀 파일의 컬럼을 매핑하세요</div>
+                                    <div id="fieldMappingContainer"></div>
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="uploadPopulationFile()">
+                                    <i class="fas fa-upload me-1"></i>업로드 및 표본 추출
+                                </button>
+                            </div>
                         </div>
 
                         <div id="evaluation-fields">
@@ -333,7 +348,7 @@
                                     <label class="form-label fw-bold">표본별 테스트 결과</label>
                                     <div class="table-responsive">
                                         <table class="table table-bordered table-sm" id="sample-lines-table">
-                                            <thead class="table-light">
+                                            <thead class="table-light" id="sample-lines-thead">
                                                 <tr>
                                                     <th width="10%">표본 #</th>
                                                     <th width="70%">증빙 내용</th>
@@ -605,21 +620,6 @@
         </div>
     </div>
 
-    <!-- Generic 수동통제 모달 -->
-    <div class="modal fade" id="genericManualModal" tabindex="-1" aria-labelledby="genericManualModalLabel" aria-hidden="true">
-        <div class="modal-dialog" style="max-width: 90%; height: 90vh; margin: 5vh auto;">
-            <div class="modal-content" style="height: 100%;">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="genericManualModalLabel">수동통제 운영평가</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-0" style="height: calc(100% - 60px); overflow: hidden;">
-                    <iframe id="genericManualIframe" style="width: 100%; height: 100%; border: none;"></iframe>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- PC01 선행 조건 알림 모달 -->
     <div class="modal fade" id="pc01RequiredModal" tabindex="-1" aria-labelledby="pc01RequiredModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -703,6 +703,29 @@
             {% endfor %}
             {% endif %}
         };
+
+        // 통제별 attribute 정보 저장 (control_code를 키로 사용)
+        let rcmAttributesData = {};
+        {% if rcm_details %}
+        {% for detail in rcm_details %}
+        rcmAttributesData[{{ detail['control_code']|tojson }}] = {
+            detailId: {{ detail['detail_id']|int }},
+            populationAttributeCount: {{ detail['population_attribute_count']|int if detail['population_attribute_count'] is not none else 2 }},
+            attributes: {
+                attribute0: {{ detail['attribute0']|tojson if detail['attribute0'] else 'null' }},
+                attribute1: {{ detail['attribute1']|tojson if detail['attribute1'] else 'null' }},
+                attribute2: {{ detail['attribute2']|tojson if detail['attribute2'] else 'null' }},
+                attribute3: {{ detail['attribute3']|tojson if detail['attribute3'] else 'null' }},
+                attribute4: {{ detail['attribute4']|tojson if detail['attribute4'] else 'null' }},
+                attribute5: {{ detail['attribute5']|tojson if detail['attribute5'] else 'null' }},
+                attribute6: {{ detail['attribute6']|tojson if detail['attribute6'] else 'null' }},
+                attribute7: {{ detail['attribute7']|tojson if detail['attribute7'] else 'null' }},
+                attribute8: {{ detail['attribute8']|tojson if detail['attribute8'] else 'null' }},
+                attribute9: {{ detail['attribute9']|tojson if detail['attribute9'] else 'null' }}
+            }
+        };
+        {% endfor %}
+        {% endif %}
 
         // Toast 헬퍼 함수
         function showToast(type, message) {
@@ -948,6 +971,12 @@
             const recommendedSampleSizeStr = buttonElement.getAttribute('data-recommended-sample-size');
             const rowIndex = parseInt(buttonElement.getAttribute('data-row-index'));
             
+            // 전역 변수로 권장 표본수와 통제주기 저장
+            // 1순위: RCM에 설정된 권장 표본수 (0 포함)
+            // 2순위: 통제 주기에 따른 기본값
+            const rcmRecommendedSize = (recommendedSampleSizeStr && recommendedSampleSizeStr !== '') ? parseInt(recommendedSampleSizeStr) : null;
+            recommendedSampleSize = rcmRecommendedSize !== null ? rcmRecommendedSize : getDefaultSampleSize(controlFrequency, controlType);
+
             // JavaScript 객체에서 설계평가 이미지 데이터 가져오기
             let designEvaluationImages = [];
             if (designEvaluationImagesData[controlCode]) {
@@ -969,8 +998,18 @@
             currentRowIndex = rowIndex;
             currentDesignEvaluationEvidence = designEvaluationEvidence || '';
 
+            // RCM attribute 정보 조회 (전역 변수에 저장)
+            const detailId = buttonElement.getAttribute('data-detail-id');
+            const rcmAttrs = (typeof rcmAttributesData !== 'undefined' && rcmAttributesData[controlCode]) || {};
+            window.currentPopulationAttributeCount = rcmAttrs.populationAttributeCount || 0;
+            window.currentAttributeNames = rcmAttrs.attributes || {};
+
+            console.log('[Attribute Info] Detail ID:', detailId);
+            console.log('[Attribute Info] Population Attribute Count:', window.currentPopulationAttributeCount);
+            console.log('[Attribute Info] Attribute Names:', window.currentAttributeNames);
+
             // 자동통제 판별
-            if (controlNatureCode === 'A' || controlNatureCode === '자동') {
+            if (controlNatureCode && (controlNatureCode === 'A' || controlNatureCode === '자동' || controlNatureCode === 'Automated')) {
                 console.log('Auto control detected:', controlCode);
                 openAutoControlCheckModal(controlCode, controlName);
                 return;
@@ -979,109 +1018,16 @@
             // 표준통제별 UI 분기
             if (stdControlCode && stdControlCode === 'APD01') {
                 console.log('APD01 detected! Redirecting to APD01 page...');
-                // APD01 전용 UI로 변경
-                showAPD01UI(buttonElement);
-                return;
+                // APD01은 특별히 모집단 업로드 기능이 필요하므로, 이 경우에도 operationEvaluationModal을 사용하되,
+                // 모집단 업로드 섹션이 기본으로 보이도록 처리 (rcmRecommendedSize=0과 동일하게)
+                // 이 부분은 아래 UI 분기 로직에서 처리될 것임.
             }
 
-            if (stdControlCode && stdControlCode === 'APD07') {
-                console.log('APD07 detected! Redirecting to APD07 page...');
-                // APD07 전용 UI로 변경
-                showAPD07UI(buttonElement);
-                return;
-            }
+            // 기존에 iframe으로 열리던 모든 표준 통제(APD01, APD07, APD09, APD12, PC01, PC02, PC03, CO01)
+            // 그리고 일반 수동 통제 모두 이제 operationEvaluationModal을 사용합니다.
+            // 따라서 별도의 분기 로직은 필요 없습니다.
 
-            // stdControlCode 대신 실제 controlCode로 APD09/APD12 판별
-            if (controlCode && controlCode === 'APD09') {
-                console.log('APD09 detected! Redirecting to APD09 page...');
-                showAPD09UI(buttonElement);
-                return;
-            }
-
-            if (controlCode && controlCode === 'APD12') {
-                console.log('APD12 detected! Redirecting to APD12 page...');
-                showAPD12UI(buttonElement);
-                return;
-            }
-
-            // 매핑된 표준통제코드로도 확인 (보조)
-            if (stdControlCode && stdControlCode === 'APD09') {
-                console.log('APD09 detected by stdControlCode! Redirecting to APD09 page...');
-                showAPD09UI(buttonElement);
-                return;
-            }
-
-            if (stdControlCode && stdControlCode === 'APD12') {
-                console.log('APD12 detected by stdControlCode! Redirecting to APD12 page...');
-                showAPD12UI(buttonElement);
-                return;
-            }
-
-            // PC01 판별
-            if (controlCode && controlCode === 'PC01') {
-                console.log('PC01 detected! Redirecting to PC01 page...');
-                showPC01UI(buttonElement);
-                return;
-            }
-
-            if (stdControlCode && stdControlCode === 'PC01') {
-                console.log('PC01 detected by stdControlCode! Redirecting to PC01 page...');
-                showPC01UI(buttonElement);
-                return;
-            }
-
-            // PC02 판별
-            if (controlCode && controlCode === 'PC02') {
-                console.log('PC02 detected! Redirecting to PC02 page...');
-                showPC02UI(buttonElement);
-                return;
-            }
-
-            if (stdControlCode && stdControlCode === 'PC02') {
-                console.log('PC02 detected by stdControlCode! Redirecting to PC02 page...');
-                showPC02UI(buttonElement);
-                return;
-            }
-
-            // PC03 판별
-            if (controlCode && controlCode === 'PC03') {
-                console.log('PC03 detected! Redirecting to PC03 page...');
-                showPC03UI(buttonElement);
-                return;
-            }
-
-            if (stdControlCode && stdControlCode === 'PC03') {
-                console.log('PC03 detected by stdControlCode! Redirecting to PC03 page...');
-                showPC03UI(buttonElement);
-                return;
-            }
-
-            // CO01 판별
-            if (controlCode && controlCode === 'CO01') {
-                console.log('CO01 detected! Redirecting to CO01 page...');
-                showCO01UI(buttonElement);
-                return;
-            }
-
-            if (stdControlCode && stdControlCode === 'CO01') {
-                console.log('CO01 detected by stdControlCode! Redirecting to CO01 page...');
-                showCO01UI(buttonElement);
-                return;
-            }
-
-            console.log('Not APD01/APD07/APD09/APD12/PC01/PC02/PC03/CO01, using standard modal...');
-
-            // 수동통제 판별: 표준통제 코드가 없는 수동통제만 Generic UI 사용
-            // ELC 일반 수동통제는 기본 모달 사용 (통제 주기 기반 표본 수 자동 설정)
-            // if (controlNatureCode && (controlNatureCode.toUpperCase() === 'M' || controlNatureCode === '수동' || controlNatureCode.toUpperCase() === 'MANUAL')) {
-            //     console.log('Manual control detected! Redirecting to Generic evaluation page...');
-            //     showGenericManualControlUI(buttonElement);
-            //     return;
-            // }
-
-            console.log('Showing standard evaluation modal with auto sample size...');
-
-            // 일반 운영평가 UI (수동통제가 아닌 경우 - 거의 사용되지 않음)
+            // 파일 입력 초기화 (요소 존재 확인)
             const excelSection = document.getElementById('excelUploadSection');
             if (excelSection) {
                 excelSection.style.display = 'none';
@@ -1107,18 +1053,31 @@
             if (modalControlType) modalControlType.textContent = controlType || '-';
             if (modalControlNature) modalControlNature.textContent = controlNature || '-';
             if (modalTestProcedure) modalTestProcedure.textContent = testProcedure || '-';
-
-            // 권장 표본수 계산 및 저장 (표본수 검증을 위해)
-            // 1순위: RCM에 설정된 권장 표본수 (0 포함)
-            // 2순위: 통제 주기에 따른 기본값
-            currentControlFrequency = controlFrequency;
-            const rcmRecommendedSize = recommendedSampleSizeStr ? parseInt(recommendedSampleSizeStr) : null;
-            // 0도 유효한 값이므로 null/undefined 체크로 변경
-            recommendedSampleSize = rcmRecommendedSize !== null ? rcmRecommendedSize : getDefaultSampleSize(controlFrequency, controlType);
-
             console.log('[권장 표본수] RCM 설정값:', rcmRecommendedSize);
             console.log('[권장 표본수] 통제주기 기본값:', getDefaultSampleSize(controlFrequency, controlType));
             console.log('[권장 표본수] 최종 사용값:', recommendedSampleSize);
+
+            // UI 분기: 표본수 0 vs 0 이상
+            const populationUploadSection = document.getElementById('population-upload-section');
+            const evaluationFields = document.getElementById('evaluation-fields');
+
+            // 이미 저장된 데이터가 있는지 확인
+            const hasSavedData = evaluated_controls[controlCode] &&
+                                (evaluated_controls[controlCode].line_id ||
+                                 (evaluated_controls[controlCode].sample_lines && evaluated_controls[controlCode].sample_lines.length > 0));
+
+            if (recommendedSampleSize === 0 && !hasSavedData) {
+                // 표본수가 0이고 저장된 데이터가 없으면 모집단 업로드 UI 표시
+                if (populationUploadSection) populationUploadSection.style.display = 'block';
+                if (evaluationFields) evaluationFields.style.display = 'none';
+                console.log('[UI 분기] 모집단 업로드 섹션 표시 (권장 표본수 0, 저장 데이터 없음)');
+            } else {
+                // 표본수가 0이 아니거나 저장된 데이터가 있으면 평가 UI 표시
+                if (populationUploadSection) populationUploadSection.style.display = 'none';
+                if (evaluationFields) evaluationFields.style.display = 'block';
+                console.log('[UI 분기] 평가 필드 섹션 표시 (권장 표본수:', recommendedSampleSize, ', 저장 데이터:', hasSavedData, ')');
+            }
+
 
             // 설계평가 대체 옵션 표시 여부 결정 (연간 통제 또는 자동 통제만)
             const useDesignEvaluationSection = document.getElementById('use-design-evaluation-section');
@@ -1240,9 +1199,12 @@
             }
 
             // 평가 버튼 클릭할 때마다 line_id로 샘플 데이터 조회 (캐시 사용 안 함)
+            console.log('[openOperationEvaluationModal] evaluated_controls[controlCode]:', evaluated_controls[controlCode]);
+            console.log('[openOperationEvaluationModal] line_id 존재?', evaluated_controls[controlCode] && evaluated_controls[controlCode].line_id);
+
             if (evaluated_controls[controlCode] && evaluated_controls[controlCode].line_id) {
                 const lineId = evaluated_controls[controlCode].line_id;
-                console.log('[openOperationEvaluationModal] 샘플 데이터 조회 시작 - line_id:', lineId, '(매번 새로 조회)');
+                console.log('[openOperationEvaluationModal] ✓ line_id 있음 - 샘플 데이터 조회 시작 - line_id:', lineId, '(매번 새로 조회)');
 
                 // 먼저 기존 샘플 데이터 제거
                 evaluated_controls[controlCode].sample_lines = [];
@@ -1251,26 +1213,40 @@
                 fetch(`/api/operation-evaluation/samples/${lineId}`)
                     .then(response => response.json())
                     .then(data => {
+                        console.log('[API 응답 전체]', data);
+                        console.log('[API 응답] data.success:', data.success);
+                        console.log('[API 응답] data.samples:', data.samples);
+                        console.log('[API 응답] data.samples.length:', data.samples ? data.samples.length : 'undefined');
+
                         if (data.success) {
                             // 샘플이 0개여도 빈 배열로 업데이트 (기존 데이터 제거)
                             evaluated_controls[controlCode].sample_lines = data.samples || [];
 
                             if (data.samples && data.samples.length > 0) {
                                 console.log('[openOperationEvaluationModal] 샘플 데이터 조회 성공:', data.samples);
-                                // 샘플 라인 자동 생성
-                                setTimeout(() => {
-                                    generateSampleLines();
-                                }, 100);
+                                // 샘플 라인 자동 생성 (순차 실행)
+                                generateSampleLines();
                             } else {
-                                console.log('[openOperationEvaluationModal] 샘플 데이터 없음 (0개) - 테이블 비우기');
-                                // 샘플이 없으면 기존 테이블 완전히 비우기
-                                const tbody = document.getElementById('sample-lines-tbody');
-                                if (tbody) {
-                                    tbody.innerHTML = '';
-                                }
-                                const container = document.getElementById('sample-lines-container');
-                                if (container) {
-                                    container.style.display = 'none';
+                                console.log('[openOperationEvaluationModal] 샘플 데이터 없음 (0개)');
+                                // 샘플이 없으면 빈 라인 자동 생성
+                                console.log('[openOperationEvaluationModal] 권장 표본수:', recommendedSampleSize, '- 빈 라인 생성');
+
+                                // recommendedSampleSize가 있으면 DOM에 설정하고 change 이벤트 발생
+                                if (recommendedSampleSize > 0) {
+                                    const sampleSizeEl = document.getElementById('sample_size');
+                                    if (sampleSizeEl) {
+                                        sampleSizeEl.value = recommendedSampleSize;
+                                        console.log('[openOperationEvaluationModal] sample_size 필드에 설정:', recommendedSampleSize);
+
+                                        // change 이벤트 발생시켜 onchange 핸들러 실행 (generateSampleLines() 호출)
+                                        const event = new Event('change', { bubbles: true });
+                                        sampleSizeEl.dispatchEvent(event);
+                                        console.log('[openOperationEvaluationModal] change 이벤트 발생 완료');
+                                    } else {
+                                        console.error('[openOperationEvaluationModal] sample_size 요소를 찾을 수 없음!');
+                                    }
+                                } else {
+                                    console.log('[openOperationEvaluationModal] 권장 표본수가 0이므로 라인 생성 안 함');
                                 }
                             }
                         } else {
@@ -1281,13 +1257,31 @@
                         console.error('[openOperationEvaluationModal] 샘플 데이터 조회 실패:', error);
                     });
             } else {
-                // line_id가 없어도 표본 크기가 설정되어 있으면 테이블 생성
-                const sampleSizeEl = document.getElementById('sample_size');
-                if (sampleSizeEl && sampleSizeEl.value && parseInt(sampleSizeEl.value) > 0) {
-                    console.log('[openOperationEvaluationModal] line_id 없지만 표본 크기 있음, 테이블 생성');
-                    setTimeout(() => {
-                        generateSampleLines();
-                    }, 100);
+                // line_id가 없는 경우 (아직 평가 안 한 통제)
+                // 표본 크기가 설정되어 있으면 빈 테이블 생성
+                console.log('[openOperationEvaluationModal] line_id 없음 - 신규 평가');
+                console.log('[openOperationEvaluationModal] recommendedSampleSize:', recommendedSampleSize);
+
+                if (recommendedSampleSize > 0) {
+                    console.log('[openOperationEvaluationModal] 권장 표본수 > 0, 빈 라인 생성');
+                    // DOM에 값 설정
+                    const sampleSizeEl = document.getElementById('sample_size');
+                    if (sampleSizeEl) {
+                        sampleSizeEl.value = recommendedSampleSize;
+                        console.log('[openOperationEvaluationModal] sample_size 필드에 설정:', recommendedSampleSize);
+                    }
+                    // 순차적으로 라인 생성
+                    generateSampleLines();
+                } else {
+                    console.log('[openOperationEvaluationModal] 권장 표본수 = 0, 테이블 비우기');
+                    const tbody = document.getElementById('sample-lines-tbody');
+                    if (tbody) {
+                        tbody.innerHTML = '';
+                    }
+                    const container = document.getElementById('sample-lines-container');
+                    if (container) {
+                        container.style.display = 'none';
+                    }
                 }
             }
 
@@ -1349,6 +1343,25 @@
             if (operationEvaluationModalEl) {
                 const modal = new bootstrap.Modal(operationEvaluationModalEl);
                 modal.show();
+
+                // 모달이 완전히 열린 후 표본 라인 자동 생성 (표본수가 설정되어 있고 샘플이 없는 경우)
+                operationEvaluationModalEl.addEventListener('shown.bs.modal', function onModalShown() {
+                    const sampleSizeEl = document.getElementById('sample_size');
+                    const sampleSizeValue = sampleSizeEl ? parseInt(sampleSizeEl.value || '0') : 0;
+                    const tbody = document.getElementById('sample-lines-tbody');
+                    const existingRows = tbody ? tbody.querySelectorAll('tr:not([id^="mitigation-row"])').length : 0;
+
+                    console.log('[shown.bs.modal] 표본 크기:', sampleSizeValue, ', 기존 행 수:', existingRows);
+
+                    // 표본 크기가 설정되어 있고, 기존 라인이 없으면 자동 생성
+                    if (sampleSizeValue > 0 && existingRows === 0) {
+                        console.log('[shown.bs.modal] 표본 라인 자동 생성 실행');
+                        generateSampleLines();
+                    }
+
+                    // 이벤트 리스너 제거 (한 번만 실행)
+                    operationEvaluationModalEl.removeEventListener('shown.bs.modal', onModalShown);
+                }, { once: true });
             } else {
                 console.error('operationEvaluationModal element not found');
                 alert('운영평가 모달을 찾을 수 없습니다. 페이지를 새로고침 해주세요.');
@@ -1420,12 +1433,129 @@
         function generateSampleLines() {
             const sampleSizeInput = document.getElementById('sample_size');
             const sampleSizeValue = sampleSizeInput.value.trim();
-
-            // 공란 또는 0인 경우 테이블을 비우고 종료 (모집단 업로드 모드)
             const tbody = document.getElementById('sample-lines-tbody');
+            const thead = document.getElementById('sample-lines-thead');
+
+            // 전역 변수에서 RCM attribute 정보 가져오기
+            const popAttrCount = window.currentPopulationAttributeCount || 0;
+            const attributes = window.currentAttributeNames || {};
+
+            // 설정된 attribute가 있는지 확인
+            const hasAttributes = Object.values(attributes).some(v => v);
+
+            // 테이블 헤더 동적 생성
+            let headerHtml = '<tr><th width="5%">표본 #</th>';
+
+            if (hasAttributes) {
+                // attribute 컬럼 추가
+                for (let i = 0; i < 10; i++) {
+                    const attrName = attributes[`attribute${i}`];
+                    if (attrName) {
+                        const isPopulation = i < popAttrCount;
+                        const label = isPopulation ? `${attrName} (모집단)` : attrName;
+                        headerHtml += `<th>${label}</th>`;
+                    }
+                }
+            } else {
+                // 기본 컬럼
+                headerHtml += '<th width="70%">증빙 내용</th>';
+            }
+
+            headerHtml += '<th width="15%">결과</th></tr>';
+            thead.innerHTML = headerHtml;
+
+            // 공란 또는 0인 경우: 업로드된 샘플이 있으면 표시, 없으면 비우기
             if (sampleSizeValue === '' || sampleSizeValue === '0') {
-                tbody.innerHTML = '';
-                return;
+                // evaluated_controls에서 업로드된 샘플 확인
+                const existingData = evaluated_controls[currentControlCode];
+                const existingSampleLines = existingData?.sample_lines || [];
+
+                console.log('[generateSampleLines] currentControlCode:', currentControlCode);
+                console.log('[generateSampleLines] existingData:', existingData);
+                console.log('[generateSampleLines] existingSampleLines:', existingSampleLines);
+
+                if (existingSampleLines.length > 0) {
+                    // 업로드된 샘플이 있으면 표시
+                    console.log(`[generateSampleLines] 업로드된 샘플 ${existingSampleLines.length}개 표시`);
+                    tbody.innerHTML = '';
+
+                    existingSampleLines.forEach((sample, index) => {
+                        const row = document.createElement('tr');
+                        const sampleNum = sample.sample_number || index + 1;
+
+                        console.log(`[generateSampleLines] Sample #${sampleNum}:`, sample);
+                        console.log(`[generateSampleLines] Sample attributes:`, sample.attributes);
+
+                        let rowHtml = `<td class="text-center align-middle">#${sampleNum}</td>`;
+
+                        // attribute 컬럼들 추가
+                        for (let i = 0; i < 10; i++) {
+                            const attrName = attributes[`attribute${i}`];
+                            if (attrName) {
+                                const isPopulation = i < popAttrCount;
+                                const attrValue = sample.attributes?.[`attribute${i}`] || '';
+
+                                console.log(`[generateSampleLines] attr${i}: name="${attrName}", isPopulation=${isPopulation}, value="${attrValue}"`);
+
+                                if (isPopulation) {
+                                    // 모집단 attribute - 읽기 전용
+                                    rowHtml += `<td class="align-middle bg-light">
+                                        <input type="text" class="form-control form-control-sm"
+                                               value="${attrValue}" readonly
+                                               style="background-color: #f8f9fa; cursor: not-allowed;">
+                                    </td>`;
+                                } else {
+                                    // 증빙 attribute - 입력 가능
+                                    rowHtml += `<td class="align-middle">
+                                        <input type="text" class="form-control form-control-sm"
+                                               id="sample-attr${i}-${sampleNum}"
+                                               value="${attrValue}"
+                                               placeholder="${attrName}">
+                                    </td>`;
+                                }
+                            }
+                        }
+
+                        // 결과 컬럼
+                        rowHtml += `<td class="align-middle">
+                            <select class="form-select form-select-sm"
+                                    id="sample-result-${sampleNum}"
+                                    onchange="handleSampleResultChange(${sampleNum})">
+                                <option value="no_exception" ${sample.result !== 'exception' ? 'selected' : ''}>No Exception</option>
+                                <option value="exception" ${sample.result === 'exception' ? 'selected' : ''}>Exception</option>
+                            </select>
+                        </td>`;
+
+                        row.innerHTML = rowHtml;
+                        tbody.appendChild(row);
+
+                        // Exception인 경우 완화조치 행 추가
+                        if (sample.result === 'exception') {
+                            const mitigationRow = document.createElement('tr');
+                            mitigationRow.id = `mitigation-row-${sampleNum}`;
+
+                            // colspan 계산: 표본# + attribute 컬럼 수 + 결과
+                            const attrCount = Object.keys(attributes).filter(k => attributes[k]).length;
+                            const totalCols = 1 + attrCount + 1;
+
+                            mitigationRow.innerHTML = `
+                                <td colspan="${totalCols}" class="bg-light">
+                                    <label class="form-label fw-bold mb-1">완화조치:</label>
+                                    <textarea class="form-control form-control-sm"
+                                           id="sample-mitigation-${sampleNum}"
+                                           rows="2"
+                                           placeholder="완화조치 내용 입력">${sample.mitigation || ''}</textarea>
+                                </td>
+                            `;
+                            tbody.appendChild(mitigationRow);
+                        }
+                    });
+                    return;
+                } else {
+                    // 업로드된 샘플이 없으면 테이블 비우기
+                    tbody.innerHTML = '';
+                    return;
+                }
             }
 
             const sampleSize = parseInt(sampleSizeValue);
@@ -1444,12 +1574,31 @@
                 const resultEl = document.getElementById(`sample-result-${sampleNumber}`);
                 const mitigationEl = document.getElementById(`sample-mitigation-${sampleNumber}`);
 
+                // attribute 데이터 수집
+                const attributeData = {};
+                for (let i = 0; i < 10; i++) {
+                    const attrEl = document.getElementById(`sample-attr${i}-${sampleNumber}`);
+                    if (attrEl) {
+                        attributeData[`attribute${i}`] = attrEl.value || '';
+                    }
+                }
+
                 if (evidenceEl && resultEl) {
                     currentInputData.push({
                         sample_number: sampleNumber,
                         evidence: evidenceEl.value || '',
                         result: resultEl.value || 'no_exception',
-                        mitigation: mitigationEl ? (mitigationEl.value || '') : ''
+                        mitigation: mitigationEl ? (mitigationEl.value || '') : '',
+                        attributes: attributeData
+                    });
+                } else if (Object.keys(attributeData).length > 0) {
+                    // evidenceEl이 없어도 attribute가 있으면 저장
+                    currentInputData.push({
+                        sample_number: sampleNumber,
+                        evidence: '',
+                        result: resultEl?.value || 'no_exception',
+                        mitigation: mitigationEl ? (mitigationEl.value || '') : '',
+                        attributes: attributeData
                     });
                 }
             });
@@ -1497,34 +1646,86 @@
                 const mitigation = currentInput?.mitigation || existingSample?.mitigation || '';
 
                 const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="text-center align-middle">#${i}</td>
-                    <td class="align-middle">
+                let rowHtml = `<td class="text-center align-middle">#${i}</td>`;
+
+                // attribute 컬럼들 추가
+                if (hasAttributes) {
+                    // 업로드된 표본 개수 확인
+                    const uploadedSampleCount = existingSampleLines.length;
+
+                    for (let attrIdx = 0; attrIdx < 10; attrIdx++) {
+                        const attrName = attributes[`attribute${attrIdx}`];
+                        if (attrName) {
+                            // 우선순위: 현재 입력 > DB 데이터 > 빈 값
+                            const attrValue = currentInput?.attributes?.[`attribute${attrIdx}`] ||
+                                            existingSample?.attributes?.[`attribute${attrIdx}`] || '';
+
+                            // 모집단 필드인지 확인
+                            const isPopulation = attrIdx < popAttrCount;
+
+                            // 업로드된 표본 범위 내이고 모집단 필드인 경우 읽기 전용
+                            const isFromUpload = i <= uploadedSampleCount;
+                            const isReadonly = isPopulation && isFromUpload;
+
+                            if (isReadonly) {
+                                // 모집단 필드 - 읽기 전용 (회색 배경)
+                                rowHtml += `<td class="align-middle bg-light">
+                                    <input type="text" class="form-control form-control-sm"
+                                           id="sample-attr${attrIdx}-${i}"
+                                           placeholder="${attrName}"
+                                           value="${attrValue}"
+                                           readonly
+                                           style="height: 31px; background-color: #f8f9fa; cursor: not-allowed;" />
+                                </td>`;
+                            } else {
+                                // 증빙 필드 또는 수동 추가 표본 - 입력 가능
+                                rowHtml += `<td class="align-middle">
+                                    <input type="text" class="form-control form-control-sm"
+                                           id="sample-attr${attrIdx}-${i}"
+                                           placeholder="${attrName}"
+                                           value="${attrValue}"
+                                           oninput="updateOverallConclusion()"
+                                           style="height: 31px;" />
+                                </td>`;
+                            }
+                        }
+                    }
+                } else {
+                    // 기본 증빙 컬럼
+                    rowHtml += `<td class="align-middle">
                         <input type="text" class="form-control form-control-sm"
                                id="sample-evidence-${i}"
                                placeholder="예: 증빙서류 확인"
                                value="${evidence}"
                                oninput="updateOverallConclusion()"
                                style="height: 31px;" />
-                    </td>
-                    <td class="align-middle">
-                        <select class="form-select form-select-sm"
-                                id="sample-result-${i}"
-                                onchange="handleSampleResultChange(${i})"
-                                style="height: 31px;">
-                            <option value="no_exception" ${result === 'no_exception' ? 'selected' : ''}>No Exception</option>
-                            <option value="exception" ${result === 'exception' ? 'selected' : ''}>Exception</option>
-                        </select>
-                    </td>
-                `;
+                    </td>`;
+                }
+
+                // 결과 컬럼
+                rowHtml += `<td class="align-middle">
+                    <select class="form-select form-select-sm"
+                            id="sample-result-${i}"
+                            onchange="handleSampleResultChange(${i})"
+                            style="height: 31px;">
+                        <option value="no_exception" ${result === 'no_exception' ? 'selected' : ''}>No Exception</option>
+                        <option value="exception" ${result === 'exception' ? 'selected' : ''}>Exception</option>
+                    </select>
+                </td>`;
+
+                row.innerHTML = rowHtml;
                 tbody.appendChild(row);
 
                 // Exception 선택 시 경감요소 입력란을 행 아래에 추가
                 if (result === 'exception') {
+                    // colspan 계산: 표본# + attribute 컬럼 수 (또는 증빙 컬럼) + 결과
+                    const attrCount = hasAttributes ? Object.keys(attributes).filter(k => attributes[k]).length : 1;
+                    const totalCols = 1 + attrCount + 1;
+
                     const mitigationRow = document.createElement('tr');
                     mitigationRow.id = `mitigation-row-${i}`;
                     mitigationRow.innerHTML = `
-                        <td colspan="3" class="bg-light">
+                        <td colspan="${totalCols}" class="bg-light">
                             <div class="p-2">
                                 <label class="form-label fw-bold mb-1" style="font-size: 0.875rem;">경감요소:</label>
                                 <input type="text" class="form-control form-control-sm"
@@ -1705,10 +1906,6 @@
         // 기존 함수들
         // ===================================================================
 
-        // 전역 변수로 권장 표본수와 통제주기 저장
-        let recommendedSampleSize = 0;
-        let currentControlFrequency = '';
-
         document.addEventListener('DOMContentLoaded', function() {
             // 당기 발생사실 없음 체크박스 이벤트 리스너 (모달 외부의 체크박스용)
             const noOccurrenceCheckbox = document.getElementById('no_occurrence');
@@ -1724,11 +1921,15 @@
             const messageDiv = document.getElementById('sampleSizeMessage');
             const inputValue = parseInt(sampleSizeInput.value) || 0;
 
-            console.log('validateSampleSize 호출됨');
-            console.log('입력값:', inputValue);
-            console.log('권장 표본수:', recommendedSampleSize);
-            console.log('통제주기:', currentControlFrequency);
-
+            // RCM에 설정된 권장 표본수보다 작은지 확인
+            if (recommendedSampleSize > 0 && inputValue < recommendedSampleSize) {
+                showWarningToast(`표본 크기는 권장 표본수인 ${recommendedSampleSize}개 이상이어야 합니다.`);
+                sampleSizeInput.value = recommendedSampleSize;
+                // 자동으로 라인 재생성
+                setTimeout(generateSampleLines, 100);
+                return; // 유효성 검사 실패 시 아래 로직은 실행하지 않음
+            }
+            
             // 예외 발견 수의 최대값을 새로운 표본 크기로 업데이트
             if (exceptionCountInput && inputValue > 0) {
                 exceptionCountInput.setAttribute('max', inputValue);
@@ -1823,138 +2024,6 @@
                 // 발생하지 않은 사유 입력란 숨김
                 noOccurrenceReasonSection.style.display = 'none';
             }
-        }
-
-        // 설계평가 결과로 대체 체크 시 필드 토글 및 데이터 로드
-        function toggleUseDesignEvaluation() {
-            const useDesignEvaluationCheckbox = document.getElementById('use_design_evaluation');
-            const noOccurrenceCheckbox = document.getElementById('no_occurrence');
-            const evaluationFields = document.getElementById('evaluation-fields');
-            const designEvaluationInfoSection = document.getElementById('design-evaluation-info-section');
-
-            if (useDesignEvaluationCheckbox.checked) {
-                // 당기 발생사실 없음 체크박스 해제
-                if (noOccurrenceCheckbox) {
-                    noOccurrenceCheckbox.checked = false;
-                    toggleNoOccurrenceFields();
-                }
-
-                // 평가 필드 비활성화 (읽기 전용)
-                disableEvaluationFields(true);
-
-                // 설계평가 데이터 표시 섹션 보이기
-                if (designEvaluationInfoSection) {
-                    designEvaluationInfoSection.style.display = 'block';
-                }
-
-                // 설계평가 데이터 로드
-                loadDesignEvaluationData();
-            } else {
-                // 평가 필드 활성화
-                disableEvaluationFields(false);
-
-                // 설계평가 데이터 표시 섹션 숨기기
-                if (designEvaluationInfoSection) {
-                    designEvaluationInfoSection.style.display = 'none';
-                }
-            }
-        }
-
-        // 설계평가 데이터 로드
-        function loadDesignEvaluationData() {
-            // 현재 통제의 설계평가 데이터 가져오기
-            fetch(`/api/design-evaluation/get?rcm_id=${currentRcmId}&design_evaluation_session=${currentEvaluationSession}&control_code=${currentControlCode}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.design_evaluation) {
-                        const designEval = data.design_evaluation;
-                        const infoDiv = document.getElementById('design-evaluation-info');
-
-                        // 설계평가 정보 표시
-                        let infoHtml = '<div class="alert alert-info">';
-                        infoHtml += '<h6 class="fw-bold"><i class="fas fa-info-circle me-2"></i>설계평가 결과</h6>';
-                        infoHtml += `<p class="mb-1"><strong>평가 결과:</strong> <span class="badge ${designEval.conclusion === 'effective' ? 'bg-success' : 'bg-danger'}">${designEval.conclusion === 'effective' ? 'Effective' : 'Ineffective'}</span></p>`;
-
-                        if (designEval.deficiency_details) {
-                            infoHtml += `<p class="mb-1"><strong>미비사항:</strong> ${designEval.deficiency_details}</p>`;
-                        }
-                        if (designEval.improvement_plan) {
-                            infoHtml += `<p class="mb-1"><strong>개선계획:</strong> ${designEval.improvement_plan}</p>`;
-                        }
-                        if (designEval.test_procedure) {
-                            infoHtml += `<p class="mb-1"><strong>테스트 절차:</strong> ${designEval.test_procedure}</p>`;
-                        }
-
-                        // 연간 통제 등 설계평가 시점에 증빙이 없었을 수 있음을 안내
-                        infoHtml += '<p class="mb-0 mt-2"><small class="text-muted">💡 <strong>연간 통제의 경우</strong> 설계평가 시점에 실제 증빙이 없었다면, 이제 운영평가에서 실제 증빙을 확인하고 입력하세요.</small></p>';
-                        infoHtml += '</div>';
-
-                        if (infoDiv) {
-                            infoDiv.innerHTML = infoHtml;
-                        }
-
-                        // 표본 크기는 1로 설정 (연간 통제 등)
-                        const sampleSizeInput = document.getElementById('sample_size');
-                        if (sampleSizeInput) {
-                            sampleSizeInput.value = 1;
-                        }
-
-                        // 표본 라인 생성
-                        generateSampleLines();
-
-                        // 증빙 내용 자동 입력
-                        const evidenceInput = document.getElementById('sample-evidence-1');
-                        if (evidenceInput) {
-                            // 설계평가 시점에 증빙이 있었다면 "설계평가에서 확인됨"
-                            // 없었다면 빈 칸으로 두고 사용자가 직접 입력하도록 함
-                            if (designEval.test_procedure && designEval.test_procedure.trim().length > 10) {
-                                evidenceInput.value = '설계평가 테스트 절차에 따라 확인됨';
-                            } else {
-                                evidenceInput.value = '';  // 사용자가 직접 입력
-                                evidenceInput.placeholder = '실제 증빙 내용을 입력하세요 (예: 2024년 연간 보고서 검토 완료)';
-                            }
-                        }
-
-                        // 결과 설정 - 설계평가 결론과 동일하게 설정
-                        const resultSelect = document.getElementById('sample-result-1');
-                        if (resultSelect) {
-                            if (designEval.conclusion === 'effective') {
-                                // 설계평가 Effective → 운영평가 No Exception
-                                resultSelect.value = 'no_exception';
-                            } else {
-                                // 설계평가 Ineffective → 운영평가 Exception (경감요소 없음)
-                                // 따라서 전체 결론도 Ineffective가 됨
-                                resultSelect.value = 'exception';
-                                // Exception 선택 시 경감요소 행이 나타나도록 트리거
-                                handleSampleResultChange(1);
-                                // 미비사항은 참고용으로 표시하되, 경감요소로 간주하지 않음
-                                // (경감요소 필드는 비워둠 → Ineffective 유지)
-                            }
-                        }
-
-                        // 전체 결론 업데이트
-                        setTimeout(() => {
-                            updateOverallConclusion();
-                        }, 200);
-
-                    } else {
-                        showWarningToast('설계평가 데이터를 찾을 수 없습니다. 설계평가를 먼저 완료해주세요.');
-                        const checkbox = document.getElementById('use_design_evaluation');
-                        if (checkbox) {
-                            checkbox.checked = false;
-                            toggleUseDesignEvaluation();
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('설계평가 데이터 로드 오류:', error);
-                    showErrorToast('설계평가 데이터를 불러오는 중 오류가 발생했습니다.');
-                    const checkbox = document.getElementById('use_design_evaluation');
-                    if (checkbox) {
-                        checkbox.checked = false;
-                        toggleUseDesignEvaluation();
-                    }
-                });
         }
 
         // 평가 필드 활성화/비활성화
@@ -2085,24 +2154,39 @@
                         const resultEl = document.getElementById(`sample-result-${i}`);
                         const mitigationEl = document.getElementById(`sample-mitigation-${i}`);
 
-                        if (evidenceEl && resultEl) {
-                            const result = resultEl.value || 'no_exception';
-                            const mitigation = mitigationEl ? mitigationEl.value || '' : '';
+                        // attribute 데이터 수집
+                        const attributes = {};
+                        for (let attrIdx = 0; attrIdx < 10; attrIdx++) {
+                            const attrEl = document.getElementById(`sample-attr${attrIdx}-${i}`);
+                            if (attrEl) {
+                                attributes[`attribute${attrIdx}`] = attrEl.value || '';
+                            }
+                        }
 
-                            sampleLines.push({
-                                sample_number: i,
-                                evidence: evidenceEl.value || '',
-                                result: result,
-                                mitigation: mitigation
-                            });
+                        // 표본 행이 있으면 무조건 저장 (증빙값 없어도 저장)
+                        const result = resultEl ? (resultEl.value || 'no_exception') : 'no_exception';
+                        const mitigation = mitigationEl ? (mitigationEl.value || '') : '';
 
-                            // Exception 카운트 계산
-                            if (result === 'exception') {
-                                exceptionCount++;
-                                // 경감요소 없는 Exception 카운트
-                                if (!mitigation.trim()) {
-                                    exceptionWithoutMitigationCount++;
-                                }
+                        const sampleData = {
+                            sample_number: i,
+                            evidence: evidenceEl ? (evidenceEl.value || '') : '',
+                            result: result,
+                            mitigation: mitigation
+                        };
+
+                        // attribute 데이터가 있으면 추가
+                        if (Object.keys(attributes).length > 0) {
+                            sampleData.attributes = attributes;
+                        }
+
+                        sampleLines.push(sampleData);
+
+                        // Exception 카운트 계산
+                        if (result === 'exception') {
+                            exceptionCount++;
+                            // 경감요소 없는 Exception 카운트
+                            if (!mitigation.trim()) {
+                                exceptionWithoutMitigationCount++;
                             }
                         }
                     }
@@ -2162,8 +2246,13 @@
                         // 성공 메시지 먼저 표시
                         showSuccessToast('운영평가 결과가 저장되었습니다.');
 
-                        // 로컬 데이터 업데이트
-                        evaluated_controls[currentControlCode] = evaluationData;
+                        // 로컬 데이터 업데이트 (서버 응답의 line_id와 sample_lines 포함)
+                        evaluated_controls[currentControlCode] = {
+                            ...evaluationData,
+                            line_id: data.line_id,  // 서버에서 반환된 line_id
+                            sample_lines: evaluationData.sample_lines || []  // 저장한 sample_lines
+                        };
+                        console.log('[saveOperationEvaluation] evaluated_controls 업데이트:', evaluated_controls[currentControlCode]);
 
                         // UI 업데이트
                         updateEvaluationUI(currentRowIndex, evaluationData);
@@ -2651,10 +2740,17 @@
         // Generic 수동통제 전용 함수
         // ===================================================================
 
-        function showGenericManualControlUI(buttonElement) {
+        function showGenericManualControlUI(buttonElement, forceControlCode) {
             const controlCode = buttonElement.getAttribute('data-control-code');
             const controlName = buttonElement.getAttribute('data-control-name');
 
+            // 모달 제목 설정
+            const modalTitle = document.getElementById('genericManualModalLabel');
+            if (modalTitle) {
+                modalTitle.innerHTML = `<i class="fas fa-edit me-2"></i>수동 통제 운영평가`;
+            }
+
+            const targetControlCode = forceControlCode || controlCode;
             // 모달로 Generic 수동통제 UI 표시
             const params = new URLSearchParams({
                 rcm_id: currentRcmId,
@@ -2663,8 +2759,8 @@
                 design_evaluation_session: currentEvaluationSession
             });
 
-            // iframe에 URL 설정 (Generic 경로 - 통제코드를 GENERIC으로 설정)
-            document.getElementById('genericManualIframe').src = `/operation-evaluation/manual/GENERIC?${params.toString()}`;
+            // iframe에 URL 설정
+            document.getElementById('genericManualIframe').src = `/operation-evaluation/manual/${targetControlCode}?${params.toString()}`;
 
             // 모달 열기
             const modal = new bootstrap.Modal(document.getElementById('genericManualModal'));
@@ -2674,6 +2770,253 @@
             document.getElementById('genericManualModal').addEventListener('hidden.bs.modal', function() {
                 reloadWithScrollPosition();
             }, { once: true });
+        }
+
+        // ===================================================================
+        // 모집단 업로드 함수 (표본수 0인 경우)
+        // ===================================================================
+
+        let excelHeaders = [];
+        let excelData = [];
+        let uploadedLineId = null;
+        let uploadedPopulationCount = 0;
+        let uploadedSampleSize = 0;
+
+        function handlePopulationFileSelected() {
+            const file = document.getElementById('populationFile').files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, {header: 1});
+
+                if (jsonData.length > 0) {
+                    excelHeaders = jsonData[0];
+                    excelData = jsonData.slice(1);
+
+                    // 필드 매핑 UI 표시
+                    showFieldMapping(excelHeaders);
+                } else {
+                    alert('엑셀 파일에 데이터가 없습니다.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function showFieldMapping(headers) {
+            const container = document.getElementById('fieldMappingContainer');
+            container.innerHTML = '';
+
+            // 기본 필드 정의 (번호, 설명)
+            const requiredFields = [
+                { name: 'number', label: '번호' },
+                { name: 'description', label: '설명' }
+            ];
+
+            let html = '<div class="table-responsive"><table class="table table-sm table-bordered">';
+            html += '<thead><tr><th style="width: 30%;">필수 필드</th><th>엑셀 컬럼 선택</th></tr></thead><tbody>';
+
+            requiredFields.forEach(field => {
+                html += `<tr><td><strong>${field.label}</strong></td><td>`;
+                html += `<select class="form-select form-select-sm" id="mapping_${field.name}">`;
+                html += '<option value="">선택하세요</option>';
+                headers.forEach((header, idx) => {
+                    html += `<option value="${idx}">${header}</option>`;
+                });
+                html += '</select></td></tr>';
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+
+            // 필드 매핑 섹션 표시
+            document.getElementById('populationFieldMapping').style.display = 'block';
+        }
+
+        function uploadPopulationFile() {
+            const file = document.getElementById('populationFile').files[0];
+            if (!file) {
+                alert('파일을 선택하세요.');
+                return;
+            }
+
+            // 기존 데이터가 있는지 확인
+            const existingData = evaluated_controls[currentControlCode];
+            if (existingData && existingData.sample_lines && existingData.sample_lines.length > 0) {
+                if (!confirm('⚠️ 경고\n\n모집단을 업로드하면 기존에 작성한 모든 표본 데이터(증빙 포함)가 삭제됩니다.\n\n계속하시겠습니까?')) {
+                    return;
+                }
+            }
+
+            // 필드 매핑 확인
+            const numberCol = document.getElementById('mapping_number').value;
+            const descriptionCol = document.getElementById('mapping_description').value;
+
+            if (!numberCol || !descriptionCol) {
+                alert('필수 필드를 모두 매핑해주세요.');
+                return;
+            }
+
+            // FormData 생성
+            const formData = new FormData();
+            formData.append('population_file', file);
+            formData.append('control_code', currentControlCode);
+            formData.append('rcm_id', currentRcmId);
+            formData.append('design_evaluation_session', currentEvaluationSession);
+
+            const fieldMapping = {
+                number: parseInt(numberCol),
+                description: parseInt(descriptionCol)
+            };
+            formData.append('field_mapping', JSON.stringify(fieldMapping));
+
+            // 업로드 중 표시
+            const uploadBtn = event.target;
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>업로드 중...';
+
+            // API 호출
+            fetch('/api/operation-evaluation/upload-population', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                // 응답이 JSON인지 확인
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    return response.text().then(text => {
+                        console.error('Non-JSON response:', text.substring(0, 500));
+                        throw new Error('서버가 JSON 응답을 반환하지 않았습니다. 로그인이 필요하거나 서버 오류가 발생했습니다.');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // 업로드 성공 - 모집단 업로드 섹션 숨기고 평가 필드 표시
+                    console.log('[uploadPopulationFile] 업로드 성공:', data);
+                    console.log('[uploadPopulationFile] sample_lines:', JSON.stringify(data.sample_lines, null, 2));
+
+                    // evaluated_controls에 저장
+                    if (!evaluated_controls[currentControlCode]) {
+                        evaluated_controls[currentControlCode] = {};
+                    }
+                    evaluated_controls[currentControlCode].line_id = data.line_id;
+                    evaluated_controls[currentControlCode].sample_lines = data.sample_lines || [];
+
+                    console.log('[uploadPopulationFile] evaluated_controls 저장 완료:', evaluated_controls[currentControlCode]);
+
+                    // 모집단 업로드 섹션 숨기기
+                    document.getElementById('population-upload-section').style.display = 'none';
+
+                    // 평가 필드 섹션 표시
+                    document.getElementById('evaluation-fields').style.display = 'block';
+
+                    // 표본 크기 설정
+                    const sampleSizeEl = document.getElementById('sample_size');
+                    if (sampleSizeEl) {
+                        sampleSizeEl.value = data.sample_size;
+                    }
+
+                    // 표본 테이블 생성
+                    generateSampleLines();
+                } else {
+                    alert('업로드 실패: ' + (data.error || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                alert('업로드 중 오류가 발생했습니다: ' + error.message);
+            })
+            .finally(() => {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>업로드 및 표본 추출';
+            });
+        }
+
+
+        function generateSampleLinesWithAttributes(attributes, sampleSize) {
+            console.log('[generateSampleLinesWithAttributes] attributes:', attributes);
+            console.log('[generateSampleLinesWithAttributes] sampleSize:', sampleSize);
+
+            // 샘플 데이터 가져오기
+            const existingData = evaluated_controls[currentControlCode];
+            const existingSampleLines = existingData?.sample_lines || [];
+            console.log('[generateSampleLinesWithAttributes] existingSampleLines:', existingSampleLines);
+
+            // 테이블 헤더 동적 생성
+            const table = document.getElementById('sample-lines-table');
+            const thead = table.querySelector('thead');
+            const tbody = table.querySelector('tbody');
+
+            // 헤더 재생성
+            let headerHtml = '<tr><th width="8%">표본 #</th><th width="30%">증빙 내용</th>';
+            attributes.forEach(attr => {
+                headerHtml += `<th width="${Math.floor(50 / attributes.length)}%">${attr.name}</th>`;
+            });
+            headerHtml += '<th width="12%">결과</th></tr>';
+            thead.innerHTML = headerHtml;
+
+            // 테이블 바디 생성
+            tbody.innerHTML = '';
+
+            const samplesToDisplay = sampleSize || existingSampleLines.length;
+
+            for (let i = 1; i <= samplesToDisplay; i++) {
+                const sample = existingSampleLines.find(s => s.sample_number === i);
+
+                const row = document.createElement('tr');
+
+                // 표본 번호
+                let rowHtml = `<td class="text-center align-middle">#${i}</td>`;
+
+                // 증빙 내용
+                const evidence = sample?.evidence || '';
+                rowHtml += `
+                    <td class="align-middle">
+                        <textarea class="form-control form-control-sm"
+                               id="sample-evidence-${i}"
+                               placeholder="증빙 내용"
+                               rows="2"
+                               readonly>${evidence}</textarea>
+                    </td>`;
+
+                // Attribute 필드들
+                attributes.forEach(attr => {
+                    rowHtml += `
+                        <td class="align-middle">
+                            <input type="text" class="form-control form-control-sm"
+                                   id="sample-${i}-${attr.attribute}"
+                                   placeholder="${attr.name}">
+                        </td>`;
+                });
+
+                // 결과
+                rowHtml += `
+                    <td class="align-middle">
+                        <select class="form-select form-select-sm"
+                                id="sample-result-${i}"
+                                onchange="handleSampleResultChange(${i})">
+                            <option value="no_exception" selected>No Exception</option>
+                            <option value="exception">Exception</option>
+                        </select>
+                    </td>`;
+
+                row.innerHTML = rowHtml;
+                tbody.appendChild(row);
+            }
+
+            // 전역 변수에 attribute 정보 저장 (저장 시 사용)
+            window.currentAttributes = attributes;
+
+            console.log('[generateSampleLinesWithAttributes] 테이블 생성 완료');
         }
     </script>
 </body>

@@ -34,7 +34,7 @@ def manual_control_evaluation(control_code):
 
     # URL 파라미터
     rcm_id = request.args.get('rcm_id')
-    control_code_param = request.args.get('control_code', control_code)
+    control_code_param = control_code
     control_name = request.args.get('control_name', config['name'])
     design_evaluation_session = request.args.get('design_evaluation_session')
 
@@ -139,8 +139,18 @@ def manual_control_evaluation(control_code):
                         return redirect(url_for('link7.user_operation_evaluation_rcm',
                                               rcm_id=rcm_id,
                                               evaluation_session=design_evaluation_session))
+
+        # 속성 메타데이터 조회
+        attribute_meta = conn.execute('''
+            SELECT attribute_name, attribute_label, display_order
+            FROM sb_control_attribute_meta
+            WHERE control_code = %s
+            ORDER BY display_order
+        ''', (control_code,)).fetchall()
+
     except Exception as e:
         print(f"기존 데이터 로드 오류: {e}")
+        attribute_meta = []
 
     return render_template('link7_manual_generic.jsp',
                          rcm_id=rcm_id,
@@ -149,7 +159,8 @@ def manual_control_evaluation(control_code):
                          design_evaluation_session=design_evaluation_session,
                          config=config,
                          existing_data=existing_data,
-                         pc01_data=pc01_data)
+                         pc01_data=pc01_data,
+                         attribute_meta=[dict(row) for row in attribute_meta])
 
 
 @bp_generic.route('/api/operation-evaluation/manual/<control_code>/upload-population', methods=['POST'])
@@ -276,6 +287,39 @@ def upload_manual_population(control_code):
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)})
 
+@bp_generic.route('/api/operation-evaluation/manual/<control_code>/get-design-data', methods=['GET'])
+@login_required
+def get_design_data_for_manual_control(control_code):
+    """
+    수동 통제 운영평가에서 사용할 설계평가 데이터 조회
+    """
+    user_info = get_user_info()
+    rcm_id = request.args.get('rcm_id')
+    design_evaluation_session = request.args.get('design_evaluation_session')
+
+    if not all([rcm_id, design_evaluation_session]):
+        return jsonify({'success': False, 'message': '필수 파라미터가 누락되었습니다.'}), 400
+
+    try:
+        with get_db() as conn:
+            # 설계평가 결과 조회
+            design_eval = conn.execute('''
+                SELECT l.evaluation_evidence, l.evaluation_rationale
+                FROM sb_design_evaluation_line l
+                JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
+                WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s AND l.control_code = %s
+            ''', (rcm_id, user_info['user_id'], design_evaluation_session, control_code)).fetchone()
+
+            if design_eval:
+                return jsonify({
+                    'success': True,
+                    'design_data': dict(design_eval)
+                })
+            else:
+                return jsonify({'success': False, 'message': '설계평가 데이터를 찾을 수 없습니다.'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'설계평가 데이터 조회 중 오류 발생: {str(e)}'}), 500
+
 
 @bp_generic.route('/api/operation-evaluation/manual/<control_code>/save-test-results', methods=['POST'])
 @login_required
@@ -355,14 +399,25 @@ def save_manual_test_results(control_code):
 
         # 운영평가 데이터 저장
         from auth import save_operation_evaluation
+        
+        # sample_lines 데이터 구성
+        sample_lines = []
+        for i, res in enumerate(test_results):
+            sample_lines.append({
+                'sample_number': i + 1,
+                'evidence': res.get('notes', ''),
+                'result': 'exception' if res.get('has_exception') else 'no_exception',
+                'mitigation': '', # 수동통제 UI에서는 개별 경감요소 없음
+                'attributes': res.get('attributes', {})
+            })
+
         evaluation_data = {
             'test_type': control_code,
             'population_count': samples_data['population_count'],
             'sample_size': samples_data['sample_size'],
-            'population_path': None,
-            'samples_path': file_paths.get('samples_path'),
             'test_results_path': file_paths.get('excel_path'),
-            'conclusion': 'effective' if not any(r.get('has_exception') for r in test_results) else 'exception'
+            'conclusion': 'effective' if not any(r.get('has_exception') for r in test_results) else 'exception',
+            'sample_lines': sample_lines
         }
 
         save_operation_evaluation(rcm_id, control_code, user_info['user_id'],

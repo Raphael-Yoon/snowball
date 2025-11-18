@@ -27,7 +27,7 @@
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h2><i class="fas fa-server me-2"></i>{{ control_name }}</h2>
+                        <h2><i class="fas fa-edit me-2"></i>{{ control_name }}</h2>
                     </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-outline-warning" id="resetBtn" onclick="resetUpload()" style="display: none;">
@@ -89,6 +89,21 @@
                                 <i class="fas fa-save me-1"></i>저장
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 설계평가 결과로 대체 옵션 -->
+        <div class="row mb-4" id="useDesignEvaluationSection">
+            <div class="col-12">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-clipboard-check me-2"></i>설계평가 결과로 대체</h5>
+                    </div>
+                    <div class="card-body">
+                        <button type="button" class="btn btn-info" onclick="applyDesignEvaluation()">설계평가 결과 가져오기</button>
+                        <small class="text-muted d-block mt-2">설계평가에서 이미 증빙을 확인한 경우, 해당 내용을 가져와 운영평가를 대체할 수 있습니다.</small>
                     </div>
                 </div>
             </div>
@@ -220,6 +235,7 @@
         const rcmId = {{ rcm_id }};
         const controlCode = '{{ control_code }}';
         const designEvaluationSession = '{{ design_evaluation_session }}';
+        const attributeMeta = {{ attribute_meta | tojson | safe }};
 
         let samples = [];
         let excelHeaders = [];
@@ -272,21 +288,22 @@
         function buildTableHeader() {
             const headerRow = document.getElementById('tableHeader');
             let html = '';
-
-            // Sticky 컬럼
+            
+            // 고정 컬럼 (No, 모집단 필드)
             html += '<th style="position: sticky; left: 0; background-color: #f8f9fa; z-index: 10; min-width: 50px; border-right: 2px solid #dee2e6;">No</th>';
 
             let leftPos = 50;
-            for (let i = 1; i < config.sticky_columns.length; i++) {
-                const col = config.sticky_columns[i];
-                const isLast = (i === config.sticky_columns.length - 1);
+            config.population_headers.forEach((header, i) => {
+                const width = 150; // 기본 너비
+                const isLast = (i === config.population_headers.length - 1);
                 const borderStyle = isLast ? 'border-right: 2px solid #dee2e6;' : '';
-                html += `<th style="position: sticky; left: ${col.left}px; background-color: #f8f9fa; z-index: 10; min-width: ${col.width}px; ${borderStyle}">${config.population_headers[i-1]}</th>`;
-            }
+                html += `<th style="position: sticky; left: ${leftPos}px; background-color: #f8f9fa; z-index: 10; min-width: ${width}px; ${borderStyle}">${header}</th>`;
+                leftPos += width;
+            });
 
-            // 일반 컬럼
-            config.normal_columns.forEach(col => {
-                html += `<th style="min-width: ${col.width}px;">${col.label}</th>`;
+            // 동적 속성 컬럼 (메타데이터 기반)
+            attributeMeta.forEach(meta => {
+                html += `<th style="min-width: 180px;">${meta.attribute_label}</th>`;
             });
 
             headerRow.innerHTML = html;
@@ -420,76 +437,27 @@
                 const testResult = existingData?.samples_data?.test_results?.test_results?.[idx] || {};
 
                 let html = '';
-
-                // Sticky 컬럼 - No
+                
+                // 고정 컬럼 (No, 모집단 데이터)
                 html += `<td style="position: sticky; left: 0; background-color: white; z-index: 5; min-width: 50px; border-right: 2px solid #dee2e6;">${idx + 1}</td>`;
 
-                // Sticky 컬럼 - 모집단 데이터
-                for (let i = 1; i < config.sticky_columns.length; i++) {
-                    const col = config.sticky_columns[i];
-                    const field = config.population_fields[i-1];
+                let leftPos = 50;
+                config.population_fields.forEach((field, i) => {
                     const value = data[field] || '';
-                    const isLast = (i === config.sticky_columns.length - 1);
+                    const width = 150;
+                    const isLast = (i === config.population_fields.length - 1);
                     const borderStyle = isLast ? 'border-right: 2px solid #dee2e6;' : '';
-                    html += `<td style="position: sticky; left: ${col.left}px; background-color: white; z-index: 5; min-width: ${col.width}px; ${borderStyle}">${value}</td>`;
-                }
+                    html += `<td style="position: sticky; left: ${leftPos}px; background-color: white; z-index: 5; min-width: ${width}px; ${borderStyle}">${value}</td>`;
+                    leftPos += width;
+                });
 
-                // 일반 컬럼 - 통제별 입력 필드
-                if (controlCode === 'PC02') {
-                    // PC02 전용 컬럼
-                    html += `<td style="min-width: 180px;"><input type="text" class="form-control form-control-sm" value="${testResult.request_number || ''}" id="req_num_${idx}"></td>`;
-                    html += `<td style="min-width: 150px;">
-                        <select class="form-select form-select-sm" id="test_yn_${idx}" onchange="checkExceptionPC02(${idx})">
-                            <option value="">선택</option>
-                            <option value="Y" ${testResult.user_test_yn === 'Y' ? 'selected' : ''}>Y</option>
-                            <option value="N" ${testResult.user_test_yn === 'N' ? 'selected' : ''}>N</option>
-                        </select>
-                    </td>`;
-                    html += `<td style="min-width: 150px;"><input type="text" class="form-control form-control-sm" value="${testResult.user_test_person || ''}" id="test_person_${idx}"></td>`;
-                    html += `<td style="min-width: 150px;"><input type="date" class="form-control form-control-sm" value="${testResult.user_test_date || ''}" id="test_date_${idx}" onchange="checkExceptionPC02(${idx})"></td>`;
-                    html += `<td style="min-width: 80px;"><span class="badge ${testResult.has_exception ? 'bg-danger' : 'bg-success'}" id="exc_${idx}">${testResult.has_exception ? 'Y' : 'N'}</span></td>`;
-                    html += `<td style="min-width: 300px;"><input type="text" class="form-control form-control-sm" value="${testResult.notes || ''}" id="notes_${idx}" placeholder="비고"></td>`;
-                } else if (controlCode === 'PC03') {
-                    // PC03 전용 컬럼
-                    html += `<td style="min-width: 180px;"><input type="text" class="form-control form-control-sm" value="${testResult.request_number || ''}" id="req_num_${idx}"></td>`;
-                    html += `<td style="min-width: 150px;"><input type="text" class="form-control form-control-sm" value="${testResult.deploy_requester || ''}" id="deploy_req_${idx}" onchange="checkExceptionPC03(${idx})"></td>`;
-                    html += `<td style="min-width: 180px;"><input type="text" class="form-control form-control-sm" value="${testResult.deploy_requester_dept || ''}" id="deploy_req_dept_${idx}" onchange="checkExceptionPC03(${idx})"></td>`;
-                    html += `<td style="min-width: 150px;"><input type="text" class="form-control form-control-sm" value="${testResult.deploy_approver || ''}" id="deploy_appr_${idx}" onchange="checkExceptionPC03(${idx})"></td>`;
-                    html += `<td style="min-width: 180px;"><input type="text" class="form-control form-control-sm" value="${testResult.deploy_approver_dept || ''}" id="deploy_appr_dept_${idx}" onchange="checkExceptionPC03(${idx})"></td>`;
-                    html += `<td style="min-width: 150px;"><input type="date" class="form-control form-control-sm" value="${testResult.deploy_approval_date || ''}" id="deploy_appr_date_${idx}" onchange="checkExceptionPC03(${idx})"></td>`;
-                    html += `<td style="min-width: 80px;"><span class="badge ${testResult.has_exception ? 'bg-danger' : 'bg-success'}" id="exc_${idx}">${testResult.has_exception ? 'Y' : 'N'}</span></td>`;
-                    html += `<td style="min-width: 300px;"><input type="text" class="form-control form-control-sm" value="${testResult.notes || ''}" id="notes_${idx}" placeholder="비고"></td>`;
-                } else if (controlCode === 'CO01') {
-                    // CO01 전용 컬럼 (APD 스타일과 동일)
-                    html += `<td style="min-width: 180px;"><input type="text" class="form-control form-control-sm" value="${testResult.request_number || ''}" id="req_num_${idx}"></td>`;
-                    html += `<td style="min-width: 150px;"><input type="text" class="form-control form-control-sm" value="${testResult.requester_name || ''}" id="req_name_${idx}" onchange="checkException(${idx})"></td>`;
-                    html += `<td style="min-width: 180px;"><input type="text" class="form-control form-control-sm" value="${testResult.requester_department || ''}" id="req_dept_${idx}" onchange="checkException(${idx})"></td>`;
-                    html += `<td style="min-width: 150px;"><input type="text" class="form-control form-control-sm" value="${testResult.approver_name || ''}" id="appr_name_${idx}" onchange="checkException(${idx})"></td>`;
-                    html += `<td style="min-width: 180px;"><input type="text" class="form-control form-control-sm" value="${testResult.approver_department || ''}" id="appr_dept_${idx}" onchange="checkException(${idx})"></td>`;
-                    html += `<td style="min-width: 150px;"><input type="date" class="form-control form-control-sm" value="${testResult.approval_date || ''}" id="appr_date_${idx}" onchange="checkException(${idx})"></td>`;
-                    html += `<td style="min-width: 80px;"><span class="badge ${testResult.has_exception ? 'bg-danger' : 'bg-success'}" id="exc_${idx}">${testResult.has_exception ? 'Y' : 'N'}</span></td>`;
-                    html += `<td style="min-width: 300px;"><input type="text" class="form-control form-control-sm" value="${testResult.notes || ''}" id="notes_${idx}" placeholder="비고"></td>`;
-                } else {
-                    // APD01/07/09/12, PC01용 표준 컬럼
-                    html += `<td style="min-width: 180px;"><input type="text" class="form-control form-control-sm" value="${testResult.request_number || ''}" id="req_num_${idx}" onchange="checkException(${idx})"></td>`;
-                    html += `<td style="min-width: 150px;"><input type="text" class="form-control form-control-sm" value="${testResult.requester_name || ''}" id="req_name_${idx}" onchange="checkException(${idx})"></td>`;
-                    html += `<td style="min-width: 180px;"><input type="text" class="form-control form-control-sm" value="${testResult.requester_department || ''}" id="req_dept_${idx}" onchange="checkException(${idx})"></td>`;
-                    html += `<td style="min-width: 150px;"><input type="text" class="form-control form-control-sm" value="${testResult.approver_name || ''}" id="appr_name_${idx}" onchange="checkException(${idx})"></td>`;
-                    html += `<td style="min-width: 180px;"><input type="text" class="form-control form-control-sm" value="${testResult.approver_department || ''}" id="appr_dept_${idx}" onchange="checkException(${idx})"></td>`;
-                    html += `<td style="min-width: 150px;"><input type="date" class="form-control form-control-sm" value="${testResult.approval_date || ''}" id="appr_date_${idx}" onchange="checkException(${idx})"></td>`;
-
-                    // PC01 전용 추가 컬럼
-                    if (controlCode === 'PC01') {
-                        html += `<td style="min-width: 120px;"><input type="text" class="form-control form-control-sm" value="${testResult.developer || ''}" id="developer_${idx}"></td>`;
-                        html += `<td style="min-width: 120px;"><input type="text" class="form-control form-control-sm" value="${testResult.deployer || ''}" id="deployer_${idx}"></td>`;
-                        html += `<td style="min-width: 80px;"><span class="badge ${testResult.has_exception ? 'bg-danger' : 'bg-success'}" id="exc_${idx}">${testResult.has_exception ? 'Y' : 'N'}</span></td>`;
-                        html += `<td style="min-width: 300px;"><input type="text" class="form-control form-control-sm" value="${testResult.notes || ''}" id="notes_${idx}" placeholder="비고"></td>`;
-                    } else {
-                        // APD01/07/09/12 기본 컬럼
-                        html += `<td style="min-width: 80px;"><span class="badge ${testResult.has_exception ? 'bg-danger' : 'bg-success'}" id="exc_${idx}">${testResult.has_exception ? 'Y' : 'N'}</span></td>`;
-                        html += `<td style="min-width: 300px;"><input type="text" class="form-control form-control-sm" value="${testResult.notes || ''}" id="notes_${idx}" placeholder="비고"></td>`;
-                    }
-                }
+                // 동적 속성 컬럼 (메타데이터 기반)
+                const attributes = testResult.attributes || {};
+                attributeMeta.forEach(meta => {
+                    const value = attributes[meta.attribute_name] || '';
+                    const inputType = meta.attribute_label.includes('일자') ? 'date' : 'text';
+                    html += `<td style="min-width: 180px;"><input type="${inputType}" class="form-control form-control-sm" value="${value}" id="${meta.attribute_name}_${idx}" onchange="checkException(${idx})"></td>`;
+                });
 
                 row.innerHTML = html;
             });
@@ -750,43 +718,21 @@
                         has_exception: document.getElementById(`exc_${i}`).textContent === 'Y',
                         notes: document.getElementById(`notes_${i}`).value
                     };
+                    
+                    // 동적 속성 데이터 수집
+                    result.attributes = {};
+                    attributeMeta.forEach(meta => {
+                        const inputEl = document.getElementById(`${meta.attribute_name}_${i}`);
+                        result.attributes[meta.attribute_name] = inputEl ? inputEl.value : '';
+                    });
 
+                    // 예외 로직은 각 통제별로 checkException 함수에서 처리
                     if (controlCode === 'PC02') {
-                        // PC02 전용 필드
-                        result.request_number = document.getElementById(`req_num_${i}`).value;
-                        result.user_test_yn = document.getElementById(`test_yn_${i}`).value;
-                        result.user_test_person = document.getElementById(`test_person_${i}`).value;
-                        result.user_test_date = document.getElementById(`test_date_${i}`).value;
+                        checkExceptionPC02(i);
                     } else if (controlCode === 'PC03') {
-                        // PC03 전용 필드
-                        result.request_number = document.getElementById(`req_num_${i}`).value;
-                        result.deploy_requester = document.getElementById(`deploy_req_${i}`).value;
-                        result.deploy_requester_dept = document.getElementById(`deploy_req_dept_${i}`).value;
-                        result.deploy_approver = document.getElementById(`deploy_appr_${i}`).value;
-                        result.deploy_approver_dept = document.getElementById(`deploy_appr_dept_${i}`).value;
-                        result.deploy_approval_date = document.getElementById(`deploy_appr_date_${i}`).value;
-                    } else if (controlCode === 'CO01') {
-                        // CO01 전용 필드 (APD 스타일과 동일)
-                        result.request_number = document.getElementById(`req_num_${i}`).value;
-                        result.requester_name = document.getElementById(`req_name_${i}`).value;
-                        result.requester_department = document.getElementById(`req_dept_${i}`).value;
-                        result.approver_name = document.getElementById(`appr_name_${i}`).value;
-                        result.approver_department = document.getElementById(`appr_dept_${i}`).value;
-                        result.approval_date = document.getElementById(`appr_date_${i}`).value;
+                        checkExceptionPC03(i);
                     } else {
-                        // APD01/07/09/12, PC01용 표준 필드
-                        result.request_number = document.getElementById(`req_num_${i}`).value;
-                        result.requester_name = document.getElementById(`req_name_${i}`).value;
-                        result.requester_department = document.getElementById(`req_dept_${i}`).value;
-                        result.approver_name = document.getElementById(`appr_name_${i}`).value;
-                        result.approver_department = document.getElementById(`appr_dept_${i}`).value;
-                        result.approval_date = document.getElementById(`appr_date_${i}`).value;
-
-                        // PC01 전용 추가 필드
-                        if (controlCode === 'PC01') {
-                            result.developer = document.getElementById(`developer_${i}`).value;
-                            result.deployer = document.getElementById(`deployer_${i}`).value;
-                        }
+                        checkException(i);
                     }
 
                     return result;
