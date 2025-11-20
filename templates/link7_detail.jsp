@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>SnowBall - {{ rcm_info.control_category or 'RCM' }} 운영평가 - {{ rcm_info.rcm_name }}</title>
@@ -16,24 +17,29 @@
         .modal {
             z-index: 1060 !important;
         }
+
         .modal-backdrop {
             z-index: 1055 !important;
         }
+
         /* 모달이 화면을 벗어나지 않도록 높이 제한 및 스크롤 추가 */
         #operationEvaluationModal .modal-content {
             max-height: 90vh;
             display: flex;
             flex-direction: column;
         }
+
         #operationEvaluationModal .modal-body {
             overflow-y: auto;
             flex: 1 1 auto;
         }
+
         #operationEvaluationModal .modal-footer {
             flex-shrink: 0;
         }
     </style>
 </head>
+
 <body>
     {% include 'navi.jsp' %}
 
@@ -85,7 +91,8 @@
                                 <table class="table table-borderless">
                                     <tr>
                                         <th width="40%">총 통제 수:</th>
-                                        <td><span class="badge bg-warning text-dark">{{ rcm_details|length }}개</span></td>
+                                        <td><span class="badge bg-warning text-dark">{{ rcm_details|length }}개</span>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th>평가자:</th>
@@ -97,10 +104,13 @@
                                 <div class="text-center">
                                     <h6 class="text-warning">운영평가 진행률</h6>
                                     <div class="progress mb-2" style="height: 20px;">
-                                        <div class="progress-bar bg-warning" id="evaluationProgress" role="progressbar" style="width: 0%; font-size: 12px;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                        <div class="progress-bar bg-warning" id="evaluationProgress" role="progressbar"
+                                            style="width: 0%; font-size: 12px;" aria-valuenow="0" aria-valuemin="0"
+                                            aria-valuemax="100">0%</div>
                                     </div>
                                     <small class="text-muted">
-                                        <span id="evaluatedCount">0</span> / <span id="totalControlCount">{{ rcm_details|length }}</span> 통제 평가 완료
+                                        <span id="evaluatedCount">0</span> / <span id="totalControlCount">{{
+                                            rcm_details|length }}</span> 통제 평가 완료
                                         <br>상태: <span id="evaluationStatus" class="badge bg-secondary">준비 중</span>
                                     </small>
                                 </div>
@@ -118,10 +128,15 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="fas fa-list me-2"></i>통제 운영평가</h5>
                         <div class="d-flex flex-wrap gap-2">
-                            <button id="completeEvaluationBtn" class="btn btn-sm btn-warning" onclick="completeEvaluation()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;" title="운영평가를 완료 처리합니다" data-bs-toggle="tooltip">
+                            <button id="completeEvaluationBtn" class="btn btn-sm btn-warning"
+                                onclick="completeEvaluation()"
+                                style="display: none; height: 70%; padding: 0.2rem 0.5rem;" title="운영평가를 완료 처리합니다"
+                                data-bs-toggle="tooltip">
                                 <i class="fas fa-check me-1"></i>완료처리
                             </button>
-                            <button id="downloadBtn" class="btn btn-sm btn-outline-warning" onclick="exportEvaluationResult()" style="display: none; height: 70%; padding: 0.2rem 0.5rem;">
+                            <button id="downloadBtn" class="btn btn-sm btn-outline-warning"
+                                onclick="exportEvaluationResult()"
+                                style="display: none; height: 70%; padding: 0.2rem 0.5rem;">
                                 <i class="fas fa-file-excel me-1"></i>다운로드
                             </button>
                         </div>
@@ -149,7 +164,8 @@
                                         <td><strong>{{ detail.control_name }}</strong></td>
                                         <td>
                                             <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; max-height: calc(1.4em * 2);"
-                                                 title="{{ detail.control_description or '-' }}" data-bs-toggle="tooltip">
+                                                title="{{ detail.control_description or '-' }}"
+                                                data-bs-toggle="tooltip">
                                                 {{ detail.control_description or '-' }}
                                             </div>
                                         </td>
@@ -158,26 +174,26 @@
                                         <td>{{ detail.control_nature_name or detail.control_nature or '-' }}</td>
                                         <td>
                                             <button class="btn btn-warning btn-sm w-100"
-                                                    data-detail-id="{{ detail.detail_id }}"
-                                                    data-control-code="{{ detail.control_code }}"
-                                                    data-control-name="{{ detail.control_name }}"
-                                                    data-control-frequency="{{ detail.control_frequency_name or detail.control_frequency|e }}"
-                                                    data-control-type="{{ detail.control_type_name or detail.control_type|e }}"
-                                                    data-control-nature="{{ detail.control_nature_name or detail.control_nature|e }}"
-                                                    data-control-nature-code="{{ detail.control_nature|e }}"
-                                                    data-test-procedure="{{ detail.test_procedure|e }}"
-                                                    data-std-control-id="{{ detail.mapped_std_control_id|e }}"
-                                                    data-std-control-code="{% if detail['control_code'] in rcm_mappings %}{{ rcm_mappings[detail['control_code']].std_control_code }}{% else %}{% endif %}"
-                                                    data-design-evaluation-evidence="{{ detail.evaluation_evidence|e }}"
-                                                    data-design-evaluation-images='{{ detail.design_evaluation_images|tojson if detail.design_evaluation_images else "[]" }}'
-                                                    data-recommended-sample-size="{{ detail.recommended_sample_size if detail.recommended_sample_size is not none else '' }}"
-                                                    data-row-index="{{ loop.index }}"
-                                                    onclick="openOperationEvaluationModal(this)">
+                                                data-detail-id="{{ detail.detail_id }}"
+                                                data-control-code="{{ detail.control_code }}"
+                                                data-control-name="{{ detail.control_name }}"
+                                                data-control-frequency="{{ detail.control_frequency_name or detail.control_frequency|e }}"
+                                                data-control-type="{{ detail.control_type_name or detail.control_type|e }}"
+                                                data-control-nature="{{ detail.control_nature_name or detail.control_nature|e }}"
+                                                data-control-nature-code="{{ detail.control_nature|e }}"
+                                                data-test-procedure="{{ detail.test_procedure|e }}"
+                                                data-std-control-id="{{ detail.mapped_std_control_id|e }}"
+                                                data-std-control-code="{% if detail['control_code'] in rcm_mappings %}{{ rcm_mappings[detail['control_code']].std_control_code }}{% else %}{% endif %}"
+                                                data-design-evaluation-evidence="{{ (detail.evaluation_evidence or '')|e }}"
+                                                data-recommended-sample-size="{{ detail.recommended_sample_size if detail.recommended_sample_size is not none else '' }}"
+                                                data-row-index="{{ loop.index }}"
+                                                onclick="openOperationEvaluationModal(this)">
                                                 <i class="fas fa-edit me-1"></i>평가
                                             </button>
                                         </td>
                                         <td>
-                                            <span id="evaluation-result-{{ loop.index }}" class="badge bg-secondary">Not Evaluated</span>
+                                            <span id="evaluation-result-{{ loop.index }}" class="badge bg-secondary">Not
+                                                Evaluated</span>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -198,14 +214,16 @@
     </div>
 
     <!-- 설계평가 보기 모달 -->
-    <div class="modal fade" id="designEvaluationViewModal" tabindex="-1" aria-labelledby="designEvaluationViewModalLabel" aria-hidden="true">
+    <div class="modal fade" id="designEvaluationViewModal" tabindex="-1"
+        aria-labelledby="designEvaluationViewModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
                     <h5 class="modal-title" id="designEvaluationViewModalLabel">
                         <i class="fas fa-drafting-compass me-2"></i>설계평가 결과 ({{ evaluation_session }})
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="table-responsive">
@@ -239,7 +257,8 @@
     </div>
 
     <!-- 운영평가 모달 -->
-    <div class="modal fade" id="operationEvaluationModal" tabindex="-1" aria-labelledby="operationEvaluationModalLabel" aria-hidden="true">
+    <div class="modal fade" id="operationEvaluationModal" tabindex="-1" aria-labelledby="operationEvaluationModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog" style="max-width: 800px;">
             <div class="modal-content">
                 <div class="modal-header bg-warning text-dark">
@@ -257,7 +276,8 @@
                                     <strong>통제코드:</strong> <span id="modal-control-code"></span>
                                 </div>
                                 <div class="col-md-3">
-                                    <strong>통제주기:</strong> <span id="modal-control-frequency" class="text-muted">-</span>
+                                    <strong>통제주기:</strong> <span id="modal-control-frequency"
+                                        class="text-muted">-</span>
                                 </div>
                                 <div class="col-md-6">
                                     <strong>통제명:</strong> <span id="modal-control-name"></span>
@@ -277,8 +297,10 @@
                             <div class="row mt-2">
                                 <div class="col-12">
                                     <strong>테스트절차:</strong>
-                                    <div class="mt-1 p-2 border rounded bg-white" style="max-height: 120px; overflow-y: auto;">
-                                        <span id="modal-test-procedure" class="text-muted" style="white-space: pre-line;">-</span>
+                                    <div class="mt-1 p-2 border rounded bg-white"
+                                        style="max-height: 120px; overflow-y: auto;">
+                                        <span id="modal-test-procedure" class="text-muted"
+                                            style="white-space: pre-line;">-</span>
                                     </div>
                                 </div>
                             </div>
@@ -309,9 +331,11 @@
                                 <label for="populationFile" class="form-label fw-bold">
                                     <i class="fas fa-upload me-1"></i>모집단 엑셀 파일
                                 </label>
-                                <input type="file" class="form-control" id="populationFile" accept=".xlsx,.xlsm" onchange="handlePopulationFileSelected()">
+                                <input type="file" class="form-control" id="populationFile" accept=".xlsx,.xlsm"
+                                    onchange="handlePopulationFileSelected()">
                                 <div class="form-text">
-                                    <strong>.xlsx 또는 .xlsm</strong> 형식의 엑셀 파일을 업로드하세요. (.xls 파일은 Excel에서 .xlsx로 변환 후 업로드)
+                                    <strong>.xlsx 또는 .xlsm</strong> 형식의 엑셀 파일을 업로드하세요. (.xls 파일은 Excel에서 .xlsx로 변환 후
+                                    업로드)
                                 </div>
                             </div>
 
@@ -332,12 +356,16 @@
                             <div class="row mb-3">
                                 <div class="col-md-3">
                                     <label for="sample_size" class="form-label fw-bold">표본 크기</label>
-                                    <input type="number" class="form-control text-end" id="sample_size" name="sample_size" min="0" max="100" placeholder="공란: 모집단 크기 기반 자동 결정" onchange="generateSampleLines()" onkeyup="if(event.key === 'Enter') generateSampleLines()">
+                                    <input type="number" class="form-control text-end" id="sample_size"
+                                        name="sample_size" min="0" max="100" placeholder="공란: 모집단 크기 기반 자동 결정"
+                                        onchange="generateSampleLines()"
+                                        onkeyup="if(event.key === 'Enter') generateSampleLines()">
                                     <div id="sampleSizeMessage" class="mt-1" style="display: none;"></div>
                                 </div>
                                 <div class="col-md-9 d-flex align-items-end">
                                     <div class="form-text">
-                                        <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1). 입력 후 자동으로 표본 라인이 생성됩니다. <strong>0 또는 공란으로 두면 모집단 업로드 시 크기에 따라 자동 결정됩니다.</strong></small>
+                                        <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1). 입력 후 자동으로 표본 라인이 생성됩니다.
+                                            <strong>0 또는 공란으로 두면 모집단 업로드 시 크기에 따라 자동 결정됩니다.</strong></small>
                                     </div>
                                 </div>
                             </div>
@@ -378,12 +406,14 @@
 
                         <div class="mb-3" id="exception-details-section" style="display: none;">
                             <label for="exception_details" class="form-label fw-bold">예외사항 세부내용</label>
-                            <textarea class="form-control" id="exception_details" name="exception_details" rows="3" placeholder="발견된 예외사항의 세부내용을 기록하세요"></textarea>
+                            <textarea class="form-control" id="exception_details" name="exception_details" rows="3"
+                                placeholder="발견된 예외사항의 세부내용을 기록하세요"></textarea>
                         </div>
 
                         <div class="mb-3" id="improvement-plan-section" style="display: none;">
                             <label for="improvement_plan" class="form-label fw-bold">개선계획</label>
-                            <textarea class="form-control" id="improvement_plan" name="improvement_plan" rows="3" placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
+                            <textarea class="form-control" id="improvement_plan" name="improvement_plan" rows="3"
+                                placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
                         </div>
 
                         <!-- 설계평가 이미지 표시 섹션 -->
@@ -413,7 +443,9 @@
                             <label for="no_occurrence_reason" class="form-label fw-bold">
                                 비고 (선택사항)
                             </label>
-                            <textarea class="form-control" id="no_occurrence_reason" name="no_occurrence_reason" rows="3" placeholder="필요한 경우 추가 설명을 입력하세요&#10;예) 당기 중 신규 직원 채용이 없었음, 시스템 변경이 발생하지 않았음 등"></textarea>
+                            <textarea class="form-control" id="no_occurrence_reason" name="no_occurrence_reason"
+                                rows="3"
+                                placeholder="필요한 경우 추가 설명을 입력하세요&#10;예) 당기 중 신규 직원 채용이 없었음, 시스템 변경이 발생하지 않았음 등"></textarea>
                             <div class="form-text">
                                 <small class="text-muted">
                                     <i class="fas fa-info-circle me-1"></i>
@@ -424,8 +456,10 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="min-width: auto; padding: 0.375rem 0.75rem;">취소</button>
-                    <button type="button" id="saveOperationEvaluationBtn" class="btn btn-warning" onclick="saveOperationEvaluation();">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
+                        style="min-width: auto; padding: 0.375rem 0.75rem;">취소</button>
+                    <button type="button" id="saveOperationEvaluationBtn" class="btn btn-warning"
+                        onclick="saveOperationEvaluation();">
                         <i class="fas fa-save me-1"></i>저장
                     </button>
                 </div>
@@ -443,7 +477,8 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info mb-3">
-                        <strong><span id="auto-check-control-code"></span></strong> - <span id="auto-check-control-name"></span>
+                        <strong><span id="auto-check-control-code"></span></strong> - <span
+                            id="auto-check-control-name"></span>
                     </div>
                     <div class="alert alert-warning mb-3">
                         <div class="mb-2">
@@ -621,7 +656,8 @@
     </div>
 
     <!-- PC01 선행 조건 알림 모달 -->
-    <div class="modal fade" id="pc01RequiredModal" tabindex="-1" aria-labelledby="pc01RequiredModalLabel" aria-hidden="true">
+    <div class="modal fade" id="pc01RequiredModal" tabindex="-1" aria-labelledby="pc01RequiredModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-warning text-dark">
@@ -646,7 +682,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="min-width: auto; padding: 0.375rem 0.75rem;">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
+                        style="min-width: auto; padding: 0.375rem 0.75rem;">
                         <i class="fas fa-times me-1"></i>닫기
                     </button>
                     <button type="button" class="btn btn-warning" onclick="goToPC01()">
@@ -659,23 +696,28 @@
 
     <!-- Toast Container -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
-        <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert"
+            aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
                 <div class="toast-body">
                     <i class="fas fa-check-circle me-2"></i><span id="successToastMessage"></span>
                 </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
             </div>
         </div>
-        <div id="errorToast" class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div id="errorToast" class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive"
+            aria-atomic="true">
             <div class="d-flex">
                 <div class="toast-body">
                     <i class="fas fa-exclamation-circle me-2"></i><span id="errorToastMessage"></span>
                 </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                    aria-label="Close"></button>
             </div>
         </div>
-        <div id="warningToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div id="warningToast" class="toast align-items-center text-bg-warning border-0" role="alert"
+            aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
                 <div class="toast-body">
                     <i class="fas fa-exclamation-triangle me-2"></i><span id="warningToastMessage"></span>
@@ -698,30 +740,30 @@
         // 통제별 설계평가 이미지 데이터 저장 (control_code를 키로 사용)
         let designEvaluationImagesData = {
             {% if rcm_details %}
-            {% for detail in rcm_details %}
-            "{{ detail.control_code }}": {{ (detail.design_evaluation_images|tojson if detail.design_evaluation_images else '[]')|safe }}{% if not loop.last %},{% endif %}
-            {% endfor %}
-            {% endif %}
+        {% for detail in rcm_details %}
+        "{{ detail.control_code }}": {{ (detail.design_evaluation_images | tojson if detail.design_evaluation_images else '[]')| safe }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+        {% endif %}
         };
 
         // 통제별 attribute 정보 저장 (control_code를 키로 사용)
         let rcmAttributesData = {};
         {% if rcm_details %}
         {% for detail in rcm_details %}
-        rcmAttributesData[{{ detail['control_code']|tojson }}] = {
-            detailId: {{ detail['detail_id']|int }},
-            populationAttributeCount: {{ detail['population_attribute_count']|int if detail['population_attribute_count'] is not none else 2 }},
+        rcmAttributesData[{{ detail['control_code'] | tojson }}] = {
+            detailId: {{ detail['detail_id'] | int }},
+            populationAttributeCount: {{ detail['population_attribute_count'] | int if detail['population_attribute_count'] is not none else 2 }},
             attributes: {
-                attribute0: {{ detail['attribute0']|tojson if detail['attribute0'] else 'null' }},
-                attribute1: {{ detail['attribute1']|tojson if detail['attribute1'] else 'null' }},
-                attribute2: {{ detail['attribute2']|tojson if detail['attribute2'] else 'null' }},
-                attribute3: {{ detail['attribute3']|tojson if detail['attribute3'] else 'null' }},
-                attribute4: {{ detail['attribute4']|tojson if detail['attribute4'] else 'null' }},
-                attribute5: {{ detail['attribute5']|tojson if detail['attribute5'] else 'null' }},
-                attribute6: {{ detail['attribute6']|tojson if detail['attribute6'] else 'null' }},
-                attribute7: {{ detail['attribute7']|tojson if detail['attribute7'] else 'null' }},
-                attribute8: {{ detail['attribute8']|tojson if detail['attribute8'] else 'null' }},
-                attribute9: {{ detail['attribute9']|tojson if detail['attribute9'] else 'null' }}
+                attribute0: {{ detail['attribute0'] | tojson if detail['attribute0'] else 'null' }},
+                attribute1: {{ detail['attribute1'] | tojson if detail['attribute1'] else 'null' }},
+                attribute2: {{ detail['attribute2'] | tojson if detail['attribute2'] else 'null' }},
+                attribute3: {{ detail['attribute3'] | tojson if detail['attribute3'] else 'null' }},
+                attribute4: {{ detail['attribute4'] | tojson if detail['attribute4'] else 'null' }},
+                attribute5: {{ detail['attribute5'] | tojson if detail['attribute5'] else 'null' }},
+                attribute6: {{ detail['attribute6'] | tojson if detail['attribute6'] else 'null' }},
+                attribute7: {{ detail['attribute7'] | tojson if detail['attribute7'] else 'null' }},
+                attribute8: {{ detail['attribute8'] | tojson if detail['attribute8'] else 'null' }},
+                attribute9: {{ detail['attribute9'] | tojson if detail['attribute9'] else 'null' }}
             }
         };
         {% endfor %}
@@ -755,7 +797,7 @@
         }
 
         // 페이지 로드 시 초기화
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             console.log('=== 페이지 로드 시 evaluated_controls ===');
             console.log(evaluated_controls);
 
@@ -828,7 +870,7 @@
             nameEl.textContent = controlName;
             resultEl.innerHTML = '<p class="text-info mb-0"><i class="fas fa-check-circle me-2"></i>설계평가에서 정상 작동 확인됨</p>';
 
-            statusEl.onchange = function() {
+            statusEl.onchange = function () {
                 issueSection.style.display = (this.value === 'issue_found') ? 'block' : 'none';
             };
 
@@ -851,30 +893,31 @@
 
             const data = {
                 control_code: currentControlCode,
-                header_id: {{ header_id | default(0) }},
-                conclusion: status === 'confirmed' ? 'effective' : 'ineffective',
-                exception_details: issueEl ? issueEl.value : '',
+                header_id: {{ header_id | default (0)
+        }},
+        conclusion: status === 'confirmed' ? 'effective' : 'ineffective',
+            exception_details: issueEl ? issueEl.value : '',
                 improvement_plan: noteEl ? noteEl.value : '',
-                sample_size: 0,
-                exception_count: status === 'issue_found' ? 1 : 0
+                    sample_size: 0,
+                        exception_count: status === 'issue_found' ? 1 : 0
             };
 
-            fetch('/api/operation-evaluation/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    rcm_id: currentRcmId,
-                    design_evaluation_session: currentEvaluationSession,
-                    control_code: data.control_code,
-                    evaluation_data: {
-                        conclusion: data.conclusion,
-                        exception_details: data.exception_details,
-                        improvement_plan: data.improvement_plan,
-                        sample_size: data.sample_size,
-                        exception_count: data.exception_count
-                    }
-                })
+        fetch('/api/operation-evaluation/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                rcm_id: currentRcmId,
+                design_evaluation_session: currentEvaluationSession,
+                control_code: data.control_code,
+                evaluation_data: {
+                    conclusion: data.conclusion,
+                    exception_details: data.exception_details,
+                    improvement_plan: data.improvement_plan,
+                    sample_size: data.sample_size,
+                    exception_count: data.exception_count
+                }
             })
+        })
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
@@ -970,7 +1013,7 @@
             const designEvaluationEvidence = buttonElement.getAttribute('data-design-evaluation-evidence');
             const recommendedSampleSizeStr = buttonElement.getAttribute('data-recommended-sample-size');
             const rowIndex = parseInt(buttonElement.getAttribute('data-row-index'));
-            
+
             // 전역 변수로 권장 표본수와 통제주기 저장
             // 1순위: RCM에 설정된 권장 표본수 (0 포함)
             // 2순위: 통제 주기에 따른 기본값
@@ -980,8 +1023,8 @@
             // JavaScript 객체에서 설계평가 이미지 데이터 가져오기
             let designEvaluationImages = [];
             if (designEvaluationImagesData[controlCode]) {
-                designEvaluationImages = Array.isArray(designEvaluationImagesData[controlCode]) 
-                    ? designEvaluationImagesData[controlCode] 
+                designEvaluationImages = Array.isArray(designEvaluationImagesData[controlCode])
+                    ? designEvaluationImagesData[controlCode]
                     : [];
             }
 
@@ -1063,8 +1106,8 @@
 
             // 이미 저장된 데이터가 있는지 확인
             const hasSavedData = evaluated_controls[controlCode] &&
-                                (evaluated_controls[controlCode].line_id ||
-                                 (evaluated_controls[controlCode].sample_lines && evaluated_controls[controlCode].sample_lines.length > 0));
+                (evaluated_controls[controlCode].line_id ||
+                    (evaluated_controls[controlCode].sample_lines && evaluated_controls[controlCode].sample_lines.length > 0));
 
             if (recommendedSampleSize === 0 && !hasSavedData) {
                 // 표본수가 0이고 저장된 데이터가 없으면 모집단 업로드 UI 표시
@@ -1658,7 +1701,7 @@
                         if (attrName) {
                             // 우선순위: 현재 입력 > DB 데이터 > 빈 값
                             const attrValue = currentInput?.attributes?.[`attribute${attrIdx}`] ||
-                                            existingSample?.attributes?.[`attribute${attrIdx}`] || '';
+                                existingSample?.attributes?.[`attribute${attrIdx}`] || '';
 
                             // 모집단 필드인지 확인
                             const isPopulation = attrIdx < popAttrCount;
@@ -1810,20 +1853,15 @@
             // 표본 크기만큼 각 표본 확인
             for (let i = 1; i <= sampleSize; i++) {
                 const resultSelect = document.getElementById(`sample-result-${i}`);
-                const evidenceInput = document.getElementById(`sample-evidence-${i}`);
-                const mitigationTextarea = document.getElementById(`sample-mitigation-${i}`);
-
                 if (!resultSelect) continue;
 
-                // 증빙 내용이 입력되었는지 확인
-                if (evidenceInput && evidenceInput.value.trim().length > 0) {
-                    evidenceFilledCount++;
-                }
-
-                if (resultSelect.value === 'no_exception') {
+                const resultValue = resultSelect.value;
+                if (resultValue === 'no_exception') {
                     noExceptionCount++;
-                } else if (resultSelect.value === 'exception') {
-                    const hasMitigation = mitigationTextarea && mitigationTextarea.value.trim().length > 0;
+                } else if (resultValue === 'exception') {
+                    // Exception인 경우 경감요소 확인
+                    const mitigationInput = document.getElementById(`sample-mitigation-${i}`);
+                    const hasMitigation = mitigationInput && mitigationInput.value.trim().length > 0;
                     if (hasMitigation) {
                         exceptionWithMitigationCount++;
                     } else {
@@ -1832,33 +1870,7 @@
                 }
             }
 
-            // 설계평가 대체 모드 확인
-            const useDesignEvaluationCheckbox = document.getElementById('use_design_evaluation');
-            const isUsingDesignEvaluation = useDesignEvaluationCheckbox && useDesignEvaluationCheckbox.checked;
-
-            // 증빙 내용이 하나도 입력되지 않은 경우 (데이터 미입력 상태)
-            // 단, 설계평가 대체 모드일 때는 예외 처리
-            if (evidenceFilledCount === 0 && !isUsingDesignEvaluation) {
-                conclusionSpan.textContent = '-';
-                conclusionSpan.className = 'badge bg-secondary ms-2';
-                summaryDiv.innerHTML = `
-                    <small>
-                        <i class="fas fa-info-circle text-muted me-1"></i>
-                        증빙 내용을 입력해주세요 (${sampleSize}개 표본)
-                    </small>
-                `;
-                // 예외 관련 필드 숨기기
-                toggleExceptionFields(false);
-                return;
-            }
-
-            // Exception이 있는지 확인 (경감요소 유무 무관)
-            const hasAnyException = (exceptionWithMitigationCount + exceptionWithoutMitigationCount) > 0;
-
-            // Exception이 있을 때만 예외사항 세부내용과 개선계획 필드 표시
-            toggleExceptionFields(hasAnyException);
-
-            // 경감요소 없는 Exception이 하나라도 있으면 Ineffective
+            // 결론 계산
             if (exceptionWithoutMitigationCount > 0) {
                 conclusionSpan.textContent = 'Ineffective';
                 conclusionSpan.className = 'badge bg-danger ms-2';
@@ -1906,7 +1918,7 @@
         // 기존 함수들
         // ===================================================================
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // 당기 발생사실 없음 체크박스 이벤트 리스너 (모달 외부의 체크박스용)
             const noOccurrenceCheckbox = document.getElementById('no_occurrence');
             if (noOccurrenceCheckbox) {
@@ -1929,7 +1941,7 @@
                 setTimeout(generateSampleLines, 100);
                 return; // 유효성 검사 실패 시 아래 로직은 실행하지 않음
             }
-            
+
             // 예외 발견 수의 최대값을 새로운 표본 크기로 업데이트
             if (exceptionCountInput && inputValue > 0) {
                 exceptionCountInput.setAttribute('max', inputValue);
@@ -2051,10 +2063,10 @@
         }
 
         // 엑셀 파일 미리보기
-        document.getElementById('sampleExcelFile').addEventListener('change', function(e) {
+        document.getElementById('sampleExcelFile').addEventListener('change', function (e) {
             const preview = document.getElementById('excelPreview');
             preview.innerHTML = '';
-            
+
             const file = e.target.files[0];
             if (file) {
                 const div = document.createElement('div');
@@ -2233,50 +2245,50 @@
                     body: uploadData,
                     credentials: 'same-origin'  // 세션 쿠키를 포함하여 전송
                 })
-                .then(response => {
-                    console.log('응답 상태:', response.status, response.statusText);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('응답 데이터:', data);
-                    if (data.success) {
-                        // 성공 메시지 먼저 표시
-                        showSuccessToast('운영평가 결과가 저장되었습니다.');
+                    .then(response => {
+                        console.log('응답 상태:', response.status, response.statusText);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('응답 데이터:', data);
+                        if (data.success) {
+                            // 성공 메시지 먼저 표시
+                            showSuccessToast('운영평가 결과가 저장되었습니다.');
 
-                        // 로컬 데이터 업데이트 (서버 응답의 line_id와 sample_lines 포함)
-                        evaluated_controls[currentControlCode] = {
-                            ...evaluationData,
-                            line_id: data.line_id,  // 서버에서 반환된 line_id
-                            sample_lines: evaluationData.sample_lines || []  // 저장한 sample_lines
-                        };
-                        console.log('[saveOperationEvaluation] evaluated_controls 업데이트:', evaluated_controls[currentControlCode]);
+                            // 로컬 데이터 업데이트 (서버 응답의 line_id와 sample_lines 포함)
+                            evaluated_controls[currentControlCode] = {
+                                ...evaluationData,
+                                line_id: data.line_id,  // 서버에서 반환된 line_id
+                                sample_lines: evaluationData.sample_lines || []  // 저장한 sample_lines
+                            };
+                            console.log('[saveOperationEvaluation] evaluated_controls 업데이트:', evaluated_controls[currentControlCode]);
 
-                        // UI 업데이트
-                        updateEvaluationUI(currentRowIndex, evaluationData);
-                        updateProgress();
+                            // UI 업데이트
+                            updateEvaluationUI(currentRowIndex, evaluationData);
+                            updateProgress();
 
-                        // 모달은 약간 지연 후 닫기 (토스트가 보이도록)
-                        setTimeout(() => {
-                            const modalEl = document.getElementById('operationEvaluationModal');
-                            if (modalEl) {
-                                const modalInstance = bootstrap.Modal.getInstance(modalEl);
-                                if (modalInstance) {
-                                    modalInstance.hide();
+                            // 모달은 약간 지연 후 닫기 (토스트가 보이도록)
+                            setTimeout(() => {
+                                const modalEl = document.getElementById('operationEvaluationModal');
+                                if (modalEl) {
+                                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                                    if (modalInstance) {
+                                        modalInstance.hide();
+                                    }
                                 }
-                            }
-                        }, 500);
-                    } else {
-                        console.error('저장 실패:', data.message);
-                        showErrorToast('저장 실패: ' + (data.message || '알 수 없는 오류'));
-                    }
-                })
-                .catch(error => {
-                    console.error('저장 요청 오류:', error);
-                    showErrorToast('저장 중 네트워크 오류 발생: ' + error.message);
-                });
+                            }, 500);
+                        } else {
+                            console.error('저장 실패:', data.message);
+                            showErrorToast('저장 실패: ' + (data.message || '알 수 없는 오류'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('저장 요청 오류:', error);
+                        showErrorToast('저장 중 네트워크 오류 발생: ' + error.message);
+                    });
             } catch (error) {
                 console.error('saveOperationEvaluation 데이터 처리 오류:', error);
                 showErrorToast('데이터 처리 중 오류 발생: ' + error.message);
@@ -2324,11 +2336,12 @@
 
         // 진행률 업데이트
         function updateProgress() {
-            const totalControls = {{ rcm_details|length }};
+            // 평가 완료된 통제 수 계산
             const evaluatedControls = Object.keys(evaluated_controls).length;
+            const totalControls = {{ rcm_details|length }};
             const progress = totalControls > 0 ? Math.round((evaluatedControls / totalControls) * 100) : 0;
 
-            document.getElementById('evaluationProgress').style.width = progress + '%';
+            // 진행률 업데이트
             document.getElementById('evaluationProgress').textContent = progress + '%';
             document.getElementById('evaluatedCount').textContent = evaluatedControls;
 
@@ -2466,7 +2479,7 @@
             modal.show();
 
             // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
-            document.getElementById('apd01Modal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('apd01Modal').addEventListener('hidden.bs.modal', function () {
                 reloadWithScrollPosition();
             }, { once: true });
         }
@@ -2495,7 +2508,7 @@
             modal.show();
 
             // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
-            document.getElementById('apd07Modal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('apd07Modal').addEventListener('hidden.bs.modal', function () {
                 reloadWithScrollPosition();
             }, { once: true });
         }
@@ -2524,7 +2537,7 @@
             modal.show();
 
             // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
-            document.getElementById('apd09Modal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('apd09Modal').addEventListener('hidden.bs.modal', function () {
                 reloadWithScrollPosition();
             }, { once: true });
         }
@@ -2553,7 +2566,7 @@
             modal.show();
 
             // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
-            document.getElementById('apd12Modal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('apd12Modal').addEventListener('hidden.bs.modal', function () {
                 reloadWithScrollPosition();
             }, { once: true });
         }
@@ -2582,7 +2595,7 @@
             modal.show();
 
             // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
-            document.getElementById('pc01Modal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('pc01Modal').addEventListener('hidden.bs.modal', function () {
                 reloadWithScrollPosition();
             }, { once: true });
         }
@@ -2667,7 +2680,7 @@
             modal.show();
 
             // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
-            document.getElementById('pc02Modal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('pc02Modal').addEventListener('hidden.bs.modal', function () {
                 reloadWithScrollPosition();
             }, { once: true });
         }
@@ -2702,7 +2715,7 @@
             modal.show();
 
             // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
-            document.getElementById('pc03Modal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('pc03Modal').addEventListener('hidden.bs.modal', function () {
                 reloadWithScrollPosition();
             }, { once: true });
         }
@@ -2731,7 +2744,7 @@
             modal.show();
 
             // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
-            document.getElementById('co01Modal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('co01Modal').addEventListener('hidden.bs.modal', function () {
                 reloadWithScrollPosition();
             }, { once: true });
         }
@@ -2767,7 +2780,7 @@
             modal.show();
 
             // 모달이 닫힐 때 페이지 새로고침 (스크롤 위치 유지)
-            document.getElementById('genericManualModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('genericManualModal').addEventListener('hidden.bs.modal', function () {
                 reloadWithScrollPosition();
             }, { once: true });
         }
@@ -2787,12 +2800,12 @@
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
+                const workbook = XLSX.read(data, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const sheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
                 if (jsonData.length > 0) {
                     excelHeaders = jsonData[0];
@@ -2884,61 +2897,61 @@
                 method: 'POST',
                 body: formData
             })
-            .then(response => {
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    console.log('Response headers:', response.headers);
 
-                // 응답이 JSON인지 확인
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    return response.text().then(text => {
-                        console.error('Non-JSON response:', text.substring(0, 500));
-                        throw new Error('서버가 JSON 응답을 반환하지 않았습니다. 로그인이 필요하거나 서버 오류가 발생했습니다.');
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    // 업로드 성공 - 모집단 업로드 섹션 숨기고 평가 필드 표시
-                    console.log('[uploadPopulationFile] 업로드 성공:', data);
-                    console.log('[uploadPopulationFile] sample_lines:', JSON.stringify(data.sample_lines, null, 2));
-
-                    // evaluated_controls에 저장
-                    if (!evaluated_controls[currentControlCode]) {
-                        evaluated_controls[currentControlCode] = {};
+                    // 응답이 JSON인지 확인
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        return response.text().then(text => {
+                            console.error('Non-JSON response:', text.substring(0, 500));
+                            throw new Error('서버가 JSON 응답을 반환하지 않았습니다. 로그인이 필요하거나 서버 오류가 발생했습니다.');
+                        });
                     }
-                    evaluated_controls[currentControlCode].line_id = data.line_id;
-                    evaluated_controls[currentControlCode].sample_lines = data.sample_lines || [];
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // 업로드 성공 - 모집단 업로드 섹션 숨기고 평가 필드 표시
+                        console.log('[uploadPopulationFile] 업로드 성공:', data);
+                        console.log('[uploadPopulationFile] sample_lines:', JSON.stringify(data.sample_lines, null, 2));
 
-                    console.log('[uploadPopulationFile] evaluated_controls 저장 완료:', evaluated_controls[currentControlCode]);
+                        // evaluated_controls에 저장
+                        if (!evaluated_controls[currentControlCode]) {
+                            evaluated_controls[currentControlCode] = {};
+                        }
+                        evaluated_controls[currentControlCode].line_id = data.line_id;
+                        evaluated_controls[currentControlCode].sample_lines = data.sample_lines || [];
 
-                    // 모집단 업로드 섹션 숨기기
-                    document.getElementById('population-upload-section').style.display = 'none';
+                        console.log('[uploadPopulationFile] evaluated_controls 저장 완료:', evaluated_controls[currentControlCode]);
 
-                    // 평가 필드 섹션 표시
-                    document.getElementById('evaluation-fields').style.display = 'block';
+                        // 모집단 업로드 섹션 숨기기
+                        document.getElementById('population-upload-section').style.display = 'none';
 
-                    // 표본 크기 설정
-                    const sampleSizeEl = document.getElementById('sample_size');
-                    if (sampleSizeEl) {
-                        sampleSizeEl.value = data.sample_size;
+                        // 평가 필드 섹션 표시
+                        document.getElementById('evaluation-fields').style.display = 'block';
+
+                        // 표본 크기 설정
+                        const sampleSizeEl = document.getElementById('sample_size');
+                        if (sampleSizeEl) {
+                            sampleSizeEl.value = data.sample_size;
+                        }
+
+                        // 표본 테이블 생성
+                        generateSampleLines();
+                    } else {
+                        alert('업로드 실패: ' + (data.error || '알 수 없는 오류'));
                     }
-
-                    // 표본 테이블 생성
-                    generateSampleLines();
-                } else {
-                    alert('업로드 실패: ' + (data.error || '알 수 없는 오류'));
-                }
-            })
-            .catch(error => {
-                console.error('Upload error:', error);
-                alert('업로드 중 오류가 발생했습니다: ' + error.message);
-            })
-            .finally(() => {
-                uploadBtn.disabled = false;
-                uploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>업로드 및 표본 추출';
-            });
+                })
+                .catch(error => {
+                    console.error('Upload error:', error);
+                    alert('업로드 중 오류가 발생했습니다: ' + error.message);
+                })
+                .finally(() => {
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>업로드 및 표본 추출';
+                });
         }
 
 
@@ -3020,4 +3033,5 @@
         }
     </script>
 </body>
+
 </html>
