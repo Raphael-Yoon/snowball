@@ -103,6 +103,8 @@ def user_operation_evaluation_rcm():
     rcm_id = session.get('current_operation_rcm_id')
     design_evaluation_session = session.get('current_design_evaluation_session')
 
+    print(f"[DEBUG] RCM ID: {rcm_id}, Session: {design_evaluation_session}")
+
     if not rcm_id:
         flash('RCM 정보가 없습니다. 다시 선택해주세요.', 'error')
         return redirect(url_for('link7.user_operation_evaluation'))
@@ -111,6 +113,7 @@ def user_operation_evaluation_rcm():
         return redirect(url_for('link7.user_operation_evaluation'))
 
     # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+    print("[DEBUG] Checking user permissions...")
     user_rcms = get_user_rcms(user_info['user_id'])
     rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
 
@@ -120,6 +123,7 @@ def user_operation_evaluation_rcm():
 
 
     # 해당 설계평가 세션이 완료되었는지 확인
+    print("[DEBUG] Checking completed sessions...")
     completed_sessions = get_completed_design_evaluation_sessions(rcm_id, user_info['user_id'])
 
     session_found = False
@@ -133,6 +137,7 @@ def user_operation_evaluation_rcm():
         return redirect(url_for('link7.user_operation_evaluation'))
     
     # RCM 정보 조회
+    print("[DEBUG] Fetching RCM info...")
     rcm_info = None
     for rcm in user_rcms:
         if rcm['rcm_id'] == rcm_id:
@@ -140,9 +145,18 @@ def user_operation_evaluation_rcm():
             break
     
     # RCM 핵심통제 데이터 조회 (운영평가는 핵심통제이면서 설계평가가 '적정'인 통제만 대상)
-    rcm_details = get_key_rcm_details(rcm_id, user_info['user_id'], design_evaluation_session)
+    print("[DEBUG] Fetching key RCM details...")
+    try:
+        rcm_details = get_key_rcm_details(rcm_id, user_info['user_id'], design_evaluation_session)
+        print(f"[DEBUG] rcm_details count: {len(rcm_details) if rcm_details else 0}")
+    except Exception as e:
+        print(f"[DEBUG] Error fetching key RCM details: {e}")
+        import traceback
+        traceback.print_exc()
+        raise e
     
     # 매핑 정보 조회
+    print("[DEBUG] Fetching mappings...")
     from auth import get_rcm_detail_mappings
     rcm_mappings_list = get_rcm_detail_mappings(rcm_id)
     # control_code를 키로 하는 딕셔너리로 변환
@@ -154,6 +168,7 @@ def user_operation_evaluation_rcm():
         return redirect(url_for('link7.user_operation_evaluation'))
 
     # 각 통제 코드에 대한 config 정보 미리 로드
+    print("[DEBUG] Loading control configs...")
     control_configs = {}
     for detail in rcm_details:
         control_configs[detail['control_code']] = get_control_config(detail['control_code'])
@@ -162,6 +177,7 @@ def user_operation_evaluation_rcm():
     operation_evaluation_session = f"OP_{design_evaluation_session}"
 
     # 운영평가 Header/Line 데이터 동기화 (설계평가 결과 변경 반영)
+    print("[DEBUG] Syncing operation evaluation data...")
     sync_messages = []
     try:
         # 기존 운영평가 헤더 확인
@@ -202,9 +218,13 @@ def user_operation_evaluation_rcm():
             if sync_messages:
                 flash(' '.join(sync_messages), 'success')
     except Exception as e:
+        print(f"[DEBUG] Sync error: {e}")
+        import traceback
+        traceback.print_exc()
         flash(f"운영평가 데이터 동기화 중 오류 발생: {str(e)}", 'error')
 
     # 기존 운영평가 내역 불러오기 (Header-Line 구조)
+    print("[DEBUG] Loading existing evaluations...")
     try:
         evaluations = get_operation_evaluations(rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)
 
@@ -239,7 +259,7 @@ def user_operation_evaluation_rcm():
         evaluated_controls = {}
 
     log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 운영평가', '/operation-evaluation/rcm',
-                     request.remote_addr, request.headers.get('User-Agent'))
+                      request.remote_addr, request.headers.get('User-Agent'))
 
     return render_template('link7_detail.jsp',
                          rcm_id=rcm_id,

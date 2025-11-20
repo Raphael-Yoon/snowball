@@ -2265,3 +2265,338 @@ if is_production:
 - 이전 문제: 브라우저 캐시로 오인했으나 실제로는 서버 측 템플릿 캐싱
 - 사용자 피드백: "캐시때문에 문제가 된적이 없다니까" - 정확한 지적이었음
 - 해결 키워드: Flask TEMPLATES_AUTO_RELOAD, Jinja2 auto_reload, `__pycache__`
+
+---
+
+## 2025-11-19: GitHub Push 성공 및 MySQL 동기화 준비
+
+### GitHub Push 문제 해결
+
+**문제 상황**:
+- `git push origin developer` 실행 시 500 Internal Server Error 발생
+- `fatal: unable to access 'https://github.com/Raphael-Yoon/snowball.git/': The requested URL returned error: 500`
+
+**원인**:
+- GitHub 서버의 일시적인 내부 오류
+- 23개의 커밋을 한 번에 push하려고 할 때 발생
+
+**해결 방법**:
+30초 대기 후 재시도:
+```bash
+cd /c/Pythons/snowball
+sleep 30
+git push origin developer
+```
+
+**결과**:
+```
+To https://github.com/Raphael-Yoon/snowball.git
+   7a833c3..504d9ef  developer -> developer
+```
+
+**교훈**:
+- GitHub 500 에러는 대부분 일시적인 서버 문제
+- 재시도 전 30초 정도 대기하면 대부분 해결됨
+- 네트워크 연결은 정상 (ping 응답 22-42ms)
+
+### 테스트 파일 정리
+
+**삭제된 파일**:
+```bash
+rm -f test_integration_population.xlsx
+rm -f test_population.xlsx
+rm -f test_population_upload_integration.py
+rm -f test_upload.py
+```
+
+**유지된 파일**:
+- `tests/` 폴더의 정식 유닛 테스트 파일들
+- `RCM_ELC.xlsx`, `RCM_ITGC.xlsx`, `RCM_TLC.xlsx` (실제 RCM 파일)
+
+### MySQL 동기화 스크립트 정리
+
+**sync_sqlite_to_mysql.py** (구조 동기화):
+- **목적**: SQLite 스키마 변경사항을 MySQL에 반영
+- **동작**: `ALTER TABLE ADD COLUMN`으로 새 컬럼만 추가
+- **데이터**: 절대 건드리지 않음 (기존 데이터 보존)
+- **용도**: 개발 후 운영 MySQL 스키마 업데이트
+
+**sync_mysql_to_sqlite.py** (데이터 동기화):
+- **목적**: MySQL 운영 데이터를 로컬 SQLite로 복사
+- **동작**: 전체 데이터 백업 및 동기화
+- **데이터**: MySQL → SQLite 전체 복사
+- **용도**: 로컬 개발 환경에서 운영 데이터로 테스트
+
+### PythonAnywhere 배포 가이드
+
+**로컬에서 완료한 작업**:
+1. ✅ 코드 수정 및 테스트 (SQLite 환경)
+2. ✅ 마이그레이션 파일 생성 (016, 017, 018, 019)
+3. ✅ GitHub에 push (developer 브랜치)
+4. ✅ 테스트 파일 정리
+
+**PythonAnywhere에서 실행할 작업**:
+
+```bash
+# 1. 최신 코드 pull
+cd ~/snowball
+git pull origin developer
+
+# 2. DB 구조 동기화 (dry run으로 먼저 확인)
+python sync_sqlite_to_mysql.py
+
+# 3. 문제 없으면 실제 적용
+python sync_sqlite_to_mysql.py --apply
+
+# 또는 migrate.py 사용
+python migrate.py upgrade
+```
+
+**추가될 컬럼**:
+- `sb_rcm_detail.attribute0~9` (VARCHAR(100)) - 필드명 저장
+- `sb_rcm_detail.population_attribute_count` (INTEGER) - 모집단 항목 개수
+- `sb_operation_evaluation_sample.attribute0~9` (TEXT) - 증빙 데이터
+- `sb_rcm_detail_v` 뷰 업데이트
+
+**안전장치**:
+- DRY RUN 모드로 먼저 확인 (기본값)
+- `--apply` 플래그 없이는 실제 변경 안 됨
+- 기존 데이터는 절대 건드리지 않음
+
+### 로컬 환경 제약사항
+
+**MySQL 접속 불가**:
+- 로컬 개발 환경에서는 PythonAnywhere MySQL 서버에 직접 접속 불가
+- 방화벽/보안 설정으로 차단됨
+- 오류: `(2003, "Can't connect to MySQL server on 'itap.mysql.pythonanywhere-services.com' (timed out)")`
+
+**정상 동작**:
+- 로컬에서는 SQLite로만 개발
+- PythonAnywhere에서 MySQL 동기화 스크립트 실행
+- 이것이 의도된 워크플로우
+
+### 관련 파일
+
+**마이그레이션**:
+- [migrations/versions/016_create_rcm_detail_attributes.py](migrations/versions/016_create_rcm_detail_attributes.py)
+- [migrations/versions/017_add_sample_attributes.py](migrations/versions/017_add_sample_attributes.py)
+- [migrations/versions/018_add_population_attribute_count.py](migrations/versions/018_add_population_attribute_count.py)
+- [migrations/versions/019_update_view_add_attributes.py](migrations/versions/019_update_view_add_attributes.py)
+
+**동기화 스크립트**:
+- [sync_sqlite_to_mysql.py](sync_sqlite_to_mysql.py) - 구조 동기화
+- [sync_mysql_to_sqlite.py](sync_mysql_to_sqlite.py) - 데이터 동기화
+
+**Flask 설정**:
+- [snowball.py](snowball.py) - 템플릿 자동 리로드 설정 추가
+
+### Git 상태
+
+```bash
+$ git status
+On branch developer
+Your branch is up to date with 'origin/developer'.
+
+nothing to commit, working tree clean
+```
+
+**Push 완료**:
+- 23개 커밋이 GitHub developer 브랜치에 업로드됨
+- 커밋 범위: 7a833c3..504d9ef
+
+### 다음 작업
+
+1. **PythonAnywhere 배포**:
+   - GitHub에서 최신 코드 pull
+   - `sync_sqlite_to_mysql.py --apply` 실행
+   - MySQL 스키마 업데이트 확인
+
+2. **기능 테스트**:
+   - RCM Attribute 설정 기능 테스트
+   - 모집단 업로드 기능 테스트
+   - 운영평가 표본 자동 생성 기능 테스트
+
+3. **데이터 검증**:
+   - 새로 추가된 컬럼 확인
+   - 기존 데이터 무결성 확인
+   - 뷰 정상 작동 확인
+
+### 참고사항
+
+**GitHub 500 에러 대응**:
+- 일시적인 서버 문제인 경우가 대부분
+- 30초~1분 대기 후 재시도
+- 네트워크 연결 확인: `ping github.com`
+
+**MySQL 동기화 주의사항**:
+- 반드시 PythonAnywhere 콘솔에서 실행
+- DRY RUN으로 먼저 확인
+- 백업 권장 (특히 운영 환경)
+- 데이터는 절대 변경되지 않음 (구조만 변경)
+
+**워크플로우 정리**:
+1. 로컬: SQLite로 개발 및 테스트
+2. 로컬: 마이그레이션 파일 생성
+3. 로컬: GitHub에 push
+4. PythonAnywhere: git pull
+5. PythonAnywhere: sync_sqlite_to_mysql.py 실행
+6. 완료: MySQL 스키마 업데이트
+
+---
+
+## 2025-11-20 - 운영평가 결론 계산 로직 버그 수정
+
+### 1. 문제 상황
+
+평가 버튼 클릭 시 JavaScript 오류 발생:
+```
+POST http://127.0.0.1:5001/operation-evaluation/rcm 500 (INTERNAL SERVER ERROR)
+Uncaught SyntaxError: Unexpected token '}' (at rcm:4143:9)
+```
+
+### 2. 원인 분석
+
+**파일**: `templates/link7_detail.jsp:1848-1894`
+
+**문제점**:
+1. Line 1863에 잘못된 위치에 있는 여분의 `}` 브레이스
+2. for 루프의 로직이 불완전 (실제 sample result 값을 확인하지 않음)
+3. if-else 블록이 `updateOverallConclusion()` 함수 밖에 위치
+
+**오류 코드**:
+```javascript
+for (let i = 1; i <= sampleSize; i++) {
+    const resultSelect = document.getElementById(`sample-result-${i}`);
+    const hasMitigation = mitigationTextarea && mitigationTextarea.value.trim().length > 0;
+    if (hasMitigation) {
+        exceptionWithMitigationCount++;
+    } else {
+        exceptionWithoutMitigationCount++;
+    }
+}
+}  // ← Line 1863: 잘못된 위치의 닫는 브레이스
+
+// Line 1864-1883: 함수 밖에 있는 if-else 블록
+if (exceptionWithoutMitigationCount > 0) {
+    conclusionSpan.textContent = 'Ineffective';
+    // ...
+```
+
+### 3. 해결 방법
+
+#### 3.1 for 루프 로직 수정
+
+**수정 전**:
+```javascript
+for (let i = 1; i <= sampleSize; i++) {
+    const resultSelect = document.getElementById(`sample-result-${i}`);
+    const hasMitigation = mitigationTextarea && mitigationTextarea.value.trim().length > 0;
+    if (hasMitigation) {
+        exceptionWithMitigationCount++;
+    } else {
+        exceptionWithoutMitigationCount++;
+    }
+}
+```
+
+**수정 후**:
+```javascript
+for (let i = 1; i <= sampleSize; i++) {
+    const resultSelect = document.getElementById(`sample-result-${i}`);
+    if (!resultSelect) continue;
+
+    const resultValue = resultSelect.value;
+    if (resultValue === 'no_exception') {
+        noExceptionCount++;
+    } else if (resultValue === 'exception') {
+        // Exception인 경우 경감요소 확인
+        const mitigationInput = document.getElementById(`sample-mitigation-${i}`);
+        const hasMitigation = mitigationInput && mitigationInput.value.trim().length > 0;
+        if (hasMitigation) {
+            exceptionWithMitigationCount++;
+        } else {
+            exceptionWithoutMitigationCount++;
+        }
+    }
+}
+```
+
+#### 3.2 브레이스 구조 수정
+
+**수정 전**:
+```javascript
+}
+}  // ← 여분의 브레이스
+if (exceptionWithoutMitigationCount > 0) {
+    // ... 함수 밖의 코드
+}
+```
+
+**수정 후**:
+```javascript
+}
+
+// 결론 계산 (함수 내부)
+if (exceptionWithoutMitigationCount > 0) {
+    conclusionSpan.textContent = 'Ineffective';
+    conclusionSpan.className = 'badge bg-danger ms-2';
+    summaryDiv.innerHTML = `
+        <small>
+            <i class="fas fa-times-circle text-danger me-1"></i>
+            경감요소 없는 예외 ${exceptionWithoutMitigationCount}건 발견
+        </small>
+    `;
+} else {
+    conclusionSpan.textContent = 'Effective';
+    conclusionSpan.className = 'badge bg-success ms-2';
+    summaryDiv.innerHTML = `
+        <small>
+            <i class="fas fa-check-circle text-success me-1"></i>
+            No Exception: ${noExceptionCount}건, 경감요소 있는 Exception: ${exceptionWithMitigationCount}건
+        </small>
+    `;
+}
+}  // ← updateOverallConclusion() 함수 종료
+```
+
+### 4. 수정 효과
+
+✅ **for 루프 로직 개선**:
+- 각 sample의 실제 result 값(`no_exception` or `exception`) 확인
+- Exception인 경우에만 경감요소 입력값 검사
+- No Exception 건수 정확히 카운트
+
+✅ **브레이스 구조 정상화**:
+- 여분의 닫는 브레이스 제거
+- if-else 블록이 `updateOverallConclusion()` 함수 내부에 정상 위치
+- JavaScript 구문 오류 해결
+
+✅ **결론 계산 정상 작동**:
+- 표본별 결과(No Exception/Exception) 정확히 집계
+- 경감요소 유무에 따른 Effective/Ineffective 판단
+- 결론 요약 정보 정상 표시
+
+### 5. 테스트 방법
+
+1. **서버 실행**:
+```bash
+cd C:\Pythons\snowball
+python snowball.py
+```
+
+2. **평가 페이지 접속**:
+- http://127.0.0.1:5001/operation-evaluation
+- RCM 선택 후 평가 버튼 클릭
+
+3. **기능 검증**:
+- 표본별 결과 선택 (No Exception / Exception)
+- Exception 선택 시 경감요소 입력란 표시
+- 경감요소 입력 후 자동 결론 계산 확인
+- Effective/Ineffective 판단 정확성 확인
+
+### 6. 관련 파일
+
+- `templates/link7_detail.jsp:1848-1894` - updateOverallConclusion() 함수
+
+---
+
