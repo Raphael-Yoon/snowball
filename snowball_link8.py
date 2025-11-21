@@ -496,6 +496,10 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
 
         design_eval = cursor.fetchone()
 
+        # 기본값 설정 (설계평가 헤더가 없을 경우 대비)
+        evaluation_status = None
+        evaluated_controls = 0
+
         if design_eval:
             evaluation_status = design_eval[0]
             total_controls_header = design_eval[1] or 0
@@ -554,6 +558,17 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
         # 2단계: 운영평가 (Link7) - 특정 세션의 통제별 완료율 계산
         # 운영평가 데이터 확인 (헤더와 조인)
         operation_session = f"OP_{evaluation_session}"
+
+        # 운영평가 헤더의 evaluation_status 조회
+        cursor = db.execute('''
+            SELECT evaluation_status
+            FROM sb_operation_evaluation_header
+            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
+        ''', (rcm_id, user_id, operation_session))
+
+        operation_header = cursor.fetchone()
+        operation_evaluation_status = operation_header[0] if operation_header else None
+
         cursor = db.execute('''
             SELECT COUNT(*) as total,
                    SUM(CASE WHEN line.conclusion IS NOT NULL AND line.conclusion != '' THEN 1 ELSE 0 END) as completed
@@ -597,14 +612,23 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                 'category_stats': category_stats
             }
 
-            # 설계평가가 완료되어야만 운영평가 상태 업데이트
+            # 운영평가 상태 결정 로직
+            # - 설계평가 완료 여부: evaluation_status == 'COMPLETED' (버튼 클릭 기준)
+            # - 운영평가 완료 여부: 모든 통제의 conclusion이 입력되었는지 (completed_operation_controls == total_operation_controls)
+
             if evaluation_status == 'COMPLETED':
-                if completed_operation_controls == total_operation_controls:
+                # 설계평가 완료 상태
+                if total_operation_controls > 0 and completed_operation_controls == total_operation_controls:
+                    # 상태 5: 모든 통제 평가 완료 -> 운영평가 완료
                     progress['steps'][1]['status'] = 'completed'
-                else:
+                elif completed_operation_controls > 0:
+                    # 상태 4: 일부 통제만 평가 완료 -> 운영평가 진행중
                     progress['steps'][1]['status'] = 'in-progress'
+                else:
+                    # 상태 3: 설계평가 완료, 운영평가 시작 전 (통제 평가 없음)
+                    progress['steps'][1]['status'] = 'pending'
             else:
-                # 설계평가 미완료 시 운영평가는 pending
+                # 상태 1, 2: 설계평가 미완료 시 운영평가는 비활성화
                 progress['steps'][1]['status'] = 'pending'
 
     except Exception as e:

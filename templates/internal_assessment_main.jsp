@@ -144,6 +144,21 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <!-- 단계 인디케이터 -->
+                                    <div class="step-indicator mb-3">
+                                        {% for step in item.progress.steps %}
+                                        <div class="step-item {{ step.status }}">
+                                            <div class="step-number">
+                                                {% if step.status == 'completed' %}<i class="fas fa-check"></i>
+                                                {% elif step.status == 'in-progress' %}<i class="fas fa-play"></i>
+                                                {% else %}<i class="fas fa-circle"></i>
+                                                {% endif %}
+                                            </div>
+                                            <div class="step-connector"></div>
+                                            <small class="text-muted" style="font-size: 0.85rem; font-weight: 500;">{{ step.name[:2] }}</small>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
                                     <!-- 버튼 (ELC용) -->
                                     <div class="d-grid gap-2">
                                         {% if item.evaluation_status == 'COMPLETED' %}
@@ -161,11 +176,11 @@
                                         {% endif %}
 
                                         {% if item.evaluation_status == 'COMPLETED' %}
-                                            {% if item.operation_status == 'COMPLETED' %}
+                                            {% if item.progress.steps[1].status == 'completed' %}
                                             <a href="/elc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
                                             </a>
-                                            {% elif item.operation_status == 'IN_PROGRESS' %}
+                                            {% elif item.progress.steps[1].status == 'in-progress' %}
                                             <a href="/elc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 계속
                                             </a>
@@ -223,6 +238,21 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <!-- 단계 인디케이터 -->
+                                    <div class="step-indicator mb-3">
+                                        {% for step in item.progress.steps %}
+                                        <div class="step-item {{ step.status }}">
+                                            <div class="step-number">
+                                                {% if step.status == 'completed' %}<i class="fas fa-check"></i>
+                                                {% elif step.status == 'in-progress' %}<i class="fas fa-play"></i>
+                                                {% else %}<i class="fas fa-circle"></i>
+                                                {% endif %}
+                                            </div>
+                                            <div class="step-connector"></div>
+                                            <small class="text-muted" style="font-size: 0.85rem; font-weight: 500;">{{ step.name[:2] }}</small>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
                                     <!-- 버튼 (TLC용) -->
                                     <div class="d-grid gap-2">
                                         {% if item.evaluation_status == 'COMPLETED' %}
@@ -240,11 +270,11 @@
                                         {% endif %}
 
                                         {% if item.evaluation_status == 'COMPLETED' %}
-                                            {% if item.operation_status == 'COMPLETED' %}
+                                            {% if item.progress.steps[1].status == 'completed' %}
                                             <a href="/tlc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
                                             </a>
-                                            {% elif item.operation_status == 'IN_PROGRESS' %}
+                                            {% elif item.progress.steps[1].status == 'in-progress' %}
                                             <a href="/tlc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 계속
                                             </a>
@@ -332,11 +362,11 @@
                                         </a>
                                         {% endif %}
                                         {% if item.evaluation_status == 'COMPLETED' %}
-                                            {% if item.operation_status == 'COMPLETED' %}
+                                            {% if item.progress.steps[1].status == 'completed' %}
                                             <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
                                             </a>
-                                            {% elif item.operation_status == 'IN_PROGRESS' %}
+                                            {% elif item.progress.steps[1].status == 'in-progress' %}
                                             <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
                                                 <i class="fas fa-cogs"></i> 운영평가 계속
                                             </a>

@@ -259,7 +259,7 @@
     <!-- 운영평가 모달 -->
     <div class="modal fade" id="operationEvaluationModal" tabindex="-1" aria-labelledby="operationEvaluationModalLabel"
         aria-hidden="true">
-        <div class="modal-dialog" style="max-width: 800px;">
+        <div class="modal-dialog" style="max-width: 1200px;">
             <div class="modal-content">
                 <div class="modal-header bg-warning text-dark">
                     <h5 class="modal-title" id="operationEvaluationModalLabel">
@@ -1494,9 +1494,7 @@
                 for (let i = 0; i < 10; i++) {
                     const attrName = attributes[`attribute${i}`];
                     if (attrName) {
-                        const isPopulation = i < popAttrCount;
-                        const label = isPopulation ? `${attrName} (모집단)` : attrName;
-                        headerHtml += `<th>${label}</th>`;
+                        headerHtml += `<th>${attrName}</th>`;
                     }
                 }
             } else {
@@ -1541,11 +1539,9 @@
                                 console.log(`[generateSampleLines] attr${i}: name="${attrName}", isPopulation=${isPopulation}, value="${attrValue}"`);
 
                                 if (isPopulation) {
-                                    // 모집단 attribute - 읽기 전용
-                                    rowHtml += `<td class="align-middle bg-light">
-                                        <input type="text" class="form-control form-control-sm"
-                                               value="${attrValue}" readonly
-                                               style="background-color: #f8f9fa; cursor: not-allowed;">
+                                    // 모집단 attribute - 텍스트로 표시
+                                    rowHtml += `<td class="align-middle bg-light" style="padding: 0.5rem;">
+                                        <span id="sample-attr${i}-${sampleNum}" style="display: block; min-height: 31px; line-height: 31px;">${attrValue}</span>
                                     </td>`;
                                 } else {
                                     // 증빙 attribute - 입력 가능
@@ -1622,24 +1618,21 @@
                 for (let i = 0; i < 10; i++) {
                     const attrEl = document.getElementById(`sample-attr${i}-${sampleNumber}`);
                     if (attrEl) {
-                        attributeData[`attribute${i}`] = attrEl.value || '';
+                        // input/select인 경우 value, span인 경우 textContent
+                        if (attrEl.tagName === 'SPAN') {
+                            attributeData[`attribute${i}`] = attrEl.textContent.trim() || '';
+                        } else {
+                            attributeData[`attribute${i}`] = attrEl.value || '';
+                        }
                     }
                 }
 
-                if (evidenceEl && resultEl) {
+                // resultEl이 있으면 데이터 저장 (evidenceEl이나 attribute 중 하나라도 있으면)
+                if (resultEl && (evidenceEl || Object.keys(attributeData).length > 0)) {
                     currentInputData.push({
                         sample_number: sampleNumber,
-                        evidence: evidenceEl.value || '',
+                        evidence: evidenceEl ? (evidenceEl.value || '') : '',
                         result: resultEl.value || 'no_exception',
-                        mitigation: mitigationEl ? (mitigationEl.value || '') : '',
-                        attributes: attributeData
-                    });
-                } else if (Object.keys(attributeData).length > 0) {
-                    // evidenceEl이 없어도 attribute가 있으면 저장
-                    currentInputData.push({
-                        sample_number: sampleNumber,
-                        evidence: '',
-                        result: resultEl?.value || 'no_exception',
                         mitigation: mitigationEl ? (mitigationEl.value || '') : '',
                         attributes: attributeData
                     });
@@ -1711,17 +1704,12 @@
                             const isReadonly = isPopulation && isFromUpload;
 
                             if (isReadonly) {
-                                // 모집단 필드 - 읽기 전용 (회색 배경)
-                                rowHtml += `<td class="align-middle bg-light">
-                                    <input type="text" class="form-control form-control-sm"
-                                           id="sample-attr${attrIdx}-${i}"
-                                           placeholder="${attrName}"
-                                           value="${attrValue}"
-                                           readonly
-                                           style="height: 31px; background-color: #f8f9fa; cursor: not-allowed;" />
+                                // 모집단 필드 - 텍스트로 표시 (업로드된 데이터)
+                                rowHtml += `<td class="align-middle bg-light" style="padding: 0.5rem;">
+                                    <span id="sample-attr${attrIdx}-${i}" style="display: block; min-height: 31px; line-height: 31px;">${attrValue}</span>
                                 </td>`;
                             } else {
-                                // 증빙 필드 또는 수동 추가 표본 - 입력 가능
+                                // 증빙 필드 또는 모집단 업로드가 없는 경우 - 입력 가능
                                 rowHtml += `<td class="align-middle">
                                     <input type="text" class="form-control form-control-sm"
                                            id="sample-attr${attrIdx}-${i}"
@@ -1802,10 +1790,14 @@
                 if (!existingMitigationRow) {
                     const tbody = document.getElementById('sample-lines-tbody');
                     const currentRow = resultSelect.closest('tr');
+
+                    // 현재 행의 컬럼 수 계산
+                    const colCount = currentRow.cells.length;
+
                     const mitigationRow = document.createElement('tr');
                     mitigationRow.id = `mitigation-row-${sampleNumber}`;
                     mitigationRow.innerHTML = `
-                        <td colspan="3" class="bg-light">
+                        <td colspan="${colCount}" class="bg-light">
                             <div class="p-2">
                                 <label class="form-label fw-bold mb-1" style="font-size: 0.875rem;">경감요소:</label>
                                 <input type="text" class="form-control form-control-sm"
@@ -2330,39 +2322,40 @@
             {% for detail in rcm_details %}
             if (evaluated_controls['{{ detail.control_code }}']) {
                 updateEvaluationUI({{ loop.index }}, evaluated_controls['{{ detail.control_code }}']);
-            }
-            {% endfor %}
+        }
+        {% endfor %}
         }
 
         // 진행률 업데이트
         function updateProgress() {
             // 평가 완료된 통제 수 계산
             const evaluatedControls = Object.keys(evaluated_controls).length;
-            const totalControls = {{ rcm_details|length }};
-            const progress = totalControls > 0 ? Math.round((evaluatedControls / totalControls) * 100) : 0;
+            const totalControls = {{ rcm_details| length
+        }};
+        const progress = totalControls > 0 ? Math.round((evaluatedControls / totalControls) * 100) : 0;
 
-            // 진행률 업데이트
-            document.getElementById('evaluationProgress').textContent = progress + '%';
-            document.getElementById('evaluatedCount').textContent = evaluatedControls;
+        // 진행률 업데이트
+        document.getElementById('evaluationProgress').textContent = progress + '%';
+        document.getElementById('evaluatedCount').textContent = evaluatedControls;
 
-            // 상태 업데이트
-            const statusElement = document.getElementById('evaluationStatus');
-            if (progress === 100) {
-                statusElement.textContent = '완료';
-                statusElement.className = 'badge bg-success';
-                document.getElementById('completeEvaluationBtn').style.display = 'inline-block';
-                document.getElementById('downloadBtn').style.display = 'inline-block';
-            } else if (progress > 0) {
-                statusElement.textContent = '진행중';
-                statusElement.className = 'badge bg-warning text-dark';
-                document.getElementById('completeEvaluationBtn').style.display = 'none';
-                document.getElementById('downloadBtn').style.display = 'none';
-            } else {
-                statusElement.textContent = '준비중';
-                statusElement.className = 'badge bg-secondary';
-                document.getElementById('completeEvaluationBtn').style.display = 'none';
-                document.getElementById('downloadBtn').style.display = 'none';
-            }
+        // 상태 업데이트
+        const statusElement = document.getElementById('evaluationStatus');
+        if (progress === 100) {
+            statusElement.textContent = '완료';
+            statusElement.className = 'badge bg-success';
+            document.getElementById('completeEvaluationBtn').style.display = 'inline-block';
+            document.getElementById('downloadBtn').style.display = 'inline-block';
+        } else if (progress > 0) {
+            statusElement.textContent = '진행중';
+            statusElement.className = 'badge bg-warning text-dark';
+            document.getElementById('completeEvaluationBtn').style.display = 'none';
+            document.getElementById('downloadBtn').style.display = 'none';
+        } else {
+            statusElement.textContent = '준비중';
+            statusElement.className = 'badge bg-secondary';
+            document.getElementById('completeEvaluationBtn').style.display = 'none';
+            document.getElementById('downloadBtn').style.display = 'none';
+        }
         }
 
 
