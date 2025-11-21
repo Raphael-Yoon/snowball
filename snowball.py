@@ -18,6 +18,7 @@ from snowball_link2 import export_interview_excel_and_send, s_questions, questio
 from snowball_link3 import bp_link3
 from snowball_link4 import bp_link4
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
+from snowball_drive import append_to_work_log, get_work_log
 from snowball_link5 import bp_link5
 from snowball_link6 import bp_link6
 from snowball_link7 import bp_link7
@@ -29,7 +30,6 @@ from auth import send_otp, verify_otp, login_required, get_current_user, get_db,
 import uuid
 import json
 import re
-
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', '150606')
@@ -1123,6 +1123,47 @@ def api_rcm_update_controls():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'업데이트 중 오류가 발생했습니다: {str(e)}'}), 500
+
+@app.route('/api/work-log', methods=['GET', 'POST'])
+@login_required
+def work_log_api():
+    """작업 로그 API - Google Drive에 저장"""
+    user_info = get_user_info()
+
+    if request.method == 'POST':
+        # 작업 로그 추가
+        data = request.get_json()
+        log_entry = data.get('log_entry', '')
+
+        if not log_entry:
+            return jsonify({
+                'success': False,
+                'message': '로그 내용이 비어있습니다.'
+            })
+
+        # 사용자 정보와 함께 로그 작성
+        result = append_to_work_log(
+            log_entry=log_entry,
+            user_name=user_info.get('user_name', ''),
+            user_email=user_info.get('user_email', '')
+        )
+
+        # 활동 로그 기록
+        if result['success']:
+            log_user_activity(user_info, 'WORK_LOG', '작업 로그 작성', '/api/work-log',
+                            request.remote_addr, request.headers.get('User-Agent'))
+
+        return jsonify(result)
+
+    else:
+        # 작업 로그 조회
+        result = get_work_log()
+
+        if result['success']:
+            log_user_activity(user_info, 'WORK_LOG_VIEW', '작업 로그 조회', '/api/work-log',
+                            request.remote_addr, request.headers.get('User-Agent'))
+
+        return jsonify(result)
 
 @app.route('/api/check-operation-evaluation/<control_type>')
 @login_required
