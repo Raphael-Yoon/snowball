@@ -57,7 +57,15 @@ def internal_assessment():
             GROUP BY control_category
         ''', (rcm['rcm_id'],))
 
-        category_counts = {row[0]: row[1] for row in cursor.fetchall()}
+        rows = cursor.fetchall()
+        category_counts = {}
+        for row in rows:
+            # 딕셔너리 형태일 경우와 튜플 형태일 경우 모두 처리
+            if isinstance(row, dict):
+                category_counts[row['control_category']] = row['count']
+            else:
+                category_counts[row[0]] = row[1]
+
         primary_category = max(category_counts.items(), key=lambda x: x[1])[0] if category_counts else 'ITGC'
 
         # 해당 RCM의 설계평가 세션 조회
