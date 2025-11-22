@@ -175,7 +175,7 @@
                                         </a>
                                         {% endif %}
 
-                                        {% if item.evaluation_status == 'COMPLETED' %}
+                                        {% if item.evaluation_status == 'COMPLETED' and item.completed_date %}
                                             {% if item.progress.steps[1].status == 'completed' %}
                                             <a href="/elc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
@@ -269,7 +269,7 @@
                                         </a>
                                         {% endif %}
 
-                                        {% if item.evaluation_status == 'COMPLETED' %}
+                                        {% if item.evaluation_status == 'COMPLETED' and item.completed_date %}
                                             {% if item.progress.steps[1].status == 'completed' %}
                                             <a href="/tlc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
@@ -361,7 +361,7 @@
                                             <i class="fas fa-clipboard-check"></i> 설계평가 시작
                                         </a>
                                         {% endif %}
-                                        {% if item.evaluation_status == 'COMPLETED' %}
+                                        {% if item.evaluation_status == 'COMPLETED' and item.completed_date %}
                                             {% if item.progress.steps[1].status == 'completed' %}
                                             <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
@@ -377,7 +377,7 @@
                                             {% endif %}
                                         {% else %}
                                         <button class="btn btn-sm btn-outline-secondary" disabled>
-                                            <i class="fas fa-lock"></i> 운영평가
+                                            <i class="fas fa-lock"></i> 운영평가 (잠김)
                                         </button>
                                         {% endif %}
                                     </div>

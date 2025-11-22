@@ -121,16 +121,15 @@
                                     <tr>
                                         <th width="6%">통제코드</th>
                                         <th width="12%">통제명</th>
-                                        <th width="23%">통제활동설명</th>
-                                        <th width="7%">통제주기</th>
-                                        <th width="7%">통제유형</th>
-                                        <th width="6%">핵심통제</th>
+                                        <th width="32%">통제활동설명</th>
+                                        <th width="7%" class="text-center">통제주기</th>
+                                        <th width="5%" class="text-center">통제유형</th>
+                                        <th width="5%" class="text-center">핵심통제</th>
                                         {% if evaluation_type == 'ITGC' %}
                                         <th width="8%">기준통제 매핑</th>
                                         {% endif %}
-                                        <th width="5%" style="max-width: 60px;">설계평가</th>
-                                        <th width="9%">평가결과</th>
-                                        <th width="17%">조치사항</th>
+                                        <th width="5%" class="text-center" style="max-width: 60px;">평가</th>
+                                        <th width="5%" class="text-center">평가결과</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -140,14 +139,14 @@
                                         <td><code>{{ detail.control_code }}</code></td>
                                         <td><strong>{{ detail.control_name }}</strong></td>
                                         <td>
-                                            <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; max-height: calc(1.4em * 2);" 
+                                            <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; max-height: calc(1.4em * 2);"
                                                  title="{{ detail.control_description or '-' }}" data-bs-toggle="tooltip">
                                                 {{ detail.control_description or '-' }}
                                             </div>
                                         </td>
-                                        <td>{{ detail.control_frequency or '-' }}</td>
-                                        <td>{{ detail.control_type or '-' }}</td>
-                                        <td>
+                                        <td class="text-center">{{ detail.control_frequency or '-' }}</td>
+                                        <td class="text-center">{{ detail.control_type or '-' }}</td>
+                                        <td class="text-center">
                                             {{ detail.key_control or '비핵심' }}
                                         </td>
                                         {% if evaluation_type == 'ITGC' %}
@@ -171,14 +170,9 @@
                                                 <i class="fas fa-edit me-1"></i>평가
                                             </button>
                                         </td>
-                                        <td>
+                                        <td class="text-center">
                                             <span class="evaluation-result" id="result-{{ loop.index }}">
                                                 <span class="text-muted"></span>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="evaluation-action" id="action-{{ loop.index }}">
-                                                <span class="text-muted">-</span>
                                             </span>
                                         </td>
                                     </tr>
@@ -343,7 +337,13 @@
                                 <textarea class="form-control" id="recommendedActions" rows="2"
                                           placeholder="실무와 문서 간 차이 해소나 통제 운영 개선을 위한 구체적인 조치사항을 제안하세요..."></textarea>
                             </div>
-                            
+
+                            <div class="mb-3">
+                                <label for="designComment" class="form-label">설계 평가 코멘트</label>
+                                <textarea class="form-control" id="designComment" rows="3"
+                                          placeholder="설계 효과성에 대한 종합적인 의견이나 특이사항을 입력하세요..."></textarea>
+                            </div>
+
                             <div class="mb-3">
                                 <label for="evaluationImages" class="form-label">평가 증빙 자료 (이미지)</label>
                                 <input type="file" class="form-control" id="evaluationImages" 
@@ -1152,6 +1152,7 @@
                 document.getElementById('improvementSuggestion').value = result.improvement_suggestion || '';
                 document.getElementById('overallEffectiveness').value = result.overall_effectiveness || '';
                 document.getElementById('evaluationEvidence').value = result.evaluation_evidence || '';
+                document.getElementById('designComment').value = result.design_comment || '';
                 document.getElementById('recommendedActions').value = result.recommended_actions || '';
 
                 // 적절성 값이 설정되면 효과성 필드 활성화 이벤트 발생
@@ -1174,6 +1175,7 @@
                 document.getElementById('improvementSuggestion').value = '';
                 document.getElementById('overallEffectiveness').value = '';
                 document.getElementById('evaluationEvidence').value = '';
+                document.getElementById('designComment').value = '';
                 document.getElementById('recommendedActions').value = '';
 
                 // 폼 초기화 시 권고 조치사항 필드 숨김
@@ -1235,6 +1237,7 @@
                 document.getElementById('improvementSuggestion').disabled = true;
                 document.getElementById('overallEffectiveness').disabled = true;
                 document.getElementById('evaluationEvidence').disabled = true;
+                document.getElementById('designComment').disabled = true;
                 document.getElementById('recommendedActions').disabled = true;
             } else {
                 // 완료되지 않은 상태: 모든 입력 활성화
@@ -1252,6 +1255,7 @@
                 document.getElementById('improvementSuggestion').disabled = false;
                 document.getElementById('overallEffectiveness').disabled = false;
                 document.getElementById('evaluationEvidence').disabled = false;
+                document.getElementById('designComment').disabled = false;
                 document.getElementById('recommendedActions').disabled = false;
             }
 
@@ -1306,6 +1310,7 @@
                 improvement_suggestion: document.getElementById('improvementSuggestion').value,
                 overall_effectiveness: effectiveness,
                 evaluation_evidence: document.getElementById('evaluationEvidence').value,
+                design_comment: document.getElementById('designComment').value,
                 recommended_actions: document.getElementById('recommendedActions').value
             };
             
@@ -1338,8 +1343,12 @@
             // 이미지 데이터 준비
             const imageData = evaluationImages[currentEvaluationIndex] || [];
 
-            // 증빙자료 업로드 확인 (적정이면서 효과적인 경우에만)
-            if (adequacy === 'adequate' && effectiveness === 'effective' && imageData.length === 0) {
+            // 기존에 저장된 이미지 개수 확인
+            const existingImages = (evaluationResults[currentEvaluationIndex]?.images || []).length;
+            const totalImageCount = imageData.length + existingImages;
+
+            // 증빙자료 업로드 확인 (적정이면서 효과적인 경우에만, 새로 업로드한 이미지 + 기존 이미지 모두 확인)
+            if (adequacy === 'adequate' && effectiveness === 'effective' && totalImageCount === 0) {
                 const confirmed = confirm('평가 결과가 "적정" 및 "효과적"이지만 업로드된 증빙자료가 없습니다.\n\n증빙자료 없이 평가를 저장하시겠습니까?');
                 if (!confirmed) {
                     console.log('User cancelled save due to no evidence files');
