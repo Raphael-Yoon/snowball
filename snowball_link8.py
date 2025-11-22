@@ -90,11 +90,19 @@ def internal_assessment():
 
         if sessions:
             for session_data in sessions:
-                evaluation_session = session_data[0]
-                evaluation_status = session_data[1]
-                start_date = session_data[2]
-                completed_date = session_data[3]
-                operation_status = session_data[4]
+                # 딕셔너리 형태일 경우와 튜플 형태일 경우 모두 처리
+                if isinstance(session_data, dict):
+                    evaluation_session = session_data['evaluation_session']
+                    evaluation_status = session_data['evaluation_status']
+                    start_date = session_data['start_date']
+                    completed_date = session_data['completed_date']
+                    operation_status = session_data['operation_status']
+                else:
+                    evaluation_session = session_data[0]
+                    evaluation_status = session_data[1]
+                    start_date = session_data[2]
+                    completed_date = session_data[3]
+                    operation_status = session_data[4]
 
                 progress = get_assessment_progress(rcm['rcm_id'], user_info['user_id'], evaluation_session)
 
@@ -200,7 +208,12 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
     design_header = cursor.fetchone()
 
     if design_header:
-        header_id = design_header[0]
+        # 딕셔너리 형태일 경우와 튜플 형태일 경우 모두 처리
+        if isinstance(design_header, dict):
+            header_id = design_header['header_id']
+        else:
+            header_id = design_header[0]
+
         # 평가 결과별 통계
         cursor = db.execute('''
             SELECT
@@ -210,7 +223,14 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
             WHERE header_id = %s AND overall_effectiveness IS NOT NULL AND overall_effectiveness != ''
             GROUP BY overall_effectiveness
         ''', (header_id,))
-        effectiveness_stats = {row[0]: row[1] for row in cursor.fetchall()}
+
+        # effectiveness_stats - 딕셔너리/튜플 모두 처리
+        effectiveness_stats = {}
+        for row in cursor.fetchall():
+            if isinstance(row, dict):
+                effectiveness_stats[row['overall_effectiveness']] = row['count']
+            else:
+                effectiveness_stats[row[0]] = row[1]
 
         # 미비점이 있는 통제 목록 (부적정)
         cursor = db.execute('''
@@ -241,7 +261,12 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
     operation_header = cursor.fetchone()
 
     if operation_header:
-        header_id = operation_header[0]
+        # 딕셔너리 형태일 경우와 튜플 형태일 경우 모두 처리
+        if isinstance(operation_header, dict):
+            header_id = operation_header['header_id']
+        else:
+            header_id = operation_header[0]
+
         # 전체 통제 수와 평가 완료된 통제 수 조회
         cursor = db.execute('''
             SELECT
@@ -251,8 +276,14 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
             WHERE header_id = %s
         ''', (header_id,))
         counts = cursor.fetchone()
-        total_controls = counts[0] if counts else 0
-        evaluated_controls = counts[1] if counts else 0
+
+        # counts - 딕셔너리/튜플 모두 처리
+        if isinstance(counts, dict):
+            total_controls = counts['total'] if counts else 0
+            evaluated_controls = counts['evaluated'] if counts else 0
+        else:
+            total_controls = counts[0] if counts else 0
+            evaluated_controls = counts[1] if counts else 0
         not_tested = total_controls - evaluated_controls
 
         # 결론별 통계 (Effective/Ineffective로 재분류)
@@ -264,7 +295,14 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
             WHERE header_id = %s AND conclusion IS NOT NULL AND conclusion != ''
             GROUP BY conclusion
         ''', (header_id,))
-        raw_stats = {row[0]: row[1] for row in cursor.fetchall()}
+
+        # raw_stats - 딕셔너리/튜플 모두 처리
+        raw_stats = {}
+        for row in cursor.fetchall():
+            if isinstance(row, dict):
+                raw_stats[row['conclusion']] = row['count']
+            else:
+                raw_stats[row[0]] = row[1]
 
         # Effective/Ineffective로 재분류
         conclusion_stats = {
@@ -389,12 +427,18 @@ def save_assessment_progress(rcm_id):
         existing = existing_cursor.fetchone()
 
         if existing:
+            # 딕셔너리 형태일 경우와 튜플 형태일 경우 모두 처리
+            if isinstance(existing, dict):
+                assessment_id = existing['assessment_id']
+            else:
+                assessment_id = existing[0]
+
             # 업데이트
             db.execute('''
                 UPDATE sb_internal_assessment
                 SET progress_data = %s, status = %s, updated_date = %s
                 WHERE assessment_id = %s
-            ''', (json.dumps(progress_data), status, datetime.now(), existing[0]))
+            ''', (json.dumps(progress_data), status, datetime.now(), assessment_id))
         else:
             # 신규 삽입
             db.execute('''
@@ -493,7 +537,14 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
             WHERE rcm_id = %s
             GROUP BY control_category
         ''', (rcm_id,))
-        category_stats = {row[0]: row[1] for row in cursor.fetchall()}
+
+        # category_stats - 딕셔너리/튜플 모두 처리
+        category_stats = {}
+        for row in cursor.fetchall():
+            if isinstance(row, dict):
+                category_stats[row['control_category']] = row['total_count']
+            else:
+                category_stats[row[0]] = row[1]
 
         # 1단계: 설계평가 (Link6) - 특정 세션의 완료율 계산
         cursor = db.execute('''
@@ -509,11 +560,19 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
         evaluated_controls = 0
 
         if design_eval:
-            evaluation_status = design_eval[0]
-            total_controls_header = design_eval[1] or 0
-            evaluated_controls = design_eval[2] or 0
-            design_progress = int(design_eval[3] or 0)
-            header_id = design_eval[4]
+            # 딕셔너리 형태일 경우와 튜플 형태일 경우 모두 처리
+            if isinstance(design_eval, dict):
+                evaluation_status = design_eval['evaluation_status']
+                total_controls_header = design_eval['total_controls'] or 0
+                evaluated_controls = design_eval['evaluated_controls'] or 0
+                design_progress = int(design_eval['progress_percentage'] or 0)
+                header_id = design_eval['header_id']
+            else:
+                evaluation_status = design_eval[0]
+                total_controls_header = design_eval[1] or 0
+                evaluated_controls = design_eval[2] or 0
+                design_progress = int(design_eval[3] or 0)
+                header_id = design_eval[4]
 
             # 실제 라인 개수를 확인 (헤더의 total_controls가 부정확할 수 있음)
             cursor = db.execute('''
@@ -523,8 +582,14 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                 WHERE header_id = %s AND control_code IS NOT NULL AND control_code != ''
             ''', (header_id,))
             actual_counts = cursor.fetchone()
-            total_controls = actual_counts[0] if actual_counts else total_controls_header
-            evaluated_controls = actual_counts[1] if actual_counts else evaluated_controls
+
+            # actual_counts - 딕셔너리/튜플 모두 처리
+            if isinstance(actual_counts, dict):
+                total_controls = actual_counts['actual_total'] if actual_counts else total_controls_header
+                evaluated_controls = actual_counts['actual_evaluated'] if actual_counts else evaluated_controls
+            else:
+                total_controls = actual_counts[0] if actual_counts else total_controls_header
+                evaluated_controls = actual_counts[1] if actual_counts else evaluated_controls
 
             # 실제 진행률 재계산
             design_progress = int((evaluated_controls / max(total_controls, 1)) * 100) if total_controls > 0 else 0
@@ -540,12 +605,22 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                     WHERE line.header_id = %s AND detail.control_category = %s
                 ''', (rcm_id, header_id, category))
                 cat_data = cursor.fetchone()
-                if cat_data and cat_data[0] > 0:
-                    category_progress[category] = {
-                        'total': cat_data[0],
-                        'evaluated': cat_data[1],
-                        'progress': int((cat_data[1] / cat_data[0]) * 100) if cat_data[0] > 0 else 0
-                    }
+
+                # cat_data - 딕셔너리/튜플 모두 처리
+                if cat_data:
+                    if isinstance(cat_data, dict):
+                        cat_total = cat_data['total']
+                        cat_evaluated = cat_data['evaluated']
+                    else:
+                        cat_total = cat_data[0]
+                        cat_evaluated = cat_data[1]
+
+                    if cat_total > 0:
+                        category_progress[category] = {
+                            'total': cat_total,
+                            'evaluated': cat_evaluated,
+                            'progress': int((cat_evaluated / cat_total) * 100) if cat_total > 0 else 0
+                        }
 
             progress['steps'][0]['details'] = {
                 'total_controls': total_controls,
@@ -575,7 +650,15 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
         ''', (rcm_id, user_id, operation_session))
 
         operation_header = cursor.fetchone()
-        operation_evaluation_status = operation_header[0] if operation_header else None
+
+        # operation_header - 딕셔너리/튜플 모두 처리
+        if operation_header:
+            if isinstance(operation_header, dict):
+                operation_evaluation_status = operation_header['evaluation_status']
+            else:
+                operation_evaluation_status = operation_header[0]
+        else:
+            operation_evaluation_status = None
 
         cursor = db.execute('''
             SELECT COUNT(*) as total,
@@ -586,8 +669,18 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
         ''', (rcm_id, user_id, operation_session))
 
         op_data = cursor.fetchone()
-        total_operation_controls = op_data[0] if op_data else 0
-        completed_operation_controls = op_data[1] if op_data else 0
+
+        # op_data - 딕셔너리/튜플 모두 처리
+        if op_data:
+            if isinstance(op_data, dict):
+                total_operation_controls = op_data['total'] or 0
+                completed_operation_controls = op_data['completed'] or 0
+            else:
+                total_operation_controls = op_data[0] if op_data[0] else 0
+                completed_operation_controls = op_data[1] if op_data[1] else 0
+        else:
+            total_operation_controls = 0
+            completed_operation_controls = 0
 
         # 운영평가 진행 상황 업데이트 (설계평가 완료 후에만)
         if total_operation_controls > 0:
@@ -605,12 +698,22 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                     ) AND detail.control_category = %s
                 ''', (rcm_id, rcm_id, user_id, operation_session, category))
                 cat_data = cursor.fetchone()
-                if cat_data and cat_data[0] > 0:
-                    category_progress_op[category] = {
-                        'total': cat_data[0],
-                        'completed': cat_data[1],
-                        'progress': int((cat_data[1] / cat_data[0]) * 100) if cat_data[0] > 0 else 0
-                    }
+
+                # cat_data - 딕셔너리/튜플 모두 처리
+                if cat_data:
+                    if isinstance(cat_data, dict):
+                        cat_total = cat_data['total']
+                        cat_completed = cat_data['completed']
+                    else:
+                        cat_total = cat_data[0]
+                        cat_completed = cat_data[1]
+
+                    if cat_total > 0:
+                        category_progress_op[category] = {
+                            'total': cat_total,
+                            'completed': cat_completed,
+                            'progress': int((cat_completed / cat_total) * 100) if cat_total > 0 else 0
+                        }
 
             progress['steps'][1]['details'] = {
                 'total_controls': total_operation_controls,

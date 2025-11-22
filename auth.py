@@ -13,6 +13,14 @@ load_dotenv()
 USE_MYSQL = os.getenv('USE_MYSQL', 'false').lower() == 'true' or os.getenv('DB_TYPE', 'sqlite').lower() == 'mysql'
 DATABASE = 'snowball.db'
 
+class IndexableDict(dict):
+    """인덱스 접근을 지원하는 딕셔너리 (SQLite Row와의 호환성)"""
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            # 인덱스 접근 지원
+            return list(self.values())[key]
+        return super().__getitem__(key)
+
 class DatabaseCursor:
     """MySQL cursor 래퍼 - datetime을 문자열로 자동 변환"""
     def __init__(self, cursor, db_conn):
@@ -21,15 +29,35 @@ class DatabaseCursor:
 
     def fetchone(self):
         row = self._cursor.fetchone()
-        return self._db_conn._convert_datetime_to_string(row)
+        converted = self._db_conn._convert_datetime_to_string(row)
+        # MySQL의 경우 IndexableDict로 변환
+        if converted and isinstance(converted, dict) and not isinstance(converted, IndexableDict):
+            return IndexableDict(converted)
+        return converted
 
     def fetchall(self):
         rows = self._cursor.fetchall()
-        return [self._db_conn._convert_datetime_to_string(row) for row in rows]
+        result = []
+        for row in rows:
+            converted = self._db_conn._convert_datetime_to_string(row)
+            # MySQL의 경우 IndexableDict로 변환
+            if converted and isinstance(converted, dict) and not isinstance(converted, IndexableDict):
+                result.append(IndexableDict(converted))
+            else:
+                result.append(converted)
+        return result
 
     def fetchmany(self, size=None):
         rows = self._cursor.fetchmany(size) if size else self._cursor.fetchmany()
-        return [self._db_conn._convert_datetime_to_string(row) for row in rows]
+        result = []
+        for row in rows:
+            converted = self._db_conn._convert_datetime_to_string(row)
+            # MySQL의 경우 IndexableDict로 변환
+            if converted and isinstance(converted, dict) and not isinstance(converted, IndexableDict):
+                result.append(IndexableDict(converted))
+            else:
+                result.append(converted)
+        return result
 
     @property
     def rowcount(self):
