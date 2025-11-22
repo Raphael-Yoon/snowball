@@ -912,8 +912,8 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 UPDATE sb_design_evaluation_line SET
                     description_adequacy = %s, improvement_suggestion = %s,
                     overall_effectiveness = %s, evaluation_evidence = %s,
-                    evaluation_evidence = %s,
-                    evaluation_rationale = %s, recommended_actions = %s,
+                    evaluation_rationale = %s, design_comment = %s,
+                    recommended_actions = %s,
                     evaluation_date = CURRENT_TIMESTAMP, last_updated = CURRENT_TIMESTAMP
                 WHERE line_id = %s
             '''
@@ -922,8 +922,8 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 evaluation_data.get('improvement_suggestion'),
                 evaluation_data.get('overall_effectiveness'),
                 evaluation_data.get('evaluation_evidence'),
-                evaluation_data.get('evaluation_evidence'),
                 evaluation_data.get('evaluation_rationale'),
+                evaluation_data.get('design_comment'),
                 evaluation_data.get('recommended_actions'),
                 line_id
             )
@@ -951,10 +951,10 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                     header_id, control_code, control_sequence,
                     description_adequacy, improvement_suggestion,
                     overall_effectiveness, evaluation_evidence,
-                    evaluation_evidence,
-                    evaluation_rationale, recommended_actions,
+                    evaluation_rationale, design_comment,
+                    recommended_actions,
                     evaluation_date, last_updated
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             '''
             insert_params = (
                 header_id, control_code, control_sequence,
@@ -962,8 +962,8 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 evaluation_data.get('improvement_suggestion'),
                 evaluation_data.get('overall_effectiveness'),
                 evaluation_data.get('evaluation_evidence'),
-                evaluation_data.get('evaluation_evidence'),
                 evaluation_data.get('evaluation_rationale'),
+                evaluation_data.get('design_comment'),
                 evaluation_data.get('recommended_actions')
             )
             

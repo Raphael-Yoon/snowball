@@ -585,9 +585,10 @@ def load_evaluation_data_api(rcm_id):
             evaluation_dict[control_code] = {
                 'description_adequacy': eval_data['description_adequacy'],
                 'improvement_suggestion': eval_data['improvement_suggestion'],
-                'evaluation_evidence': eval_data.get('evaluation_evidence'), # 이 줄을 추가했습니다.
+                'evaluation_evidence': eval_data.get('evaluation_evidence'),
                 'overall_effectiveness': eval_data['overall_effectiveness'],
                 'evaluation_rationale': eval_data['evaluation_rationale'],
+                'design_comment': eval_data.get('design_comment'),
                 'recommended_actions': eval_data['recommended_actions'],
                 'evaluation_date': evaluation_date,
                 'images': saved_images
@@ -1632,7 +1633,9 @@ def download_design_evaluation():
                     l.improvement_suggestion,
                     l.overall_effectiveness as conclusion,
                     l.evaluation_rationale,
-                                        l.evaluation_date
+                    l.evaluation_evidence,
+                    l.design_comment,
+                    l.evaluation_date
                 FROM sb_design_evaluation_line l
                 JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
                 JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
@@ -1684,18 +1687,22 @@ def download_design_evaluation():
                 row_height = min(row_height, 300)
                 new_sheet.row_dimensions[11].height = row_height
 
-            # 검토 결과 (C12)
-            evaluation_rationale = eval_dict.get('evaluation_rationale', '')
-            new_sheet['C12'] = evaluation_rationale
+            # 설계 평가 코멘트 (C12)
+            design_comment = eval_dict.get('design_comment', '')
+            new_sheet['C12'] = design_comment
 
-            # C12 셀의 행 높이도 자동 조정
-            if evaluation_rationale:
-                line_count = evaluation_rationale.count('\n') + 1
+            # C12 셀의 행 높이 자동 조정
+            if design_comment:
+                line_count = design_comment.count('\n') + 1
                 row_height = 15 + (line_count * 15)
                 row_height = min(row_height, 300)
                 new_sheet.row_dimensions[12].height = row_height
 
-            # 증빙 (C13) - 업로드된 이미지 삽입
+            # 증빙 내용 (C13) - 텍스트
+            evaluation_evidence = eval_dict.get('evaluation_evidence', '')
+            new_sheet['C13'] = evaluation_evidence
+
+            # 증빙 이미지 (C14부터 시작)
             # 이미지 파일이 저장된 경로: static/uploads/design_evaluations/{rcm_id}/{header_id}/{control_code}/
             from openpyxl.drawing.image import Image as OpenpyxlImage
 
@@ -1714,11 +1721,11 @@ def download_design_evaluation():
                     if os.path.exists(image_dir):
                         image_files = [f for f in os.listdir(image_dir) if os.path.isfile(os.path.join(image_dir, f))]
                         if image_files:
-                            # C13 셀에 이미지 삽입 (증빙 위치)
-                            row_offset = 13  # C13부터 시작
+                            # C14 셀부터 이미지 삽입
+                            row_offset = 14  # C14부터 시작
                             for idx, image_file in enumerate(image_files):
                                 image_path = os.path.join(image_dir, image_file)
-                                cell_position = f'C{row_offset + idx}'  # cell_position을 try 밖에서 먼저 정의
+                                cell_position = f'C{row_offset + idx}'
                                 try:
                                     # 이미지 객체 생성
                                     img = OpenpyxlImage(image_path)
@@ -1732,7 +1739,7 @@ def download_design_evaluation():
                                         # 원본이 280px보다 작으면 90%로 축소
                                         img.width = int(img.width * 0.9)
                                         img.height = int(img.height * 0.9)
-                                    # 이미지를 C13, C14, C15... 위치에 삽입
+                                    # 이미지를 C14, C15, C16... 위치에 삽입
                                     new_sheet.add_image(img, cell_position)
                                     # 행 높이 조정 (이미지 높이보다 약간 크게 여백 추가)
                                     new_sheet.row_dimensions[row_offset + idx].height = (img.height * 0.75) + 5
@@ -1746,8 +1753,8 @@ def download_design_evaluation():
                                     new_sheet[cell_position] = image_file
                                     image_count += 1
 
-            # 결론 (C14 또는 이미지 이후 행) - 이미지 개수에 따라 위치 조정
-            conclusion_row = 14 if image_count == 0 else 13 + image_count
+            # 결론 (이미지 이후 행)
+            conclusion_row = 15 if image_count == 0 else 14 + image_count
             new_sheet[f'C{conclusion_row}'] = eval_dict.get('conclusion', '')
 
         # Template 시트 삭제
