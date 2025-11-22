@@ -46,6 +46,10 @@
                             <i class="fas fa-lock me-1"></i>Private
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="premiumServicesDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('link8.internal_assessment') }}">
+                                <i class="fas fa-chart-pie me-2"></i>Dashboard
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('link5.user_rcm') }}">
                                 <i class="fas fa-database me-2"></i>RCM
                             </a></li>
@@ -61,10 +65,6 @@
                             </a></li>
                             <li><a class="dropdown-item ps-4" href="{{ url_for('link7.user_operation_evaluation') }}">
                                 <i class="fas fa-cogs me-2"></i>운영평가
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link8.internal_assessment') }}">
-                                <i class="fas fa-chart-pie me-2"></i>Dashboard
                             </a></li>
                         </ul>
                     </li>

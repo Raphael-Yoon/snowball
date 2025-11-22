@@ -8,6 +8,11 @@ uploads/
 progress_data/
 .DS_Store
 
+# Database files
+*.db
+*.db-journal
+*.db.backup*
+
 # Test coverage reports
 tests/htmlcov/
 .coverage
