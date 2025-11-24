@@ -308,8 +308,8 @@
                     </div>
 
                     <form id="operationEvaluationForm">
-                        <!-- 당기 발생사실 없음 옵션 -->
-                        <div class="mb-3">
+                        <!-- 당기 발생사실 없음 옵션 (표본수가 0일 때만 표시) -->
+                        <div class="mb-3" id="no-occurrence-section" style="display: none;">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="no_occurrence" name="no_occurrence">
                                 <label class="form-check-label" for="no_occurrence">
@@ -364,8 +364,7 @@
                                 </div>
                                 <div class="col-md-9 d-flex align-items-end">
                                     <div class="form-text">
-                                        <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1). 입력 후 자동으로 표본 라인이 생성됩니다.
-                                            <strong>0 또는 공란으로 두면 모집단 업로드 시 크기에 따라 자동 결정됩니다.</strong></small>
+                                        <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1). 입력 후 자동으로 표본 라인이 생성됩니다.</small>
                                     </div>
                                 </div>
                             </div>
@@ -457,7 +456,11 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
-                        style="min-width: auto; padding: 0.375rem 0.75rem;">취소</button>
+                        style="min-width: auto; padding: 0.375rem 0.75rem;">닫기</button>
+                    <button type="button" id="resetPopulationBtn" class="btn btn-danger"
+                        onclick="resetPopulationUpload();" style="display: none;">
+                        <i class="fas fa-redo me-1"></i>초기화
+                    </button>
                     <button type="button" id="saveOperationEvaluationBtn" class="btn btn-warning"
                         onclick="saveOperationEvaluation();">
                         <i class="fas fa-save me-1"></i>저장
@@ -736,6 +739,7 @@
         let currentControlCode = '';
         let currentRowIndex = 0;
         let currentDesignEvaluationEvidence = '';  // 설계평가 증빙
+        let currentRecommendedSampleSize = null;  // RCM 권장 표본수 (모집단 업로드 모드 확인용)
         let evaluated_controls = {{ evaluated_controls | tojson }};
         // 통제별 설계평가 이미지 데이터 저장 (control_code를 키로 사용)
         let designEvaluationImagesData = {
@@ -967,17 +971,16 @@
                 console.log(`[displayDesignEvaluationImages] Image ${index + 1}:`, imagePath);
 
                 const imageContainer = document.createElement('div');
-                imageContainer.className = 'd-inline-block position-relative m-2';
-                imageContainer.style.width = '150px';
+                imageContainer.className = 'd-block position-relative mb-3';
 
                 const img = document.createElement('img');
                 const fullPath = `/static/${imagePath}`;
                 console.log(`[displayDesignEvaluationImages] Full image path:`, fullPath);
                 img.src = fullPath;
                 img.className = 'img-thumbnail';
-                img.style.width = '150px';
-                img.style.height = '150px';
-                img.style.objectFit = 'cover';
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                img.style.display = 'block';
                 img.style.cursor = 'pointer';
                 img.alt = `설계평가 이미지 ${index + 1}`;
 
@@ -1040,6 +1043,7 @@
             currentControlCode = controlCode;
             currentRowIndex = rowIndex;
             currentDesignEvaluationEvidence = designEvaluationEvidence || '';
+            currentRecommendedSampleSize = rcmRecommendedSize;  // RCM 권장 표본수 저장
 
             // RCM attribute 정보 조회 (전역 변수에 저장)
             const detailId = buttonElement.getAttribute('data-detail-id');
@@ -1109,15 +1113,25 @@
                 (evaluated_controls[controlCode].line_id ||
                     (evaluated_controls[controlCode].sample_lines && evaluated_controls[controlCode].sample_lines.length > 0));
 
+            const resetBtn = document.getElementById('resetPopulationBtn');
+
             if (recommendedSampleSize === 0 && !hasSavedData) {
                 // 표본수가 0이고 저장된 데이터가 없으면 모집단 업로드 UI 표시
                 if (populationUploadSection) populationUploadSection.style.display = 'block';
                 if (evaluationFields) evaluationFields.style.display = 'none';
+                if (resetBtn) resetBtn.style.display = 'none';
                 console.log('[UI 분기] 모집단 업로드 섹션 표시 (권장 표본수 0, 저장 데이터 없음)');
-            } else {
-                // 표본수가 0이 아니거나 저장된 데이터가 있으면 평가 UI 표시
+            } else if (recommendedSampleSize === 0 && hasSavedData) {
+                // 표본수가 0이고 저장된 데이터가 있으면 평가 UI + 초기화 버튼 표시
                 if (populationUploadSection) populationUploadSection.style.display = 'none';
                 if (evaluationFields) evaluationFields.style.display = 'block';
+                if (resetBtn) resetBtn.style.display = 'inline-block';
+                console.log('[UI 분기] 평가 필드 + 초기화 버튼 표시 (권장 표본수 0, 저장 데이터 있음)');
+            } else {
+                // 표본수가 0이 아니면 평가 UI만 표시
+                if (populationUploadSection) populationUploadSection.style.display = 'none';
+                if (evaluationFields) evaluationFields.style.display = 'block';
+                if (resetBtn) resetBtn.style.display = 'none';
                 console.log('[UI 분기] 평가 필드 섹션 표시 (권장 표본수:', recommendedSampleSize, ', 저장 데이터:', hasSavedData, ')');
             }
 
@@ -1390,14 +1404,25 @@
                 // 모달이 완전히 열린 후 표본 라인 자동 생성 (표본수가 설정되어 있고 샘플이 없는 경우)
                 operationEvaluationModalEl.addEventListener('shown.bs.modal', function onModalShown() {
                     const sampleSizeEl = document.getElementById('sample_size');
-                    const sampleSizeValue = sampleSizeEl ? parseInt(sampleSizeEl.value || '0') : 0;
+                    const sampleSizeValue = sampleSizeEl ? sampleSizeEl.value.trim() : '';
+                    const sampleSizeInt = parseInt(sampleSizeValue) || 0;
                     const tbody = document.getElementById('sample-lines-tbody');
                     const existingRows = tbody ? tbody.querySelectorAll('tr:not([id^="mitigation-row"])').length : 0;
+                    const noOccurrenceSection = document.getElementById('no-occurrence-section');
 
                     console.log('[shown.bs.modal] 표본 크기:', sampleSizeValue, ', 기존 행 수:', existingRows);
 
+                    // 당기 발생사실 없음 섹션 표시/숨김
+                    if (noOccurrenceSection) {
+                        if (sampleSizeValue === '0' || sampleSizeValue === '') {
+                            noOccurrenceSection.style.display = 'block';
+                        } else {
+                            noOccurrenceSection.style.display = 'none';
+                        }
+                    }
+
                     // 표본 크기가 설정되어 있고, 기존 라인이 없으면 자동 생성
-                    if (sampleSizeValue > 0 && existingRows === 0) {
+                    if (sampleSizeInt > 0 && existingRows === 0) {
                         console.log('[shown.bs.modal] 표본 라인 자동 생성 실행');
                         generateSampleLines();
                     }
@@ -1478,6 +1503,22 @@
             const sampleSizeValue = sampleSizeInput.value.trim();
             const tbody = document.getElementById('sample-lines-tbody');
             const thead = document.getElementById('sample-lines-thead');
+            const noOccurrenceSection = document.getElementById('no-occurrence-section');
+
+            // 표본 크기에 따라 "당기 발생사실 없음" 섹션 표시/숨김
+            if (noOccurrenceSection) {
+                if (sampleSizeValue === '0' || sampleSizeValue === '') {
+                    // 표본 크기가 0이거나 공란인 경우에만 표시
+                    noOccurrenceSection.style.display = 'block';
+                } else {
+                    // 표본이 있는 경우 숨김
+                    noOccurrenceSection.style.display = 'none';
+                    const noOccurrenceCheckbox = document.getElementById('no_occurrence');
+                    if (noOccurrenceCheckbox) {
+                        noOccurrenceCheckbox.checked = false;
+                    }
+                }
+            }
 
             // 전역 변수에서 RCM attribute 정보 가져오기
             const popAttrCount = window.currentPopulationAttributeCount || 0;
@@ -1600,7 +1641,7 @@
             const sampleSize = parseInt(sampleSizeValue);
 
             if (isNaN(sampleSize) || sampleSize < 1 || sampleSize > 100) {
-                alert('표본 크기는 1에서 100 사이여야 합니다. 0 또는 공란으로 두면 모집단 업로드 시 크기에 따라 자동 결정됩니다.');
+                alert('표본 크기는 1에서 100 사이여야 합니다.');
                 return;
             }
 
@@ -2920,7 +2961,16 @@
                         console.log('[uploadPopulationFile] evaluated_controls 저장 완료:', evaluated_controls[currentControlCode]);
 
                         // 모집단 업로드 섹션 숨기기
-                        document.getElementById('population-upload-section').style.display = 'none';
+                        const populationUploadSection = document.getElementById('population-upload-section');
+                        if (populationUploadSection) {
+                            populationUploadSection.style.display = 'none';
+                        }
+
+                        // 초기화 버튼 섹션 표시
+                        const resetSection = document.getElementById('populationResetSection');
+                        if (resetSection) {
+                            resetSection.style.display = 'block';
+                        }
 
                         // 평가 필드 섹션 표시
                         document.getElementById('evaluation-fields').style.display = 'block';
@@ -2945,6 +2995,87 @@
                     uploadBtn.disabled = false;
                     uploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>업로드 및 표본 추출';
                 });
+        }
+
+        // 모집단 업로드 초기화 함수 (표본수 0인 통제만 해당)
+        function resetPopulationUpload() {
+            // RCM 권장 표본수 확인 (0인 경우만 초기화 가능)
+            if (currentRecommendedSampleSize !== 0) {
+                alert('모집단 업로드 초기화는 RCM에서 권장 표본수가 0으로 설정된 통제에만 적용됩니다.');
+                return;
+            }
+
+            if (!confirm('모집단 업로드를 초기화하시겠습니까?\n\n업로드된 모집단 파일과 데이터베이스의 모집단/표본 데이터가 모두 삭제됩니다.')) {
+                return;
+            }
+
+            // 백엔드 API 호출하여 파일 및 DB 데이터 삭제
+            fetch(`/api/operation-evaluation/reset-population`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    control_code: currentControlCode,
+                    line_id: evaluated_controls[currentControlCode]?.line_id
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 현재 통제의 데이터 초기화
+                    if (evaluated_controls[currentControlCode]) {
+                        delete evaluated_controls[currentControlCode].sample_lines;
+                        delete evaluated_controls[currentControlCode].line_id;
+                    }
+
+                    // UI 초기화
+                    const populationUploadSection = document.getElementById('population-upload-section');
+                    const resetBtn = document.getElementById('resetPopulationBtn');
+                    const evaluationFields = document.getElementById('evaluation-fields');
+                    const populationFile = document.getElementById('populationFile');
+                    const populationFieldMapping = document.getElementById('populationFieldMapping');
+
+                    // 모집단 업로드 섹션 다시 표시
+                    if (populationUploadSection) {
+                        populationUploadSection.style.display = 'block';
+                    }
+
+                    // 초기화 버튼 숨김
+                    if (resetBtn) {
+                        resetBtn.style.display = 'none';
+                    }
+
+                    // 평가 필드 섹션 숨김
+                    if (evaluationFields) {
+                        evaluationFields.style.display = 'none';
+                    }
+
+                    // 파일 입력 초기화
+                    if (populationFile) {
+                        populationFile.value = '';
+                    }
+
+                    // 필드 매핑 섹션 숨김
+                    if (populationFieldMapping) {
+                        populationFieldMapping.style.display = 'none';
+                    }
+
+                    // 표본 테이블 초기화
+                    const tbody = document.getElementById('sample-lines-tbody');
+                    if (tbody) {
+                        tbody.innerHTML = '';
+                    }
+
+                    alert('모집단 업로드가 초기화되었습니다.');
+                } else {
+                    alert('초기화 실패: ' + (data.message || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('초기화 중 오류가 발생했습니다.');
+            });
         }
 
 

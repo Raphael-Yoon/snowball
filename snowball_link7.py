@@ -1939,3 +1939,59 @@ def save_attributes():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
+
+
+@bp_link7.route('/api/operation-evaluation/reset-population', methods=['POST'])
+@login_required
+def reset_population_upload():
+    """모집단 업로드 초기화 (파일 삭제 + DB 데이터 삭제)"""
+    import os
+    user_info = get_user_info()
+    data = request.get_json()
+
+    control_code = data.get('control_code')
+    line_id = data.get('line_id')
+
+    if not control_code:
+        return jsonify({'success': False, 'message': '통제 코드가 필요합니다.'})
+
+    try:
+        # 1. 업로드된 모집단 파일 삭제
+        upload_folder = os.path.join('uploads', 'populations')
+        if os.path.exists(upload_folder):
+            # 파일명 패턴: {user_id}_{control_code}_*.xlsx
+            file_pattern = f"{user_info['user_id']}_{control_code}_"
+            for filename in os.listdir(upload_folder):
+                if filename.startswith(file_pattern):
+                    filepath = os.path.join(upload_folder, filename)
+                    try:
+                        os.remove(filepath)
+                        print(f"[reset_population_upload] 파일 삭제: {filepath}")
+                    except Exception as file_error:
+                        print(f"[reset_population_upload] 파일 삭제 실패: {filepath}, {file_error}")
+
+        # 2. DB에서 표본 데이터 삭제
+        if line_id:
+            with get_db() as conn:
+                # 표본 데이터 삭제
+                conn.execute('DELETE FROM sb_operation_evaluation_sample WHERE line_id = %s', (line_id,))
+
+                # 라인 데이터 삭제
+                conn.execute('DELETE FROM sb_operation_evaluation_line WHERE line_id = %s', (line_id,))
+
+                conn.commit()
+                print(f"[reset_population_upload] DB 데이터 삭제 완료: line_id={line_id}")
+
+        log_user_activity(user_info, 'DATA_DELETE', '모집단 업로드 초기화',
+                         f'/api/operation-evaluation/reset-population (control: {control_code})',
+                         request.remote_addr, request.headers.get('User-Agent'))
+
+        return jsonify({
+            'success': True,
+            'message': '모집단 업로드가 초기화되었습니다.'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)})
