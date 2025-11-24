@@ -346,9 +346,11 @@
 
                             <div class="mb-3">
                                 <label for="evaluationImages" class="form-label">평가 증빙 자료 (이미지)</label>
-                                <input type="file" class="form-control" id="evaluationImages" 
-                                       accept="image/*" multiple>
-                                <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
+                                <div id="imageUploadSection">
+                                    <input type="file" class="form-control" id="evaluationImages"
+                                           accept="image/*" multiple>
+                                    <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
+                                </div>
                                 <div id="imagePreview" class="mt-2"></div>
                             </div>
                         </div>
@@ -574,17 +576,16 @@
         // 이미지 미리보기 엘리먼트 생성
         function createImagePreview(src, fileName, index) {
             const div = document.createElement('div');
-            div.className = 'image-preview-item d-inline-block me-2 mb-2 position-relative';
-            div.style.maxWidth = '150px';
-            
+            div.className = 'image-preview-item d-block mb-3 position-relative';
+
             div.innerHTML = `
-                <img src="${src}" class="img-thumbnail" style="max-width: 100%; max-height: 100px;" alt="${fileName}">
-                <div class="small text-muted text-truncate" style="max-width: 150px;">${fileName}</div>
-                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 rounded-circle" 
+                <img src="${src}" class="img-thumbnail" style="max-width: 100%; height: auto; display: block;" alt="${fileName}">
+                <div class="small text-muted mt-1">${fileName}</div>
+                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 rounded-circle"
                         style="width: 20px; height: 20px; padding: 0; margin: 2px;"
                         onclick="removeImagePreview(${index}, this.parentElement)">×</button>
             `;
-            
+
             return div;
         }
         
@@ -630,15 +631,14 @@
             if (images && images.length > 0) {
                 images.forEach((imageInfo, index) => {
                     const div = document.createElement('div');
-                    div.className = 'image-preview-item d-inline-block me-2 mb-2 position-relative';
-                    div.style.maxWidth = '150px';
-                    
+                    div.className = 'image-preview-item d-block mb-3 position-relative';
+
                     div.innerHTML = `
-                        <img src="${imageInfo.url}" class="img-thumbnail" style="max-width: 100%; max-height: 100px;" alt="${imageInfo.filename}">
-                        <div class="small text-muted text-truncate" style="max-width: 150px;">${imageInfo.filename}</div>
+                        <img src="${imageInfo.url}" class="img-thumbnail" style="max-width: 100%; height: auto; display: block;" alt="${imageInfo.filename}">
+                        <div class="small text-muted mt-1">${imageInfo.filename}</div>
                         <div class="small text-success">저장됨</div>
                     `;
-                    
+
                     previewContainer.appendChild(div);
                 });
             }
@@ -730,6 +730,11 @@
                     // 적절함인 경우 효과성 필드 활성화
                     effectivenessSelect.disabled = false;
                     effectivenessSection.style.opacity = '1';
+
+                    // 증빙 내용이 비어있으면 기본 텍스트 입력
+                    if (!evaluationEvidence.value.trim()) {
+                        evaluationEvidence.value = '통제 활동 수행 기록, 관련 문서 및 증적 확인';
+                    }
                 } else {
                     // 적절함이 아닌 경우 효과성 필드 비활성화 및 초기화
                     effectivenessSelect.disabled = true;
@@ -737,6 +742,11 @@
                     recommendedActionsField.value = '';
                     recommendedActionsField.disabled = true;
                     effectivenessSection.style.opacity = '0.5';
+
+                    // 증빙 내용이 비어있으면 기본 텍스트 입력
+                    if (!evaluationEvidence.value.trim()) {
+                        evaluationEvidence.value = '통제 활동 설명 문서 및 관련 자료 검토';
+                    }
                 }
             }
         }
@@ -760,6 +770,7 @@
         // 권고 조치사항 필드 활성화/비활성화
         function toggleRecommendedActions(effectivenessValue) {
             const recommendedActionsField = document.getElementById('recommendedActions');
+            const evaluationEvidence = document.getElementById('evaluationEvidence');
             const container = recommendedActionsField.closest('.mb-3');
 
             if (effectivenessValue === 'effective') {
@@ -768,12 +779,39 @@
                 if (container) {
                     container.style.display = 'none';
                 }
-            } else {
-                // 부분적으로 효과적이거나 비효과적인 경우 표시
+
+                // 증빙 내용이 비어있으면 효과적 평가 텍스트 입력
+                if (!evaluationEvidence.value.trim()) {
+                    evaluationEvidence.value = '통제 설계 및 운영 증적, 수행 결과 확인';
+                }
+            } else if (effectivenessValue === 'partially_effective') {
+                // 부분적으로 효과적인 경우
                 recommendedActionsField.disabled = false;
                 recommendedActionsField.placeholder = '실무와 문서 간 차이 해소나 통제 운영 개선을 위한 구체적인 조치사항을 제안하세요...';
                 if (container) {
                     container.style.display = 'block';
+                }
+
+                // 증빙 내용이 비어있으면 부분 효과적 평가 텍스트 입력
+                if (!evaluationEvidence.value.trim()) {
+                    evaluationEvidence.value = '통제 활동 기록 및 일부 개선 필요 사항 확인';
+                }
+            } else if (effectivenessValue === 'ineffective') {
+                // 비효과적인 경우
+                recommendedActionsField.disabled = false;
+                recommendedActionsField.placeholder = '실무와 문서 간 차이 해소나 통제 운영 개선을 위한 구체적인 조치사항을 제안하세요...';
+                if (container) {
+                    container.style.display = 'block';
+                }
+
+                // 증빙 내용이 비어있으면 비효과적 평가 텍스트 입력
+                if (!evaluationEvidence.value.trim()) {
+                    evaluationEvidence.value = '통제 활동 미흡 사항 및 개선 필요 증적 확인';
+                }
+            } else {
+                // 선택되지 않은 경우
+                if (container) {
+                    container.style.display = 'none';
                 }
             }
         }
@@ -1189,9 +1227,10 @@
             const imageInput = document.getElementById('evaluationImages');
             if (imageInput) imageInput.value = '';
             
-            // 완료 상태 확인하여 저장 버튼 제어
+            // 완료 상태 확인하여 저장 버튼 및 파일 업로드 제어
             const saveButton = document.getElementById('saveEvaluationBtn');
             const cancelButton = document.querySelector('#evaluationModal .modal-footer .btn-outline-secondary');
+            const imageUploadSection = document.getElementById('imageUploadSection');
 
             if (saveButton) {
                 if (isHeaderCompleted) {
@@ -1206,6 +1245,15 @@
                     saveButton.title = '평가 결과를 저장합니다';
                     saveButton.classList.remove('btn-secondary');
                     saveButton.classList.add('btn-success');
+                }
+            }
+
+            // 완료 상태일 때 파일 업로드 섹션 숨김
+            if (imageUploadSection) {
+                if (isHeaderCompleted) {
+                    imageUploadSection.style.display = 'none';
+                } else {
+                    imageUploadSection.style.display = 'block';
                 }
             }
 
