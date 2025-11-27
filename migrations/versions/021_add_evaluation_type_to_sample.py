@@ -1,10 +1,11 @@
 """
-평가 표본 테이블에 attribute 필드 추가 (설계평가 및 운영평가 공통)
+표본 테이블에 evaluation_type 컬럼 추가
+설계평가와 운영평가를 구분하기 위한 필드
 """
 
 
 def upgrade(conn):
-    """sb_evaluation_sample 테이블에 attribute0~9 컬럼 추가"""
+    """sb_evaluation_sample 테이블에 evaluation_type 컬럼 추가"""
 
     try:
         cursor = conn.cursor()
@@ -23,23 +24,22 @@ def upgrade(conn):
             print("  [WARNING] sb_evaluation_sample 테이블이 없습니다. 마이그레이션 001을 먼저 실행하세요.")
             return
 
-        # attribute0~9 컬럼 추가 (실제 증빙 데이터 저장)
-        for i in range(10):
-            try:
-                conn.execute(f'''
-                    ALTER TABLE sb_evaluation_sample
-                    ADD COLUMN attribute{i} TEXT
-                ''')
-                print(f"  attribute{i} 컬럼 추가 완료")
-            except Exception as e:
-                # 이미 존재하는 컬럼이면 무시
-                if 'duplicate column name' in str(e).lower():
-                    print(f"  attribute{i} 컬럼 이미 존재")
-                else:
-                    raise
+        # evaluation_type 컬럼 추가 (design, operation 구분)
+        try:
+            conn.execute('''
+                ALTER TABLE sb_evaluation_sample
+                ADD COLUMN evaluation_type TEXT DEFAULT 'operation'
+            ''')
+            print("  evaluation_type 컬럼 추가 완료")
+        except Exception as e:
+            # 이미 존재하는 컬럼이면 무시
+            if 'duplicate column name' in str(e).lower():
+                print("  evaluation_type 컬럼 이미 존재")
+            else:
+                raise
 
         conn.commit()
-        print("  sb_evaluation_sample 테이블 attribute 컬럼 추가 완료")
+        print("  sb_evaluation_sample 테이블 evaluation_type 컬럼 추가 완료")
 
     except Exception as e:
         print(f"  컬럼 추가 실패: {e}")
@@ -47,7 +47,7 @@ def upgrade(conn):
 
 
 def downgrade(conn):
-    """sb_evaluation_sample 테이블에서 attribute0~9 컬럼 삭제"""
+    """sb_evaluation_sample 테이블에서 evaluation_type 컬럼 삭제"""
 
     try:
         # SQLite는 ALTER TABLE DROP COLUMN을 지원하지 않으므로

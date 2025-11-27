@@ -918,28 +918,31 @@ def get_all_rcms():
         return [dict(rcm) for rcm in rcms]
 
 def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evaluation_session=None):
-    """설계평가 결과 저장 (Header-Line 구조)"""
+    """설계평가 결과 저장 (Header-Line 구조 + Sample 테이블)"""
     import sys
-    
+    import json
+
     with get_db() as conn:
         # 1. Header 존재 확인 및 생성
         header_id = get_or_create_evaluation_header(conn, rcm_id, user_id, evaluation_session)
-        
+
         # 2. Line 데이터 저장/업데이트 (UPSERT 방식)
+        # evaluation_evidence는 더 이상 line에 저장하지 않음 (sample 테이블 사용)
+
         # 먼저 해당 line_id 찾기
         line_record = conn.execute('''
             SELECT line_id FROM sb_design_evaluation_line
             WHERE header_id = %s AND control_code = %s
         ''', (header_id, control_code)).fetchone()
-        
+
         if line_record:
             # 기존 레코드 UPDATE
             line_id = line_record['line_id']
-            
+
             update_query = '''
                 UPDATE sb_design_evaluation_line SET
                     description_adequacy = %s, improvement_suggestion = %s,
-                    overall_effectiveness = %s, evaluation_evidence = %s,
+                    overall_effectiveness = %s,
                     evaluation_rationale = %s, design_comment = %s,
                     recommended_actions = %s,
                     evaluation_date = CURRENT_TIMESTAMP, last_updated = CURRENT_TIMESTAMP
@@ -949,18 +952,16 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 evaluation_data.get('description_adequacy'),
                 evaluation_data.get('improvement_suggestion'),
                 evaluation_data.get('overall_effectiveness'),
-                evaluation_data.get('evaluation_evidence'),
                 evaluation_data.get('evaluation_rationale'),
                 evaluation_data.get('design_comment'),
                 evaluation_data.get('recommended_actions'),
                 line_id
             )
-            
-            
+
             cursor = conn.execute(update_query, update_params)
         else:
             # 레코드가 없으면 INSERT 수행
-            
+
             # RCM 상세에서 control_sequence 찾기
             rcm_details = get_rcm_details(rcm_id)
             control_sequence = None
@@ -968,39 +969,73 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 if detail['control_code'] == control_code:
                     control_sequence = idx
                     break
-            
-            
+
             if control_sequence is None:
                 error_msg = f"통제 코드({control_code})를 RCM에서 찾을 수 없습니다."
                 raise ValueError(error_msg)
-            
+
             insert_query = '''
                 INSERT INTO sb_design_evaluation_line (
                     header_id, control_code, control_sequence,
                     description_adequacy, improvement_suggestion,
-                    overall_effectiveness, evaluation_evidence,
+                    overall_effectiveness,
                     evaluation_rationale, design_comment,
                     recommended_actions,
                     evaluation_date, last_updated
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             '''
             insert_params = (
                 header_id, control_code, control_sequence,
                 evaluation_data.get('description_adequacy'),
                 evaluation_data.get('improvement_suggestion'),
                 evaluation_data.get('overall_effectiveness'),
-                evaluation_data.get('evaluation_evidence'),
                 evaluation_data.get('evaluation_rationale'),
                 evaluation_data.get('design_comment'),
                 evaluation_data.get('recommended_actions')
             )
-            
-            
+
             cursor = conn.execute(insert_query, insert_params)
-        
-        # 3. Header 진행률 업데이트
+            line_id = cursor.lastrowid
+
+        # 3. Sample 데이터 저장 (evaluation_evidence를 JSON 파싱해서 저장)
+        evaluation_evidence = evaluation_data.get('evaluation_evidence', '')
+        if evaluation_evidence:
+            try:
+                # JSON 파싱
+                attr_data = json.loads(evaluation_evidence) if isinstance(evaluation_evidence, str) else evaluation_evidence
+
+                # 기존 sample 삭제 (line_id + evaluation_type='design')
+                conn.execute('''
+                    DELETE FROM sb_evaluation_sample
+                    WHERE line_id = %s AND evaluation_type = 'design'
+                ''', (line_id,))
+
+                # 새 sample 삽입 (샘플 #1)
+                conn.execute('''
+                    INSERT INTO sb_evaluation_sample (
+                        line_id, sample_number, evaluation_type,
+                        attribute0, attribute1, attribute2, attribute3, attribute4,
+                        attribute5, attribute6, attribute7, attribute8, attribute9
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (
+                    line_id, 1, 'design',
+                    attr_data.get('attribute0', ''),
+                    attr_data.get('attribute1', ''),
+                    attr_data.get('attribute2', ''),
+                    attr_data.get('attribute3', ''),
+                    attr_data.get('attribute4', ''),
+                    attr_data.get('attribute5', ''),
+                    attr_data.get('attribute6', ''),
+                    attr_data.get('attribute7', ''),
+                    attr_data.get('attribute8', ''),
+                    attr_data.get('attribute9', '')
+                ))
+            except (json.JSONDecodeError, TypeError) as e:
+                print(f"[save_design_evaluation] Error parsing evaluation_evidence: {e}")
+
+        # 4. Header 진행률 업데이트
         update_evaluation_progress(conn, header_id)
-        
+
         conn.commit()
 
 def create_evaluation_structure(rcm_id, user_id, evaluation_session):
@@ -1116,8 +1151,9 @@ def update_evaluation_progress(conn, header_id):
     ''', (evaluated_count, progress, status, header_id))
 
 def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
-    """특정 RCM의 사용자별 설계평가 결과 조회 (Header-Line 구조)"""
-    
+    """특정 RCM의 사용자별 설계평가 결과 조회 (Header-Line 구조 + Sample 데이터)"""
+    import json
+
     try:
         with get_db() as conn:
             if evaluation_session:
@@ -1154,16 +1190,42 @@ def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
                 params = (rcm_id, user_id, rcm_id, user_id)
                 final_query = query.replace('?', '{}').format(rcm_id, user_id, rcm_id, user_id)
                 evaluations = conn.execute(query, params).fetchall()
-            
-        if evaluations:
-            # 각 레코드의 evaluation_date 값 출력
-            for i, eval_record in enumerate(evaluations):
+
+            # Sample 데이터를 evaluation_evidence 필드에 JSON으로 재구성
+            result = []
+            for eval_record in evaluations:
                 eval_dict = dict(eval_record)
-                if i >= 2:  # 처음 3개만 출력
-                    break
-        
-        return [dict(eval) for eval in evaluations]
-    
+
+                # Sample 데이터 조회 (evaluation_type='design')
+                sample = conn.execute('''
+                    SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
+                           attribute5, attribute6, attribute7, attribute8, attribute9
+                    FROM sb_evaluation_sample
+                    WHERE line_id = %s AND evaluation_type = 'design' AND sample_number = 1
+                ''', (eval_dict['line_id'],)).fetchone()
+
+                if sample:
+                    # Sample 데이터를 JSON으로 변환하여 evaluation_evidence에 저장
+                    attr_data = {
+                        'attribute0': sample['attribute0'] or '',
+                        'attribute1': sample['attribute1'] or '',
+                        'attribute2': sample['attribute2'] or '',
+                        'attribute3': sample['attribute3'] or '',
+                        'attribute4': sample['attribute4'] or '',
+                        'attribute5': sample['attribute5'] or '',
+                        'attribute6': sample['attribute6'] or '',
+                        'attribute7': sample['attribute7'] or '',
+                        'attribute8': sample['attribute8'] or '',
+                        'attribute9': sample['attribute9'] or ''
+                    }
+                    eval_dict['evaluation_evidence'] = json.dumps(attr_data)
+                else:
+                    eval_dict['evaluation_evidence'] = ''
+
+                result.append(eval_dict)
+
+        return result
+
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1286,82 +1348,147 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
         if existing_line:
             line_id = existing_line['line_id']
             # 업데이트
-            conn.execute('''
-                UPDATE sb_operation_evaluation_line
-                SET sample_size = %s,
-                    exception_count = %s,
-                    mitigating_factors = %s,
-                    exception_details = %s,
-                    conclusion = %s,
-                    improvement_plan = %s,
-                    population_path = %s,
-                    samples_path = %s,
-                    test_results_path = %s,
-                    population_count = %s,
-                    no_occurrence = %s,
-                    no_occurrence_reason = %s,
-                    evaluation_date = CURRENT_TIMESTAMP,
-                    last_updated = CURRENT_TIMESTAMP
-                WHERE line_id = %s
-            ''', (
-                evaluation_data.get('sample_size'),
-                evaluation_data.get('exception_count'),
-                evaluation_data.get('mitigating_factors'),
-                evaluation_data.get('exception_details'),
-                evaluation_data.get('conclusion'),
-                evaluation_data.get('improvement_plan'),
-                evaluation_data.get('population_path'),
-                evaluation_data.get('samples_path'),
-                evaluation_data.get('test_results_path'),
-                evaluation_data.get('population_count'),
-                1 if evaluation_data.get('no_occurrence') else 0,
-                evaluation_data.get('no_occurrence_reason'),
-                line_id
-            ))
+            # conclusion이 있으면 evaluation_date도 업데이트
+            conclusion = evaluation_data.get('conclusion')
+            if conclusion and conclusion.strip():
+                conn.execute('''
+                    UPDATE sb_operation_evaluation_line
+                    SET sample_size = %s,
+                        exception_count = %s,
+                        mitigating_factors = %s,
+                        exception_details = %s,
+                        conclusion = %s,
+                        improvement_plan = %s,
+                        population_path = %s,
+                        samples_path = %s,
+                        test_results_path = %s,
+                        population_count = %s,
+                        no_occurrence = %s,
+                        no_occurrence_reason = %s,
+                        evaluation_date = CURRENT_TIMESTAMP,
+                        last_updated = CURRENT_TIMESTAMP
+                    WHERE line_id = %s
+                ''', (
+                    evaluation_data.get('sample_size'),
+                    evaluation_data.get('exception_count'),
+                    evaluation_data.get('mitigating_factors'),
+                    evaluation_data.get('exception_details'),
+                    conclusion,
+                    evaluation_data.get('improvement_plan'),
+                    evaluation_data.get('population_path'),
+                    evaluation_data.get('samples_path'),
+                    evaluation_data.get('test_results_path'),
+                    evaluation_data.get('population_count'),
+                    1 if evaluation_data.get('no_occurrence') else 0,
+                    evaluation_data.get('no_occurrence_reason'),
+                    line_id
+                ))
+            else:
+                # conclusion이 없으면 evaluation_date는 업데이트하지 않음
+                conn.execute('''
+                    UPDATE sb_operation_evaluation_line
+                    SET sample_size = %s,
+                        exception_count = %s,
+                        mitigating_factors = %s,
+                        exception_details = %s,
+                        conclusion = %s,
+                        improvement_plan = %s,
+                        population_path = %s,
+                        samples_path = %s,
+                        test_results_path = %s,
+                        population_count = %s,
+                        no_occurrence = %s,
+                        no_occurrence_reason = %s,
+                        last_updated = CURRENT_TIMESTAMP
+                    WHERE line_id = %s
+                ''', (
+                    evaluation_data.get('sample_size'),
+                    evaluation_data.get('exception_count'),
+                    evaluation_data.get('mitigating_factors'),
+                    evaluation_data.get('exception_details'),
+                    conclusion,
+                    evaluation_data.get('improvement_plan'),
+                    evaluation_data.get('population_path'),
+                    evaluation_data.get('samples_path'),
+                    evaluation_data.get('test_results_path'),
+                    evaluation_data.get('population_count'),
+                    1 if evaluation_data.get('no_occurrence') else 0,
+                    evaluation_data.get('no_occurrence_reason'),
+                    line_id
+                ))
         else:
             # 삽입
-            cursor = conn.execute('''
-                INSERT INTO sb_operation_evaluation_line (
-                    header_id, control_code, sample_size,
-                    exception_count, mitigating_factors, exception_details, conclusion, improvement_plan,
-                    population_path, samples_path, test_results_path, population_count,
-                    no_occurrence, no_occurrence_reason,
-                    evaluation_date, last_updated
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            ''', (
-                header_id, control_code,
-                evaluation_data.get('sample_size'),
-                evaluation_data.get('exception_count'),
-                evaluation_data.get('mitigating_factors'),
-                evaluation_data.get('exception_details'),
-                evaluation_data.get('conclusion'),
-                evaluation_data.get('improvement_plan'),
-                evaluation_data.get('population_path'),
-                evaluation_data.get('samples_path'),
-                evaluation_data.get('test_results_path'),
-                evaluation_data.get('population_count'),
-                1 if evaluation_data.get('no_occurrence') else 0,
-                evaluation_data.get('no_occurrence_reason')
-            ))
+            # conclusion이 있을 때만 evaluation_date 설정
+            conclusion = evaluation_data.get('conclusion')
+            if conclusion and conclusion.strip():
+                cursor = conn.execute('''
+                    INSERT INTO sb_operation_evaluation_line (
+                        header_id, control_code, sample_size,
+                        exception_count, mitigating_factors, exception_details, conclusion, improvement_plan,
+                        population_path, samples_path, test_results_path, population_count,
+                        no_occurrence, no_occurrence_reason,
+                        evaluation_date, last_updated
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ''', (
+                    header_id, control_code,
+                    evaluation_data.get('sample_size'),
+                    evaluation_data.get('exception_count'),
+                    evaluation_data.get('mitigating_factors'),
+                    evaluation_data.get('exception_details'),
+                    conclusion,
+                    evaluation_data.get('improvement_plan'),
+                    evaluation_data.get('population_path'),
+                    evaluation_data.get('samples_path'),
+                    evaluation_data.get('test_results_path'),
+                    evaluation_data.get('population_count'),
+                    1 if evaluation_data.get('no_occurrence') else 0,
+                    evaluation_data.get('no_occurrence_reason')
+                ))
+            else:
+                # conclusion이 없으면 evaluation_date는 NULL
+                cursor = conn.execute('''
+                    INSERT INTO sb_operation_evaluation_line (
+                        header_id, control_code, sample_size,
+                        exception_count, mitigating_factors, exception_details, conclusion, improvement_plan,
+                        population_path, samples_path, test_results_path, population_count,
+                        no_occurrence, no_occurrence_reason,
+                        last_updated
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ''', (
+                    header_id, control_code,
+                    evaluation_data.get('sample_size'),
+                    evaluation_data.get('exception_count'),
+                    evaluation_data.get('mitigating_factors'),
+                    evaluation_data.get('exception_details'),
+                    conclusion,
+                    evaluation_data.get('improvement_plan'),
+                    evaluation_data.get('population_path'),
+                    evaluation_data.get('samples_path'),
+                    evaluation_data.get('test_results_path'),
+                    evaluation_data.get('population_count'),
+                    1 if evaluation_data.get('no_occurrence') else 0,
+                    evaluation_data.get('no_occurrence_reason')
+                ))
             line_id = cursor.lastrowid
 
         # Sample 데이터 저장 (새 테이블 구조)
         if sample_lines and line_id:
-            # 기존 샘플 데이터 삭제
-            conn.execute('DELETE FROM sb_operation_evaluation_sample WHERE line_id = %s', (line_id,))
+            # 기존 운영평가 샘플 데이터만 삭제 (설계평가 샘플은 보존)
+            conn.execute('DELETE FROM sb_evaluation_sample WHERE line_id = %s AND evaluation_type = %s', (line_id, 'operation'))
 
-            # 새 샘플 데이터 삽입
+            # 새 샘플 데이터 삽입 (evaluation_type='operation')
             for sample in sample_lines:
                 attributes = sample.get('attributes', {})
                 conn.execute('''
-                    INSERT INTO sb_operation_evaluation_sample (
-                        line_id, sample_number, evidence, has_exception, mitigation,
+                    INSERT INTO sb_evaluation_sample (
+                        line_id, sample_number, evaluation_type, evidence, has_exception, mitigation,
                         attribute0, attribute1, attribute2, attribute3, attribute4,
                         attribute5, attribute6, attribute7, attribute8, attribute9
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (
                     line_id,
                     sample.get('sample_number'),
+                    'operation',  # 운영평가 샘플임을 표시
                     sample.get('evidence', ''),
                     1 if sample.get('result') == 'exception' else 0,
                     sample.get('mitigation', ''),
@@ -1379,11 +1506,11 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
 
 def update_operation_evaluation_progress(conn, header_id):
     """운영평가 진행률 업데이트"""
-    # 완료된 평가 수 계산 (evaluation_date 기준)
+    # 완료된 평가 수 계산 (conclusion이 있는 경우만 완료로 간주)
     result = conn.execute('''
         SELECT COUNT(*) as evaluated_count
         FROM sb_operation_evaluation_line
-        WHERE header_id = %s AND evaluation_date IS NOT NULL
+        WHERE header_id = %s AND conclusion IS NOT NULL AND conclusion != ''
     ''', (header_id,)).fetchone()
     
     evaluated_count = result['evaluated_count'] if result else 0
@@ -1502,13 +1629,14 @@ def get_operation_evaluation_samples(line_id):
 
     with get_db() as conn:
         # 실제 실행될 SQL 쿼리 출력 (파라미터 바인딩 포함)
+        # 운영평가 샘플만 조회 (evaluation_type='operation')
         sample_query = '''
             SELECT sample_id, sample_number, evidence, has_exception, mitigation, request_number,
                    requester_name, requester_department, approver_name, approver_department, approval_date,
                    attribute0, attribute1, attribute2, attribute3, attribute4,
                    attribute5, attribute6, attribute7, attribute8, attribute9
-            FROM sb_operation_evaluation_sample
-            WHERE line_id = %s
+            FROM sb_evaluation_sample
+            WHERE line_id = %s AND evaluation_type = 'operation'
             ORDER BY sample_number
         '''
         # 쿼리를 한 줄로 변환하여 출력
@@ -1547,6 +1675,45 @@ def get_operation_evaluation_samples(line_id):
             })
 
         return sample_lines
+
+def get_design_evaluation_sample(line_id):
+    """특정 line_id의 설계평가 샘플 데이터 조회 (운영평가에서 설계평가 증빙을 보여주기 위함)"""
+    import json
+
+    print(f'[get_design_evaluation_sample] line_id={line_id}')
+
+    with get_db() as conn:
+        # 설계평가 샘플 조회 (evaluation_type='design')
+        sample_query = '''
+            SELECT sample_id, sample_number,
+                   attribute0, attribute1, attribute2, attribute3, attribute4,
+                   attribute5, attribute6, attribute7, attribute8, attribute9
+            FROM sb_evaluation_sample
+            WHERE line_id = %s AND evaluation_type = 'design'
+            ORDER BY sample_number
+        '''
+
+        samples = conn.execute(sample_query, (line_id,)).fetchall()
+
+        print(f'[get_design_evaluation_sample] 조회된 설계평가 샘플 수 = {len(samples)}')
+
+        if not samples:
+            return None
+
+        # 첫 번째 샘플만 반환 (설계평가는 항상 sample #1)
+        sample = samples[0]
+
+        # attributes를 JSON으로 구성
+        attributes = {}
+        for i in range(10):
+            attr_value = sample[f'attribute{i}']
+            if attr_value:
+                attributes[f'attribute{i}'] = attr_value
+
+        return {
+            'sample_number': sample['sample_number'],
+            'attributes': attributes
+        }
 
 def count_design_evaluations(rcm_id, user_id):
     """특정 RCM의 사용자별 설계평가 헤더 개수 조회 (평가 세션 개수)"""

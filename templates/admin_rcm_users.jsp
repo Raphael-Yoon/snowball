@@ -20,7 +20,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1><i class="fas fa-users me-2"></i>RCM 사용자 관리</h1>
                     <div>
-                        <a href="/rcm/{{ rcm_info.rcm_id }}/view" class="btn btn-info me-2">
+                        <a href="/rcm/{{ rcm_info.rcm_id }}/select" class="btn btn-info me-2">
                             <i class="fas fa-eye me-1"></i>RCM 보기
                         </a>
                         <a href="/rcm" class="btn btn-secondary">

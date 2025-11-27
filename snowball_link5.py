@@ -186,15 +186,38 @@ def user_rcm():
                          user_info=user_info,
                          remote_addr=request.remote_addr)
 
-@bp_link5.route('/rcm/<int:rcm_id>/view')
+# RCM 선택 (세션에 저장)
+@bp_link5.route('/rcm/<int:rcm_id>/select')
 @login_required
-def user_rcm_view(rcm_id):
-    """사용자 RCM 상세 조회 페이지"""
+def select_rcm(rcm_id):
+    """RCM 선택 - 세션에 저장 후 view로 리다이렉트"""
     user_info = get_user_info()
-    
-    # 사용자가 해당 RCM에 접근 권한이 있는지 확인 (관리자는 모든 RCM 접근 가능)
+
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
     if not has_rcm_access(user_info['user_id'], rcm_id):
         flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
+        return redirect(url_for('link5.user_rcm'))
+
+    # 세션에 선택된 RCM ID 저장
+    session['selected_rcm_id'] = rcm_id
+    return redirect(url_for('link5.user_rcm_view'))
+
+@bp_link5.route('/rcm/view')
+@login_required
+def user_rcm_view():
+    """사용자 RCM 상세 조회 페이지 (세션 기반)"""
+    user_info = get_user_info()
+
+    # 세션에서 선택된 RCM ID 가져오기
+    rcm_id = session.get('selected_rcm_id')
+    if not rcm_id:
+        flash('RCM을 먼저 선택해주세요.', 'warning')
+        return redirect(url_for('link5.user_rcm'))
+
+    # 사용자가 해당 RCM에 접근 권한이 있는지 확인
+    if not has_rcm_access(user_info['user_id'], rcm_id):
+        flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
+        session.pop('selected_rcm_id', None)
         return redirect(url_for('link5.user_rcm'))
 
     # RCM 기본 정보 조회
@@ -203,7 +226,7 @@ def user_rcm_view(rcm_id):
 
     # RCM 상세 데이터 조회
     rcm_details = get_rcm_details(rcm_id)
-    
+
     return render_template('link5_rcm_view.jsp',
                          rcm_info=rcm_info,
                          rcm_details=rcm_details,

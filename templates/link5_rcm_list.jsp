@@ -107,7 +107,7 @@
                                             <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
                                                 <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
                                             </a>
-                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
+                                            <a href="/rcm/{{ rcm.rcm_id }}/select" class="btn btn-sm btn-outline-secondary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
@@ -167,7 +167,7 @@
                                             <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
                                                 <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
                                             </a>
-                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
+                                            <a href="/rcm/{{ rcm.rcm_id }}/select" class="btn btn-sm btn-outline-secondary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
@@ -232,7 +232,7 @@
                                             <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
                                                 <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
                                             </a>
-                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
+                                            <a href="/rcm/{{ rcm.rcm_id }}/select" class="btn btn-sm btn-outline-secondary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}
@@ -297,7 +297,7 @@
                                             <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
                                                 <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
                                             </a>
-                                            <a href="/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-secondary me-1">
+                                            <a href="/rcm/{{ rcm.rcm_id }}/select" class="btn btn-sm btn-outline-secondary me-1">
                                                 <i class="fas fa-eye me-1"></i>상세
                                             </a>
                                             {% if user_info and (user_info.get('admin_flag') == 'Y' or rcm.permission_type == 'admin') %}

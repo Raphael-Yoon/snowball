@@ -179,11 +179,19 @@ def user_operation_evaluation_rcm():
     # 운영평가 Header/Line 데이터 동기화 (설계평가 결과 변경 반영)
     print("[DEBUG] Syncing operation evaluation data...")
     sync_messages = []
+    operation_header = None
     try:
         # 기존 운영평가 헤더 확인
         from auth import get_or_create_operation_evaluation_header
         with get_db() as conn:
             header_id = get_or_create_operation_evaluation_header(conn, rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)
+
+            # 헤더 정보 조회 (진행률 표시용)
+            operation_header = conn.execute('''
+                SELECT header_id, evaluated_controls, total_controls, progress_percentage, evaluation_status
+                FROM sb_operation_evaluation_header
+                WHERE header_id = %s
+            ''', (header_id,)).fetchone()
 
             # 현재 대상 통제 코드 목록 (핵심통제 + 설계평가 '적정')
             current_control_codes = {detail['control_code'] for detail in rcm_details}
@@ -266,6 +274,7 @@ def user_operation_evaluation_rcm():
                          design_evaluation_session=design_evaluation_session,
                          evaluation_session=design_evaluation_session,  # 템플릿 호환성
                          operation_evaluation_session=operation_evaluation_session,
+                         operation_header=operation_header,  # 진행률 표시용
                          rcm_info=rcm_info,
                          rcm_details=rcm_details,
                          rcm_mappings=rcm_mappings,
@@ -1833,7 +1842,7 @@ def upload_general_population():
                 line_id = existing_line['line_id']
 
                 # 기존 샘플 삭제
-                conn.execute('DELETE FROM sb_operation_evaluation_sample WHERE line_id = %s', (line_id,))
+                conn.execute('DELETE FROM sb_evaluation_sample WHERE line_id = %s', (line_id,))
 
                 # Line 업데이트 (sample_size만)
                 conn.execute('''
@@ -1858,7 +1867,7 @@ def upload_general_population():
             for idx, sample in enumerate(samples, 1):
                 print(f"[upload_general_population] 샘플 #{idx} 저장 중: {sample['number']}, {sample['description'][:30]}...")
                 conn.execute('''
-                    INSERT INTO sb_operation_evaluation_sample
+                    INSERT INTO sb_evaluation_sample
                     (line_id, sample_number, attribute0, attribute1)
                     VALUES (%s, %s, %s, %s)
                 ''', (line_id, idx, sample['number'], sample['description']))
@@ -1872,7 +1881,7 @@ def upload_general_population():
                 SELECT sample_number, evidence, has_exception, mitigation,
                        attribute0, attribute1, attribute2, attribute3, attribute4,
                        attribute5, attribute6, attribute7, attribute8, attribute9
-                FROM sb_operation_evaluation_sample
+                FROM sb_evaluation_sample
                 WHERE line_id = %s
                 ORDER BY sample_number
             ''', (line_id,)).fetchall()
@@ -1974,7 +1983,7 @@ def reset_population_upload():
         if line_id:
             with get_db() as conn:
                 # 표본 데이터 삭제
-                conn.execute('DELETE FROM sb_operation_evaluation_sample WHERE line_id = %s', (line_id,))
+                conn.execute('DELETE FROM sb_evaluation_sample WHERE line_id = %s', (line_id,))
 
                 # 라인 데이터 삭제
                 conn.execute('DELETE FROM sb_operation_evaluation_line WHERE line_id = %s', (line_id,))

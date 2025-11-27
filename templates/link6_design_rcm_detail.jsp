@@ -298,35 +298,12 @@
                             <div class="mb-3">
                                 <label class="form-label">증빙 및 결과</label>
                                 <div class="table-responsive">
-                                    <table class="table table-bordered table-sm">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th width="10%">표본 #</th>
-                                                <th width="70%">증빙 내용</th>
-                                                <th width="20%">결과</th>
-                                            </tr>
+                                    <table class="table table-bordered table-sm" id="designEvidenceTable">
+                                        <thead class="table-light" id="design-evidence-thead">
+                                            <!-- 동적 생성 -->
                                         </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td class="text-center align-middle">#1</td>
-                                                <td class="align-middle">
-                                                    <input type="text" class="form-control form-control-sm"
-                                                           id="evaluationEvidence"
-                                                           placeholder="평가 시 확인한 증빙 자료를 입력하세요 (예: 업무 매뉴얼, 승인 기록, 시스템 로그, 문서번호 등)"
-                                                           style="height: 31px;" />
-                                                </td>
-                                                <td class="align-middle">
-                                                    <select class="form-select form-select-sm"
-                                                            id="overallEffectiveness"
-                                                            required
-                                                            disabled
-                                                            style="height: 31px;">
-                                                        <option value="">선택</option>
-                                                        <option value="effective">효과적</option>
-                                                        <option value="ineffective">비효과적</option>
-                                                    </select>
-                                                </td>
-                                            </tr>
+                                        <tbody id="design-evidence-tbody">
+                                            <!-- 동적 생성 -->
                                         </tbody>
                                     </table>
                                 </div>
@@ -455,9 +432,157 @@
         let evaluationResults = {};
         let evaluationImages = {}; // 평가별 이미지 저장
         const rcmId = {{ rcm_id }};
-        
+
         console.log('***** JavaScript rcmId value:', rcmId, '(type:', typeof rcmId, ') *****');
-        
+
+        // RCM Attribute 정보 저장 (운영평가와 동일한 구조)
+        let rcmAttributesData = {};
+        {% if rcm_details %}
+        {% for detail in rcm_details %}
+        rcmAttributesData[{{ detail['control_code'] | tojson }}] = {
+            detailId: {{ detail['detail_id'] | int }},
+            populationAttributeCount: {{ detail['population_attribute_count'] | int if detail['population_attribute_count'] is not none else 2 }},
+            attributes: {
+                attribute0: {{ detail['attribute0'] | tojson if detail['attribute0'] else 'null' }},
+                attribute1: {{ detail['attribute1'] | tojson if detail['attribute1'] else 'null' }},
+                attribute2: {{ detail['attribute2'] | tojson if detail['attribute2'] else 'null' }},
+                attribute3: {{ detail['attribute3'] | tojson if detail['attribute3'] else 'null' }},
+                attribute4: {{ detail['attribute4'] | tojson if detail['attribute4'] else 'null' }},
+                attribute5: {{ detail['attribute5'] | tojson if detail['attribute5'] else 'null' }},
+                attribute6: {{ detail['attribute6'] | tojson if detail['attribute6'] else 'null' }},
+                attribute7: {{ detail['attribute7'] | tojson if detail['attribute7'] else 'null' }},
+                attribute8: {{ detail['attribute8'] | tojson if detail['attribute8'] else 'null' }},
+                attribute9: {{ detail['attribute9'] | tojson if detail['attribute9'] else 'null' }}
+            }
+        };
+        {% endfor %}
+        {% endif %}
+
+        console.log('[Design Evaluation] RCM Attributes Data:', rcmAttributesData);
+
+        // 설계평가 증빙 테이블 동적 생성 (Attribute 기반)
+        function generateDesignEvidenceTable(controlCode) {
+            console.log('[generateDesignEvidenceTable] controlCode:', controlCode);
+
+            const thead = document.getElementById('design-evidence-thead');
+            const tbody = document.getElementById('design-evidence-tbody');
+
+            if (!thead || !tbody) {
+                console.error('[generateDesignEvidenceTable] Table elements not found');
+                return;
+            }
+
+            // RCM attribute 정보 가져오기
+            const attrData = rcmAttributesData[controlCode];
+            if (!attrData) {
+                console.log('[generateDesignEvidenceTable] No attribute data for control:', controlCode);
+                // Attribute가 없으면 기본 증빙 컬럼만 표시
+                thead.innerHTML = `<tr>
+                    <th width="10%">표본 #</th>
+                    <th width="70%">증빙 내용</th>
+                    <th width="20%">결과</th>
+                </tr>`;
+                tbody.innerHTML = `<tr>
+                    <td class="text-center align-middle">#1</td>
+                    <td class="align-middle">
+                        <input type="text" class="form-control form-control-sm"
+                               id="evaluationEvidence"
+                               placeholder="평가 시 확인한 증빙 자료를 입력하세요"
+                               style="height: 31px;" />
+                    </td>
+                    <td class="align-middle">
+                        <select class="form-select form-select-sm"
+                                id="overallEffectiveness"
+                                required disabled
+                                style="height: 31px;">
+                            <option value="">선택</option>
+                            <option value="effective">효과적</option>
+                            <option value="ineffective">비효과적</option>
+                        </select>
+                    </td>
+                </tr>`;
+                return;
+            }
+
+            const popAttrCount = attrData.populationAttributeCount || 2;
+            const attributes = attrData.attributes || {};
+
+            console.log('[generateDesignEvidenceTable] popAttrCount:', popAttrCount);
+            console.log('[generateDesignEvidenceTable] attributes:', attributes);
+
+            // 설정된 attribute가 있는지 확인
+            const hasAttributes = Object.values(attributes).some(v => v);
+
+            // 테이블 헤더 생성
+            let headerHtml = '<tr><th width="10%">표본 #</th>';
+
+            if (hasAttributes) {
+                // Attribute 컬럼 추가 (모집단/증빙 구분 표시)
+                for (let i = 0; i < 10; i++) {
+                    const attrName = attributes[`attribute${i}`];
+                    if (attrName) {
+                        const isPopulation = i < popAttrCount;
+                        const badge = isPopulation
+                            ? '<span class="badge bg-primary ms-1" style="font-size: 0.7em;">모집단</span>'
+                            : '<span class="badge bg-success ms-1" style="font-size: 0.7em;">증빙</span>';
+                        headerHtml += `<th>${attrName}${badge}</th>`;
+                    }
+                }
+            } else {
+                // 기본 증빙 컬럼
+                headerHtml += '<th width="70%">증빙 내용</th>';
+            }
+
+            headerHtml += '<th width="15%">결과</th></tr>';
+            thead.innerHTML = headerHtml;
+
+            // 표본 #1만 생성
+            let rowHtml = '<tr><td class="text-center align-middle">#1</td>';
+
+            if (hasAttributes) {
+                // Attribute 컬럼들 추가
+                for (let i = 0; i < 10; i++) {
+                    const attrName = attributes[`attribute${i}`];
+                    if (attrName) {
+                        const isPopulation = i < popAttrCount;
+                        const bgClass = isPopulation ? 'bg-light' : '';
+
+                        // 설계평가에서는 모든 필드 입력 가능 (표본수 개념 없음)
+                        rowHtml += `<td class="align-middle ${bgClass}">
+                            <input type="text" class="form-control form-control-sm"
+                                   id="design-attr${i}-1"
+                                   placeholder="${attrName}"
+                                   style="height: 31px;" />
+                        </td>`;
+                    }
+                }
+            } else {
+                // 기본 증빙 컬럼
+                rowHtml += `<td class="align-middle">
+                    <input type="text" class="form-control form-control-sm"
+                           id="evaluationEvidence"
+                           placeholder="평가 시 확인한 증빙 자료를 입력하세요"
+                           style="height: 31px;" />
+                </td>`;
+            }
+
+            // 결과 컬럼
+            rowHtml += `<td class="align-middle">
+                <select class="form-select form-select-sm"
+                        id="overallEffectiveness"
+                        required disabled
+                        style="height: 31px;">
+                    <option value="">선택</option>
+                    <option value="effective">효과적</option>
+                    <option value="ineffective">비효과적</option>
+                </select>
+            </td></tr>`;
+
+            tbody.innerHTML = rowHtml;
+
+            console.log('[generateDesignEvidenceTable] Table generated successfully');
+        }
+
         // 기존 평가 데이터 로드 함수
         function loadExistingEvaluationData(sessionName) {
             console.log('Loading evaluation data for session:', sessionName);
@@ -780,8 +905,8 @@
                     container.style.display = 'none';
                 }
 
-                // 증빙 내용이 비어있으면 효과적 평가 텍스트 입력
-                if (!evaluationEvidence.value.trim()) {
+                // 증빙 내용이 비어있으면 효과적 평가 텍스트 입력 (evaluationEvidence가 있는 경우만)
+                if (evaluationEvidence && !evaluationEvidence.value.trim()) {
                     evaluationEvidence.value = '통제 설계 및 운영 증적, 수행 결과 확인';
                 }
             } else if (effectivenessValue === 'partially_effective') {
@@ -792,8 +917,8 @@
                     container.style.display = 'block';
                 }
 
-                // 증빙 내용이 비어있으면 부분 효과적 평가 텍스트 입력
-                if (!evaluationEvidence.value.trim()) {
+                // 증빙 내용이 비어있으면 부분 효과적 평가 텍스트 입력 (evaluationEvidence가 있는 경우만)
+                if (evaluationEvidence && !evaluationEvidence.value.trim()) {
                     evaluationEvidence.value = '통제 활동 기록 및 일부 개선 필요 사항 확인';
                 }
             } else if (effectivenessValue === 'ineffective') {
@@ -804,8 +929,8 @@
                     container.style.display = 'block';
                 }
 
-                // 증빙 내용이 비어있으면 비효과적 평가 텍스트 입력
-                if (!evaluationEvidence.value.trim()) {
+                // 증빙 내용이 비어있으면 비효과적 평가 텍스트 입력 (evaluationEvidence가 있는 경우만)
+                if (evaluationEvidence && !evaluationEvidence.value.trim()) {
                     evaluationEvidence.value = '통제 활동 미흡 사항 및 개선 필요 증적 확인';
                 }
             } else {
@@ -1176,11 +1301,14 @@
             }
             {% endfor %}
             
+            // Attribute 기반 증빙 테이블 생성 (기존 데이터 로드 전에 먼저 생성)
+            generateDesignEvidenceTable(controlCode);
+
             // 기본 디버깅
             console.log('DEBUG - Modal opened for index:', index);
             console.log('DEBUG - evaluationResults:', evaluationResults);
             console.log('DEBUG - evaluationResults[index]:', evaluationResults[index]);
-            
+
             // 기존 평가 결과가 있다면 로드
             if (evaluationResults[index]) {
                 const result = evaluationResults[index];
@@ -1189,7 +1317,35 @@
                 document.getElementById('descriptionAdequacy').value = result.description_adequacy || '';
                 document.getElementById('improvementSuggestion').value = result.improvement_suggestion || '';
                 document.getElementById('overallEffectiveness').value = result.overall_effectiveness || '';
-                document.getElementById('evaluationEvidence').value = result.evaluation_evidence || '';
+
+                // Attribute 데이터 로드 (evaluation_evidence는 항상 JSON 형식)
+                if (result.evaluation_evidence) {
+                    try {
+                        const attrData = JSON.parse(result.evaluation_evidence);
+
+                        const evidenceEl = document.getElementById('evaluationEvidence');
+                        if (evidenceEl) {
+                            // 기본 증빙 필드 - attribute0에서 로드
+                            evidenceEl.value = attrData['attribute0'] || '';
+                        } else {
+                            // Attribute 기반인 경우 - 각 attribute 필드에 입력
+                            for (let i = 0; i < 10; i++) {
+                                const attrEl = document.getElementById(`design-attr${i}-1`);
+                                if (attrEl && attrData[`attribute${i}`]) {
+                                    attrEl.value = attrData[`attribute${i}`];
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.log('[openEvaluationModal] evaluation_evidence is not JSON:', result.evaluation_evidence);
+                        // JSON 파싱 실패 시 레거시 데이터 처리 (일반 텍스트)
+                        const evidenceEl = document.getElementById('evaluationEvidence');
+                        if (evidenceEl) {
+                            evidenceEl.value = result.evaluation_evidence || '';
+                        }
+                    }
+                }
+
                 document.getElementById('designComment').value = result.design_comment || '';
                 document.getElementById('recommendedActions').value = result.recommended_actions || '';
 
@@ -1212,7 +1368,19 @@
                 document.getElementById('descriptionAdequacy').value = '';
                 document.getElementById('improvementSuggestion').value = '';
                 document.getElementById('overallEffectiveness').value = '';
-                document.getElementById('evaluationEvidence').value = '';
+
+                // evaluationEvidence가 있으면 초기화 (기본 증빙 컬럼)
+                const evidenceElInit = document.getElementById('evaluationEvidence');
+                if (evidenceElInit) {
+                    evidenceElInit.value = '';
+                } else {
+                    // Attribute 기반인 경우 모든 attribute 필드 초기화
+                    for (let i = 0; i < 10; i++) {
+                        const attrEl = document.getElementById(`design-attr${i}-1`);
+                        if (attrEl) attrEl.value = '';
+                    }
+                }
+
                 document.getElementById('designComment').value = '';
                 document.getElementById('recommendedActions').value = '';
 
@@ -1284,7 +1452,19 @@
                 document.getElementById('descriptionAdequacy').disabled = true;
                 document.getElementById('improvementSuggestion').disabled = true;
                 document.getElementById('overallEffectiveness').disabled = true;
-                document.getElementById('evaluationEvidence').disabled = true;
+
+                // evaluationEvidence가 있으면 비활성화 (기본 증빙 컬럼)
+                const evidenceEl = document.getElementById('evaluationEvidence');
+                if (evidenceEl) {
+                    evidenceEl.disabled = true;
+                } else {
+                    // Attribute 기반인 경우 모든 attribute 필드 비활성화
+                    for (let i = 0; i < 10; i++) {
+                        const attrEl = document.getElementById(`design-attr${i}-1`);
+                        if (attrEl) attrEl.disabled = true;
+                    }
+                }
+
                 document.getElementById('designComment').disabled = true;
                 document.getElementById('recommendedActions').disabled = true;
             } else {
@@ -1302,7 +1482,19 @@
                 document.getElementById('descriptionAdequacy').disabled = false;
                 document.getElementById('improvementSuggestion').disabled = false;
                 document.getElementById('overallEffectiveness').disabled = false;
-                document.getElementById('evaluationEvidence').disabled = false;
+
+                // evaluationEvidence가 있으면 활성화 (기본 증빙 컬럼)
+                const evidenceElActive = document.getElementById('evaluationEvidence');
+                if (evidenceElActive) {
+                    evidenceElActive.disabled = false;
+                } else {
+                    // Attribute 기반인 경우 모든 attribute 필드 활성화
+                    for (let i = 0; i < 10; i++) {
+                        const attrEl = document.getElementById(`design-attr${i}-1`);
+                        if (attrEl) attrEl.disabled = false;
+                    }
+                }
+
                 document.getElementById('designComment').disabled = false;
                 document.getElementById('recommendedActions').disabled = false;
             }
@@ -1353,11 +1545,30 @@
                 return;
             }
             
+            // 증빙 데이터 수집 (항상 JSON 형식으로 저장)
+            let evidenceData = '';
+            const evidenceEl = document.getElementById('evaluationEvidence');
+
+            const attrData = {};
+            if (evidenceEl) {
+                // 기본 증빙 필드 - attribute0에 저장
+                attrData['attribute0'] = evidenceEl.value;
+            } else {
+                // Attribute 기반 - 모든 attribute 필드 값을 수집
+                for (let i = 0; i < 10; i++) {
+                    const attrEl = document.getElementById(`design-attr${i}-1`);
+                    if (attrEl) {
+                        attrData[`attribute${i}`] = attrEl.value;
+                    }
+                }
+            }
+            evidenceData = JSON.stringify(attrData);
+
             const evaluation = {
                 description_adequacy: adequacy,
                 improvement_suggestion: document.getElementById('improvementSuggestion').value,
                 overall_effectiveness: effectiveness,
-                evaluation_evidence: document.getElementById('evaluationEvidence').value,
+                evaluation_evidence: evidenceData,
                 design_comment: document.getElementById('designComment').value,
                 recommended_actions: document.getElementById('recommendedActions').value
             };
@@ -1489,10 +1700,18 @@
                 const actionElement = document.getElementById(`action-${index}`);
                 const buttonElement = document.getElementById(`eval-btn-${index}`);
 
+                // 필수 요소 체크
                 if (!buttonElement) {
                     console.error(`Button element not found for index ${index}`);
                     return;
                 }
+
+                if (!resultElement) {
+                    console.error(`Result element not found for index ${index}`);
+                    return;
+                }
+
+                // actionElement는 선택적 (없어도 계속 진행)
 
                 // 헤더 완료 상태 확인
                 const headerCompletedDate = sessionStorage.getItem('headerCompletedDate');
@@ -1553,8 +1772,10 @@
                     <span class="badge ${resultClass}">${resultText}</span>
                     ${imageDisplay}
                 `;
-                
-                actionElement.innerHTML = evaluation.recommended_actions || '<span class="text-muted">-</span>';
+
+                if (actionElement) {
+                    actionElement.innerHTML = evaluation.recommended_actions || '<span class="text-muted">-</span>';
+                }
 
                 // 버튼 상태 변경 - 완료
                 if (isHeaderCompleted) {
@@ -1586,7 +1807,9 @@
             } else {
                 // evaluation_date가 없고 임시평가도 아니면 공란으로 표시
                 resultElement.innerHTML = '<span class="text-muted"></span>';
-                actionElement.innerHTML = '<span class="text-muted">-</span>';
+                if (actionElement) {
+                    actionElement.innerHTML = '<span class="text-muted">-</span>';
+                }
                 
                 // 버튼 상태 - 미완료
                 if (isHeaderCompleted) {
@@ -2192,8 +2415,12 @@
             const buttonElement = document.getElementById(`eval-btn-${index}`);
 
             // 결과 초기화
-            resultElement.innerHTML = '<span class="text-muted"></span>';
-            actionElement.innerHTML = '<span class="text-muted">-</span>';
+            if (resultElement) {
+                resultElement.innerHTML = '<span class="text-muted"></span>';
+            }
+            if (actionElement) {
+                actionElement.innerHTML = '<span class="text-muted">-</span>';
+            }
             
             // 버튼 초기화
             buttonElement.innerHTML = '<i class="fas fa-clipboard-check me-1"></i>평가';

@@ -104,14 +104,23 @@
                                 <div class="text-center">
                                     <h6 class="text-warning">운영평가 진행률</h6>
                                     <div class="progress mb-2" style="height: 20px;">
+                                        {% set init_progress = operation_header['progress_percentage']|int if operation_header else 0 %}
                                         <div class="progress-bar bg-warning" id="evaluationProgress" role="progressbar"
-                                            style="width: 0%; font-size: 12px;" aria-valuenow="0" aria-valuemin="0"
-                                            aria-valuemax="100">0%</div>
+                                            style="width: {{ init_progress }}%; font-size: 12px;" aria-valuenow="{{ init_progress }}" aria-valuemin="0"
+                                            aria-valuemax="100">{{ init_progress }}%</div>
                                     </div>
                                     <small class="text-muted">
-                                        <span id="evaluatedCount">0</span> / <span id="totalControlCount">{{
-                                            rcm_details|length }}</span> 통제 평가 완료
-                                        <br>상태: <span id="evaluationStatus" class="badge bg-secondary">준비 중</span>
+                                        {% set init_evaluated = operation_header['evaluated_controls']|int if operation_header else 0 %}
+                                        {% set init_total = operation_header['total_controls']|int if operation_header else rcm_details|length %}
+                                        <span id="evaluatedCount">{{ init_evaluated }}</span> / <span id="totalControlCount">{{ init_total }}</span> 통제 평가 완료
+                                        <br>상태:
+                                        {% if operation_header and operation_header['evaluation_status'] == 'COMPLETED' %}
+                                        <span id="evaluationStatus" class="badge bg-success">완료</span>
+                                        {% elif init_progress > 0 %}
+                                        <span id="evaluationStatus" class="badge bg-warning text-dark">진행중</span>
+                                        {% else %}
+                                        <span id="evaluationStatus" class="badge bg-secondary">준비 중</span>
+                                        {% endif %}
                                     </small>
                                 </div>
                             </div>
@@ -1281,6 +1290,10 @@
 
                             if (data.samples && data.samples.length > 0) {
                                 console.log('[openOperationEvaluationModal] 샘플 데이터 조회 성공:', data.samples);
+                                // 현재 표본수 확인
+                                const currentSampleSizeEl = document.getElementById('sample_size');
+                                const currentSampleSize = currentSampleSizeEl ? currentSampleSizeEl.value : 'undefined';
+                                console.log('[openOperationEvaluationModal] 현재 표본수:', currentSampleSize);
                                 // 샘플 라인 자동 생성 (순차 실행)
                                 generateSampleLines();
                             } else {
@@ -1531,11 +1544,15 @@
             let headerHtml = '<tr><th width="5%">표본 #</th>';
 
             if (hasAttributes) {
-                // attribute 컬럼 추가
+                // attribute 컬럼 추가 (모집단/증빙 구분 표시)
                 for (let i = 0; i < 10; i++) {
                     const attrName = attributes[`attribute${i}`];
                     if (attrName) {
-                        headerHtml += `<th>${attrName}</th>`;
+                        const isPopulation = i < popAttrCount;
+                        const badge = isPopulation
+                            ? '<span class="badge bg-primary ms-1" style="font-size: 0.7em;">모집단</span>'
+                            : '<span class="badge bg-success ms-1" style="font-size: 0.7em;">증빙</span>';
+                        headerHtml += `<th>${attrName}${badge}</th>`;
                     }
                 }
             } else {
@@ -1570,6 +1587,11 @@
 
                         let rowHtml = `<td class="text-center align-middle">#${sampleNum}</td>`;
 
+                        // 표본 크기 확인 (0인 경우 모집단 업로드 모드)
+                        const sampleSizeEl = document.getElementById('sample_size');
+                        const currentSampleSize = sampleSizeEl ? parseInt(sampleSizeEl.value) || 0 : 0;
+                        const isPopulationUploadMode = currentSampleSize === 0;
+
                         // attribute 컬럼들 추가
                         for (let i = 0; i < 10; i++) {
                             const attrName = attributes[`attribute${i}`];
@@ -1577,16 +1599,19 @@
                                 const isPopulation = i < popAttrCount;
                                 const attrValue = sample.attributes?.[`attribute${i}`] || '';
 
-                                console.log(`[generateSampleLines] attr${i}: name="${attrName}", isPopulation=${isPopulation}, value="${attrValue}"`);
+                                console.log(`[generateSampleLines] attr${i}: name="${attrName}", isPopulation=${isPopulation}, value="${attrValue}", uploadMode=${isPopulationUploadMode}`);
 
-                                if (isPopulation) {
-                                    // 모집단 attribute - 텍스트로 표시
+                                // 모집단 업로드 모드(표본수=0)에서는 모집단 필드를 readonly로
+                                // 수동 선택 모드(표본수>0)에서는 모든 필드를 입력 가능하게
+                                if (isPopulation && isPopulationUploadMode) {
+                                    // 모집단 업로드 모드: 모집단 attribute - 텍스트로 표시
                                     rowHtml += `<td class="align-middle bg-light" style="padding: 0.5rem;">
                                         <span id="sample-attr${i}-${sampleNum}" style="display: block; min-height: 31px; line-height: 31px;">${attrValue}</span>
                                     </td>`;
                                 } else {
-                                    // 증빙 attribute - 입력 가능
-                                    rowHtml += `<td class="align-middle">
+                                    // 수동 선택 모드 또는 증빙 attribute - 입력 가능
+                                    const bgClass = isPopulation ? 'bg-light' : '';
+                                    rowHtml += `<td class="align-middle ${bgClass}">
                                         <input type="text" class="form-control form-control-sm"
                                                id="sample-attr${i}-${sampleNum}"
                                                value="${attrValue}"
@@ -1704,7 +1729,7 @@
             if (existingData && existingData.line_id) {
                 console.log(`[SQL Query 시뮬레이션]
                     SELECT sample_id, sample_number, evidence, has_exception, mitigation
-                    FROM sb_operation_evaluation_sample
+                    FROM sb_evaluation_sample
                     WHERE line_id = ${existingData.line_id}
                     ORDER BY sample_number
                 `);
@@ -1730,28 +1755,45 @@
                     // 업로드된 표본 개수 확인
                     const uploadedSampleCount = existingSampleLines.length;
 
+                    // 설계평가 attribute 데이터 파싱 (sample #1에만 적용)
+                    let designEvaluationAttrs = {};
+                    if (i === 1 && currentDesignEvaluationEvidence) {
+                        try {
+                            designEvaluationAttrs = JSON.parse(currentDesignEvaluationEvidence);
+                        } catch (e) {
+                            // JSON이 아니면 빈 객체 유지
+                            console.log('[generateSampleLines] Design evaluation evidence is not JSON:', currentDesignEvaluationEvidence);
+                        }
+                    }
+
                     for (let attrIdx = 0; attrIdx < 10; attrIdx++) {
                         const attrName = attributes[`attribute${attrIdx}`];
                         if (attrName) {
-                            // 우선순위: 현재 입력 > DB 데이터 > 빈 값
+                            // 우선순위: 현재 입력 > DB 데이터 > 설계평가 데이터 (sample #1만) > 빈 값
                             const attrValue = currentInput?.attributes?.[`attribute${attrIdx}`] ||
-                                existingSample?.attributes?.[`attribute${attrIdx}`] || '';
+                                existingSample?.attributes?.[`attribute${attrIdx}`] ||
+                                (i === 1 ? designEvaluationAttrs[`attribute${attrIdx}`] || '' : '') || '';
 
                             // 모집단 필드인지 확인
                             const isPopulation = attrIdx < popAttrCount;
 
-                            // 업로드된 표본 범위 내이고 모집단 필드인 경우 읽기 전용
+                            // 표본수 확인 (0인 경우 모집단 업로드 모드)
+                            const currentSampleSize = parseInt(sampleSizeValue) || 0;
+                            const isPopulationUploadMode = currentSampleSize === 0;
+
+                            // 업로드된 표본 범위 내이고 모집단 필드이며 모집단 업로드 모드인 경우에만 읽기 전용
                             const isFromUpload = i <= uploadedSampleCount;
-                            const isReadonly = isPopulation && isFromUpload;
+                            const isReadonly = isPopulation && isFromUpload && isPopulationUploadMode;
 
                             if (isReadonly) {
-                                // 모집단 필드 - 텍스트로 표시 (업로드된 데이터)
+                                // 모집단 업로드 모드: 모집단 필드 - 텍스트로 표시
                                 rowHtml += `<td class="align-middle bg-light" style="padding: 0.5rem;">
                                     <span id="sample-attr${attrIdx}-${i}" style="display: block; min-height: 31px; line-height: 31px;">${attrValue}</span>
                                 </td>`;
                             } else {
-                                // 증빙 필드 또는 모집단 업로드가 없는 경우 - 입력 가능
-                                rowHtml += `<td class="align-middle">
+                                // 수동 선택 모드 또는 증빙 필드 - 입력 가능
+                                const bgClass = isPopulation ? 'bg-light' : '';
+                                rowHtml += `<td class="align-middle ${bgClass}">
                                     <input type="text" class="form-control form-control-sm"
                                            id="sample-attr${attrIdx}-${i}"
                                            placeholder="${attrName}"
@@ -2369,15 +2411,19 @@
 
         // 진행률 업데이트
         function updateProgress() {
-            // 평가 완료된 통제 수 계산
-            const evaluatedControls = Object.keys(evaluated_controls).length;
-            const totalControls = {{ rcm_details| length
-        }};
-        const progress = totalControls > 0 ? Math.round((evaluatedControls / totalControls) * 100) : 0;
+            // 평가 완료된 통제 수 계산 (conclusion이 있는 경우만 완료로 간주)
+            const evaluatedControls = Object.values(evaluated_controls).filter(control => {
+                return control.conclusion && control.conclusion.trim() !== '';
+            }).length;
 
-        // 진행률 업데이트
-        document.getElementById('evaluationProgress').textContent = progress + '%';
-        document.getElementById('evaluatedCount').textContent = evaluatedControls;
+            // 서버에서 계산한 total_controls 사용 (설계평가에서 효과적으로 평가된 핵심통제만 카운트)
+            const totalControls = parseInt(document.getElementById('totalControlCount').textContent) || {{ rcm_details|length }};
+            const progress = totalControls > 0 ? Math.round((evaluatedControls / totalControls) * 100) : 0;
+
+            // 진행률 업데이트
+            document.getElementById('evaluationProgress').style.width = progress + '%';
+            document.getElementById('evaluationProgress').textContent = progress + '%';
+            document.getElementById('evaluatedCount').textContent = evaluatedControls;
 
         // 상태 업데이트
         const statusElement = document.getElementById('evaluationStatus');
@@ -3093,10 +3139,15 @@
             const thead = table.querySelector('thead');
             const tbody = table.querySelector('tbody');
 
-            // 헤더 재생성
+            // 헤더 재생성 (모집단/증빙 구분 표시)
             let headerHtml = '<tr><th width="8%">표본 #</th><th width="30%">증빙 내용</th>';
-            attributes.forEach(attr => {
-                headerHtml += `<th width="${Math.floor(50 / attributes.length)}%">${attr.name}</th>`;
+            const popAttrCount = window.currentPopulationAttributeCount || 0;
+            attributes.forEach((attr, index) => {
+                const isPopulation = index < popAttrCount;
+                const badge = isPopulation
+                    ? '<span class="badge bg-primary ms-1" style="font-size: 0.7em;">모집단</span>'
+                    : '<span class="badge bg-success ms-1" style="font-size: 0.7em;">증빙</span>';
+                headerHtml += `<th width="${Math.floor(50 / attributes.length)}%">${attr.name}${badge}</th>`;
             });
             headerHtml += '<th width="12%">결과</th></tr>';
             thead.innerHTML = headerHtml;
