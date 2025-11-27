@@ -237,6 +237,52 @@ body {
     margin-right: 0.5rem;
 }
 
+/* 네비게이션 바 스타일 */
+/* 드롭다운 서브메뉴 스타일 */
+.dropdown-menu .dropdown-menu {
+    left: 100%;
+    top: 0;
+    margin-left: 0.125rem;
+}
+
+.dropend .dropdown-toggle::after {
+    margin-left: auto;
+}
+
+/* navbar가 모달을 가리지 않도록 z-index 낮춤 */
+.navbar {
+    z-index: 1030 !important;
+}
+
+/* 드롭다운 메뉴 z-index */
+.dropdown-menu {
+    z-index: 1040 !important;
+}
+
+/* 고정된 navbar로 인해 컨텐츠가 가려지지 않도록 body에 padding 추가 */
+body {
+    padding-top: 70px;
+}
+
+/* 드롭다운 토글 클릭 가능하도록 */
+.nav-link.dropdown-toggle {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+/* 네비게이션 바 드롭다운 링크 스타일 오버라이드 */
+.navbar .nav-link {
+    padding: 0.5rem 0.8rem !important;
+}
+
+.navbar .dropdown-menu {
+    display: none;
+}
+
+.navbar .dropdown-menu.show {
+    display: block;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
     .sidebar {
@@ -244,23 +290,23 @@ body {
         border-right: none;
         border-bottom: 1px solid var(--border-color);
     }
-    
+
     .content-area {
         padding: 15px;
     }
-    
+
     .form-container {
         padding: 1rem;
     }
-    
+
     .card-body {
         padding: 1.5rem;
     }
-    
+
     .radio-group {
         flex-direction: column;
     }
-    
+
     .radio-option {
         width: 100%;
     }

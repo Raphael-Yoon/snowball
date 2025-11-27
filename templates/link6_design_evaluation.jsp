@@ -233,15 +233,19 @@
         
         // 평가 가능한 RCM 수 로드
         function loadAvailableRcmCount() {
-            fetch('/api/user/rcm-status')
+            fetch('/api/user/rcm-list')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        document.getElementById('availableRcmCount').textContent = data.total_count || 0;
-                        
+                        // ITGC 카테고리만 필터링하여 카운트
+                        const itgcRcms = data.rcms.filter(rcm => rcm.control_category === 'ITGC');
+                        const itgcCount = itgcRcms.length;
+
+                        document.getElementById('availableRcmCount').textContent = itgcCount;
+
                         // RCM이 없으면 버튼 비활성화
                         const button = document.getElementById('startDesignEvalBtn');
-                        if (data.total_count === 0) {
+                        if (itgcCount === 0) {
                             button.disabled = true;
                             button.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>평가 가능한 RCM 없음';
                             button.classList.remove('btn-success');
@@ -268,7 +272,13 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.rcms.length > 0) {
-                        showRcmSelectionModal(data.rcms);
+                        // ITGC 카테고리만 필터링
+                        const itgcRcms = data.rcms.filter(rcm => rcm.control_category === 'ITGC');
+                        if (itgcRcms.length > 0) {
+                            showRcmSelectionModal(itgcRcms);
+                        } else {
+                            alert('평가할 수 있는 ITGC RCM이 없습니다.');
+                        }
                     } else {
                         alert('평가할 수 있는 RCM이 없습니다.');
                     }
@@ -360,14 +370,14 @@
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title">
-                                    <i class="fas fa-edit me-2"></i>설계평가명 입력
+                                    <i class="fas fa-edit me-2"></i>평가명 입력
                                 </h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
                             <div class="modal-body">
                                 <p class="text-muted mb-3">RCM: <strong>${rcmName}</strong></p>
                                 <div class="mb-3">
-                                    <label for="evaluationNameInput" class="form-label">설계평가명</label>
+                                    <label for="evaluationNameInput" class="form-label">평가명</label>
                                     <input type="text" class="form-control" id="evaluationNameInput"
                                            value="${defaultName}" placeholder="예: FY25_내부평가">
                                     <div class="form-text">평가를 구분할 수 있는 이름을 입력하세요.</div>
@@ -476,7 +486,13 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.rcms.length > 0) {
-                        showRcmSelectionModal(data.rcms, false);
+                        // ITGC 카테고리만 필터링
+                        const itgcRcms = data.rcms.filter(rcm => rcm.control_category === 'ITGC');
+                        if (itgcRcms.length > 0) {
+                            showRcmSelectionModal(itgcRcms, false);
+                        } else {
+                            alert('평가할 수 있는 ITGC RCM이 없습니다.');
+                        }
                     } else {
                         alert('평가할 수 있는 RCM이 없습니다.');
                     }

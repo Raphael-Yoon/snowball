@@ -8,25 +8,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     		<link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
 		<link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
-    <style>
-        /* 드롭다운 서브메뉴 스타일 */
-        .dropdown-menu .dropdown-menu {
-            left: 100%;
-            top: 0;
-            margin-left: 0.125rem;
-        }
-        .dropend .dropdown-toggle::after {
-            margin-left: auto;
-        }
-        /* navbar가 모달을 가리지 않도록 z-index 낮춤 */
-        .navbar {
-            z-index: 10 !important;
-        }
-        /* 고정된 navbar로 인해 컨텐츠가 가려지지 않도록 body에 padding 추가 */
-        body {
-            padding-top: 70px;
-        }
-    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg fixed-top">
@@ -40,31 +21,75 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% if is_logged_in %}
-                    <!-- 로그인 상태: Private 메뉴 먼저 표시 -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="premiumServicesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-lock me-1"></i>Private
+                    <!-- 로그인 상태: 주요 메뉴 직접 표시 -->
+                    <li class="nav-item">
+                        <a href="{{ url_for('link8.internal_assessment') }}" class="nav-link">
+                            <i class="fas fa-chart-pie me-1"></i>Dashboard
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="premiumServicesDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('link8.internal_assessment') }}">
-                                <i class="fas fa-chart-pie me-2"></i>Dashboard
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link5.user_rcm') }}">
-                                <i class="fas fa-database me-2"></i>RCM
-                            </a></li>
-                            <li><h6 class="dropdown-header"><i class="fas fa-building me-1"></i>ELC</h6></li>
-                            <li><a class="dropdown-item ps-4" href="{{ url_for('link6.elc_design_evaluation') }}"><i class="fas fa-clipboard-check me-2"></i>설계평가</a></li>
-                            <li><a class="dropdown-item ps-4" href="{{ url_for('link7.elc_operation_evaluation') }}"><i class="fas fa-cogs me-2"></i>운영평가</a></li>
-                            <li><h6 class="dropdown-header"><i class="fas fa-exchange-alt me-1"></i>TLC</h6></li>
-                            <li><a class="dropdown-item ps-4" href="{{ url_for('link6.tlc_design_evaluation') }}"><i class="fas fa-clipboard-check me-2"></i>설계평가</a></li>
-                            <li><a class="dropdown-item ps-4" href="{{ url_for('link7.tlc_operation_evaluation') }}"><i class="fas fa-cogs me-2"></i>운영평가</a></li>
-                            <li><h6 class="dropdown-header"><i class="fas fa-server me-1"></i>ITGC</h6></li>
-                            <li><a class="dropdown-item ps-4" href="{{ url_for('link6.user_design_evaluation') }}">
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('link5.user_rcm') }}" class="nav-link">
+                            <i class="fas fa-database me-1"></i>RCM
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="elcDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-building me-1"></i>ELC
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="elcDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('link6.elc_design_evaluation') }}">
                                 <i class="fas fa-clipboard-check me-2"></i>설계평가
                             </a></li>
-                            <li><a class="dropdown-item ps-4" href="{{ url_for('link7.user_operation_evaluation') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('link7.elc_operation_evaluation') }}">
                                 <i class="fas fa-cogs me-2"></i>운영평가
+                            </a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="tlcDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-exchange-alt me-1"></i>TLC
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="tlcDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('link6.tlc_design_evaluation') }}">
+                                <i class="fas fa-clipboard-check me-2"></i>설계평가
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('link7.tlc_operation_evaluation') }}">
+                                <i class="fas fa-cogs me-2"></i>운영평가
+                            </a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="itgcDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-server me-1"></i>ITGC
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="itgcDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('link6.user_design_evaluation') }}">
+                                <i class="fas fa-clipboard-check me-2"></i>설계평가
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('link7.user_operation_evaluation') }}">
+                                <i class="fas fa-cogs me-2"></i>운영평가
+                            </a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="publicMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-globe me-1"></i>Public
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="publicMenuDropdown">
+                            <li><a class="dropdown-item" href="/link1">
+                                <i class="fas fa-clipboard-list me-2"></i>RCM 생성
+                            </a></li>
+                            <li><a class="dropdown-item" href="/link2?reset=1">
+                                <i class="fas fa-user-tie me-2"></i>인터뷰/설계평가
+                            </a></li>
+                            <li><a class="dropdown-item" href="/link3">
+                                <i class="fas fa-cogs me-2"></i>운영평가 가이드
+                            </a></li>
+                            <li><a class="dropdown-item" href="/link4">
+                                <i class="fas fa-film me-2"></i>영상 가이드
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('link9.contact') }}">
+                                <i class="fas fa-envelope me-2"></i>서비스 문의
                             </a></li>
                         </ul>
                     </li>
@@ -75,9 +100,8 @@
                         </a>
                     </li>
                     {% endif %}
-                    {% endif %}
-
-                    <!-- Public 메뉴 -->
+                    {% else %}
+                    <!-- 비로그인 상태: Public 메뉴 표시 -->
                     <li class="nav-item">
                         <a href="/link1" class="nav-link">
                             <i class="fas fa-clipboard-list me-1"></i>RCM 생성
@@ -103,6 +127,7 @@
                             <i class="fas fa-envelope me-1"></i>서비스 문의
                         </a>
                     </li>
+                    {% endif %}
                 </ul>
                 
                 <ul class="navbar-nav">
@@ -142,65 +167,7 @@
         </div>
     </nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // 드롭다운 및 서브메뉴 처리
-        document.addEventListener('DOMContentLoaded', function() {
-            // 메인 드롭다운 처리
-            const dropdownToggle = document.getElementById('premiumServicesDropdown');
-            const dropdownMenu = dropdownToggle ? dropdownToggle.nextElementSibling : null;
-
-            if (dropdownToggle && dropdownMenu) {
-                dropdownToggle.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    dropdownMenu.classList.toggle('show');
-                });
-
-                // 다른 곳 클릭시 드롭다운 닫기
-                document.addEventListener('click', function(e) {
-                    if (!dropdownToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                        dropdownMenu.classList.remove('show');
-                        // 모든 서브메뉴도 닫기
-                        document.querySelectorAll('.dropend .dropdown-menu').forEach(function(submenu) {
-                            submenu.classList.remove('show');
-                        });
-                    }
-                });
-            }
-
-            // 서브메뉴 (dropend) 처리
-            const dropendItems = document.querySelectorAll('.dropend');
-            dropendItems.forEach(function(dropend) {
-                const toggle = dropend.querySelector('.dropdown-toggle');
-                const submenu = dropend.querySelector('.dropdown-menu');
-
-                if (toggle && submenu) {
-                    toggle.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-
-                        // 다른 서브메뉴 닫기
-                        document.querySelectorAll('.dropend .dropdown-menu').forEach(function(menu) {
-                            if (menu !== submenu) {
-                                menu.classList.remove('show');
-                            }
-                        });
-
-                        submenu.classList.toggle('show');
-                    });
-
-                    // 호버로도 열리도록
-                    dropend.addEventListener('mouseenter', function() {
-                        submenu.classList.add('show');
-                    });
-
-                    dropend.addEventListener('mouseleave', function() {
-                        submenu.classList.remove('show');
-                    });
-                }
-            });
-        });
-
         // 사용자 전환 모달 표시
         function showUserSwitchModal() {
             fetch('/admin/api/admin/users')
