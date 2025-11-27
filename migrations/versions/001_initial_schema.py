@@ -194,6 +194,26 @@ def upgrade(conn):
         )
     ''')
 
+    # 평가 표본 테이블 (설계평가 및 운영평가 공통 사용)
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS sb_evaluation_sample (
+            sample_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            line_id INTEGER,
+            sample_number INTEGER,
+            evidence TEXT,
+            has_exception INTEGER,
+            mitigation TEXT,
+            request_number TEXT,
+            requester_name TEXT,
+            requester_department TEXT,
+            approver_name TEXT,
+            approver_department TEXT,
+            approval_date TEXT,
+            evaluation_type TEXT DEFAULT 'operation',
+            FOREIGN KEY (line_id) REFERENCES sb_operation_evaluation_line (line_id)
+        )
+    ''')
+
     # 내부평가 진행상황 저장 테이블
     conn.execute('''
         CREATE TABLE IF NOT EXISTS sb_internal_assessment (
@@ -281,6 +301,7 @@ def downgrade(conn):
         'sb_rcm_standard_mapping',
         'sb_standard_control',
         'sb_internal_assessment',
+        'sb_evaluation_sample',
         'sb_operation_evaluation_line',
         'sb_operation_evaluation_header',
         'sb_design_evaluation_line',

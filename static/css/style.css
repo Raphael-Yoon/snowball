@@ -1313,3 +1313,38 @@ h2 {
 .evaluate-btn {
     min-width: 70px; /* 텍스트 '완료'/'조회' 모두 수용하는 일관된 폭 */
 }
+
+/* Bootstrap 툴팁 커스텀 스타일 (index.jsp에서 이동) */
+.tooltip-inner {
+    max-width: 350px;
+    text-align: left !important;
+    background-color: #2c3e50;
+    border-radius: 8px;
+    padding: 15px 18px;
+    font-size: 14px;
+    line-height: 1.5;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.tooltip.bs-tooltip-top .tooltip-arrow::before {
+    border-top-color: #2c3e50;
+}
+
+.tooltip.bs-tooltip-bottom .tooltip-arrow::before {
+    border-bottom-color: #2c3e50;
+}
+
+.tooltip.bs-tooltip-start .tooltip-arrow::before {
+    border-left-color: #2c3e50;
+}
+
+.tooltip.bs-tooltip-end .tooltip-arrow::before {
+    border-right-color: #2c3e50;
+}
+
+/* 모바일에서 툴팁 비활성화 */
+@media (max-width: 768px) {
+    .tooltip {
+        display: none !important;
+    }
+}

@@ -783,9 +783,15 @@ def user_rcm():
 
 @app.route('/user/rcm/<int:rcm_id>/view')
 @login_required
-def user_rcm_view(rcm_id):
-    """사용자 RCM 상세 보기 - link5로 리디렉션"""
-    return redirect(url_for('link5.user_rcm_view', rcm_id=rcm_id))
+def user_rcm_view_old(rcm_id):
+    """사용자 RCM 상세 보기 - 구버전 호환용 (세션에 저장 후 리다이렉트)"""
+    return redirect(url_for('link5.select_rcm', rcm_id=rcm_id))
+
+@app.route('/user/rcm/view')
+@login_required
+def user_rcm_view():
+    """사용자 RCM 상세 보기 - link5로 리다이렉션"""
+    return redirect(url_for('link5.user_rcm_view'))
 
 @app.route('/user/design-evaluation')
 @login_required

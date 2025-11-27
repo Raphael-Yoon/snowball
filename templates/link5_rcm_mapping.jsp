@@ -63,7 +63,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1><i class="fas fa-link me-2"></i>기준통제 매핑</h1>
                     <div>
-                        <a href="/rcm/{{ rcm_info.rcm_id }}/view" class="btn btn-secondary">
+                        <a href="/rcm/view" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>상세보기로
                         </a>
                     </div>

@@ -135,7 +135,7 @@
                                 <i class="fas fa-check me-1"></i>검토 완료
                             </button>
                             {% endif %}
-                            <a href="/rcm/{{ rcm_info.rcm_id }}/view" class="btn btn-sm btn-outline-primary me-2">
+                            <a href="/rcm/view" class="btn btn-sm btn-outline-primary me-2">
                                 <i class="fas fa-list me-1"></i>RCM 상세보기로
                             </a>
                             <button id="autoSaveIndicator" class="btn btn-sm btn-success me-2" disabled title="모든 매핑과 AI 검토 결과가 실시간으로 자동 저장됩니다" style="display: none;">

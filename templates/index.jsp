@@ -13,43 +13,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
-
-    <!-- 커스텀 툴팁 스타일 -->
-    <style>
-        .tooltip-inner {
-            max-width: 350px;
-            text-align: left !important;
-            background-color: #2c3e50;
-            border-radius: 8px;
-            padding: 15px 18px;
-            font-size: 14px;
-            line-height: 1.5;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-
-        .tooltip.bs-tooltip-top .tooltip-arrow::before {
-            border-top-color: #2c3e50;
-        }
-
-        .tooltip.bs-tooltip-bottom .tooltip-arrow::before {
-            border-bottom-color: #2c3e50;
-        }
-
-        .tooltip.bs-tooltip-start .tooltip-arrow::before {
-            border-left-color: #2c3e50;
-        }
-
-        .tooltip.bs-tooltip-end .tooltip-arrow::before {
-            border-right-color: #2c3e50;
-        }
-
-        /* 모바일에서 툴팁 비활성화 */
-        @media (max-width: 768px) {
-            .tooltip {
-                display: none !important;
-            }
-        }
-    </style>
 </head>
 <body>
     <!-- 히어로 섹션 -->
@@ -477,7 +440,7 @@
                                                         <span class="badge bg-${rcm.permission_type === 'admin' ? 'danger' : 'success'}">
                                                             ${rcm.permission_type === 'admin' ? '관리자' : '읽기'}
                                                         </span>
-                                                        <a href="/user/rcm/${rcm.rcm_id}/view" class="btn btn-sm btn-primary">
+                                                        <a href="/rcm/${rcm.rcm_id}/select" class="btn btn-sm btn-primary">
                                                             <i class="fas fa-eye me-1"></i>보기
                                                         </a>
                                                     </div>
