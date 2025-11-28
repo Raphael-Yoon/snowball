@@ -59,6 +59,11 @@
                                             <a href="/admin/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-eye me-1"></i>보기
                                             </a>
+                                            <button type="button" class="btn btn-sm btn-outline-warning"
+                                                    onclick="editRcm({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}', '{{ rcm.company_name or '' }}', '{{ rcm.description or '' }}')"
+                                                    data-bs-toggle="modal" data-bs-target="#editRcmModal">
+                                                <i class="fas fa-edit me-1"></i>수정
+                                            </button>
                                             <a href="/admin/rcm/{{ rcm.rcm_id }}/users" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-users me-1"></i>사용자
                                             </a>
@@ -99,8 +104,48 @@
         </div>
     </div>
 
+    <!-- RCM 수정 모달 -->
+    <div class="modal fade" id="editRcmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">RCM 정보 수정</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="editRcmForm" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">RCM명 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="rcm_name" id="edit_rcm_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">회사명</label>
+                            <input type="text" class="form-control" name="company_name" id="edit_company_name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">설명</label>
+                            <textarea class="form-control" name="description" id="edit_description" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="width: 100px;">닫기</button>
+                        <button type="submit" class="btn btn-primary" style="width: 100px;">수정</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // RCM 수정 함수
+        function editRcm(rcmId, rcmName, companyName, description) {
+            document.getElementById('editRcmForm').action = '/admin/rcm/edit/' + rcmId;
+            document.getElementById('edit_rcm_name').value = rcmName;
+            document.getElementById('edit_company_name').value = companyName;
+            document.getElementById('edit_description').value = description;
+        }
+
         // RCM 삭제 함수
         function deleteRcm(rcmId, rcmName) {
             if (!confirm(`'${rcmName}' RCM을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 다음 항목들이 함께 삭제됩니다:\n- RCM 상세 데이터\n- 사용자 접근 권한\n\n정말로 삭제하시겠습니까?`)) {

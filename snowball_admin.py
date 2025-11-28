@@ -902,6 +902,38 @@ def admin_rcm_revoke_access():
     except Exception as e:
         return jsonify({'success': False, 'message': f'권한 제거 중 오류가 발생했습니다: {str(e)}'})
 
+@admin_bp.route('/rcm/edit/<int:rcm_id>', methods=['POST'])
+def admin_edit_rcm(rcm_id):
+    """RCM 정보 수정"""
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+
+    try:
+        rcm_name = request.form.get('rcm_name')
+        company_name = request.form.get('company_name')
+        description = request.form.get('description')
+
+        # company_name과 description이 빈 문자열이면 NULL로 처리
+        if not company_name:
+            company_name = None
+        if not description:
+            description = None
+
+        with get_db() as conn:
+            conn.execute('''
+                UPDATE sb_rcm
+                SET rcm_name = %s, company_name = %s, description = %s
+                WHERE rcm_id = %s
+            ''', (rcm_name, company_name, description, rcm_id))
+            conn.commit()
+
+        flash('RCM 정보가 성공적으로 수정되었습니다.')
+    except Exception as e:
+        flash(f'RCM 수정 중 오류가 발생했습니다: {str(e)}')
+
+    return redirect(url_for('admin.admin_rcm'))
+
 @admin_bp.route('/rcm/delete', methods=['POST'])
 def admin_rcm_delete():
     """RCM 삭제 (소프트 삭제)"""

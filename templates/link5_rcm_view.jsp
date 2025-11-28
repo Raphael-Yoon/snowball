@@ -54,34 +54,60 @@
             position: sticky;
             left: 0;
             z-index: 2;
+            background-color: inherit;
         }
 
         #rcmTable th:nth-child(2),
         #rcmTable td:nth-child(2) {
             position: sticky;
-            left: 80px; /* 첫 번째 컬럼의 min-width와 동일하게 설정 */
+            left: 80px; /* 통제코드 컬럼 너비 */
             z-index: 2;
+            background-color: inherit;
         }
 
-        #rcmTable th:nth-child(9),
-        #rcmTable td:nth-child(9) {
+        /* 통제활동 설명 컬럼도 고정 */
+        #rcmTable th:nth-child(3),
+        #rcmTable td:nth-child(3) {
             position: sticky;
-            right: 0;
+            left: 230px; /* 통제코드(80px) + 통제명(150px) */
             z-index: 2;
+            background-color: inherit;
         }
 
         /* 고정된 헤더의 배경색을 지정하여 스크롤 시 내용이 비치지 않도록 함 */
         #rcmTable thead th {
             background-color: #f8f9fa; /* thead 배경색 */
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        /* 고정된 헤더와 고정된 컬럼이 만나는 지점 */
+        #rcmTable thead th:nth-child(1),
+        #rcmTable thead th:nth-child(2),
+        #rcmTable thead th:nth-child(3),
+        #rcmTable thead th:nth-child(9) {
+            z-index: 11;
         }
 
         /* 고정된 바디 셀의 배경색을 지정 (줄무늬 테이블 고려) */
-        #rcmTable tbody tr td:nth-child(1), 
+        #rcmTable tbody tr td:nth-child(1),
         #rcmTable tbody tr td:nth-child(2),
+        #rcmTable tbody tr td:nth-child(3),
         #rcmTable tbody tr td:nth-child(9) { background-color: #fff; }
-        #rcmTable tbody tr:nth-of-type(odd) td:nth-child(1), 
+        #rcmTable tbody tr:nth-of-type(odd) td:nth-child(1),
         #rcmTable tbody tr:nth-of-type(odd) td:nth-child(2),
+        #rcmTable tbody tr:nth-of-type(odd) td:nth-child(3),
         #rcmTable tbody tr:nth-of-type(odd) td:nth-child(9) { background-color: #f9f9f9; }
+
+        /* Attribute 설정 컬럼을 오른쪽에 고정 */
+        #rcmTable th:nth-child(9),
+        #rcmTable td:nth-child(9) {
+            position: sticky;
+            right: 0;
+            z-index: 2;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
 
         .editable-cell.modified {
             background-color: #fff3cd !important;
@@ -130,30 +156,22 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6">
-                                <table class="table table-borderless">
+                                <table class="table table-borderless mb-0">
                                     <tr>
-                                        <th width="30%">RCM명:</th>
+                                        <th width="20%">RCM명:</th>
                                         <td><strong>{{ rcm_info.rcm_name }}</strong></td>
                                     </tr>
                                     <tr>
                                         <th>회사명:</th>
                                         <td>{{ rcm_info.company_name }}</td>
                                     </tr>
-                                    <tr>
-                                        <th>설명:</th>
-                                        <td>{{ rcm_info.description or '없음' }}</td>
-                                    </tr>
                                 </table>
                             </div>
                             <div class="col-md-6">
-                                <table class="table table-borderless">
+                                <table class="table table-borderless mb-0">
                                     <tr>
-                                        <th width="30%">업로드자:</th>
-                                        <td>{{ rcm_info.upload_user_name or '알 수 없음' }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>업로드일:</th>
-                                        <td>{{ rcm_info.upload_date.split(' ')[0] if rcm_info.upload_date else '-' }}</td>
+                                        <th width="20%">설명:</th>
+                                        <td>{{ rcm_info.description or '없음' }}</td>
                                     </tr>
                                     <tr>
                                         <th>총 통제 수:</th>
@@ -174,9 +192,6 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="fas fa-list me-2"></i>통제 상세 목록</h5>
                         <div>
-                            <button class="btn btn-sm btn-success me-2" id="saveAllChangesBtn" onclick="saveAllChanges()">
-                                <i class="fas fa-save me-1"></i>변경사항 저장
-                            </button>
                             <button class="btn btn-sm btn-outline-secondary me-2" onclick="exportToExcel()">
                                 <i class="fas fa-file-excel me-1"></i>Excel 다운로드
                             </button>
@@ -189,18 +204,17 @@
                     </div>
                     <div class="card-body">
                         {% if rcm_details %}
-                        <div class="table-responsive" style="overflow-x: auto;">
-                            <table class="table table-striped table-hover" id="rcmTable" style="min-width: 1800px;">
+                        <div class="table-responsive" style="max-height: 600px; overflow: auto;">
+                            <table class="table table-striped table-hover" id="rcmTable" style="min-width: 1500px;">
                                 <thead>
                                     <tr>
                                         <th style="min-width: 80px;">통제코드</th>
                                         <th style="min-width: 150px;">통제명</th>
-                                        <th style="min-width: 200px;">통제활동 설명</th>
+                                        <th style="min-width: 300px; max-width: 400px;">통제활동 설명</th>
                                         <th style="min-width: 100px;">통제주기</th>
                                         <th style="min-width: 100px;">통제구분</th>
                                         <th style="min-width: 90px;">핵심통제</th>
-                                        <th style="min-width: 120px;">모집단</th>
-                                        <th style="min-width: 540px;">테스트절차</th>
+                                        <th style="min-width: 300px; max-width: 400px;">테스트절차</th>
                                         <th style="min-width: 80px;">표본수</th>
                                         <th style="min-width: 120px;">Attribute 설정</th>
                                     </tr>
@@ -210,26 +224,27 @@
                                     <tr>
                                         <td><code>{{ detail.control_code }}</code></td>
                                         <td>
-                                            <span class="text-truncate-custom" title="{{ detail.control_name }}">
+                                            <span class="text-truncate-custom">
                                                 <strong>{{ detail.control_name }}</strong>
                                             </span>
                                         </td>
                                         <td>
                                             {% if detail.control_description %}
-                                                <span class="text-truncate-custom" title="{{ detail.control_description }}">
-                                                    {{ detail.control_description }}
-                                                </span>
+                                            <div class="text-truncate" style="max-width: 350px; cursor: pointer;"
+                                                 onclick="showControlDescriptionModal('{{ detail.control_code }}', '{{ detail.control_name }}', `{{ detail.control_description|replace('`', '\\`')|replace('\n', '\\n') }}`)">
+                                                {{ detail.control_description }}
+                                            </div>
                                             {% else %}
-                                                <span class="text-muted">-</span>
+                                            <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <span class="text-truncate-custom" title="{{ detail.control_frequency_name or detail.control_frequency or '-' }}">
+                                            <span class="text-truncate-custom">
                                                 {{ detail.control_frequency_name or detail.control_frequency or '-' }}
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="text-truncate-custom" title="{{ detail.control_nature_name or detail.control_nature or '-' }}">
+                                            <span class="text-truncate-custom">
                                                 {{ detail.control_nature_name or detail.control_nature or '-' }}
                                             </span>
                                         </td>
@@ -243,12 +258,14 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <span class="text-truncate-custom" title="{{ detail.population or '-' }}">
-                                                {{ detail.population or '-' }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div style="display: block; width: 100%; padding: 4px; min-height: 2.5em; white-space: pre-wrap; word-wrap: break-word; max-height: 150px; overflow-y: auto;">{{ detail.test_procedure or '-' }}</div>
+                                            {% if detail.test_procedure %}
+                                            <div class="text-truncate" style="max-width: 350px; cursor: pointer;"
+                                                 onclick="showTestProcedureModal('{{ detail.control_code }}', '{{ detail.control_name }}', `{{ detail.test_procedure|replace('`', '\\`')|replace('\n', '\\n') }}`)">
+                                                {{ detail.test_procedure }}
+                                            </div>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
                                         </td>
                                         <td class="text-center">
                                             <input type="text"
@@ -294,6 +311,64 @@
                         </div>
                         {% endif %}
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 통제활동 설명 모달 -->
+    <div class="modal fade" id="controlDescriptionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-info-circle me-2"></i>통제활동 설명
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>통제코드:</strong> <code id="desc-modal-control-code"></code><br>
+                        <strong>통제명:</strong> <span id="desc-modal-control-name"></span>
+                    </div>
+                    <hr>
+                    <div class="alert alert-light border">
+                        <pre id="desc-modal-description" style="white-space: pre-wrap; word-wrap: break-word; margin: 0;"></pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 테스트 절차 모달 -->
+    <div class="modal fade" id="testProcedureModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-clipboard-list me-2"></i>테스트 절차
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>통제코드:</strong> <code id="test-modal-control-code"></code><br>
+                        <strong>통제명:</strong> <span id="test-modal-control-name"></span>
+                    </div>
+                    <hr>
+                    <div class="alert alert-light border">
+                        <pre id="test-modal-procedure" style="white-space: pre-wrap; word-wrap: break-word; margin: 0;"></pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>닫기
+                    </button>
                 </div>
             </div>
         </div>
@@ -493,82 +568,118 @@
                     const numbersOnly = pastedText.replace(/\D/g, '');
                     if (numbersOnly) {
                         this.value = numbersOnly.slice(0, 3);  // 최대 3자리
+                        // 붙여넣기 후 자동 저장
+                        saveSampleSize(this);
                     }
                 });
 
-                // 입력 값 유효성 검사 (blur 이벤트에서만 체크)
+                // 입력 값 유효성 검사 및 자동 저장 (blur 이벤트)
                 input.addEventListener('blur', function() {
                     const value = parseInt(this.value);
-                    if (this.value.trim() !== '' && (isNaN(value) || value < 0 || value > 100)) {
-                        alert('표본수는 0~100 사이의 값이거나 공란이어야 합니다. (0: 모집단 업로드 모드)');
-                        this.value = '';  // 잘못된 값을 지움
+                    const originalValue = this.getAttribute('data-original-value') || '';
+                    const currentValue = this.value.trim();
+
+                    // 유효성 검사
+                    if (currentValue !== '' && (isNaN(value) || value < 0 || value > 100)) {
+                        showToast('표본수는 0~100 사이의 값이거나 공란이어야 합니다.', 'error');
+                        this.value = originalValue;  // 원래 값으로 복원
+                        return;
+                    }
+
+                    // 값이 변경되었으면 자동 저장
+                    if (originalValue !== currentValue) {
+                        saveSampleSize(this);
                     }
                 });
             });
         });
 
-        async function saveAllChanges() {
-            const saveBtn = document.getElementById('saveAllChangesBtn');
-            const originalHtml = saveBtn.innerHTML;
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>저장 중...';
+        // 표본수 자동 저장 함수
+        function saveSampleSize(input) {
+            const detailId = input.getAttribute('data-detail-id');
+            const sampleSize = input.value.trim() === '' ? null : parseInt(input.value);
+            const originalValue = input.getAttribute('data-original-value') || '';
 
-            try {
-                const dataToSave = new Map();
-
-                // 모든 '테스트 절차' 데이터 수집
-                document.querySelectorAll('.editable-cell[data-field="test_procedure"]').forEach(cell => {
-                    const detailId = cell.dataset.detailId;
-                    const value = cell.textContent.trim() === '-' ? '' : cell.textContent.trim();
-                    if (!dataToSave.has(detailId)) dataToSave.set(detailId, {});
-                    dataToSave.get(detailId).test_procedure = value;
-                });
-
-                // 모든 '표본수' 데이터 수집
-                document.querySelectorAll('.sample-size-input[data-field="recommended_sample_size"]').forEach(input => {
-                    const detailId = input.dataset.detailId;
-                    const value = input.value;
-                    if (!dataToSave.has(detailId)) dataToSave.set(detailId, {});
-                    dataToSave.get(detailId).recommended_sample_size = value;
-                });
-
-                const updates = [];
-                dataToSave.forEach((fields, detailId) => {
-                    updates.push({
-                        detail_id: parseInt(detailId),
-                        fields: fields
-                    });
-                });
-
-                if (updates.length === 0) {
-                    showToast('저장할 데이터가 없습니다.', 'info');
-                    saveBtn.disabled = false;
-                    saveBtn.innerHTML = originalHtml;
-                    return;
-                }
-
-                const response = await fetch('/api/rcm/update_controls', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ updates: updates })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showToast('변경사항이 저장되었습니다.', 'success');
-                } else {
-                    showToast(result.message || '저장에 실패했습니다.', 'error');
-                }
-            } catch (error) {
-                console.error('Save error:', error);
-                showToast('저장 중 오류가 발생했습니다.', 'error');
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = originalHtml;
+            // 유효하지 않은 detail_id는 건너뛰기
+            if (!detailId || detailId === 'None' || detailId === 'null' || detailId.trim() === '') {
+                console.error('유효하지 않은 detail_id:', detailId);
+                return;
             }
+
+            // 저장 중 표시
+            input.style.backgroundColor = '#fff3cd';
+            input.disabled = true;
+
+            fetch(`/rcm/detail/${detailId}/sample-size`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    recommended_sample_size: sampleSize
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 저장 성공
+                    input.setAttribute('data-original-value', sampleSize === null ? '' : sampleSize.toString());
+                    input.style.backgroundColor = '#d4edda';  // 성공 색상
+                    setTimeout(() => {
+                        input.style.backgroundColor = '';
+                    }, 1000);
+                } else {
+                    // 저장 실패
+                    showToast('저장 실패: ' + (data.message || '알 수 없는 오류'), 'error');
+                    input.value = originalValue;  // 원래 값으로 복원
+                    input.style.backgroundColor = '';
+                }
+            })
+            .catch(error => {
+                console.error('저장 오류:', error);
+                showToast('저장 중 오류가 발생했습니다.', 'error');
+                input.value = originalValue;  // 원래 값으로 복원
+                input.style.backgroundColor = '';
+            })
+            .finally(() => {
+                input.disabled = false;
+            });
+        }
+
+        // 통제활동 설명 모달 관련 변수
+        let controlDescriptionModalInstance = null;
+
+        // 통제활동 설명 모달 열기
+        function showControlDescriptionModal(controlCode, controlName, controlDescription) {
+            // 모달 정보 표시
+            document.getElementById('desc-modal-control-code').textContent = controlCode;
+            document.getElementById('desc-modal-control-name').textContent = controlName;
+            document.getElementById('desc-modal-description').textContent = controlDescription || '-';
+
+            // 모달 표시
+            const modalEl = document.getElementById('controlDescriptionModal');
+            if (!controlDescriptionModalInstance) {
+                controlDescriptionModalInstance = new bootstrap.Modal(modalEl);
+            }
+            controlDescriptionModalInstance.show();
+        }
+
+        // 테스트 절차 모달 관련 변수
+        let testProcedureModalInstance = null;
+
+        // 테스트 절차 모달 열기
+        function showTestProcedureModal(controlCode, controlName, testProcedure) {
+            // 모달 정보 표시
+            document.getElementById('test-modal-control-code').textContent = controlCode;
+            document.getElementById('test-modal-control-name').textContent = controlName;
+            document.getElementById('test-modal-procedure').textContent = testProcedure || '-';
+
+            // 모달 표시
+            const modalEl = document.getElementById('testProcedureModal');
+            if (!testProcedureModalInstance) {
+                testProcedureModalInstance = new bootstrap.Modal(modalEl);
+            }
+            testProcedureModalInstance.show();
         }
 
         // Attribute 설정 모달 관련 변수
