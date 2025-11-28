@@ -206,22 +206,42 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // 권한 부여
-        document.getElementById('grantAccessForm').addEventListener('submit', function(e) {
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded - 스크립트 로드됨');
+
+            const grantForm = document.getElementById('grantAccessForm');
+            if (!grantForm) {
+                console.error('grantAccessForm을 찾을 수 없습니다!');
+                return;
+            }
+            console.log('grantAccessForm 찾음:', grantForm);
+
+            // 권한 부여
+            grantForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const formData = new FormData(this);
             const submitBtn = this.querySelector('button[type="submit"]');
-            
+
+            // 디버깅: FormData 내용 출력
+            console.log('FormData contents:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>처리 중...';
-            
+
             fetch('/admin/rcm/grant_access', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
             .then(data => {
+                console.log('Response data:', data);
                 if (data.success) {
                     alert(data.message);
                     location.reload();
@@ -231,75 +251,76 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('권한 부여 중 오류가 발생했습니다.');
+                alert('권한 부여 중 오류가 발생했습니다. 콘솔을 확인하세요.');
             })
             .finally(() => {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-plus me-1"></i>권한 부여';
             });
-        });
-
-        // 권한 변경
-        function changePermission(userId, userName, currentPermission) {
-            document.getElementById('changeUserId').value = userId;
-            document.getElementById('changeUserName').textContent = userName;
-            document.getElementById('newPermissionType').value = currentPermission === 'admin' ? 'read' : 'admin';
-            
-            new bootstrap.Modal(document.getElementById('permissionModal')).show();
-        }
-
-        document.getElementById('changePermissionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            
-            fetch('/admin/rcm/change_permission', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    location.reload();
-                } else {
-                    alert('오류: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('권한 변경 중 오류가 발생했습니다.');
             });
-        });
 
-        // 권한 제거
-        function revokeAccess(userId, userName) {
-            if (!confirm(`${userName} 사용자의 RCM 접근 권한을 제거하시겠습니까?`)) {
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('rcm_id', '{{ rcm_info.rcm_id }}');
-            formData.append('user_id', userId);
-            
-            fetch('/admin/rcm/revoke_access', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    location.reload();
-                } else {
-                    alert('오류: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('권한 제거 중 오류가 발생했습니다.');
+            // 권한 변경
+            window.changePermission = function(userId, userName, currentPermission) {
+                document.getElementById('changeUserId').value = userId;
+                document.getElementById('changeUserName').textContent = userName;
+                document.getElementById('newPermissionType').value = currentPermission === 'admin' ? 'read' : 'admin';
+
+                new bootstrap.Modal(document.getElementById('permissionModal')).show();
+            };
+
+            document.getElementById('changePermissionForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const formData = new FormData(this);
+
+                fetch('/admin/rcm/change_permission', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('오류: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('권한 변경 중 오류가 발생했습니다.');
+                });
             });
-        }
+
+            // 권한 제거
+            window.revokeAccess = function(userId, userName) {
+                if (!confirm(`${userName} 사용자의 RCM 접근 권한을 제거하시겠습니까?`)) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('rcm_id', '{{ rcm_info.rcm_id }}');
+                formData.append('user_id', userId);
+
+                fetch('/admin/rcm/revoke_access', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('오류: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('권한 제거 중 오류가 발생했습니다.');
+                });
+            };
+        });
     </script>
 </body>
 </html>

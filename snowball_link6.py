@@ -102,10 +102,10 @@ def user_design_evaluation_rcm():
         # 관리자인 경우 모든 RCM 정보를 조회
         with get_db() as conn:
             rcm_data = conn.execute('''
-                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, r.upload_user_id,
-                       u.user_name as upload_user_name, u.company_name, 'admin' as permission_type
+                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, r.user_id,
+                       u.user_name as owner_name, u.company_name, 'admin' as permission_type
                 FROM sb_rcm r
-                LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+                LEFT JOIN sb_user u ON r.user_id = u.user_id
                 WHERE r.rcm_id = %s
             ''', (rcm_id,)).fetchone()
             if rcm_data:
@@ -1026,7 +1026,7 @@ def download_evaluation_excel(rcm_id):
             rcm_info = conn.execute('''
                 SELECT r.rcm_name, r.original_filename, u.company_name
                 FROM sb_rcm r
-                LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+                LEFT JOIN sb_user u ON r.user_id = u.user_id
                 WHERE r.rcm_id = %s
             ''', (rcm_id,)).fetchone()
             

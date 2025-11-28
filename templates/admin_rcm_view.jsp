@@ -57,7 +57,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1><i class="fas fa-eye me-2"></i>RCM 상세보기</h1>
                     <div>
-                        <a href="/admin/rcm/{{ rcm_info.rcm_id }}/users" class="btn btn-success me-2">
+                        <a href="/admin/rcm/{{ rcm_info.token }}/users" class="btn btn-success me-2">
                             <i class="fas fa-users me-1"></i>사용자 관리
                         </a>
                         <a href="/admin/rcm" class="btn btn-secondary">
@@ -97,8 +97,8 @@
                             <div class="col-md-6">
                                 <table class="table table-borderless">
                                     <tr>
-                                        <th width="30%">업로드자:</th>
-                                        <td>{{ rcm_info.upload_user_name or '알 수 없음' }}</td>
+                                        <th width="30%">소유자:</th>
+                                        <td>{{ rcm_info.owner_name or '알 수 없음' }}</td>
                                     </tr>
                                     <tr>
                                         <th>업로드일:</th>

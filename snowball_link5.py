@@ -394,7 +394,7 @@ def rcm_process_upload():
         rcm_id = create_rcm(
             rcm_name=rcm_name,
             description=description,
-            upload_user_id=user_info['user_id'],
+            user_id=user_info['user_id'],
             original_filename=file.filename,
             control_category=control_category
         )
@@ -458,7 +458,7 @@ def rcm_delete(rcm_id):
     try:
         with get_db() as conn:
             # RCM 정보 및 사용자 권한 조회
-            rcm = conn.execute('SELECT rcm_name, upload_user_id FROM sb_rcm WHERE rcm_id = %s', (rcm_id,)).fetchone()
+            rcm = conn.execute('SELECT rcm_name, user_id FROM sb_rcm WHERE rcm_id = %s', (rcm_id,)).fetchone()
             if not rcm:
                 return jsonify({'success': False, 'message': 'RCM을 찾을 수 없습니다.'})
 
