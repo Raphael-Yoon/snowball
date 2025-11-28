@@ -107,14 +107,31 @@ def generate_create_table_sql(table_name, columns, foreign_keys):
         if not_null and not is_pk:
             col_def += " NOT NULL"
 
-        # DEFAULT
+        # DEFAULT (MySQL 제약사항 고려)
+        # - TEXT, BLOB 타입: DEFAULT 불가
+        # - DATETIME: CURRENT_TIMESTAMP만 가능
         if default_val is not None:
-            if default_val == 'CURRENT_TIMESTAMP':
+            # TEXT/BLOB 타입은 DEFAULT 불가
+            if mysql_type in ('TEXT', 'LONGBLOB', 'BLOB'):
+                pass
+            # NULL 값 처리
+            elif str(default_val).upper() == 'NULL':
+                # DEFAULT NULL은 명시하지 않음 (MySQL에서 자동)
+                pass
+            # CURRENT_TIMESTAMP
+            elif default_val == 'CURRENT_TIMESTAMP':
                 col_def += " DEFAULT CURRENT_TIMESTAMP"
-            elif str(default_val).replace('.', '').replace('-', '').isdigit():
+            # DATETIME 타입은 CURRENT_TIMESTAMP 외 DEFAULT 불가
+            elif mysql_type == 'DATETIME':
+                # DATETIME은 DEFAULT 값 무시
+                pass
+            # 숫자 값
+            elif str(default_val).replace('.', '').replace('-', '').replace('+', '').isdigit():
                 col_def += f" DEFAULT {default_val}"
+            # 문자열 값 (작은따옴표로 감싸되, 이스케이프 처리)
             else:
-                col_def += f" DEFAULT '{default_val}'"
+                escaped_val = str(default_val).replace("'", "\\'")
+                col_def += f" DEFAULT '{escaped_val}'"
 
         col_defs.append(col_def)
 
