@@ -1865,7 +1865,8 @@ def save_rcm_detail_attributes(detail_id):
         population_attribute_count = data.get('population_attribute_count', 2)
 
         db = get_db()
-        db_type = db.execute("SELECT 1").connection.vendor if hasattr(db.execute("SELECT 1").connection, 'vendor') else 'sqlite'
+        # DatabaseConnection 객체의 _is_mysql 속성 사용
+        db_type = 'mysql' if hasattr(db, '_is_mysql') and db._is_mysql else 'sqlite'
 
         # attribute 값 준비 (attribute0~9)
         attr_values = []
@@ -1931,7 +1932,8 @@ def update_recommended_sample_size_link5(detail_id):
             recommended_sample_size = None
 
         db = get_db()
-        db_type = db.execute("SELECT 1").connection.vendor if hasattr(db.execute("SELECT 1").connection, 'vendor') else 'sqlite'
+        # DatabaseConnection 객체의 _is_mysql 속성 사용
+        db_type = 'mysql' if hasattr(db, '_is_mysql') and db._is_mysql else 'sqlite'
         print(f'[link5] DB type: {db_type}')
 
         with db:
