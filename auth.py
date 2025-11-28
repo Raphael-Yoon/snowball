@@ -952,6 +952,7 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                     overall_effectiveness = %s,
                     evaluation_rationale = %s, design_comment = %s,
                     recommended_actions = %s,
+                    no_occurrence = %s, no_occurrence_reason = %s,
                     evaluation_date = CURRENT_TIMESTAMP, last_updated = CURRENT_TIMESTAMP
                 WHERE line_id = %s
             '''
@@ -962,6 +963,8 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 evaluation_data.get('evaluation_rationale'),
                 evaluation_data.get('design_comment'),
                 evaluation_data.get('recommended_actions'),
+                1 if evaluation_data.get('no_occurrence') else 0,
+                evaluation_data.get('no_occurrence_reason'),
                 line_id
             )
 
@@ -988,8 +991,9 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                     overall_effectiveness,
                     evaluation_rationale, design_comment,
                     recommended_actions,
+                    no_occurrence, no_occurrence_reason,
                     evaluation_date, last_updated
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             '''
             insert_params = (
                 header_id, control_code, control_sequence,
@@ -998,7 +1002,9 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 evaluation_data.get('overall_effectiveness'),
                 evaluation_data.get('evaluation_rationale'),
                 evaluation_data.get('design_comment'),
-                evaluation_data.get('recommended_actions')
+                evaluation_data.get('recommended_actions'),
+                1 if evaluation_data.get('no_occurrence') else 0,
+                evaluation_data.get('no_occurrence_reason')
             )
 
             cursor = conn.execute(insert_query, insert_params)
