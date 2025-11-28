@@ -1,5 +1,31 @@
 # Snowball 프로젝트 작업 로그
 
+## 2025-11-28
+- **설계평가 "당기 발생사실 없음" 기능 추가**
+  - DB: sb_design_evaluation_line 테이블에 no_occurrence, no_occurrence_reason 컬럼 추가 (마이그레이션 028)
+  - Backend: auth.py 저장/로드 로직에 no_occurrence 처리 추가
+  - Frontend: link6_design_rcm_detail.jsp에 체크박스 UI 및 토글 로직 추가
+  - 조건: 표준표본수가 0인 통제에만 체크박스 표시
+  - 체크 시: 증빙 테이블 숨김, 사유 입력란 표시
+
+- **sb_evaluation_sample 테이블 attribute 컬럼 복원**
+  - 마이그레이션 027: attribute0~9 컬럼 추가 (총 17개 컬럼)
+  - sb_rcm_detail의 attribute 정의에 따라 동적 표본 데이터 저장
+  - auth.py: request_number 등 삭제된 컬럼 참조 제거
+
+- **RCM 표본수 관리 개선**
+  - snowball_link5.py: `/rcm/detail/<detail_id>/sample-size` 엔드포인트 추가 (일반 사용자용)
+  - link5_rcm_view.jsp: control_frequency_code 사용하도록 수정
+  - placeholder 제거 (빈 값과 실제 값 명확히 구분)
+  - 표본수 자동계산 버튼 추가 (통제주기 기준 일괄 계산)
+  - 표본수 계산 기준: 연/반기 1개, 분기/월 2개, 주 5개, 일 20개, 일 초과 25개
+  - 영문 통제주기 이름 지원 (Annually, Quarterly, Monthly, Weekly, Daily, Multi-Day 등)
+
+- **파일 업로드 경로 정리**
+  - uploads/ : RCM 원본 파일, 모집단
+  - static/uploads/design_evaluations/ : 설계평가 증빙 파일
+  - static/uploads/operation_evaluations/ : 운영평가 모집단, 샘플, 테스트 결과
+
 ## 2025-11-24
 - 설계평가 모달: 평가 증빙 이미지 크기 개선 (반응형, 원본 크기 존중)
 - 설계평가 모달: 평가 완료 시 파일 업로드 섹션 숨김
