@@ -192,6 +192,9 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><i class="fas fa-list me-2"></i>통제 상세 목록</h5>
                         <div>
+                            <button class="btn btn-sm btn-outline-info me-2" onclick="autoCalculateSampleSizes()">
+                                <i class="fas fa-calculator me-1"></i>표본수 자동계산
+                            </button>
                             <button class="btn btn-sm btn-outline-secondary me-2" onclick="exportToExcel()">
                                 <i class="fas fa-file-excel me-1"></i>Excel 다운로드
                             </button>
@@ -273,12 +276,11 @@
                                                    data-detail-id="{{ detail.detail_id if detail.detail_id is not none else '' }}"
                                                    data-field="recommended_sample_size"
                                                    data-control-code="{{ detail.control_code }}"
-                                                   data-control-frequency="{{ detail.control_frequency or '' }}"
+                                                   data-control-frequency="{{ detail.control_frequency_code or '' }}"
                                                    data-original-value="{{ detail.recommended_sample_size if detail.recommended_sample_size is not none else '' }}"
                                                    value="{{ detail.recommended_sample_size if detail.recommended_sample_size is not none else '' }}"
                                                    maxlength="3"
-                                                   placeholder="자동"
-                                                   title="0: 모집단 업로드 모드"
+                                                   title="권장 표본수 (0: 모집단 업로드 모드)"
                                                    style="width: 60px;">
                                         </td>
                                         <td class="text-center">
@@ -452,17 +454,105 @@
     <script>
         // 통제주기별 기본 표본수 계산
         function getDefaultSampleSize(frequencyCode) {
+            if (!frequencyCode) return 1;
+
+            // 대소문자 구분 없이 처리
+            const code = frequencyCode.toUpperCase();
+
             const frequencyMapping = {
-                'A': 1,  // 년
-                'S': 2,  // 반기
-                'Q': 3,  // 분기
-                'M': 4,  // 월
+                // 한글 코드
+                'A': 1,  // 연
+                'S': 1,  // 반기
+                'Q': 2,  // 분기
+                'M': 2,  // 월
                 'W': 5,  // 주
                 'D': 20, // 일
                 'O': 1,  // 기타
-                'N': 1   // 필요시
+                'N': 1,  // 필요시
+
+                // 영문 전체 이름
+                'ANNUALLY': 1,
+                'SEMI-ANNUALLY': 1,
+                'QUARTERLY': 2,
+                'MONTHLY': 2,
+                'WEEKLY': 5,
+                'DAILY': 20,
+                'MULTI-DAY': 25,  // 일 초과
+                'AD-HOC': 1,
+                'OTHER': 1
             };
-            return frequencyMapping[frequencyCode] || 1;
+
+            return frequencyMapping[code] || 1;
+        }
+
+        // 표본수 자동계산 (모든 통제)
+        function autoCalculateSampleSizes() {
+            if (!confirm('모든 통제의 표본수를 통제주기 기준으로 자동 계산하시겠습니까?\n\n기존에 입력된 값도 모두 덮어씌워집니다.')) {
+                return;
+            }
+
+            let updatedCount = 0;
+            let errorCount = 0;
+
+            // 모든 표본수 입력 필드 찾기
+            const sampleSizeInputs = document.querySelectorAll('.sample-size-input');
+
+            sampleSizeInputs.forEach(input => {
+                const controlFrequency = input.getAttribute('data-control-frequency');
+                const detailId = input.getAttribute('data-detail-id');
+
+                if (!detailId) {
+                    return; // detail_id가 없으면 건너뛰기
+                }
+
+                // 통제주기에 따른 기본 표본수 계산
+                const defaultSize = getDefaultSampleSize(controlFrequency);
+
+                // 입력 필드에 값 설정
+                input.value = defaultSize;
+
+                // 서버에 저장
+                const sampleSize = defaultSize || null;
+
+                fetch(`/rcm/detail/${detailId}/sample-size`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        recommended_sample_size: sampleSize
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updatedCount++;
+                        // data-original-value 업데이트
+                        input.setAttribute('data-original-value', sampleSize || '');
+                    } else {
+                        errorCount++;
+                        console.error('저장 실패:', data.message);
+                    }
+
+                    // 모든 요청 완료 후 결과 표시
+                    if (updatedCount + errorCount === sampleSizeInputs.length) {
+                        if (errorCount > 0) {
+                            showToast(`${updatedCount}개 저장 완료, ${errorCount}개 실패`, 'warning');
+                        } else {
+                            showToast(`${updatedCount}개의 표본수가 자동 계산되어 저장되었습니다.`, 'success');
+                        }
+                    }
+                })
+                .catch(error => {
+                    errorCount++;
+                    console.error('저장 오류:', error);
+
+                    // 모든 요청 완료 후 결과 표시
+                    if (updatedCount + errorCount === sampleSizeInputs.length) {
+                        showToast(`${updatedCount}개 저장 완료, ${errorCount}개 실패`, 'error');
+                    }
+                });
+            });
         }
 
         // 토스트 메시지 표시 함수
@@ -547,11 +637,8 @@
             });
 
             document.querySelectorAll('.sample-size-input').forEach(input => {
-                if (!input.value) {
-                    const controlFrequency = input.getAttribute('data-control-frequency');
-                    const defaultSize = getDefaultSampleSize(controlFrequency);
-                    input.setAttribute('placeholder', defaultSize);
-                }
+                // placeholder는 이미 HTML에서 "자동"으로 설정되어 있음
+                // 자동 계산 값은 표시하지 않음 (공란으로 유지)
 
                 // 숫자만 입력 가능하도록 제한 (입력 중)
                 input.addEventListener('keypress', function(e) {

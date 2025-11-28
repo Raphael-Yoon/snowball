@@ -1904,3 +1904,74 @@ def save_rcm_detail_attributes(detail_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'저장 중 오류가 발생했습니다: {str(e)}'}), 500
+
+
+@bp_link5.route('/rcm/detail/<int:detail_id>/sample-size', methods=['POST'])
+@login_required
+def update_recommended_sample_size_link5(detail_id):
+    """통제 항목별 권장 표본수 저장 (일반 사용자용)"""
+    user_info = get_user_info()
+    if not user_info:
+        return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+
+    # 관리자만 수정 가능
+    if user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'}), 403
+
+    try:
+        data = request.get_json()
+        recommended_sample_size = data.get('recommended_sample_size')
+
+        print(f'[link5] Updating sample size - detail_id: {detail_id}, value: {recommended_sample_size}')
+
+        # NULL 값 처리
+        if recommended_sample_size is not None and recommended_sample_size != '':
+            recommended_sample_size = int(recommended_sample_size)
+        else:
+            recommended_sample_size = None
+
+        db = get_db()
+        db_type = db.execute("SELECT 1").connection.vendor if hasattr(db.execute("SELECT 1").connection, 'vendor') else 'sqlite'
+        print(f'[link5] DB type: {db_type}')
+
+        with db:
+            # detail_id 존재 확인
+            if db_type == 'mysql':
+                detail = db.execute('''
+                    SELECT detail_id FROM sb_rcm_detail WHERE detail_id = %s
+                ''', (detail_id,)).fetchone()
+            else:
+                detail = db.execute('''
+                    SELECT detail_id FROM sb_rcm_detail WHERE detail_id = ?
+                ''', (detail_id,)).fetchone()
+
+            if not detail:
+                return jsonify({'success': False, 'message': '통제 항목을 찾을 수 없습니다.'}), 404
+
+            # recommended_sample_size 업데이트
+            if db_type == 'mysql':
+                db.execute('''
+                    UPDATE sb_rcm_detail
+                    SET recommended_sample_size = %s
+                    WHERE detail_id = %s
+                ''', (recommended_sample_size, detail_id))
+            else:
+                db.execute('''
+                    UPDATE sb_rcm_detail
+                    SET recommended_sample_size = ?
+                    WHERE detail_id = ?
+                ''', (recommended_sample_size, detail_id))
+            db.commit()
+
+        print(f'[link5] Sample size updated successfully')
+
+        return jsonify({
+            'success': True,
+            'message': '권장 표본수가 저장되었습니다.',
+            'recommended_sample_size': recommended_sample_size
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'저장 중 오류가 발생했습니다: {str(e)}'}), 500

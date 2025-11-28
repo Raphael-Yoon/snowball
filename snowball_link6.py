@@ -219,7 +219,9 @@ def get_design_evaluation_api():
                     l.evaluation_evidence,
                     l.evaluation_rationale,
                     l.recommended_actions,
-                    l.evaluation_date
+                    l.evaluation_date,
+                    l.no_occurrence,
+                    l.no_occurrence_reason
                 FROM sb_design_evaluation_line l
                 JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
                 WHERE h.rcm_id = %s AND h.evaluation_session = %s AND l.control_code = %s

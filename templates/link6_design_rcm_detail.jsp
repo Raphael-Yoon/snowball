@@ -295,7 +295,28 @@
                             <h6 class="mb-0"><i class="fas fa-check-circle me-2"></i>설계 효과성 종합 평가</h6>
                         </div>
                         <div class="card-body">
-                            <div class="mb-3">
+                            <!-- 당기 발생사실 없음 옵션 -->
+                            <div class="mb-3" id="no-occurrence-section-design" style="display: none;">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="no_occurrence_design" name="no_occurrence_design">
+                                    <label class="form-check-label" for="no_occurrence_design">
+                                        <strong>당기 발생사실 없음</strong>
+                                        <small class="text-muted d-block">해당 통제활동이 평가 기간 동안 발생하지 않은 경우 체크하세요</small>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 당기 발생사실 없음 사유 -->
+                            <div class="mb-3" id="no-occurrence-reason-section-design" style="display: none;">
+                                <label for="no_occurrence_reason_design" class="form-label fw-bold">
+                                    비고 (선택사항)
+                                </label>
+                                <textarea class="form-control" id="no_occurrence_reason_design" name="no_occurrence_reason_design"
+                                    rows="3"
+                                    placeholder="필요한 경우 추가 설명을 입력하세요&#10;예) 당기 중 신규 직원 채용이 없었음, 시스템 변경이 발생하지 않았음 등"></textarea>
+                            </div>
+
+                            <div class="mb-3" id="design-evidence-section">
                                 <label class="form-label">증빙 및 결과</label>
                                 <div class="table-responsive">
                                     <table class="table table-bordered table-sm" id="designEvidenceTable">
@@ -1349,6 +1370,19 @@
                 document.getElementById('designComment').value = result.design_comment || '';
                 document.getElementById('recommendedActions').value = result.recommended_actions || '';
 
+                // 당기 발생사실 없음 데이터 로드
+                if (result.no_occurrence) {
+                    const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
+                    const noOccurrenceReason = document.getElementById('no_occurrence_reason_design');
+                    if (noOccurrenceCheckbox) {
+                        noOccurrenceCheckbox.checked = true;
+                        if (noOccurrenceReason && result.no_occurrence_reason) {
+                            noOccurrenceReason.value = result.no_occurrence_reason;
+                        }
+                        toggleNoOccurrenceDesign();
+                    }
+                }
+
                 // 적절성 값이 설정되면 효과성 필드 활성화 이벤트 발생
                 const adequacySelect = document.getElementById('descriptionAdequacy');
                 if (adequacySelect.value === 'adequate') {
@@ -1383,6 +1417,12 @@
 
                 document.getElementById('designComment').value = '';
                 document.getElementById('recommendedActions').value = '';
+
+                // 당기 발생사실 없음 초기화
+                const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
+                const noOccurrenceReason = document.getElementById('no_occurrence_reason_design');
+                if (noOccurrenceCheckbox) noOccurrenceCheckbox.checked = false;
+                if (noOccurrenceReason) noOccurrenceReason.value = '';
 
                 // 폼 초기화 시 권고 조치사항 필드 숨김
                 toggleRecommendedActions('');
@@ -1499,6 +1539,24 @@
                 document.getElementById('recommendedActions').disabled = false;
             }
 
+            // 표준 표본수가 0인 경우 "당기 발생사실 없음" 체크박스 표시
+            {% for detail in rcm_details %}
+            if ({{ loop.index }} === index) {
+                const recommendedSampleSize = {{ detail.recommended_sample_size or 0 }};
+                const noOccurrenceSection = document.getElementById('no-occurrence-section-design');
+                if (noOccurrenceSection) {
+                    if (recommendedSampleSize === 0) {
+                        noOccurrenceSection.style.display = 'block';
+                    } else {
+                        noOccurrenceSection.style.display = 'none';
+                        // 표본수가 0이 아니면 체크 해제
+                        const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
+                        if (noOccurrenceCheckbox) noOccurrenceCheckbox.checked = false;
+                    }
+                }
+            }
+            {% endfor %}
+
             const modal = new bootstrap.Modal(document.getElementById('evaluationModal'));
             modal.show();
         }
@@ -1564,13 +1622,21 @@
             }
             evidenceData = JSON.stringify(attrData);
 
+            // 당기 발생사실 없음 데이터 수집
+            const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
+            const noOccurrenceReason = document.getElementById('no_occurrence_reason_design');
+            const noOccurrence = noOccurrenceCheckbox ? noOccurrenceCheckbox.checked : false;
+            const noOccurrenceReasonText = noOccurrenceReason ? noOccurrenceReason.value : '';
+
             const evaluation = {
                 description_adequacy: adequacy,
                 improvement_suggestion: document.getElementById('improvementSuggestion').value,
                 overall_effectiveness: effectiveness,
                 evaluation_evidence: evidenceData,
                 design_comment: document.getElementById('designComment').value,
-                recommended_actions: document.getElementById('recommendedActions').value
+                recommended_actions: document.getElementById('recommendedActions').value,
+                no_occurrence: noOccurrence,
+                no_occurrence_reason: noOccurrenceReasonText
             };
             
             // 서버에 결과 저장
@@ -2643,9 +2709,40 @@
                 alert('일부 데이터 업로드 중 오류가 발생했습니다.');
             });
         }
-        
+
+        // 당기 발생사실 없음 체크 시 필드 토글 (설계평가용)
+        function toggleNoOccurrenceDesign() {
+            const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
+            const noOccurrenceReasonSection = document.getElementById('no-occurrence-reason-section-design');
+            const evidenceSection = document.getElementById('design-evidence-section');
+
+            if (noOccurrenceCheckbox && noOccurrenceCheckbox.checked) {
+                // 당기 발생사실 없음 체크 시 사유 입력란 표시, 증빙 테이블 숨김
+                if (noOccurrenceReasonSection) {
+                    noOccurrenceReasonSection.style.display = 'block';
+                }
+                if (evidenceSection) {
+                    evidenceSection.style.display = 'none';
+                }
+            } else {
+                // 체크 해제 시 사유 입력란 숨김, 증빙 테이블 표시
+                if (noOccurrenceReasonSection) {
+                    noOccurrenceReasonSection.style.display = 'none';
+                }
+                if (evidenceSection) {
+                    evidenceSection.style.display = 'block';
+                }
+            }
+        }
+
         // Bootstrap 툴팁 초기화
         document.addEventListener('DOMContentLoaded', function() {
+            // 당기 발생사실 없음 체크박스 이벤트 리스너
+            const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
+            if (noOccurrenceCheckbox) {
+                noOccurrenceCheckbox.addEventListener('change', toggleNoOccurrenceDesign);
+            }
+
             // 기존 툴팁 초기화
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
