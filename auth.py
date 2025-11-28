@@ -514,13 +514,13 @@ def get_unique_filename(filename):
         unique_id = str(uuid.uuid4())[:8]
         return f"{name}_{timestamp}_{unique_id}{ext}"
 
-def create_rcm(rcm_name, description, upload_user_id, original_filename=None, control_category='ITGC'):
+def create_rcm(rcm_name, description, user_id, original_filename=None, control_category='ITGC'):
     """RCM 생성"""
     with get_db() as conn:
         cursor = conn.execute('''
-            INSERT INTO sb_rcm (rcm_name, description, upload_user_id, original_filename, control_category)
+            INSERT INTO sb_rcm (rcm_name, description, user_id, original_filename, control_category)
             VALUES (%s, %s, %s, %s, %s)
-        ''', (rcm_name, description, upload_user_id, original_filename, control_category))
+        ''', (rcm_name, description, user_id, original_filename, control_category))
         conn.commit()
         return cursor.lastrowid
 
@@ -537,7 +537,7 @@ def get_user_rcms(user_id):
                 SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date,
                        r.completion_date, r.control_category, 'admin' as permission_type, u.company_name
                 FROM sb_rcm r
-                INNER JOIN sb_user u ON r.upload_user_id = u.user_id
+                INNER JOIN sb_user u ON r.user_id = u.user_id
                 WHERE r.is_active = 'Y'
                 ORDER BY u.company_name,
                          CASE r.control_category
@@ -555,7 +555,7 @@ def get_user_rcms(user_id):
                        r.completion_date, r.control_category, ur.permission_type, u.company_name
                 FROM sb_rcm r
                 INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
-                INNER JOIN sb_user u ON r.upload_user_id = u.user_id
+                INNER JOIN sb_user u ON r.user_id = u.user_id
                 WHERE ur.user_id = %s AND ur.is_active = 'Y' AND r.is_active = 'Y'
                 ORDER BY u.company_name,
                          CASE r.control_category
@@ -573,9 +573,9 @@ def get_rcm_info(rcm_id):
     """RCM 기본 정보 조회"""
     with get_db() as conn:
         rcm = conn.execute('''
-            SELECT r.*, u.user_name as uploader_name, u.company_name
+            SELECT r.*, u.user_name as owner_name, u.company_name
             FROM sb_rcm r
-            LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+            LEFT JOIN sb_user u ON r.user_id = u.user_id
             WHERE r.rcm_id = %s
         ''', (rcm_id,)).fetchone()
         return dict(rcm) if rcm else None
@@ -897,9 +897,16 @@ def save_rcm_details(rcm_id, rcm_data, control_category='ITGC'):
 def grant_rcm_access(user_id, rcm_id, permission_type, granted_by):
     """사용자에게 RCM 접근 권한 부여"""
     with get_db() as conn:
+        # SQLite의 INSERT OR REPLACE 대신 ON CONFLICT 사용
+        # UNIQUE(user_id, rcm_id) 제약 조건이 있으므로 중복 시 자동으로 업데이트됨
         conn.execute('''
-            INSERT OR REPLACE INTO sb_user_rcm (user_id, rcm_id, permission_type, granted_by)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO sb_user_rcm (user_id, rcm_id, permission_type, granted_by, is_active, granted_date)
+            VALUES (%s, %s, %s, %s, 'Y', CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id, rcm_id) DO UPDATE SET
+                permission_type = excluded.permission_type,
+                granted_by = excluded.granted_by,
+                granted_date = CURRENT_TIMESTAMP,
+                is_active = 'Y'
         ''', (user_id, rcm_id, permission_type, granted_by))
         conn.commit()
 
@@ -907,11 +914,11 @@ def get_all_rcms():
     """모든 RCM 조회 (관리자용)"""
     with get_db() as conn:
         rcms = conn.execute('''
-            SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date, 
-                   r.upload_user_id, r.is_active, r.completion_date,
-                   u.user_name as upload_user_name, u.company_name
+            SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date,
+                   r.user_id, r.is_active, r.completion_date,
+                   u.user_name as owner_name, u.company_name
             FROM sb_rcm r
-            LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+            LEFT JOIN sb_user u ON r.user_id = u.user_id
             WHERE r.is_active = 'Y'
             ORDER BY r.upload_date DESC
         ''').fetchall()
@@ -1272,26 +1279,33 @@ def get_design_evaluations_by_header_id(rcm_id, user_id, header_id):
         return []
 
 def get_user_evaluation_sessions(rcm_id, user_id):
-    """사용자의 설계평가 세션 목록 조회 (Header-Line 구조)"""
+    """RCM의 모든 설계평가 세션 목록 조회 (Header-Line 구조)
+
+    Note: user_id 파라미터는 하위 호환성을 위해 유지하지만 사용하지 않음.
+          RCM에 접근 권한이 있는 모든 사용자가 동일한 평가 세션을 공유함.
+    """
     with get_db() as conn:
         sessions = conn.execute('''
             SELECT h.header_id, h.evaluation_session, h.start_date, h.last_updated,
                    h.evaluated_controls, h.total_controls, h.progress_percentage,
                    h.evaluation_status, h.completed_date
             FROM sb_design_evaluation_header h
-            WHERE h.rcm_id = %s AND h.user_id = %s
+            WHERE h.rcm_id = %s
             ORDER BY h.start_date DESC
-        ''', (rcm_id, user_id)).fetchall()
+        ''', (rcm_id,)).fetchall()
         return [dict(session) for session in sessions]
 
 def delete_evaluation_session(rcm_id, user_id, evaluation_session):
-    """특정 평가 세션 삭제 (Header-Line 구조)"""
+    """특정 평가 세션 삭제 (Header-Line 구조)
+
+    Note: user_id 파라미터는 하위 호환성을 위해 유지하지만 사용하지 않음.
+    """
     with get_db() as conn:
-        # 헤더 조회
+        # 헤더 조회 (user_id 조건 제거)
         header = conn.execute('''
             SELECT header_id FROM sb_design_evaluation_header
-            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
-        ''', (rcm_id, user_id, evaluation_session)).fetchone()
+            WHERE rcm_id = %s AND evaluation_session = %s
+        ''', (rcm_id, evaluation_session)).fetchone()
         
         if not header:
             return 0
@@ -1631,8 +1645,7 @@ def get_operation_evaluation_samples(line_id):
         # 실제 실행될 SQL 쿼리 출력 (파라미터 바인딩 포함)
         # 운영평가 샘플만 조회 (evaluation_type='operation')
         sample_query = '''
-            SELECT sample_id, sample_number, evidence, has_exception, mitigation, request_number,
-                   requester_name, requester_department, approver_name, approver_department, approval_date,
+            SELECT sample_id, sample_number, evidence, has_exception, mitigation,
                    attribute0, attribute1, attribute2, attribute3, attribute4,
                    attribute5, attribute6, attribute7, attribute8, attribute9
             FROM sb_evaluation_sample
@@ -1663,14 +1676,7 @@ def get_operation_evaluation_samples(line_id):
                 'evidence': sample['evidence'],
                 'result': 'exception' if sample['has_exception'] else 'no_exception',
                 'mitigation': sample['mitigation'] or '',
-                # 수동통제용 필드
-                'request_number': sample['request_number'],
-                'requester_name': sample['requester_name'],
-                'requester_department': sample['requester_department'],
-                'approver_name': sample['approver_name'],
-                'approver_department': sample['approver_department'],
-                'approval_date': sample['approval_date'],
-                # 범용 속성
+                # 범용 속성 (sb_rcm_detail의 attribute 정의에 따라 동적으로 표시)
                 'attributes': attributes
             })
 

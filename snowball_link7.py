@@ -1868,9 +1868,9 @@ def upload_general_population():
                 print(f"[upload_general_population] 샘플 #{idx} 저장 중: {sample['number']}, {sample['description'][:30]}...")
                 conn.execute('''
                     INSERT INTO sb_evaluation_sample
-                    (line_id, sample_number, attribute0, attribute1)
-                    VALUES (%s, %s, %s, %s)
-                ''', (line_id, idx, sample['number'], sample['description']))
+                    (line_id, sample_number, evaluation_type, attribute0, attribute1)
+                    VALUES (%s, %s, %s, %s, %s)
+                ''', (line_id, idx, 'operation', sample['number'], sample['description']))
 
             conn.commit()
             print(f"[upload_general_population] DB 커밋 완료")

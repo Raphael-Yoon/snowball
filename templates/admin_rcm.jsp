@@ -42,7 +42,7 @@
                                         <th>RCM명</th>
                                         <th>회사명</th>
                                         <th>설명</th>
-                                        <th>업로드자</th>
+                                        <th>소유자</th>
                                         <th>업로드일</th>
                                         <th>관리</th>
                                     </tr>
@@ -53,7 +53,7 @@
                                         <td><strong>{{ rcm.rcm_name }}</strong></td>
                                         <td>{{ rcm.company_name or '-' }}</td>
                                         <td>{{ rcm.description or '-' }}</td>
-                                        <td>{{ rcm.upload_user_name or '-' }}</td>
+                                        <td>{{ rcm.owner_name or '-' }}</td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
                                         <td>
                                             <a href="/admin/rcm/{{ rcm.rcm_id }}/view" class="btn btn-sm btn-outline-primary">
@@ -64,7 +64,7 @@
                                                     data-bs-toggle="modal" data-bs-target="#editRcmModal">
                                                 <i class="fas fa-edit me-1"></i>수정
                                             </button>
-                                            <a href="/admin/rcm/{{ rcm.rcm_id }}/users" class="btn btn-sm btn-outline-success">
+                                            <a href="/admin/rcm/{{ rcm.token }}/users" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-users me-1"></i>사용자
                                             </a>
                                             <button class="btn btn-sm btn-outline-danger" onclick="deleteRcm({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')">
@@ -119,8 +119,16 @@
                             <input type="text" class="form-control" name="rcm_name" id="edit_rcm_name" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">회사명</label>
-                            <input type="text" class="form-control" name="company_name" id="edit_company_name">
+                            <label class="form-label">대상 사용자 (회사명) <span class="text-danger">*</span></label>
+                            <select class="form-select" name="target_user_id" id="edit_target_user_id" required>
+                                <option value="">사용자를 선택하세요</option>
+                                {% for user in users %}
+                                <option value="{{ user.user_id }}" data-company="{{ user.company_name or '' }}">
+                                    {{ user.company_name or '(회사명 없음)' }} - {{ user.user_name }} ({{ user.user_email }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">선택한 사용자의 회사명이 RCM에 자동으로 설정됩니다.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">설명</label>
@@ -142,8 +150,23 @@
         function editRcm(rcmId, rcmName, companyName, description) {
             document.getElementById('editRcmForm').action = '/admin/rcm/edit/' + rcmId;
             document.getElementById('edit_rcm_name').value = rcmName;
-            document.getElementById('edit_company_name').value = companyName;
             document.getElementById('edit_description').value = description;
+
+            // 회사명과 일치하는 사용자 자동 선택
+            const userSelect = document.getElementById('edit_target_user_id');
+            userSelect.value = ''; // 초기화
+
+            if (companyName) {
+                // 회사명이 일치하는 첫 번째 사용자 선택
+                for (let i = 0; i < userSelect.options.length; i++) {
+                    const option = userSelect.options[i];
+                    const optionCompany = option.getAttribute('data-company');
+                    if (optionCompany === companyName) {
+                        userSelect.value = option.value;
+                        break;
+                    }
+                }
+            }
         }
 
         // RCM 삭제 함수

@@ -3,9 +3,21 @@ from auth import get_db, get_current_user, login_required, get_user_activity_log
 import tempfile
 import os
 from datetime import date, timedelta
+import base64
 
 # Blueprint 생성
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+def encode_id(id_value):
+    """ID를 Base64로 인코딩"""
+    return base64.urlsafe_b64encode(str(id_value).encode()).decode()
+
+def decode_id(encoded_value):
+    """Base64 인코딩된 ID를 디코딩"""
+    try:
+        return int(base64.urlsafe_b64decode(encoded_value.encode()).decode())
+    except:
+        return None
 
 def get_user_info():
     """현재 로그인한 사용자 정보 반환"""
@@ -313,12 +325,27 @@ def admin_rcm():
     if not user_info or user_info.get('admin_flag') != 'Y':
         flash('관리자 권한이 필요합니다.')
         return redirect(url_for('index'))
-    
+
     # 모든 RCM 목록 조회
     rcms = get_all_rcms()
-    
+
+    # RCM ID를 토큰으로 인코딩
+    for rcm in rcms:
+        rcm['token'] = encode_id(rcm['rcm_id'])
+
+    # 활성 사용자 목록 조회 (RCM 수정 시 사용)
+    with get_db() as conn:
+        users = conn.execute('''
+            SELECT user_id, user_name, user_email, company_name
+            FROM sb_user
+            WHERE effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP
+            ORDER BY company_name, user_name
+        ''').fetchall()
+        users_list = [dict(user) for user in users]
+
     return render_template('admin_rcm.jsp',
                          rcms=rcms,
+                         users=users_list,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          remote_addr=request.remote_addr)
@@ -567,9 +594,9 @@ def admin_rcm_save_mapping():
             # RCM 정보에서 회사명 가져오기
             with get_db() as conn:
                 rcm_info = conn.execute('''
-                    SELECT r.original_filename, u.company_name 
+                    SELECT r.original_filename, u.company_name
                     FROM sb_rcm r
-                    JOIN sb_user u ON r.upload_user_id = u.user_id
+                    JOIN sb_user u ON r.user_id = u.user_id
                     WHERE r.rcm_id = %s
                 ''', (rcm_id,)).fetchone()
                 
@@ -633,9 +660,9 @@ def admin_rcm_view(rcm_id):
     # RCM 기본 정보 조회
     with get_db() as conn:
         rcm_info = conn.execute('''
-            SELECT r.*, u.user_name as upload_user_name, u.company_name
+            SELECT r.*, u.user_name as owner_name, u.company_name
             FROM sb_rcm r
-            LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+            LEFT JOIN sb_user u ON r.user_id = u.user_id
             WHERE r.rcm_id = %s AND r.is_active = 'Y'
         ''', (rcm_id,)).fetchone()
         
@@ -645,17 +672,27 @@ def admin_rcm_view(rcm_id):
     
     # RCM 상세 데이터 조회
     rcm_details = get_rcm_details(rcm_id)
-    
+
+    # RCM 정보에 토큰 추가
+    rcm_info_dict = dict(rcm_info)
+    rcm_info_dict['token'] = encode_id(rcm_id)
+
     return render_template('admin_rcm_view.jsp',
-                         rcm_info=dict(rcm_info),
+                         rcm_info=rcm_info_dict,
                          rcm_details=rcm_details,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          remote_addr=request.remote_addr)
 
-@admin_bp.route('/rcm/<int:rcm_id>/users')
-def admin_rcm_users(rcm_id):
+@admin_bp.route('/rcm/<string:token>/users')
+def admin_rcm_users(token):
     """RCM 사용자 관리"""
+    # 토큰 디코딩
+    rcm_id = decode_id(token)
+    if not rcm_id:
+        flash('잘못된 접근입니다.')
+        return redirect(url_for('admin.admin_rcm'))
+
     user_info = get_user_info()
     if not user_info:
         flash('로그인이 필요합니다.')
@@ -666,9 +703,9 @@ def admin_rcm_users(rcm_id):
     # RCM 기본 정보 조회
     with get_db() as conn:
         rcm_info = conn.execute('''
-            SELECT r.*, u.user_name as upload_user_name, u.company_name
+            SELECT r.*, u.user_name as owner_name, u.company_name
             FROM sb_rcm r
-            LEFT JOIN sb_user u ON r.upload_user_id = u.user_id
+            LEFT JOIN sb_user u ON r.user_id = u.user_id
             WHERE r.rcm_id = %s AND r.is_active = 'Y'
         ''', (rcm_id,)).fetchone()
 
@@ -911,25 +948,49 @@ def admin_edit_rcm(rcm_id):
 
     try:
         rcm_name = request.form.get('rcm_name')
-        company_name = request.form.get('company_name')
+        target_user_id = request.form.get('target_user_id')
         description = request.form.get('description')
 
-        # company_name과 description이 빈 문자열이면 NULL로 처리
-        if not company_name:
-            company_name = None
+        print(f"[DEBUG] RCM 수정 요청 - rcm_id: {rcm_id}")
+        print(f"[DEBUG] rcm_name: '{rcm_name}'")
+        print(f"[DEBUG] target_user_id: '{target_user_id}'")
+        print(f"[DEBUG] description: '{description}'")
+
+        # 필수값 체크
+        if not rcm_name or not target_user_id:
+            flash('RCM명과 대상 사용자는 필수입니다.')
+            return redirect(url_for('admin.admin_rcm'))
+
+        # description이 빈 문자열이면 NULL로 처리
         if not description:
             description = None
 
         with get_db() as conn:
-            conn.execute('''
+            # 선택한 사용자가 존재하는지 확인
+            user = conn.execute('''
+                SELECT user_id, user_name, company_name FROM sb_user WHERE user_id = %s
+            ''', (int(target_user_id),)).fetchone()
+
+            if not user:
+                flash('선택한 사용자를 찾을 수 없습니다.')
+                return redirect(url_for('admin.admin_rcm'))
+
+            print(f"[DEBUG] 선택한 사용자: {user['user_name']} ({user['company_name']})")
+
+            # RCM 정보 업데이트 (user_id 변경)
+            result = conn.execute('''
                 UPDATE sb_rcm
-                SET rcm_name = %s, company_name = %s, description = %s
+                SET rcm_name = %s, user_id = %s, description = %s
                 WHERE rcm_id = %s
-            ''', (rcm_name, company_name, description, rcm_id))
+            ''', (rcm_name, int(target_user_id), description, rcm_id))
             conn.commit()
+            print(f"[DEBUG] UPDATE 결과: {result.rowcount} rows affected")
 
         flash('RCM 정보가 성공적으로 수정되었습니다.')
     except Exception as e:
+        print(f"[ERROR] RCM 수정 중 오류: {str(e)}")
+        import traceback
+        traceback.print_exc()
         flash(f'RCM 수정 중 오류가 발생했습니다: {str(e)}')
 
     return redirect(url_for('admin.admin_rcm'))
