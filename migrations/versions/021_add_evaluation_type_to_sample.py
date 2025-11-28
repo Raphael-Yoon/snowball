@@ -1,6 +1,19 @@
 """
 표본 테이블에 evaluation_type 컬럼 추가
 설계평가와 운영평가를 구분하기 위한 필드
+
+⚠️ DEPRECATED WARNING:
+이 마이그레이션은 Migration 026에 의해 무효화되었습니다.
+Migration 026은 sb_evaluation_sample 테이블을 DROP하고 재생성하면서
+evaluation_type 컬럼을 포함하여 다시 생성합니다.
+
+마이그레이션 시퀀스:
+- 017: attribute0-9 추가 (이후 026에서 제거됨)
+- 021: evaluation_type 추가 (이후 026에서 제거되고 재생성됨)
+- 026: 테이블 DROP & 재생성 (evaluation_type 포함)
+- 027: attribute0-9 재추가
+
+⚠️ 주의: 이미 적용된 데이터베이스에서는 이 마이그레이션을 삭제하지 마세요!
 """
 
 
