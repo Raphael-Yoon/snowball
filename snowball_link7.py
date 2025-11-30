@@ -15,8 +15,8 @@ def user_operation_evaluation():
     """운영평가 페이지"""
     user_info = get_user_info()
 
-    # 사용자가 접근 가능한 RCM 목록 조회
-    user_rcms = get_user_rcms(user_info['user_id'])
+    # 사용자가 접근 가능한 RCM 목록 조회 (ITGC만)
+    user_rcms = get_user_rcms(user_info['user_id'], control_category='ITGC')
 
     # 각 RCM에 대해 모든 설계평가 세션 조회 (진행중 + 완료)
     from auth import get_all_design_evaluation_sessions

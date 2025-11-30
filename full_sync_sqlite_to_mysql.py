@@ -75,6 +75,16 @@ def get_sqlite_tables(conn):
     return [t for t in tables if t not in EXCLUDE_TABLES]
 
 
+def get_sqlite_views(conn):
+    """SQLite 뷰 목록 및 정의 조회"""
+    cursor = conn.execute("""
+        SELECT name, sql FROM sqlite_master
+        WHERE type='view'
+        ORDER BY name
+    """)
+    return cursor.fetchall()
+
+
 def get_table_schema(sqlite_conn, table_name):
     """SQLite 테이블 스키마 조회"""
     cursor = sqlite_conn.execute(f"PRAGMA table_info({table_name})")
@@ -309,6 +319,12 @@ def full_sync(dry_run=True, specific_tables=None):
             row_count = sqlite_conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
             print(f"    - {table_name} ({row_count} rows)")
 
+        # 생성될 뷰 미리보기
+        views = get_sqlite_views(sqlite_conn)
+        print(f"\n[6] Views to be created: {len(views)}")
+        for view_name, _ in views:
+            print(f"    - {view_name}")
+
         print("\n" + "=" * 80)
         print("To apply these changes, run:")
         print("  python full_sync_sqlite_to_mysql.py --apply")
@@ -355,11 +371,28 @@ def full_sync(dry_run=True, specific_tables=None):
         # 외래키 체크 재활성화
         mysql_cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
 
+        # 뷰 생성
+        print(f"\n[6] Creating views...")
+        views = get_sqlite_views(sqlite_conn)
+
+        if views:
+            for view_name, view_sql in views:
+                print(f"  Creating view: {view_name}")
+                try:
+                    # SQLite SQL을 MySQL 호환으로 변환 (기본적으로 그대로 사용)
+                    mysql_cursor.execute(view_sql)
+                    print(f"      ✓ View created")
+                except Exception as e:
+                    print(f"      ✗ Error creating view: {e}")
+        else:
+            print("  (no views to create)")
+
         mysql_conn.commit()
 
         print("\n" + "=" * 80)
         print(f"✅ Sync completed successfully!")
         print(f"   Tables: {len(tables_to_sync)}")
+        print(f"   Views: {len(views)}")
         print(f"   Total rows: {total_rows}")
         print("=" * 80)
 
