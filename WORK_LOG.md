@@ -1,5 +1,25 @@
 # Snowball 프로젝트 작업 로그
 
+## 2025-12-01
+- **운영평가 엑셀 다운로드 기능 구현**
+  - Backend: snowball_link7.py에 `/operation-evaluation/download` 엔드포인트 추가
+  - Template_Manual.xlsx 사용 (Template, Testing Table, Population 시트)
+  - Template 시트: 통제 기본 정보 (C2~C13)
+    - C2: 회사명, C4: 사용자명, C7~C11: 통제 정보
+    - C12: 설계평가 검토 결과, C13: 운영평가 결론
+  - Testing Table 시트: 샘플 데이터 표
+    - Row 4: 헤더 (모집단 항목=노란색, 증빙 항목=초록색)
+    - Row 5~64: 샘플 데이터 (60개 준비, 표본수에 따라 행 삭제)
+    - 사용하지 않는 컬럼 삭제 (attribute 개수에 따라)
+    - Row 66: "Testing Table" 구분자 (행 삭제 후 위로 이동, 전체 행 색상 유지)
+  - Population 시트: recommended_sample_size가 0이면 유지, 아니면 삭제
+  - 시트 순서: 통제코드 시트(1), Testing Table(2), Population(3, 조건부)
+  - Frontend: link7_detail.jsp 모달 푸터에 다운로드 버튼 추가
+  - 파일명: `{control_code}_{evaluation_session}.xlsx`
+  - Excel 오류 수정:
+    - 외부 링크 제거: `load_workbook(keep_links=False)`
+    - 명명된 범위 제거: `wb.defined_names` 전체 삭제
+
 ## 2025-11-28
 - **설계평가 "당기 발생사실 없음" 기능 추가**
   - DB: sb_design_evaluation_line 테이블에 no_occurrence, no_occurrence_reason 컬럼 추가 (마이그레이션 028)
