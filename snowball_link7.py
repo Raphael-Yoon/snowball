@@ -1,9 +1,12 @@
-from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
+from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session, send_file
 from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, get_key_rcm_details, save_operation_evaluation, get_operation_evaluations, get_operation_evaluation_samples, log_user_activity, get_db, is_design_evaluation_completed, get_completed_design_evaluation_sessions
 from snowball_link5 import get_user_info, is_logged_in
 import file_manager
 from control_config import get_control_config
 import json
+import os
+import tempfile
+from openpyxl import load_workbook
 
 bp_link7 = Blueprint('link7', __name__)
 
@@ -2004,3 +2007,358 @@ def reset_population_upload():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)})
+
+
+# ============================================================================
+# 운영평가 다운로드 기능
+# ============================================================================
+
+@bp_link7.route('/operation-evaluation/download')
+@login_required
+def download_operation_evaluation():
+    """운영평가 결과를 Template_Manual.xlsx 양식으로 다운로드 (통제별)"""
+    from flask import make_response
+    import urllib.parse
+
+    user_info = get_user_info()
+
+    # URL 파라미터 받기
+    rcm_id = request.args.get('rcm_id')
+    evaluation_session = request.args.get('evaluation_session')
+    design_evaluation_session = request.args.get('design_evaluation_session')
+    control_code = request.args.get('control_code')
+
+    # 필수 파라미터 검증
+    if not all([rcm_id, evaluation_session, design_evaluation_session, control_code]):
+        flash('RCM ID, 운영평가 세션, 설계평가 세션, 통제번호가 필요합니다.', 'error')
+        return redirect(url_for('link7.user_operation_evaluation'))
+
+    try:
+        # 템플릿 파일 경로
+        template_path = os.path.join(os.path.dirname(__file__), 'paper_templates', 'Template_Manual.xlsx')
+
+        if not os.path.exists(template_path):
+            flash('템플릿 파일을 찾을 수 없습니다.', 'error')
+            return redirect(url_for('link7.user_operation_evaluation'))
+
+        # 템플릿 로드 (외부 링크 제거)
+        wb = load_workbook(template_path, keep_links=False)
+
+        # RCM 정보 조회
+        with get_db() as conn:
+            rcm_info = conn.execute("""
+                SELECT rcm_name, description
+                FROM sb_rcm
+                WHERE rcm_id = %s
+            """, (rcm_id,)).fetchone()
+
+            if not rcm_info:
+                flash('RCM 정보를 찾을 수 없습니다.', 'error')
+                return redirect(url_for('link7.user_operation_evaluation'))
+
+            # 운영평가 결과 조회 (해당 통제 1개만)
+            evaluation = conn.execute("""
+                SELECT
+                    l.line_id,
+                    l.control_code,
+                    rd.control_name,
+                    rd.control_description,
+                    rd.control_frequency,
+                    rd.control_type,
+                    rd.control_nature,
+                    l.sample_size,
+                    l.exception_count,
+                    l.exception_details,
+                    l.conclusion,
+                    l.improvement_plan,
+                    l.evaluation_date,
+                    d.attribute0, d.attribute1, d.attribute2, d.attribute3, d.attribute4,
+                    d.attribute5, d.attribute6, d.attribute7, d.attribute8, d.attribute9,
+                    d.population_attribute_count,
+                    d.recommended_sample_size
+                FROM sb_operation_evaluation_line l
+                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
+                JOIN sb_rcm_detail d ON d.rcm_id = h.rcm_id AND d.control_code = l.control_code
+                WHERE h.rcm_id = %s
+                  AND h.evaluation_session = %s
+                  AND h.design_evaluation_session = %s
+                  AND l.control_code = %s
+            """, (rcm_id, evaluation_session, design_evaluation_session, control_code)).fetchone()
+
+            # 설계평가 결과 조회 (design_comment 및 line_id 가져오기)
+            design_evaluation = conn.execute("""
+                SELECT l.design_comment, l.line_id
+                FROM sb_design_evaluation_line l
+                JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
+                WHERE h.rcm_id = %s
+                  AND h.evaluation_session = %s
+                  AND l.control_code = %s
+            """, (rcm_id, design_evaluation_session, control_code)).fetchone()
+
+            # 설계평가 이미지 조회 (파일 시스템에서)
+            design_image_files = []
+            if design_evaluation:
+                # header_id 조회
+                header = conn.execute("""
+                    SELECT header_id
+                    FROM sb_design_evaluation_header
+                    WHERE rcm_id = %s AND evaluation_session = %s
+                """, (rcm_id, design_evaluation_session)).fetchone()
+
+                if header:
+                    header_id = header['header_id']
+                    image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(header_id), control_code)
+
+                    if os.path.exists(image_dir):
+                        design_image_files = [os.path.join(image_dir, f) for f in os.listdir(image_dir) if os.path.isfile(os.path.join(image_dir, f))]
+
+        if not evaluation:
+            flash('다운로드할 운영평가 결과가 없습니다.', 'warning')
+            return redirect(url_for('link7.user_operation_evaluation'))
+
+        eval_dict = dict(evaluation)
+        design_eval_dict = dict(design_evaluation) if design_evaluation else {}
+
+        # Template 시트에 직접 내용 작성
+        template_sheet = wb['Template']
+
+        # Client 정보 (C2)
+        template_sheet['C2'] = user_info.get('company_name', '')
+
+        # Prepared by (C4)
+        template_sheet['C4'] = user_info.get('user_name', '')
+
+        # 통제번호 (C7)
+        template_sheet['C7'] = control_code
+
+        # 통제명 (C8)
+        template_sheet['C8'] = eval_dict.get('control_name', '')
+
+        # 주기 (C9)
+        template_sheet['C9'] = eval_dict.get('control_frequency', '')
+
+        # 구분 (C10)
+        template_sheet['C10'] = eval_dict.get('control_type', '')
+
+        # 통제 설명 (C11)
+        template_sheet['C11'] = eval_dict.get('control_description', '')
+
+        # 설계평가 검토 결과 (C12)
+        design_comment = design_eval_dict.get('design_comment', '')
+        template_sheet['C12'] = design_comment
+
+        # C12 셀의 행 높이 자동 조정 (텍스트 길이에 따라)
+        if design_comment:
+            # 줄바꿈 개수 계산
+            line_count = design_comment.count('\n') + 1
+            # 기본 행 높이(15) + 각 줄당 추가 높이(15)
+            row_height = 15 + (line_count * 15)
+            # 최대 높이 제한 (300)
+            row_height = min(row_height, 300)
+            template_sheet.row_dimensions[12].height = row_height
+
+        # 운영평가 결론 (C13) - Effective, Ineffective 등
+        operation_conclusion = eval_dict.get('conclusion', '')
+        template_sheet['C13'] = operation_conclusion
+
+        # Template 시트명을 통제코드로 변경
+        template_sheet.title = control_code[:31]  # Excel 시트명 31자 제한
+
+        # Testing Table 시트에 샘플 데이터 작성
+        testing_table = wb['Testing Table']
+        line_id = eval_dict.get('line_id')
+        population_count = eval_dict.get('population_attribute_count', 2)
+        sample_size = eval_dict.get('sample_size', 0)
+
+        # 모집단 attribute 개수와 증빙 attribute 개수 계산
+        evidence_attributes = []
+        for i in range(population_count, 10):
+            attr_key = f'attribute{i}'
+            attr_name = eval_dict.get(attr_key)
+            if attr_name:
+                evidence_attributes.append((i, attr_name))
+
+        evidence_count = len(evidence_attributes)
+
+        # 디버그: attribute 정보 출력
+        print(f"[DEBUG] Control: {control_code}")
+        print(f"[DEBUG] population_count: {population_count}")
+        print(f"[DEBUG] Population attributes:")
+        for i in range(population_count):
+            print(f"  attribute{i}: {eval_dict.get(f'attribute{i}')}")
+        print(f"[DEBUG] Evidence attributes:")
+        for i, name in evidence_attributes:
+            print(f"  attribute{i}: {name}")
+
+        # 템플릿에 이미 C4~L4(10개 컬럼)과 5~64행(60개 샘플)이 준비되어 있음
+        # 1. C4~L4에 헤더를 채우고 사용하지 않는 컬럼 삭제
+        # 2. 5~64행에 샘플 데이터를 채우고 사용하지 않는 행 삭제
+
+        from openpyxl.styles import PatternFill
+        yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+        green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+
+        # C열(3번)부터 시작
+        current_col = 3
+
+        # 모집단 항목 헤더 작성 (노란색 배경)
+        for i in range(population_count):
+            attr_key = f'attribute{i}'
+            attr_name = eval_dict.get(attr_key, f'모집단{i+1}')
+            if attr_name:
+                cell = testing_table.cell(row=4, column=current_col, value=attr_name)
+                cell.fill = yellow_fill
+                current_col += 1
+
+        # 증빙 항목 헤더 작성 (초록색 배경)
+        evidence_col_start = current_col
+        for i, attr_name in evidence_attributes:
+            cell = testing_table.cell(row=4, column=current_col, value=attr_name)
+            cell.fill = green_fill
+            current_col += 1
+
+        # 사용하지 않는 컬럼 삭제 (L열=12번 컬럼까지 준비되어 있음)
+        # 결론, 비고는 템플릿에 이미 있으므로 추가 작성 불필요
+        # current_col: 모집단 + 증빙 사용한 마지막 컬럼 + 1
+        # current_col부터 12까지 삭제 (결론/비고 컬럼도 템플릿에 있으므로)
+        print(f"[DEBUG] current_col after evidence: {current_col}")
+        if current_col <= 12:
+            cols_to_delete = 12 - current_col + 1
+            print(f"[DEBUG] Deleting columns from {current_col} to 12 (count: {cols_to_delete})")
+            testing_table.delete_cols(current_col, cols_to_delete)
+        else:
+            print(f"[DEBUG] No columns to delete (current_col={current_col} > 12)")
+
+        # B열에 순번 작성 (1, 2, 3, ...)
+        if sample_size > 0:
+            for i in range(sample_size):
+                testing_table.cell(row=5 + i, column=2, value=i + 1)  # B열 = column 2
+
+        # 샘플 데이터 입력 (5행부터)
+        if line_id:
+            samples = get_operation_evaluation_samples(line_id)
+            if samples:
+                for row_idx, sample in enumerate(samples, start=5):
+                    sample_attributes = sample.get('attributes', {})
+
+                    # 모집단 데이터 (C열부터)
+                    col = 3
+                    for i in range(population_count):
+                        attr_key = f'attribute{i}'
+                        attr_value = sample_attributes.get(attr_key, '')
+                        testing_table.cell(row=row_idx, column=col, value=attr_value)
+                        col += 1
+
+                    # 증빙 데이터 (모집단 다음 컬럼부터)
+                    for i, attr_name in evidence_attributes:
+                        attr_key = f'attribute{i}'
+                        attr_value = sample_attributes.get(attr_key, '')
+                        testing_table.cell(row=row_idx, column=col, value=attr_value)
+                        col += 1
+
+        # 66번 행("Testing Table")의 색상을 행 전체에 미리 적용 (행 삭제 전)
+        from copy import copy
+        from openpyxl.styles import PatternFill
+        source_cell_66 = testing_table.cell(row=66, column=2)
+        if source_cell_66.fill:
+            for col in range(2, 16385):
+                cell = testing_table.cell(row=66, column=col)
+                cell.fill = copy(source_cell_66.fill)
+
+        # 사용하지 않는 행 삭제 (5~64행까지 60개 준비되어 있음)
+        if sample_size < 60:
+            first_row_to_delete = 5 + sample_size
+            rows_to_delete = 64 - first_row_to_delete + 1
+            if rows_to_delete > 0:
+                testing_table.delete_rows(first_row_to_delete, rows_to_delete)
+
+        # 설계평가 이미지를 Testing Table 구분자 다음에 삽입
+        if design_image_files:
+            from openpyxl.drawing.image import Image as XLImage
+
+            # "Testing Table" 구분자는 샘플 행들 바로 다음에 위치 (5 + sample_size 행)
+            # 이미지는 그 다음 행부터 삽입
+            testing_table_separator_row = 5 + sample_size
+            current_row = testing_table_separator_row + 1
+            for image_path in design_image_files:
+                if os.path.exists(image_path):
+                    try:
+                        # 이미지 객체 생성
+                        xl_img = XLImage(image_path)
+
+                        # 이미지 크기 조정 (최대 너비 400px)
+                        max_width = 400
+                        if xl_img.width > max_width:
+                            ratio = max_width / xl_img.width
+                            xl_img.width = max_width
+                            xl_img.height = int(xl_img.height * ratio)
+
+                        # 이미지 삽입
+                        xl_img.anchor = f'B{current_row}'
+                        testing_table.add_image(xl_img)
+
+                        # 행 높이 조정
+                        testing_table.row_dimensions[current_row].height = (xl_img.height * 0.75) + 5
+
+                        # 다음 이미지는 현재 이미지 높이만큼 아래에 배치
+                        # 픽셀을 행 높이로 변환 (대략 1행 = 20픽셀)
+                        rows_needed = int(xl_img.height / 20) + 2
+                        current_row += rows_needed
+
+                    except Exception as e:
+                        print(f"이미지 삽입 실패 ({image_path}): {e}")
+
+        # Population 시트 삭제 (표준표본수가 0인 경우는 유지)
+        recommended_sample_size = eval_dict.get('recommended_sample_size', 0)
+        if recommended_sample_size != 0 and 'Population' in wb.sheetnames:
+            wb.remove(wb['Population'])
+
+        # 시트 순서 조정: 통제명 시트를 가장 앞에, Testing Table을 두 번째로
+        control_sheet_index = wb.index(template_sheet)
+        testing_table_index = wb.index(wb['Testing Table'])
+
+        # 통제명 시트를 맨 앞으로 이동
+        wb.move_sheet(template_sheet, offset=-control_sheet_index)
+        # Testing Table을 두 번째로 이동 (통제명 시트 다음)
+        wb.move_sheet(wb['Testing Table'], offset=-testing_table_index + 1)
+
+        # Population 시트가 있으면 세 번째로 이동
+        if 'Population' in wb.sheetnames:
+            population_index = wb.index(wb['Population'])
+            wb.move_sheet(wb['Population'], offset=-population_index + 2)
+
+        # 명명된 범위(defined names) 제거 (깨진 참조 방지)
+        if hasattr(wb, 'defined_names'):
+            names_to_remove = list(wb.defined_names.keys())
+            for name in names_to_remove:
+                del wb.defined_names[name]
+
+        # 임시 파일로 저장
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+        wb.save(temp_file.name)
+        temp_file.close()
+
+        # 다운로드 파일명 생성
+        filename = f"{control_code}_{evaluation_session}.xlsx"
+        unsafe_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+        for char in unsafe_chars:
+            filename = filename.replace(char, '_')
+
+        # 파일 전송 (UTF-8 인코딩)
+        response = make_response(send_file(
+            temp_file.name,
+            as_attachment=True,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ))
+
+        encoded_filename = urllib.parse.quote(filename.encode('utf-8'))
+        response.headers['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
+
+        return response
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f'다운로드 중 오류가 발생했습니다: {str(e)}', 'error')
+        return redirect(url_for('link7.user_operation_evaluation'))

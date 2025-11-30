@@ -386,7 +386,7 @@ def clear_session():
     return '', 204
 
 def main():
-    app.run(host='0.0.0.0', debug=False, port=5001)
+    app.run(host='0.0.0.0', debug=False, port=5001, use_reloader=False)
     #app.run(host='127.0.0.1', debug=False, port=8001)
 
 @app.route('/link0')

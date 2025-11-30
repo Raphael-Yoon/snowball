@@ -470,6 +470,10 @@
                         onclick="resetPopulationUpload();" style="display: none;">
                         <i class="fas fa-redo me-1"></i>초기화
                     </button>
+                    <!-- 운영평가 다운로드 버튼 (평가 완료 시 표시) -->
+                    <a id="downloadOperationBtn" href="#" class="btn btn-success" style="display: none;">
+                        <i class="fas fa-download me-1"></i>엑셀 다운로드
+                    </a>
                     <button type="button" id="saveOperationEvaluationBtn" class="btn btn-warning"
                         onclick="saveOperationEvaluation();">
                         <i class="fas fa-save me-1"></i>저장
@@ -1408,6 +1412,9 @@
             // 설계평가 이미지 표시
             displayDesignEvaluationImages(designEvaluationImages);
 
+            // 다운로드 버튼 업데이트
+            updateDownloadButton(controlCode, evaluated_controls[controlCode]);
+
             // 모달 표시
             const operationEvaluationModalEl = document.getElementById('operationEvaluationModal');
             if (operationEvaluationModalEl) {
@@ -2345,6 +2352,9 @@
                             updateEvaluationUI(currentRowIndex, evaluationData);
                             updateProgress();
 
+                            // 다운로드 버튼 업데이트 (저장 후)
+                            updateDownloadButton(currentControlCode, evaluationData);
+
                             // 모달은 약간 지연 후 닫기 (토스트가 보이도록)
                             setTimeout(() => {
                                 const modalEl = document.getElementById('operationEvaluationModal');
@@ -2397,6 +2407,35 @@
             const improvementElement = document.getElementById(`improvement-plan-${rowIndex}`);
             if (improvementElement) {
                 improvementElement.textContent = data.improvement_plan || '-';
+            }
+        }
+
+        // 다운로드 버튼 업데이트
+        function updateDownloadButton(controlCode, evaluationData) {
+            console.log('[updateDownloadButton] controlCode:', controlCode);
+            console.log('[updateDownloadButton] evaluationData:', evaluationData);
+
+            const downloadBtn = document.getElementById('downloadOperationBtn');
+            if (!downloadBtn) {
+                console.log('[updateDownloadButton] downloadBtn not found');
+                return;
+            }
+
+            // 평가가 완료되었는지 확인 (conclusion이 있으면 완료)
+            if (evaluationData && evaluationData.conclusion) {
+                // 다운로드 URL 설정
+                const rcmId = {{ rcm_id }};
+                const evaluationSession = {{ operation_evaluation_session | tojson }};
+                const designEvaluationSession = {{ design_evaluation_session | tojson }};
+                const downloadUrl = `/operation-evaluation/download?rcm_id=${rcmId}&evaluation_session=${encodeURIComponent(evaluationSession)}&design_evaluation_session=${encodeURIComponent(designEvaluationSession)}&control_code=${encodeURIComponent(controlCode)}`;
+
+                console.log('[updateDownloadButton] Download URL:', downloadUrl);
+                downloadBtn.href = downloadUrl;
+                downloadBtn.style.display = 'inline-block';
+            } else {
+                // 평가 미완료 시 버튼 숨김
+                console.log('[updateDownloadButton] Evaluation not completed, hiding button');
+                downloadBtn.style.display = 'none';
             }
         }
 
