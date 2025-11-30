@@ -1590,6 +1590,57 @@ def tlc_design_evaluation():
 # 설계평가 다운로드 기능
 # ============================================================================
 
+def format_evidence_for_excel(evaluation_evidence_json, attributes_dict, population_count):
+    """
+    증빙 데이터를 "컬럼명: 증빙값" 형식으로 포맷팅
+
+    Args:
+        evaluation_evidence_json (str): JSON 형식의 증빙 데이터
+        attributes_dict (dict): {'attribute0': '거래일자', 'attribute1': '거래금액', ...}
+        population_count (int): 모집단 항목 개수 (이 값 이후부터 증빙으로 간주)
+
+    Returns:
+        tuple: (formatted_evidence, line_count)
+            - formatted_evidence (str): 줄바꿈으로 구분된 증빙 내용
+            - line_count (int): 줄 수 (셀 높이 계산용)
+    """
+    # 빈 값 처리
+    if not evaluation_evidence_json or not evaluation_evidence_json.strip():
+        return '', 0
+
+    try:
+        # JSON 파싱 시도
+        evidence_data = json.loads(evaluation_evidence_json)
+
+        # JSON 객체가 아니면 원본 반환
+        if not isinstance(evidence_data, dict):
+            # 줄 수 계산
+            line_count = evaluation_evidence_json.count('\n') + 1
+            return evaluation_evidence_json, line_count
+
+        # 증빙 항목만 추출 (모집단 제외)
+        evidence_lines = []
+        for i in range(population_count, 10):  # attribute{population_count}부터 attribute9까지
+            attr_key = f'attribute{i}'
+            attr_name = attributes_dict.get(attr_key)
+            attr_value = evidence_data.get(attr_key, '')
+
+            # 속성명과 값이 모두 있을 때만 추가
+            if attr_name and attr_value:
+                evidence_lines.append(f'{attr_name}: {attr_value}')
+
+        # 줄바꿈으로 연결
+        formatted_evidence = '\n'.join(evidence_lines)
+        line_count = len(evidence_lines)
+
+        return formatted_evidence, line_count
+
+    except (json.JSONDecodeError, ValueError, TypeError):
+        # JSON 파싱 실패 시 (레거시 데이터) 원본 텍스트 반환
+        line_count = evaluation_evidence_json.count('\n') + 1
+        return evaluation_evidence_json, line_count
+
+
 @bp_link6.route('/design-evaluation/download')
 @login_required
 def download_design_evaluation():
@@ -1622,7 +1673,7 @@ def download_design_evaluation():
                 flash('RCM 정보를 찾을 수 없습니다.', 'error')
                 return redirect(url_for('link6.user_design_evaluation'))
 
-            # 설계평가 결과 조회
+            # 설계평가 결과 조회 (RCM attribute 메타 정보 포함)
             evaluations = conn.execute('''
                 SELECT
                     l.control_code,
@@ -1637,10 +1688,14 @@ def download_design_evaluation():
                     l.evaluation_rationale,
                     l.evaluation_evidence,
                     l.design_comment,
-                    l.evaluation_date
+                    l.evaluation_date,
+                    d.attribute0, d.attribute1, d.attribute2, d.attribute3, d.attribute4,
+                    d.attribute5, d.attribute6, d.attribute7, d.attribute8, d.attribute9,
+                    d.population_attribute_count
                 FROM sb_design_evaluation_line l
                 JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
                 JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
+                JOIN sb_rcm_detail d ON d.rcm_id = h.rcm_id AND d.control_code = l.control_code
                 WHERE h.rcm_id = %s AND h.evaluation_session = %s
                 ORDER BY l.control_code
             ''', (rcm_id, evaluation_session)).fetchall()
@@ -1700,9 +1755,35 @@ def download_design_evaluation():
                 row_height = min(row_height, 300)
                 new_sheet.row_dimensions[12].height = row_height
 
-            # 증빙 내용 (C13) - 텍스트
-            evaluation_evidence = eval_dict.get('evaluation_evidence', '')
-            new_sheet['C13'] = evaluation_evidence
+            # 증빙 내용 (C13) - 포맷팅된 텍스트
+            evaluation_evidence_json = eval_dict.get('evaluation_evidence', '')
+
+            # RCM attribute 메타 정보 수집
+            attributes_dict = {}
+            for i in range(10):
+                attr_key = f'attribute{i}'
+                attr_value = eval_dict.get(attr_key)
+                if attr_value:  # None이 아닌 경우만 저장
+                    attributes_dict[attr_key] = attr_value
+
+            population_count = eval_dict.get('population_attribute_count', 2)
+
+            # 증빙 데이터 포맷팅 (컬럼명:증빙명 형식)
+            formatted_evidence, evidence_line_count = format_evidence_for_excel(
+                evaluation_evidence_json,
+                attributes_dict,
+                population_count
+            )
+
+            new_sheet['C13'] = formatted_evidence
+
+            # C13 셀 높이 자동 조정
+            if evidence_line_count > 0:
+                # 기본 높이(15) + 각 줄당 높이(15)
+                row_height = 15 + (evidence_line_count * 15)
+                # 최대 높이 제한 (300)
+                row_height = min(row_height, 300)
+                new_sheet.row_dimensions[13].height = row_height
 
             # 증빙 이미지 (C14부터 시작)
             # 이미지 파일이 저장된 경로: static/uploads/design_evaluations/{rcm_id}/{header_id}/{control_code}/

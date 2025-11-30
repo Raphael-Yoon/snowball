@@ -394,6 +394,11 @@ def link0():
     print("Reload")
     return render_template('link0.jsp')
 
+@app.route('/proposal')
+def proposal():
+    """Snowball 제안서 페이지"""
+    return render_template('proposal.jsp')
+
 # link1 라우트는 bp_link1 Blueprint로 이동됨
 
 @app.route('/link2', methods=['GET', 'POST'])

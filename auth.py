@@ -524,49 +524,84 @@ def create_rcm(rcm_name, description, user_id, original_filename=None, control_c
         conn.commit()
         return cursor.lastrowid
 
-def get_user_rcms(user_id):
+def get_user_rcms(user_id, control_category=None):
     """사용자가 접근 가능한 RCM 목록 조회"""
     with get_db() as conn:
         # 먼저 사용자가 관리자인지 확인
         user = conn.execute('SELECT admin_flag FROM sb_user WHERE user_id = %s', (user_id,)).fetchone()
         is_admin = user and user['admin_flag'] == 'Y'
-        
+
         if is_admin:
             # 관리자는 모든 RCM에 접근 가능
-            rcms = conn.execute('''
-                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date,
-                       r.completion_date, r.control_category, 'admin' as permission_type, u.company_name
-                FROM sb_rcm r
-                INNER JOIN sb_user u ON r.user_id = u.user_id
-                WHERE r.is_active = 'Y'
-                ORDER BY u.company_name,
-                         CASE r.control_category
-                             WHEN 'ELC' THEN 1
-                             WHEN 'TLC' THEN 2
-                             WHEN 'ITGC' THEN 3
-                             ELSE 4
-                         END,
-                         r.upload_date DESC
-            ''').fetchall()
+            if control_category:
+                rcms = conn.execute('''
+                    SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date,
+                           r.completion_date, r.control_category, 'admin' as permission_type, u.company_name
+                    FROM sb_rcm r
+                    INNER JOIN sb_user u ON r.user_id = u.user_id
+                    WHERE r.is_active = 'Y' AND r.control_category = %s
+                    ORDER BY u.company_name,
+                             CASE r.control_category
+                                 WHEN 'ELC' THEN 1
+                                 WHEN 'TLC' THEN 2
+                                 WHEN 'ITGC' THEN 3
+                                 ELSE 4
+                             END,
+                             r.upload_date DESC
+                ''', (control_category,)).fetchall()
+            else:
+                rcms = conn.execute('''
+                    SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date,
+                           r.completion_date, r.control_category, 'admin' as permission_type, u.company_name
+                    FROM sb_rcm r
+                    INNER JOIN sb_user u ON r.user_id = u.user_id
+                    WHERE r.is_active = 'Y'
+                    ORDER BY u.company_name,
+                             CASE r.control_category
+                                 WHEN 'ELC' THEN 1
+                                 WHEN 'TLC' THEN 2
+                                 WHEN 'ITGC' THEN 3
+                                 ELSE 4
+                             END,
+                             r.upload_date DESC
+                ''').fetchall()
         else:
             # 일반 사용자는 권한이 있는 RCM만 접근 가능
-            rcms = conn.execute('''
-                SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date,
-                       r.completion_date, r.control_category, ur.permission_type, u.company_name
-                FROM sb_rcm r
-                INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
-                INNER JOIN sb_user u ON r.user_id = u.user_id
-                WHERE ur.user_id = %s AND ur.is_active = 'Y' AND r.is_active = 'Y'
-                ORDER BY u.company_name,
-                         CASE r.control_category
-                             WHEN 'ELC' THEN 1
-                             WHEN 'TLC' THEN 2
-                             WHEN 'ITGC' THEN 3
-                             ELSE 4
-                         END,
-                         r.upload_date DESC
-            ''', (user_id,)).fetchall()
-        
+            if control_category:
+                rcms = conn.execute('''
+                    SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date,
+                           r.completion_date, r.control_category, ur.permission_type, u.company_name
+                    FROM sb_rcm r
+                    INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
+                    INNER JOIN sb_user u ON r.user_id = u.user_id
+                    WHERE ur.user_id = %s AND ur.is_active = 'Y' AND r.is_active = 'Y' AND r.control_category = %s
+                    ORDER BY u.company_name,
+                             CASE r.control_category
+                                 WHEN 'ELC' THEN 1
+                                 WHEN 'TLC' THEN 2
+                                 WHEN 'ITGC' THEN 3
+                                 ELSE 4
+                             END,
+                             r.upload_date DESC
+                ''', (user_id, control_category)).fetchall()
+            else:
+                rcms = conn.execute('''
+                    SELECT r.rcm_id, r.rcm_name, r.description, r.upload_date,
+                           r.completion_date, r.control_category, ur.permission_type, u.company_name
+                    FROM sb_rcm r
+                    INNER JOIN sb_user_rcm ur ON r.rcm_id = ur.rcm_id
+                    INNER JOIN sb_user u ON r.user_id = u.user_id
+                    WHERE ur.user_id = %s AND ur.is_active = 'Y' AND r.is_active = 'Y'
+                    ORDER BY u.company_name,
+                             CASE r.control_category
+                                 WHEN 'ELC' THEN 1
+                                 WHEN 'TLC' THEN 2
+                                 WHEN 'ITGC' THEN 3
+                                 ELSE 4
+                             END,
+                             r.upload_date DESC
+                ''', (user_id,)).fetchall()
+
         return [dict(rcm) for rcm in rcms]
 
 def get_rcm_info(rcm_id):
