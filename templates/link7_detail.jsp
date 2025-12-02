@@ -194,6 +194,7 @@
                                                 data-std-control-id="{{ detail.mapped_std_control_id|e }}"
                                                 data-std-control-code="{% if detail['control_code'] in rcm_mappings %}{{ rcm_mappings[detail['control_code']].std_control_code }}{% else %}{% endif %}"
                                                 data-design-evaluation-evidence="{{ (detail.evaluation_evidence or '')|e }}"
+                                                data-design-comment="{{ (detail.design_comment or '')|e }}"
                                                 data-recommended-sample-size="{{ detail.recommended_sample_size if detail.recommended_sample_size is not none else '' }}"
                                                 data-row-index="{{ loop.index }}"
                                                 onclick="openOperationEvaluationModal(this)">
@@ -316,6 +317,36 @@
                         </div>
                     </div>
 
+                    <!-- 설계평가 의견 표시 섹션 (읽기 전용) -->
+                    <div class="mb-3" id="designCommentSection" style="display: none;">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-clipboard-check me-1"></i>설계평가 검토 의견
+                        </label>
+                        <div class="p-3 bg-light border rounded" style="white-space: pre-wrap; min-height: 60px;">
+                            <span id="designCommentText" class="text-dark"></span>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                설계평가 시 작성된 검토 의견입니다 (읽기 전용)
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- 설계평가 이미지 표시 섹션 -->
+                    <div class="mb-3" id="designEvaluationImagesSection" style="display: none;">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-clipboard-check me-1"></i>설계평가 증빙 이미지
+                        </label>
+                        <div id="designEvaluationImagesPreview" class="border rounded p-2 bg-light"></div>
+                        <div class="form-text">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                설계평가 시 업로드된 이미지입니다. 클릭하면 원본 크기로 볼 수 있습니다.
+                            </small>
+                        </div>
+                    </div>
+
                     <form id="operationEvaluationForm">
                         <!-- 당기 발생사실 없음 옵션 (표본수가 0일 때만 표시) -->
                         <div class="mb-3" id="no-occurrence-section" style="display: none;">
@@ -409,6 +440,15 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- 검토 의견 -->
+                                <div class="row mt-3 mb-4">
+                                    <div class="col-md-12">
+                                        <label for="review_comment" class="form-label fw-bold">검토 의견</label>
+                                        <textarea class="form-control" id="review_comment" name="review_comment" rows="3"
+                                            placeholder="검토 의견을 작성하세요"></textarea>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -424,16 +464,22 @@
                                 placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
                         </div>
 
-                        <!-- 설계평가 이미지 표시 섹션 -->
-                        <div class="mb-3" id="designEvaluationImagesSection" style="display: none;">
+                        <!-- 운영평가 이미지 업로드 섹션 -->
+                        <div class="mb-3" id="operationEvaluationImagesSection">
                             <label class="form-label fw-bold">
-                                <i class="fas fa-clipboard-check me-1"></i>설계평가 증빙 이미지
+                                <i class="fas fa-image me-1"></i>운영평가 증빙 이미지
                             </label>
-                            <div id="designEvaluationImagesPreview" class="border rounded p-2 bg-light"></div>
+                            <input type="file" class="form-control mb-2" id="operationImageFile" accept="image/*" multiple>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="uploadOperationImage()">
+                                <i class="fas fa-upload me-1"></i>이미지 업로드
+                            </button>
+                            <div id="operationImagesPreview" class="mt-3 border rounded p-2 bg-light" style="min-height: 100px;">
+                                <small class="text-muted">업로드된 이미지가 여기에 표시됩니다.</small>
+                            </div>
                             <div class="form-text">
                                 <small class="text-muted">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    설계평가 시 업로드된 이미지입니다. 클릭하면 원본 크기로 볼 수 있습니다.
+                                    운영평가 증빙 이미지를 업로드하세요. 여러 파일을 한번에 선택할 수 있습니다.
                                 </small>
                             </div>
                         </div>
@@ -472,7 +518,7 @@
                     </button>
                     <!-- 운영평가 다운로드 버튼 (평가 완료 시 표시) -->
                     <a id="downloadOperationBtn" href="#" class="btn btn-success" style="display: none;">
-                        <i class="fas fa-download me-1"></i>엑셀 다운로드
+                        <i class="fas fa-download me-1"></i>조서 다운로드
                     </a>
                     <button type="button" id="saveOperationEvaluationBtn" class="btn btn-warning"
                         onclick="saveOperationEvaluation();">
@@ -952,6 +998,28 @@
             });
         }
 
+        // 설계평가 의견 표시 함수
+        function displayDesignComment(comment) {
+            const section = document.getElementById('designCommentSection');
+            const textElement = document.getElementById('designCommentText');
+
+            if (!section || !textElement) {
+                console.error('Design comment section not found');
+                return;
+            }
+
+            // 의견이 없으면 섹션 숨김
+            if (!comment || comment.trim() === '') {
+                section.style.display = 'none';
+                textElement.textContent = '';
+                return;
+            }
+
+            // 의견이 있으면 섹션 표시
+            section.style.display = 'block';
+            textElement.textContent = comment;
+        }
+
         // 설계평가 이미지 표시 함수
         function displayDesignEvaluationImages(images) {
             const section = document.getElementById('designEvaluationImagesSection');
@@ -1027,6 +1095,7 @@
             const stdControlId = buttonElement.getAttribute('data-std-control-id');
             const stdControlCode = buttonElement.getAttribute('data-std-control-code');
             const designEvaluationEvidence = buttonElement.getAttribute('data-design-evaluation-evidence');
+            const designComment = buttonElement.getAttribute('data-design-comment');
             const recommendedSampleSizeStr = buttonElement.getAttribute('data-recommended-sample-size');
             const rowIndex = parseInt(buttonElement.getAttribute('data-row-index'));
 
@@ -1122,9 +1191,18 @@
             const evaluationFields = document.getElementById('evaluation-fields');
 
             // 이미 저장된 데이터가 있는지 확인
-            const hasSavedData = evaluated_controls[controlCode] &&
-                (evaluated_controls[controlCode].line_id ||
-                    (evaluated_controls[controlCode].sample_lines && evaluated_controls[controlCode].sample_lines.length > 0));
+            // 표본수 0인 경우: sample_lines가 있어야 저장된 것으로 간주
+            // 표본수 0이 아닌 경우: line_id가 있으면 저장된 것으로 간주
+            let hasSavedData;
+            if (recommendedSampleSize === 0) {
+                hasSavedData = evaluated_controls[controlCode] &&
+                    evaluated_controls[controlCode].sample_lines &&
+                    evaluated_controls[controlCode].sample_lines.length > 0;
+            } else {
+                hasSavedData = evaluated_controls[controlCode] &&
+                    (evaluated_controls[controlCode].line_id ||
+                        (evaluated_controls[controlCode].sample_lines && evaluated_controls[controlCode].sample_lines.length > 0));
+            }
 
             const resetBtn = document.getElementById('resetPopulationBtn');
 
@@ -1287,19 +1365,49 @@
                         console.log('[API 응답] data.success:', data.success);
                         console.log('[API 응답] data.samples:', data.samples);
                         console.log('[API 응답] data.samples.length:', data.samples ? data.samples.length : 'undefined');
+                        console.log('[API 응답] data.attributes:', data.attributes);
 
                         if (data.success) {
                             // 샘플이 0개여도 빈 배열로 업데이트 (기존 데이터 제거)
                             evaluated_controls[controlCode].sample_lines = data.samples || [];
 
+                            // 모집단 attribute 개수 저장
+                            if (data.population_attribute_count) {
+                                window.currentPopulationAttributeCount = data.population_attribute_count;
+                            }
+
                             if (data.samples && data.samples.length > 0) {
                                 console.log('[openOperationEvaluationModal] 샘플 데이터 조회 성공:', data.samples);
+
+                                // evaluated_controls 업데이트 (초기화 버튼 표시를 위해)
+                                if (!evaluated_controls[controlCode]) {
+                                    evaluated_controls[controlCode] = {};
+                                }
+                                evaluated_controls[controlCode].sample_lines = data.samples;
+
+                                // 초기화 버튼 표시 (권장 표본수 0이고 샘플이 있으면)
+                                if (currentRecommendedSampleSize === 0 && data.samples && data.samples.length > 0) {
+                                    const resetBtn = document.getElementById('resetPopulationBtn');
+                                    if (resetBtn) {
+                                        resetBtn.style.display = 'inline-block';
+                                        console.log('[openOperationEvaluationModal] 초기화 버튼 표시');
+                                    }
+                                }
+
                                 // 현재 표본수 확인
                                 const currentSampleSizeEl = document.getElementById('sample_size');
                                 const currentSampleSize = currentSampleSizeEl ? currentSampleSizeEl.value : 'undefined';
                                 console.log('[openOperationEvaluationModal] 현재 표본수:', currentSampleSize);
-                                // 샘플 라인 자동 생성 (순차 실행)
-                                generateSampleLines();
+
+                                // 샘플 라인 자동 생성 (attributes가 있으면 generateSampleLinesWithAttributes 사용)
+                                if (data.attributes && data.attributes.length > 0) {
+                                    console.log('[openOperationEvaluationModal] generateSampleLinesWithAttributes 호출');
+                                    console.log('[openOperationEvaluationModal] design_sample:', data.design_sample);
+                                    generateSampleLinesWithAttributes(data.attributes, data.samples.length, data.design_sample);
+                                } else {
+                                    console.log('[openOperationEvaluationModal] generateSampleLines 호출');
+                                    generateSampleLines();
+                                }
                             } else {
                                 console.log('[openOperationEvaluationModal] 샘플 데이터 없음 (0개)');
                                 // 샘플이 없으면 빈 라인 자동 생성
@@ -1409,6 +1517,9 @@
                 updateConclusionBasedOnExceptions();
             }
 
+            // 설계평가 의견 표시
+            displayDesignComment(designComment);
+
             // 설계평가 이미지 표시
             displayDesignEvaluationImages(designEvaluationImages);
 
@@ -1445,6 +1556,16 @@
                     if (sampleSizeInt > 0 && existingRows === 0) {
                         console.log('[shown.bs.modal] 표본 라인 자동 생성 실행');
                         generateSampleLines();
+                    } else if (sampleSizeInt === 0 && existingRows === 0) {
+                        // 표본 크기가 0인 경우에도 업로드된 샘플이 있으면 표시
+                        console.log('[shown.bs.modal] 표본 크기 0 - generateSampleLines 호출하여 업로드된 데이터 확인');
+                        generateSampleLines();
+                    }
+
+                    // 운영평가 header_id 설정 및 이미지 로드
+                    if (evaluated_controls[currentControlCode] && evaluated_controls[currentControlCode].header_id) {
+                        currentOperationHeaderId = evaluated_controls[currentControlCode].header_id;
+                        loadOperationImages();
                     }
 
                     // 이벤트 리스너 제거 (한 번만 실행)
@@ -1915,12 +2036,20 @@
         // 전체 결론 자동 계산
         function updateOverallConclusion() {
             const sampleSizeInput = document.getElementById('sample_size');
-            const sampleSize = parseInt(sampleSizeInput.value) || 0;
+            let sampleSize = parseInt(sampleSizeInput.value) || 0;
             const conclusionSpan = document.getElementById('overall-conclusion');
             const summaryDiv = document.getElementById('conclusion-summary');
 
+            // 표본 크기가 0이어도 모집단 업로드 케이스가 있을 수 있음
+            // 실제 테이블 행 수 확인
+            const tbody = document.getElementById('sample-lines-tbody');
+            const actualRowCount = tbody ? tbody.querySelectorAll('tr:not([id^="mitigation-row"])').length : 0;
+
+            // 표본 크기와 실제 행 수 중 큰 값 사용
+            sampleSize = Math.max(sampleSize, actualRowCount);
+
             if (sampleSize === 0) {
-                // 표본 크기가 0이면 결론을 표시하지 않음
+                // 표본도 없고 모집단도 없으면 결론을 표시하지 않음
                 conclusionSpan.textContent = '-';
                 conclusionSpan.className = 'badge bg-secondary ms-2';
                 summaryDiv.innerHTML = `<small>표본별 결과를 입력하면 자동으로 계산됩니다.</small>`;
@@ -2251,7 +2380,7 @@
                         // attribute 데이터 수집
                         const attributes = {};
                         for (let attrIdx = 0; attrIdx < 10; attrIdx++) {
-                            const attrEl = document.getElementById(`sample-attr${attrIdx}-${i}`);
+                            const attrEl = document.getElementById(`sample-${i}-attribute${attrIdx}`);
                             if (attrEl) {
                                 attributes[`attribute${attrIdx}`] = attrEl.value || '';
                             }
@@ -2297,6 +2426,7 @@
                         exception_details: formData.get('exception_details'),
                         conclusion: finalConclusion,  // 표본별 결과 기반 자동 계산
                         improvement_plan: formData.get('improvement_plan'),
+                        review_comment: formData.get('review_comment'),  // 검토 의견
                         no_occurrence: false,
                         no_occurrence_reason: '',
                         use_design_evaluation: useDesignEvaluation,  // 설계평가 대체 여부
@@ -2340,13 +2470,19 @@
                             // 성공 메시지 먼저 표시
                             showSuccessToast('운영평가 결과가 저장되었습니다.');
 
-                            // 로컬 데이터 업데이트 (서버 응답의 line_id와 sample_lines 포함)
+                            // 로컬 데이터 업데이트 (서버 응답의 line_id, header_id와 sample_lines 포함)
                             evaluated_controls[currentControlCode] = {
                                 ...evaluationData,
                                 line_id: data.line_id,  // 서버에서 반환된 line_id
+                                header_id: data.header_id,  // 서버에서 반환된 header_id
                                 sample_lines: evaluationData.sample_lines || []  // 저장한 sample_lines
                             };
                             console.log('[saveOperationEvaluation] evaluated_controls 업데이트:', evaluated_controls[currentControlCode]);
+
+                            // 운영평가 header_id 설정 (이미지 업로드를 위해)
+                            if (data.header_id) {
+                                currentOperationHeaderId = data.header_id;
+                            }
 
                             // UI 업데이트
                             updateEvaluationUI(currentRowIndex, evaluationData);
@@ -2950,7 +3086,7 @@
             ];
 
             let html = '<div class="table-responsive"><table class="table table-sm table-bordered">';
-            html += '<thead><tr><th style="width: 30%;">필수 필드</th><th>엑셀 컬럼 선택</th></tr></thead><tbody>';
+            html += '<thead><tr><th style="width: 30%;">모집단 필드</th><th>엑셀 컬럼 선택</th></tr></thead><tbody>';
 
             requiredFields.forEach(field => {
                 html += `<tr><td><strong>${field.label}</strong></td><td>`;
@@ -2989,7 +3125,7 @@
             const descriptionCol = document.getElementById('mapping_description').value;
 
             if (!numberCol || !descriptionCol) {
-                alert('필수 필드를 모두 매핑해주세요.');
+                alert('모집단 필드를 모두 매핑해주세요.');
                 return;
             }
 
@@ -3035,6 +3171,7 @@
                         // 업로드 성공 - 모집단 업로드 섹션 숨기고 평가 필드 표시
                         console.log('[uploadPopulationFile] 업로드 성공:', data);
                         console.log('[uploadPopulationFile] sample_lines:', JSON.stringify(data.sample_lines, null, 2));
+                        console.log('[uploadPopulationFile] attributes:', data.attributes);
 
                         // evaluated_controls에 저장
                         if (!evaluated_controls[currentControlCode]) {
@@ -3066,8 +3203,19 @@
                             sampleSizeEl.value = data.sample_size;
                         }
 
-                        // 표본 테이블 생성
-                        generateSampleLines();
+                        // 모집단 attribute 개수 저장
+                        if (data.population_attribute_count) {
+                            window.currentPopulationAttributeCount = data.population_attribute_count;
+                        }
+
+                        // 표본 테이블 생성 (attributes가 있으면 generateSampleLinesWithAttributes 사용)
+                        if (data.attributes && data.attributes.length > 0) {
+                            console.log('[uploadPopulationFile] generateSampleLinesWithAttributes 호출');
+                            generateSampleLinesWithAttributes(data.attributes, data.sample_size, null);
+                        } else {
+                            console.log('[uploadPopulationFile] generateSampleLines 호출');
+                            generateSampleLines();
+                        }
                     } else {
                         alert('업로드 실패: ' + (data.error || '알 수 없는 오류'));
                     }
@@ -3108,10 +3256,19 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // 현재 통제의 데이터 초기화
-                    if (evaluated_controls[currentControlCode]) {
-                        delete evaluated_controls[currentControlCode].sample_lines;
-                        delete evaluated_controls[currentControlCode].line_id;
+                    // 현재 통제의 데이터 완전 삭제
+                    delete evaluated_controls[currentControlCode];
+
+                    // 메인 페이지의 평가 결과 업데이트 (Not Evaluated로 변경)
+                    const evalButton = document.querySelector(`button[data-control-code="${currentControlCode}"]`);
+                    if (evalButton) {
+                        const rowIndex = evalButton.getAttribute('data-row-index');
+                        const resultBadge = document.getElementById(`evaluation-result-${rowIndex}`);
+                        if (resultBadge) {
+                            resultBadge.className = 'badge bg-secondary';
+                            resultBadge.textContent = 'Not Evaluated';
+                            console.log('[resetPopulationUpload] 평가 결과 배지 업데이트:', currentControlCode);
+                        }
                     }
 
                     // UI 초기화
@@ -3164,14 +3321,18 @@
         }
 
 
-        function generateSampleLinesWithAttributes(attributes, sampleSize) {
+        function generateSampleLinesWithAttributes(attributes, sampleSize, designSample) {
             console.log('[generateSampleLinesWithAttributes] attributes:', attributes);
             console.log('[generateSampleLinesWithAttributes] sampleSize:', sampleSize);
+            console.log('[generateSampleLinesWithAttributes] designSample:', designSample);
 
             // 샘플 데이터 가져오기
             const existingData = evaluated_controls[currentControlCode];
             const existingSampleLines = existingData?.sample_lines || [];
             console.log('[generateSampleLinesWithAttributes] existingSampleLines:', existingSampleLines);
+
+            // 설계평가 샘플을 전역 변수에 저장 (저장 시 사용)
+            window.currentDesignSample = designSample;
 
             // 테이블 헤더 동적 생성
             const table = document.getElementById('sample-lines-table');
@@ -3179,16 +3340,16 @@
             const tbody = table.querySelector('tbody');
 
             // 헤더 재생성 (모집단/증빙 구분 표시)
-            let headerHtml = '<tr><th width="8%">표본 #</th><th width="30%">증빙 내용</th>';
+            let headerHtml = '<tr><th width="5%">표본 #</th>';
             const popAttrCount = window.currentPopulationAttributeCount || 0;
             attributes.forEach((attr, index) => {
                 const isPopulation = index < popAttrCount;
                 const badge = isPopulation
                     ? '<span class="badge bg-primary ms-1" style="font-size: 0.7em;">모집단</span>'
                     : '<span class="badge bg-success ms-1" style="font-size: 0.7em;">증빙</span>';
-                headerHtml += `<th width="${Math.floor(50 / attributes.length)}%">${attr.name}${badge}</th>`;
+                headerHtml += `<th>${attr.name}${badge}</th>`;
             });
-            headerHtml += '<th width="12%">결과</th></tr>';
+            headerHtml += '<th width="15%">결과</th></tr>';
             thead.innerHTML = headerHtml;
 
             // 테이블 바디 생성
@@ -3198,31 +3359,63 @@
 
             for (let i = 1; i <= samplesToDisplay; i++) {
                 const sample = existingSampleLines.find(s => s.sample_number === i);
+                const isFirstRow = (i === 1);
 
                 const row = document.createElement('tr');
 
-                // 표본 번호
-                let rowHtml = `<td class="text-center align-middle">#${i}</td>`;
-
-                // 증빙 내용
-                const evidence = sample?.evidence || '';
-                rowHtml += `
-                    <td class="align-middle">
-                        <textarea class="form-control form-control-sm"
-                               id="sample-evidence-${i}"
-                               placeholder="증빙 내용"
-                               rows="2"
-                               readonly>${evidence}</textarea>
-                    </td>`;
+                // 표본 번호 (첫 번째 행에 "설계" 배지 추가)
+                let rowHtml = `<td class="text-center align-middle">#${i}`;
+                if (isFirstRow && designSample) {
+                    rowHtml += ` <span class="badge bg-info ms-1" style="font-size: 0.7em;">설계</span>`;
+                }
+                rowHtml += `</td>`;
 
                 // Attribute 필드들
+                console.log(`[generateSampleLinesWithAttributes] Sample #${i}:`, sample);
+                console.log(`[generateSampleLinesWithAttributes] Sample attributes:`, sample?.attributes);
+
                 attributes.forEach(attr => {
-                    rowHtml += `
-                        <td class="align-middle">
-                            <input type="text" class="form-control form-control-sm"
-                                   id="sample-${i}-${attr.attribute}"
-                                   placeholder="${attr.name}">
-                        </td>`;
+                    let attrValue = sample?.attributes?.[attr.attribute] || '';
+                    console.log(`[generateSampleLinesWithAttributes] ${attr.attribute} value:`, attrValue);
+                    const isPopulation = attr.type === 'population';
+
+                    // 첫 번째 행 처리
+                    if (isFirstRow && designSample) {
+                        // 모집단 항목: 드롭다운으로 변경 (모집단 업로드된 데이터에서 선택)
+                        if (isPopulation) {
+                            rowHtml += `
+                                <td class="align-middle">
+                                    <input type="text" class="form-control form-control-sm"
+                                           id="sample-${i}-${attr.attribute}"
+                                           placeholder="${attr.name} (선택하세요)"
+                                           value="${attrValue}"
+                                           style="height: 31px;">
+                                </td>`;
+                        } else {
+                            // 증빙 항목: 설계평가 샘플 값으로 채우고 readonly
+                            const designValue = designSample?.attributes?.[attr.attribute] || '';
+                            rowHtml += `
+                                <td class="align-middle">
+                                    <input type="text" class="form-control form-control-sm"
+                                           id="sample-${i}-${attr.attribute}"
+                                           placeholder="${attr.name}"
+                                           value="${designValue}"
+                                           style="height: 31px;"
+                                           readonly>
+                                </td>`;
+                        }
+                    } else {
+                        // 나머지 행: 기존과 동일
+                        rowHtml += `
+                            <td class="align-middle">
+                                <input type="text" class="form-control form-control-sm"
+                                       id="sample-${i}-${attr.attribute}"
+                                       placeholder="${attr.name}"
+                                       value="${attrValue}"
+                                       style="height: 31px;"
+                                       ${isPopulation ? 'readonly' : ''}>
+                            </td>`;
+                    }
                 });
 
                 // 결과
@@ -3238,12 +3431,202 @@
 
                 row.innerHTML = rowHtml;
                 tbody.appendChild(row);
+
+                // HTML 삽입 후 JavaScript로 값 설정 (템플릿 리터럴에서 특수문자 처리 문제 방지)
+                attributes.forEach(attr => {
+                    let attrValue = sample?.attributes?.[attr.attribute] || '';
+
+                    // 첫 번째 행의 증빙 항목은 설계평가 값 사용
+                    if (isFirstRow && designSample && attr.type === 'evidence') {
+                        attrValue = designSample?.attributes?.[attr.attribute] || '';
+                    }
+
+                    const inputEl = document.getElementById(`sample-${i}-${attr.attribute}`);
+                    console.log(`[setValue] Sample #${i} ${attr.attribute}: value="${attrValue}", inputEl=`, inputEl);
+                    if (inputEl) {
+                        inputEl.value = attrValue;
+                        console.log(`[setValue] Set complete: "${attrValue}" -> actual value: "${inputEl.value}"`);
+                    } else {
+                        console.error(`[setValue] Input element not found: sample-${i}-${attr.attribute}`);
+                    }
+                });
+
+                // 결과 select 박스 값 복원
+                if (sample) {
+                    const resultEl = document.getElementById(`sample-result-${i}`);
+                    if (resultEl && sample.result) {
+                        resultEl.value = sample.result;
+                        console.log(`[setValue] Sample #${i} result: ${sample.result}`);
+                    }
+                }
             }
 
             // 전역 변수에 attribute 정보 저장 (저장 시 사용)
             window.currentAttributes = attributes;
 
-            console.log('[generateSampleLinesWithAttributes] 테이블 생성 완료');
+            console.log('[generateSampleLinesWithAttributes] 테이블 생성 완료 - 컨테이너 표시 시작');
+
+            // 평가 필드 영역 표시
+            const evaluationFields = document.getElementById('evaluation-fields');
+            if (evaluationFields) {
+                evaluationFields.style.display = 'block';
+                console.log('[generateSampleLinesWithAttributes] evaluation-fields displayed');
+            }
+
+            // 테이블 컨테이너 표시
+            const container = document.getElementById('sample-lines-container');
+            console.log('[generateSampleLinesWithAttributes] container found:', container);
+            if (container) {
+                console.log('[generateSampleLinesWithAttributes] Setting display to block');
+                container.style.display = 'block';
+                console.log('[generateSampleLinesWithAttributes] Display set, current style:', container.style.display);
+            } else {
+                console.log('[generateSampleLinesWithAttributes] ERROR: container not found!');
+            }
+
+            // 전체 결론 업데이트
+            updateOverallConclusion();
+
+            console.log('[generateSampleLinesWithAttributes] 완료 - v2025-12-02-14:02');
+        }
+
+        // ===================================================================
+        // 운영평가 이미지 업로드 관련 함수들
+        // ===================================================================
+
+        let currentOperationHeaderId = null;
+
+        // 운영평가 이미지 업로드
+        async function uploadOperationImage() {
+            const fileInput = document.getElementById('operationImageFile');
+            const files = fileInput.files;
+
+            if (files.length === 0) {
+                alert('업로드할 이미지를 선택하세요.');
+                return;
+            }
+
+            // header_id가 없으면 먼저 평가를 저장해야 함
+            if (!currentOperationHeaderId) {
+                alert('먼저 운영평가를 저장한 후 이미지를 업로드하세요.');
+                return;
+            }
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('rcm_id', currentRcmId);
+                formData.append('header_id', currentOperationHeaderId);
+                formData.append('control_code', currentControlCode);
+
+                try {
+                    const response = await fetch('/api/operation-evaluation/upload-image', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        console.log('이미지 업로드 성공:', data.filepath);
+                    } else {
+                        alert(`이미지 업로드 실패: ${data.message}`);
+                    }
+                } catch (error) {
+                    console.error('이미지 업로드 오류:', error);
+                    alert('이미지 업로드 중 오류가 발생했습니다.');
+                }
+            }
+
+            // 업로드 후 이미지 목록 새로고침
+            await loadOperationImages();
+
+            // 파일 입력 초기화
+            fileInput.value = '';
+            showSuccessToast('이미지가 업로드되었습니다.');
+        }
+
+        // 운영평가 이미지 목록 로드
+        async function loadOperationImages() {
+            if (!currentOperationHeaderId) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/operation-evaluation/images/${currentRcmId}/${currentOperationHeaderId}/${currentControlCode}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displayOperationImages(data.images);
+                }
+            } catch (error) {
+                console.error('이미지 목록 로드 오류:', error);
+            }
+        }
+
+        // 운영평가 이미지 표시
+        function displayOperationImages(images) {
+            const preview = document.getElementById('operationImagesPreview');
+
+            if (images.length === 0) {
+                preview.innerHTML = '<small class="text-muted">업로드된 이미지가 없습니다.</small>';
+                return;
+            }
+
+            preview.innerHTML = '';
+            images.forEach(img => {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'd-block position-relative mb-3';
+
+                const imgEl = document.createElement('img');
+                imgEl.src = img.url;
+                imgEl.className = 'img-thumbnail';
+                imgEl.style.maxWidth = '100%';
+                imgEl.style.height = 'auto';
+                imgEl.style.display = 'block';
+                imgEl.style.cursor = 'pointer';
+                imgEl.onclick = () => window.open(img.url, '_blank');
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-sm btn-danger position-absolute top-0 end-0 m-1';
+                deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteOperationImage(img.url.replace('/', '').replace('static/', 'static/'));
+                };
+
+                imgContainer.appendChild(imgEl);
+                imgContainer.appendChild(deleteBtn);
+                preview.appendChild(imgContainer);
+            });
+        }
+
+        // 운영평가 이미지 삭제
+        async function deleteOperationImage(filepath) {
+            if (!confirm('이 이미지를 삭제하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/operation-evaluation/delete-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ filepath })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showSuccessToast('이미지가 삭제되었습니다.');
+                    await loadOperationImages();
+                } else {
+                    alert(`삭제 실패: ${data.message}`);
+                }
+            } catch (error) {
+                console.error('이미지 삭제 오류:', error);
+                alert('이미지 삭제 중 오류가 발생했습니다.');
+            }
         }
     </script>
 </body>

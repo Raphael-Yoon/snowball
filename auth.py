@@ -753,7 +753,7 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
             # 핵심통제이면서 설계평가 결과가 'effective'(적정)인 통제만 조회
             # 설계평가 증빙도 함께 가져옴
             query = '''
-                SELECT DISTINCT d.*, l.evaluation_evidence, h.header_id
+                SELECT DISTINCT d.*, l.evaluation_evidence, l.design_comment, h.header_id
                 FROM sb_rcm_detail_v d
                 INNER JOIN sb_design_evaluation_header h ON d.rcm_id = h.rcm_id
                 INNER JOIN sb_design_evaluation_line l ON h.header_id = l.header_id AND d.control_code = l.control_code
@@ -1414,6 +1414,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                         exception_details = %s,
                         conclusion = %s,
                         improvement_plan = %s,
+                        review_comment = %s,
                         population_path = %s,
                         samples_path = %s,
                         test_results_path = %s,
@@ -1430,6 +1431,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     evaluation_data.get('exception_details'),
                     conclusion,
                     evaluation_data.get('improvement_plan'),
+                    evaluation_data.get('review_comment'),
                     evaluation_data.get('population_path'),
                     evaluation_data.get('samples_path'),
                     evaluation_data.get('test_results_path'),
@@ -1448,6 +1450,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                         exception_details = %s,
                         conclusion = %s,
                         improvement_plan = %s,
+                        review_comment = %s,
                         population_path = %s,
                         samples_path = %s,
                         test_results_path = %s,
@@ -1463,6 +1466,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     evaluation_data.get('exception_details'),
                     conclusion,
                     evaluation_data.get('improvement_plan'),
+                    evaluation_data.get('review_comment'),
                     evaluation_data.get('population_path'),
                     evaluation_data.get('samples_path'),
                     evaluation_data.get('test_results_path'),
@@ -1479,11 +1483,11 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                 cursor = conn.execute('''
                     INSERT INTO sb_operation_evaluation_line (
                         header_id, control_code, sample_size,
-                        exception_count, mitigating_factors, exception_details, conclusion, improvement_plan,
+                        exception_count, mitigating_factors, exception_details, conclusion, improvement_plan, review_comment,
                         population_path, samples_path, test_results_path, population_count,
                         no_occurrence, no_occurrence_reason,
                         evaluation_date, last_updated
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 ''', (
                     header_id, control_code,
                     evaluation_data.get('sample_size'),
@@ -1492,6 +1496,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     evaluation_data.get('exception_details'),
                     conclusion,
                     evaluation_data.get('improvement_plan'),
+                    evaluation_data.get('review_comment'),
                     evaluation_data.get('population_path'),
                     evaluation_data.get('samples_path'),
                     evaluation_data.get('test_results_path'),
@@ -1504,11 +1509,11 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                 cursor = conn.execute('''
                     INSERT INTO sb_operation_evaluation_line (
                         header_id, control_code, sample_size,
-                        exception_count, mitigating_factors, exception_details, conclusion, improvement_plan,
+                        exception_count, mitigating_factors, exception_details, conclusion, improvement_plan, review_comment,
                         population_path, samples_path, test_results_path, population_count,
                         no_occurrence, no_occurrence_reason,
                         last_updated
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ''', (
                     header_id, control_code,
                     evaluation_data.get('sample_size'),
@@ -1517,6 +1522,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
                     evaluation_data.get('exception_details'),
                     conclusion,
                     evaluation_data.get('improvement_plan'),
+                    evaluation_data.get('review_comment'),
                     evaluation_data.get('population_path'),
                     evaluation_data.get('samples_path'),
                     evaluation_data.get('test_results_path'),
@@ -1705,6 +1711,7 @@ def get_operation_evaluation_samples(line_id):
             for idx, sample in enumerate(samples):
                 evidence_preview = sample['evidence'][:50] + '...' if sample['evidence'] and len(sample['evidence']) > 50 else (sample['evidence'] or '없음')
                 print(f'  샘플 #{idx+1}: sample_id={sample["sample_id"]}, sample_number={sample["sample_number"]}, has_exception={sample["has_exception"]}, evidence={evidence_preview}')
+                print(f'    attributes: attr0={sample["attribute0"]}, attr1={sample["attribute1"]}, attr2={sample["attribute2"]}, attr3={sample["attribute3"]}')
         else:
             print(f'[SQL Result] 조회된 샘플이 없습니다.')
 
@@ -1712,6 +1719,7 @@ def get_operation_evaluation_samples(line_id):
         sample_lines = []
         for sample in samples:
             attributes = {f'attribute{i}': sample[f'attribute{i}'] for i in range(10) if sample[f'attribute{i}'] is not None}
+            print(f'[get_operation_evaluation_samples] Sample #{sample["sample_number"]} attributes dict: {attributes}')
             sample_lines.append({
                 'sample_number': sample['sample_number'],
                 'evidence': sample['evidence'],
@@ -1720,6 +1728,8 @@ def get_operation_evaluation_samples(line_id):
                 # 범용 속성 (sb_rcm_detail의 attribute 정의에 따라 동적으로 표시)
                 'attributes': attributes
             })
+
+        print(f'[get_operation_evaluation_samples] 반환할 sample_lines: {sample_lines}')
 
         return sample_lines
 
