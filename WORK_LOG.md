@@ -1,5 +1,40 @@
 # Snowball 프로젝트 작업 로그
 
+## 2025-12-02
+- **표본수 0 통제의 모집단 업로드 후 데이터 표시 버그 수정**
+  - 문제: 모집단 업로드 직후에는 데이터가 보이지만, 페이지 새로고침 후 평가 모달을 열면 데이터가 표시되지 않음
+  - 원인 분석:
+    1. 업로드 API: RCM detail에 정의된 모든 attributes를 반환하지 않고 실제 사용된 attributes만 반환
+    2. 조회 API: 동일한 문제 - 실제 사용된 attributes만 반환
+    3. 저장 함수: 잘못된 ID로 input 요소를 찾아서 빈 값으로 덮어씀 (`sample-attr0-1` 대신 `sample-1-attribute0` 사용해야 함)
+    4. 화면 표시: 부모 요소 `evaluation-fields`가 `display: none`으로 숨겨져 있음
+  - 수정 내용:
+    - **snowball_link7.py (업로드 API, 1983-2020줄)**:
+      - `for i in sorted(used_attributes)` → `for i in range(10)`로 변경
+      - RCM detail에 정의된 모든 attributes 반환 (이름이 없는 attribute는 skip)
+    - **snowball_link7.py (조회 API, 514-536줄)**:
+      - 동일하게 RCM detail에 정의된 모든 attributes 반환하도록 수정
+      - 샘플 데이터에서 사용된 attribute만 찾는 로직 제거
+    - **auth.py (get_operation_evaluation_samples, 1702-1726줄)**:
+      - 디버깅 로그 추가: attribute 값, attributes dict, 반환할 sample_lines 출력
+    - **link7_detail.jsp (저장 함수, 2306줄)**:
+      - attribute 수집 시 ID 수정: `sample-attr${attrIdx}-${i}` → `sample-${i}-attribute${attrIdx}`
+    - **link7_detail.jsp (generateSampleLinesWithAttributes, 3309-3320줄)**:
+      - HTML 삽입 후 JavaScript로 각 input의 value를 직접 설정 (템플릿 리터럴 특수문자 문제 방지)
+      - 디버깅 로그 추가: 설정하는 값과 실제 설정된 값 출력
+    - **link7_detail.jsp (generateSampleLinesWithAttributes, 3328-3333줄)**:
+      - `evaluation-fields` 요소를 `display: block`으로 설정 (부모 요소가 숨겨져서 테이블이 보이지 않던 문제 해결)
+  - 테스트 결과: 모집단 업로드 후 페이지 새로고침해도 데이터가 정상적으로 표시됨
+
+- **초기화 버튼 기능 개선**
+  - 문제: 초기화 버튼 클릭 시 데이터는 삭제되지만 메인 페이지의 평가 결과 배지가 "Effective"로 남아있음
+  - 수정: `resetPopulationUpload()` 함수에서 evaluated_controls 완전 삭제 및 평가 결과 배지를 "Not Evaluated"로 변경 (link7_detail.jsp:3181-3189)
+
+- **Attribute 처리 방식 문서화**
+  - `work_attribute.md` 파일 생성
+  - 모집단/증빙 항목 구분 로직, 데이터베이스 구조, API 처리 방식 등 상세 문서화
+  - 디버깅 팁 및 관련 파일 위치 정리
+
 ## 2025-12-01
 - **운영평가 엑셀 다운로드 기능 구현**
   - Backend: snowball_link7.py에 `/operation-evaluation/download` 엔드포인트 추가
@@ -12,13 +47,65 @@
     - Row 5~64: 샘플 데이터 (60개 준비, 표본수에 따라 행 삭제)
     - 사용하지 않는 컬럼 삭제 (attribute 개수에 따라)
     - Row 66: "Testing Table" 구분자 (행 삭제 후 위로 이동, 전체 행 색상 유지)
+    - 이미지 삽입 위치:
+      - 설계평가 이미지: "Testing Table" 구분자 2칸 아래 (예: 8행 구분자 → 10행)
+      - 운영평가 이미지: 설계평가 이미지 2칸 아래 (예: 10행 설계평가 → 12행 운영평가)
+      - 같은 종류의 이미지는 모두 같은 행에 삽입, 행 높이는 가장 큰 이미지에 맞춤
   - Population 시트: recommended_sample_size가 0이면 유지, 아니면 삭제
   - 시트 순서: 통제코드 시트(1), Testing Table(2), Population(3, 조건부)
   - Frontend: link7_detail.jsp 모달 푸터에 다운로드 버튼 추가
   - 파일명: `{control_code}_{evaluation_session}.xlsx`
   - Excel 오류 수정:
-    - 외부 링크 제거: `load_workbook(keep_links=False)`
+    - 외부 링크 제거: `load_workbook(keep_links=False)` + `wb._external_links = []`
     - 명명된 범위 제거: `wb.defined_names` 전체 삭제
+
+- **운영평가 이미지 업로드 기능 추가**
+  - Backend API (snowball_link7.py):
+    - `/api/operation-evaluation/upload-image`: 이미지 업로드
+    - `/api/operation-evaluation/images/<rcm_id>/<header_id>/<control_code>`: 이미지 목록 조회
+    - `/api/operation-evaluation/delete-image`: 이미지 삭제
+  - 저장 경로: `static/uploads/operation_evaluations/{rcm_id}/{header_id}/{control_code}/`
+  - Frontend (link7_detail.jsp):
+    - 운영평가 모달에 이미지 업로드 섹션 추가
+    - 파일 선택 후 업로드 버튼 클릭으로 업로드
+    - 업로드된 이미지 미리보기 (전체 너비, 썸네일 스타일)
+    - 이미지 클릭 시 원본 크기로 새 창에서 보기
+    - 각 이미지마다 삭제 버튼 제공
+  - JavaScript 함수:
+    - `uploadOperationImage()`: 이미지 업로드 (header_id 필요)
+    - `loadOperationImages()`: 이미지 목록 로드
+    - `displayOperationImages()`: 이미지 미리보기 표시
+    - `deleteOperationImage()`: 이미지 삭제
+  - 평가 저장 시 header_id를 evaluated_controls에 저장하여 이미지 업로드 가능하도록 함
+  - 엑셀 다운로드 시 설계평가 이미지와 함께 운영평가 이미지도 Testing Table에 삽입
+
+- **표본수 0 통제의 모집단 업로드 UI 표시 버그 수정**
+  - 문제: 표본수가 0인 통제에서 모집단 업로드 섹션이 표시되지 않는 문제
+  - 원인: `hasSavedData` 체크 로직이 `line_id` 존재 여부만으로 판단하여, 모집단을 업로드하지 않았어도 이전 저장 기록이 있으면 `hasSavedData=true`가 되어 모집단 업로드 UI가 숨겨짐
+  - 수정: 표본수 0인 경우 `sample_lines` 배열이 있는 경우에만 저장된 데이터로 간주하도록 로직 변경 (link7_detail.jsp:1144-1156)
+  - 표본수 0 통제:
+    - 모집단 업로드 전: `population-upload-section` 표시
+    - 모집단 업로드 후: `evaluation-fields` + 초기화 버튼 표시
+  - 일반 통제: 기존 로직 유지 (`line_id` 또는 `sample_lines` 존재 시 저장된 것으로 간주)
+
+- **표본수 0 통제의 모집단 데이터 엑셀 다운로드 포함**
+  - 업로드된 모집단 파일(`uploads/populations/{user_id}_{control_code}_*`)을 찾아서 Population 시트에 데이터 복사
+  - 파일 패턴 매칭으로 가장 최신 파일 사용 (glob.glob + max by mtime)
+  - Population 시트는 recommended_sample_size가 0인 경우에만 유지됨 (snowball_link7.py:2378-2424)
+
+- **모집단 업로드 후 표본 테이블에 모집단/증빙 항목 표시 기능 추가**
+  - 문제: 모집단 업로드 후 표본 테이블에 "문서번호1234", "234"만 표시되고 컬럼 헤더에 모집단/증빙 구분이 없음
+  - Backend (snowball_link7.py):
+    - `/api/operation-evaluation/upload-population`: 응답에 `attributes` 배열 추가 (필드 매핑에서 컬럼명 추출)
+    - `/api/operation-evaluation/samples/<line_id>`: 응답에 `attributes` 배열 추가 (RCM detail에서 조회)
+    - `population_attribute_count` 반환으로 모집단 항목 개수 전달 (1912-1937, 491-525줄)
+  - Frontend (link7_detail.jsp):
+    - 모집단 업로드 성공 시 `generateSampleLinesWithAttributes()` 호출 (3117-3123줄)
+    - 모달 열기/샘플 조회 시 attributes가 있으면 `generateSampleLinesWithAttributes()` 호출 (1338-1344줄)
+    - `generateSampleLinesWithAttributes()` 함수에서:
+      - 헤더에 모집단/증빙 배지 표시 (3227-3230줄)
+      - 샘플 데이터의 attributes 값을 input 필드에 채움 (3273줄)
+      - 모집단 항목은 readonly로 설정 (3281줄)
 
 ## 2025-11-28
 - **설계평가 "당기 발생사실 없음" 기능 추가**

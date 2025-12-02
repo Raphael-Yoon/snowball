@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session, send_file
-from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, get_key_rcm_details, save_operation_evaluation, get_operation_evaluations, get_operation_evaluation_samples, log_user_activity, get_db, is_design_evaluation_completed, get_completed_design_evaluation_sessions
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, get_key_rcm_details, save_operation_evaluation, get_operation_evaluations, get_operation_evaluation_samples, get_design_evaluation_sample, log_user_activity, get_db, is_design_evaluation_completed, get_completed_design_evaluation_sessions
 from snowball_link5 import get_user_info, is_logged_in
 import file_manager
 from control_config import get_control_config
@@ -488,9 +488,62 @@ def load_operation_evaluation_samples(line_id):
         # 샘플 데이터 조회
         sample_lines = get_operation_evaluation_samples(line_id)
 
+        # 설계평가 샘플 조회
+        design_sample = get_design_evaluation_sample(line_id)
+
+        # attributes 정의 조회 (RCM detail에서)
+        attributes = []
+        population_attribute_count = 0
+
+        with get_db() as conn:
+            # line_id로부터 control_code와 rcm_id 조회
+            line_detail = conn.execute('''
+                SELECT l.control_code, h.rcm_id
+                FROM sb_operation_evaluation_line l
+                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                WHERE l.line_id = %s
+            ''', (line_id,)).fetchone()
+
+            if line_detail:
+                # RCM detail에서 attribute 정의 조회
+                rcm_detail = conn.execute('''
+                    SELECT population_attribute_count,
+                           attribute0, attribute1, attribute2, attribute3, attribute4,
+                           attribute5, attribute6, attribute7, attribute8, attribute9
+                    FROM sb_rcm_detail
+                    WHERE rcm_id = %s AND control_code = %s
+                ''', (line_detail['rcm_id'], line_detail['control_code'])).fetchone()
+
+                if rcm_detail:
+                    population_attribute_count = rcm_detail['population_attribute_count'] or 0
+
+                    # attribute 정의 생성 (RCM detail에 정의된 모든 attributes 반환)
+                    for i in range(10):
+                        # RCM detail에서 attribute 이름 가져오기
+                        attr_name = rcm_detail[f'attribute{i}'] if rcm_detail[f'attribute{i}'] else None
+
+                        # 이름이 정의되지 않은 attribute는 skip
+                        if not attr_name:
+                            continue
+
+                        # population_attribute_count를 기준으로 모집단/증빙 구분
+                        if i < population_attribute_count:
+                            attr_type = 'population'
+                        else:
+                            attr_type = 'evidence'
+
+                        attributes.append({
+                            'attribute': f'attribute{i}',
+                            'name': attr_name,
+                            'type': attr_type
+                        })
+
         return jsonify({
             'success': True,
-            'samples': sample_lines
+            'samples': sample_lines,
+            'design_sample': design_sample,
+            'attributes': attributes,
+            'population_attribute_count': population_attribute_count
         })
 
     except Exception as e:
@@ -1909,12 +1962,60 @@ def upload_general_population():
 
             print(f"[upload_general_population] 반환할 sample_lines: {json.dumps(sample_lines, ensure_ascii=False, indent=2)}")
 
+            # RCM detail에서 attribute 정의 조회
+            rcm_detail = conn.execute('''
+                SELECT population_attribute_count,
+                       attribute0, attribute1, attribute2, attribute3, attribute4,
+                       attribute5, attribute6, attribute7, attribute8, attribute9
+                FROM sb_rcm_detail
+                WHERE rcm_id = %s AND control_code = %s
+            ''', (rcm_id, control_code)).fetchone()
+
+            population_attr_count = rcm_detail['population_attribute_count'] if rcm_detail and rcm_detail['population_attribute_count'] else 2
+            print(f"[upload_general_population] RCM detail population_attribute_count: {population_attr_count}")
+            print(f"[upload_general_population] RCM detail attributes: attribute0={rcm_detail['attribute0'] if rcm_detail else 'N/A'}, attribute1={rcm_detail['attribute1'] if rcm_detail else 'N/A'}, attribute2={rcm_detail['attribute2'] if rcm_detail else 'N/A'}, attribute3={rcm_detail['attribute3'] if rcm_detail else 'N/A'}")
+
+            # 샘플 데이터를 확인하여 실제 사용된 attribute 찾기
+            used_attributes = set()
+            for sample in saved_samples:
+                for i in range(10):
+                    if sample[f'attribute{i}'] is not None:
+                        used_attributes.add(i)
+
+            print(f"[upload_general_population] 사용된 attributes: {sorted(used_attributes)}")
+
+            # attribute 정의 생성 (RCM detail에 정의된 모든 attributes 반환)
+            attributes = []
+            for i in range(10):
+                # RCM detail에서 attribute 이름 가져오기
+                attr_name = rcm_detail[f'attribute{i}'] if rcm_detail else None
+
+                # 이름이 정의되지 않은 attribute는 skip
+                if not attr_name:
+                    continue
+
+                # population_attr_count를 기준으로 모집단/증빙 구분
+                if i < population_attr_count:
+                    attr_type = 'population'
+                else:
+                    attr_type = 'evidence'
+
+                attributes.append({
+                    'attribute': f'attribute{i}',
+                    'name': attr_name,
+                    'type': attr_type
+                })
+
+            print(f"[upload_general_population] attributes 생성 (population_count={population_attr_count}): {attributes}")
+
         return jsonify({
             'success': True,
             'population_count': population_count,
             'sample_size': sample_size,
             'line_id': line_id,
-            'sample_lines': sample_lines
+            'sample_lines': sample_lines,
+            'attributes': attributes,
+            'population_attribute_count': population_attr_count
         })
 
     except Exception as e:
@@ -2071,6 +2172,7 @@ def download_operation_evaluation():
                     l.exception_details,
                     l.conclusion,
                     l.improvement_plan,
+                    l.review_comment,
                     l.evaluation_date,
                     d.attribute0, d.attribute1, d.attribute2, d.attribute3, d.attribute4,
                     d.attribute5, d.attribute6, d.attribute7, d.attribute8, d.attribute9,
@@ -2112,6 +2214,30 @@ def download_operation_evaluation():
 
                     if os.path.exists(image_dir):
                         design_image_files = [os.path.join(image_dir, f) for f in os.listdir(image_dir) if os.path.isfile(os.path.join(image_dir, f))]
+
+            # 운영평가 이미지 조회 (파일 시스템에서)
+            operation_image_files = []
+            if evaluation:
+                # header_id 조회
+                op_header = conn.execute("""
+                    SELECT header_id
+                    FROM sb_operation_evaluation_header
+                    WHERE rcm_id = %s AND evaluation_session = %s
+                """, (rcm_id, evaluation_session)).fetchone()
+
+                if op_header:
+                    op_header_id = op_header['header_id']
+                    op_image_dir = os.path.join('static', 'uploads', 'operation_evaluations', str(rcm_id), str(op_header_id), control_code)
+                    print(f"[DEBUG] 운영평가 이미지 디렉토리: {op_image_dir}")
+                    print(f"[DEBUG] 디렉토리 존재 여부: {os.path.exists(op_image_dir)}")
+
+                    if os.path.exists(op_image_dir):
+                        operation_image_files = [os.path.join(op_image_dir, f) for f in os.listdir(op_image_dir) if os.path.isfile(os.path.join(op_image_dir, f))]
+                        print(f"[DEBUG] 운영평가 이미지 파일 수: {len(operation_image_files)}")
+                        for img_file in operation_image_files:
+                            print(f"[DEBUG]   - {img_file}")
+                else:
+                    print(f"[DEBUG] 운영평가 header를 찾을 수 없음 (rcm_id={rcm_id}, evaluation_session={evaluation_session})")
 
         if not evaluation:
             flash('다운로드할 운영평가 결과가 없습니다.', 'warning')
@@ -2158,9 +2284,23 @@ def download_operation_evaluation():
             row_height = min(row_height, 300)
             template_sheet.row_dimensions[12].height = row_height
 
-        # 운영평가 결론 (C13) - Effective, Ineffective 등
+        # 운영평가 의견 작성 (C13)
+        operation_review_comment = eval_dict.get('review_comment', '')
+        template_sheet['C13'] = operation_review_comment
+
+        # C13 셀의 행 높이 자동 조정 (텍스트 길이에 따라)
+        if operation_review_comment:
+            # 줄바꿈 개수 계산
+            line_count = operation_review_comment.count('\n') + 1
+            # 기본 행 높이(15) + 각 줄당 추가 높이(15)
+            row_height = 15 + (line_count * 15)
+            # 최대 높이 제한 (300)
+            row_height = min(row_height, 300)
+            template_sheet.row_dimensions[13].height = row_height
+
+        # 운영평가 결론 작성 (C14) - Effective, Ineffective 등
         operation_conclusion = eval_dict.get('conclusion', '')
-        template_sheet['C13'] = operation_conclusion
+        template_sheet['C14'] = operation_conclusion
 
         # Template 시트명을 통제코드로 변경
         template_sheet.title = control_code[:31]  # Excel 시트명 31자 제한
@@ -2273,14 +2413,20 @@ def download_operation_evaluation():
             if rows_to_delete > 0:
                 testing_table.delete_rows(first_row_to_delete, rows_to_delete)
 
+        # 행 삭제 후 "Testing Table" 구분자 행 위치 계산
+        # 원래 66번 행이 (66 - rows_to_delete)번으로 이동
+        if sample_size < 60 and rows_to_delete > 0:
+            testing_table_separator_row = 66 - rows_to_delete
+        else:
+            testing_table_separator_row = 66
+
+        # 이미지 삽입 시작 위치 초기화 (구분자 2칸 아래)
+        current_row = testing_table_separator_row + 2
+
         # 설계평가 이미지를 Testing Table 구분자 다음에 삽입
         if design_image_files:
             from openpyxl.drawing.image import Image as XLImage
 
-            # "Testing Table" 구분자는 샘플 행들 바로 다음에 위치 (5 + sample_size 행)
-            # 이미지는 그 다음 행부터 삽입
-            testing_table_separator_row = 5 + sample_size
-            current_row = testing_table_separator_row + 1
             for image_path in design_image_files:
                 if os.path.exists(image_path):
                     try:
@@ -2294,24 +2440,103 @@ def download_operation_evaluation():
                             xl_img.width = max_width
                             xl_img.height = int(xl_img.height * ratio)
 
-                        # 이미지 삽입
-                        xl_img.anchor = f'B{current_row}'
+                        # 이미지 삽입 (모든 설계평가 이미지는 같은 행에 삽입)
+                        design_img_row = testing_table_separator_row + 2
+                        xl_img.anchor = f'B{design_img_row}'
                         testing_table.add_image(xl_img)
 
-                        # 행 높이 조정
-                        testing_table.row_dimensions[current_row].height = (xl_img.height * 0.75) + 5
-
-                        # 다음 이미지는 현재 이미지 높이만큼 아래에 배치
-                        # 픽셀을 행 높이로 변환 (대략 1행 = 20픽셀)
-                        rows_needed = int(xl_img.height / 20) + 2
-                        current_row += rows_needed
+                        # 행 높이 조정 (가장 큰 이미지 높이로 설정)
+                        current_height = testing_table.row_dimensions[design_img_row].height or 0
+                        new_height = (xl_img.height * 0.75) + 5
+                        if new_height > current_height:
+                            testing_table.row_dimensions[design_img_row].height = new_height
 
                     except Exception as e:
-                        print(f"이미지 삽입 실패 ({image_path}): {e}")
+                        print(f"설계평가 이미지 삽입 실패 ({image_path}): {e}")
 
-        # Population 시트 삭제 (표준표본수가 0인 경우는 유지)
+        # 운영평가 이미지 삽입 (설계평가 바로 다음)
+        if operation_image_files:
+            from openpyxl.drawing.image import Image as XLImage
+
+            # 운영평가 이미지는 설계평가 이미지 다음 행 (설계평가 +0, 빈칸 +1, 운영평가 +2)
+            # 설계평가가 (separator + 2)에 있으므로, 운영평가는 (separator + 2 + 2) = separator + 4
+            if design_image_files:
+                operation_img_row = testing_table_separator_row + 4
+            else:
+                operation_img_row = testing_table_separator_row + 2
+
+            for image_path in operation_image_files:
+                if os.path.exists(image_path):
+                    try:
+                        # 이미지 객체 생성
+                        xl_img = XLImage(image_path)
+
+                        # 이미지 크기 조정 (최대 너비 400px)
+                        max_width = 400
+                        if xl_img.width > max_width:
+                            ratio = max_width / xl_img.width
+                            xl_img.width = max_width
+                            xl_img.height = int(xl_img.height * ratio)
+
+                        # 이미지 삽입 (모든 운영평가 이미지는 같은 행에 삽입)
+                        xl_img.anchor = f'B{operation_img_row}'
+                        testing_table.add_image(xl_img)
+
+                        # 행 높이 조정 (가장 큰 이미지 높이로 설정)
+                        current_height = testing_table.row_dimensions[operation_img_row].height or 0
+                        new_height = (xl_img.height * 0.75) + 5
+                        if new_height > current_height:
+                            testing_table.row_dimensions[operation_img_row].height = new_height
+
+                    except Exception as e:
+                        print(f"운영평가 이미지 삽입 실패 ({image_path}): {e}")
+
+        # Population 시트 처리
         recommended_sample_size = eval_dict.get('recommended_sample_size', 0)
-        if recommended_sample_size != 0 and 'Population' in wb.sheetnames:
+        if recommended_sample_size == 0 and 'Population' in wb.sheetnames:
+            # 표본수가 0인 경우: 업로드한 모집단 데이터를 Population 시트에 채움
+            population_sheet = wb['Population']
+
+            # 업로드한 모집단 파일 경로
+            upload_folder = os.path.join('uploads', 'populations')
+            population_file_pattern = f"{user_info['user_id']}_{control_code}_*"
+            population_files = []
+
+            if os.path.exists(upload_folder):
+                import glob
+                population_files = glob.glob(os.path.join(upload_folder, population_file_pattern))
+
+            if population_files:
+                # 가장 최근 파일 사용
+                population_file = max(population_files, key=os.path.getmtime)
+                print(f"[DEBUG] 모집단 파일 발견: {population_file}")
+
+                try:
+                    # 모집단 파일 읽기
+                    pop_wb = load_workbook(population_file, read_only=True)
+                    pop_ws = pop_wb.active
+
+                    # 헤더 복사 (1행)
+                    for col_idx, cell in enumerate(pop_ws[1], start=1):
+                        if cell.value:
+                            population_sheet.cell(row=1, column=col_idx, value=cell.value)
+
+                    # 데이터 복사 (2행부터)
+                    row_idx = 2
+                    for row in pop_ws.iter_rows(min_row=2, values_only=True):
+                        if any(cell is not None for cell in row):  # 빈 행이 아니면
+                            for col_idx, value in enumerate(row, start=1):
+                                population_sheet.cell(row=row_idx, column=col_idx, value=value)
+                            row_idx += 1
+
+                    pop_wb.close()
+                    print(f"[DEBUG] 모집단 데이터 복사 완료: {row_idx - 2}개 행")
+                except Exception as e:
+                    print(f"[ERROR] 모집단 파일 읽기 실패: {e}")
+            else:
+                print(f"[DEBUG] 모집단 파일을 찾을 수 없음: {population_file_pattern}")
+        elif recommended_sample_size != 0 and 'Population' in wb.sheetnames:
+            # 표본수가 0이 아닌 경우: Population 시트 삭제
             wb.remove(wb['Population'])
 
         # 시트 순서 조정: 통제명 시트를 가장 앞에, Testing Table을 두 번째로
@@ -2333,6 +2558,10 @@ def download_operation_evaluation():
             names_to_remove = list(wb.defined_names.keys())
             for name in names_to_remove:
                 del wb.defined_names[name]
+
+        # 외부 링크(external links) 제거
+        if hasattr(wb, '_external_links'):
+            wb._external_links = []
 
         # 임시 파일로 저장
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
@@ -2362,3 +2591,99 @@ def download_operation_evaluation():
         traceback.print_exc()
         flash(f'다운로드 중 오류가 발생했습니다: {str(e)}', 'error')
         return redirect(url_for('link7.user_operation_evaluation'))
+
+
+@bp_link7.route('/api/operation-evaluation/upload-image', methods=['POST'])
+@login_required
+def upload_operation_image():
+    """운영평가 이미지 업로드"""
+    try:
+        rcm_id = request.form.get('rcm_id')
+        header_id = request.form.get('header_id')
+        control_code = request.form.get('control_code')
+
+        if not all([rcm_id, header_id, control_code]):
+            return jsonify({'success': False, 'message': '필수 파라미터가 누락되었습니다.'}), 400
+
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': '파일이 없습니다.'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'message': '파일이 선택되지 않았습니다.'}), 400
+
+        # 파일 확장자 검증
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
+        file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        if file_ext not in allowed_extensions:
+            return jsonify({'success': False, 'message': '허용되지 않는 파일 형식입니다.'}), 400
+
+        # 저장 경로 생성
+        upload_dir = os.path.join('static', 'uploads', 'operation_evaluations', str(rcm_id), str(header_id), control_code)
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # 파일명 생성 (타임스탬프 포함)
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{timestamp}_{file.filename}"
+        filepath = os.path.join(upload_dir, filename)
+
+        # 파일 저장
+        file.save(filepath)
+
+        return jsonify({
+            'success': True,
+            'message': '이미지가 업로드되었습니다.',
+            'filepath': filepath.replace('\\', '/')
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'업로드 실패: {str(e)}'}), 500
+
+
+@bp_link7.route('/api/operation-evaluation/images/<int:rcm_id>/<int:header_id>/<control_code>')
+@login_required
+def get_operation_images(rcm_id, header_id, control_code):
+    """운영평가 이미지 목록 조회"""
+    try:
+        image_dir = os.path.join('static', 'uploads', 'operation_evaluations', str(rcm_id), str(header_id), control_code)
+
+        if not os.path.exists(image_dir):
+            return jsonify({'success': True, 'images': []})
+
+        images = []
+        for filename in os.listdir(image_dir):
+            if os.path.isfile(os.path.join(image_dir, filename)):
+                images.append({
+                    'filename': filename,
+                    'url': f'/{image_dir}/{filename}'.replace('\\', '/')
+                })
+
+        return jsonify({'success': True, 'images': images})
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp_link7.route('/api/operation-evaluation/delete-image', methods=['POST'])
+@login_required
+def delete_operation_image():
+    """운영평가 이미지 삭제"""
+    try:
+        data = request.get_json()
+        filepath = data.get('filepath')
+
+        if not filepath:
+            return jsonify({'success': False, 'message': '파일 경로가 없습니다.'}), 400
+
+        # 파일 존재 확인 및 삭제
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            return jsonify({'success': True, 'message': '이미지가 삭제되었습니다.'})
+        else:
+            return jsonify({'success': False, 'message': '파일을 찾을 수 없습니다.'}), 404
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
