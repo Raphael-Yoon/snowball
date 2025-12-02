@@ -2555,9 +2555,22 @@ def download_operation_evaluation():
 
         # 명명된 범위(defined names) 제거 (깨진 참조 방지)
         if hasattr(wb, 'defined_names'):
-            names_to_remove = list(wb.defined_names.keys())
-            for name in names_to_remove:
-                del wb.defined_names[name]
+            try:
+                # openpyxl 3.x 버전
+                names_to_remove = list(wb.defined_names.definedName)
+                for name in names_to_remove:
+                    del wb.defined_names[name.name]
+            except AttributeError:
+                # openpyxl 2.x 버전 또는 다른 구조
+                try:
+                    names_to_remove = [name for name in wb.defined_names]
+                    for name in names_to_remove:
+                        try:
+                            del wb.defined_names[name]
+                        except:
+                            pass
+                except:
+                    pass
 
         # 외부 링크(external links) 제거
         if hasattr(wb, '_external_links'):
