@@ -16,6 +16,10 @@ import os
 from datetime import datetime, timedelta
 import pymysql
 import sqlite3
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 # 필요한 권한 범위 설정
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
@@ -24,12 +28,13 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 # MySQL → SQLite 백업 설정
 # ============================================================================
 
-# MySQL 연결 정보
+# MySQL 연결 정보 (.env에서 로드)
 MYSQL_CONFIG = {
-    'host': 'localhost',
-    'user': 'your_username',      # 수정 필요
-    'password': 'your_password',  # 수정 필요
-    'database': 'snowball',
+    'host': os.getenv('MYSQL_HOST', 'localhost'),
+    'user': os.getenv('MYSQL_USER'),
+    'password': os.getenv('MYSQL_PASSWORD'),
+    'database': os.getenv('MYSQL_DATABASE'),
+    'port': int(os.getenv('MYSQL_PORT', 3306)),
     'charset': 'utf8mb4'
 }
 
