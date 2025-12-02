@@ -1176,15 +1176,15 @@ def update_evaluation_progress(conn, header_id):
         WHERE header_id = %s AND evaluation_date IS NOT NULL
     ''', (header_id,)).fetchone()
     
-    evaluated_count = result['evaluated_count']
-    
+    evaluated_count = result['evaluated_count'] if result and result['evaluated_count'] is not None else 0
+
     # 헤더 정보 조회
     header = conn.execute('''
         SELECT total_controls FROM sb_design_evaluation_header
         WHERE header_id = %s
     ''', (header_id,)).fetchone()
-    
-    total_controls = header['total_controls']
+
+    total_controls = header['total_controls'] if header and header['total_controls'] is not None else 0
     progress = (evaluated_count / total_controls * 100) if total_controls > 0 else 0
     status = 'COMPLETED' if progress >= 100 else 'IN_PROGRESS'
     
