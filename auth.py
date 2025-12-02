@@ -1574,15 +1574,15 @@ def update_operation_evaluation_progress(conn, header_id):
         WHERE header_id = %s AND conclusion IS NOT NULL AND conclusion != ''
     ''', (header_id,)).fetchone()
     
-    evaluated_count = result['evaluated_count'] if result else 0
-    
+    evaluated_count = result['evaluated_count'] if result and result['evaluated_count'] is not None else 0
+
     # 헤더 정보 조회
     header = conn.execute('''
         SELECT total_controls FROM sb_operation_evaluation_header
         WHERE header_id = %s
     ''', (header_id,)).fetchone()
-    
-    total_controls = header['total_controls'] if header and header['total_controls'] else 0
+
+    total_controls = header['total_controls'] if header and header['total_controls'] is not None else 0
     
     # total_controls가 0이면 설계평가에서 운영평가 대상 통제 수를 계산
     if total_controls == 0:
@@ -1609,8 +1609,8 @@ def update_operation_evaluation_progress(conn, header_id):
                   AND (d.key_control = 'Y' OR d.key_control = '핵심' OR d.key_control = 'KEY')
                   AND del.overall_effectiveness = 'effective'
             ''', (rcm_id, rcm_id, design_session)).fetchone()
-            
-            total_controls = total_result['total'] if total_result else 0
+
+            total_controls = total_result['total'] if total_result and total_result['total'] is not None else 0
     
     progress = (evaluated_count / total_controls * 100) if total_controls > 0 else 0
     status = 'COMPLETED' if progress >= 100 and total_controls > 0 else 'IN_PROGRESS'
