@@ -387,7 +387,7 @@ def save_operation_evaluation_api():
                 WHERE rcm_id = %s AND control_code = %s
             ''', (rcm_id, control_code)).fetchone()
 
-        recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail else 0
+        recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail and rcm_detail['recommended_sample_size'] is not None else 0
 
         # 표본 크기 유효성 검사 (no_occurrence가 아닌 경우에만)
         is_no_occurrence = evaluation_data.get('no_occurrence', False)
