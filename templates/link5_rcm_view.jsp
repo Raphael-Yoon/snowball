@@ -404,7 +404,7 @@
                         <input type="number"
                                class="form-control form-control-sm"
                                id="population-attr-count"
-                               min="1"
+                               min="0"
                                max="10"
                                value="2"
                                style="width: 100px;"
@@ -811,7 +811,8 @@
                         // population_attribute_count 로드
                         const popCountInput = document.getElementById('population-attr-count');
                         if (popCountInput) {
-                            popCountInput.value = data.population_attribute_count || 2;
+                            // 0도 유효한 값이므로 null/undefined만 체크
+                            popCountInput.value = data.population_attribute_count !== null && data.population_attribute_count !== undefined ? data.population_attribute_count : 2;
                         }
                     } else {
                         console.error('Failed to load attributes:', data.message);
@@ -840,7 +841,14 @@
 
             // population_attribute_count 수집
             const popCountInput = document.getElementById('population-attr-count');
-            const populationAttributeCount = popCountInput ? parseInt(popCountInput.value) : 2;
+            let populationAttributeCount = popCountInput ? parseInt(popCountInput.value) : 2;
+
+            // 유효하지 않은 값(NaN, 음수) 체크 - 0은 허용 (자동통제의 경우 모집단 없음)
+            if (isNaN(populationAttributeCount) || populationAttributeCount < 0) {
+                console.warn('[saveAttributes] Invalid population_attribute_count:', popCountInput?.value, 'Using default: 2');
+                populationAttributeCount = 2;
+            }
+            console.log('[saveAttributes] population_attribute_count:', populationAttributeCount);
 
             // 서버에 저장
             fetch(`/api/rcm/detail/${currentDetailId}/attributes`, {

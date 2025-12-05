@@ -213,25 +213,38 @@ def get_design_evaluation_api():
         with get_db() as conn:
             design_eval = conn.execute('''
                 SELECT
+                    l.line_id,
                     l.description_adequacy,
                     l.improvement_suggestion,
-                    l.overall_effectiveness as conclusion,
+                    l.overall_effectiveness,
                     l.evaluation_evidence,
                     l.evaluation_rationale,
                     l.recommended_actions,
+                    l.design_comment,
                     l.evaluation_date,
                     l.no_occurrence,
-                    l.no_occurrence_reason
+                    l.no_occurrence_reason,
+                    h.header_id
                 FROM sb_design_evaluation_line l
                 JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
                 WHERE h.rcm_id = %s AND h.evaluation_session = %s AND l.control_code = %s
             ''', (rcm_id, design_evaluation_session, control_code)).fetchone()
 
             if design_eval:
+                # 이미지 DB에서 조회
+                images = conn.execute('''
+                    SELECT image_id, file_path, file_name, file_size, uploaded_at
+                    FROM sb_evaluation_image
+                    WHERE evaluation_type = %s AND line_id = %s
+                    ORDER BY uploaded_at
+                ''', ('design', design_eval['line_id'])).fetchall()
+
                 return jsonify({
                     'success': True,
+                    'evaluation': dict(design_eval),
+                    'images': [dict(img) for img in images],
                     'design_evaluation': {
-                        'conclusion': design_eval['conclusion'],
+                        'conclusion': design_eval['overall_effectiveness'],
                         'deficiency_details': design_eval['improvement_suggestion'],
                         'improvement_plan': design_eval['recommended_actions'],
                         'test_procedure': design_eval['evaluation_rationale'],
@@ -349,19 +362,50 @@ def save_design_evaluation_api():
                     # 파일 저장
                     file_path = os.path.join(upload_dir, safe_filename)
                     image_file.save(file_path)
-                    
+
                     # 상대 경로로 저장 (DB 저장용)
-                    relative_path = f"uploads/design_evaluations/{rcm_id}/{header_id}/{control_code}/{safe_filename}"
-                    saved_images.append(relative_path)
-            
-            # 평가 데이터에 이미지 경로 추가
-            if 'images' not in evaluation_data:
-                evaluation_data['images'] = []
-            evaluation_data['images'].extend(saved_images)
-        
+                    relative_path = f"static/uploads/design_evaluations/{rcm_id}/{header_id}/{control_code}/{safe_filename}"
+
+                    # 파일 크기
+                    file_size = os.path.getsize(file_path)
+
+                    saved_images.append({
+                        'path': relative_path,
+                        'name': safe_filename,
+                        'size': file_size
+                    })
+
         # 설계평가 결과 저장
-        
         save_design_evaluation(rcm_id, control_code, user_info['user_id'], evaluation_data, evaluation_session)
+
+        # 이미지를 DB에 저장
+        if saved_images:
+            with get_db() as conn:
+                # line_id 조회
+                line_record = conn.execute('''
+                    SELECT l.line_id FROM sb_design_evaluation_line l
+                    JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
+                    WHERE h.rcm_id = %s AND h.evaluation_session = %s AND l.control_code = %s
+                ''', (rcm_id, evaluation_session, control_code)).fetchone()
+
+                if line_record:
+                    line_id = line_record['line_id']
+
+                    for img_info in saved_images:
+                        # 중복 체크
+                        existing = conn.execute('''
+                            SELECT image_id FROM sb_evaluation_image
+                            WHERE evaluation_type = %s AND line_id = %s AND file_path = %s
+                        ''', ('design', line_id, img_info['path'])).fetchone()
+
+                        if not existing:
+                            conn.execute('''
+                                INSERT INTO sb_evaluation_image
+                                (evaluation_type, line_id, file_path, file_name, file_size, uploaded_at)
+                                VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                            ''', ('design', line_id, img_info['path'], img_info['name'], img_info['size']))
+
+                    conn.commit()
         
         
         # 활동 로그 기록
@@ -555,18 +599,38 @@ def load_evaluation_data_api(rcm_id):
                     pass
 
             if current_header_id:
-                image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(current_header_id), control_code)
-                
-                if os.path.exists(image_dir):
-                    for filename in os.listdir(image_dir):
-                        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
-                            relative_path = f"uploads/design_evaluations/{rcm_id}/{current_header_id}/{control_code}/{filename}"
+                # DB에서 이미지 정보 조회
+                images_found = False
+                try:
+                    # line_id 조회
+                    line_result = conn.execute('''
+                        SELECT line_id FROM sb_design_evaluation_line
+                        WHERE header_id = %s AND control_code = %s
+                    ''', (current_header_id, control_code)).fetchone()
+
+                    if line_result:
+                        images = conn.execute('''
+                            SELECT file_path, file_name
+                            FROM sb_evaluation_image
+                            WHERE evaluation_type = %s AND line_id = %s
+                            ORDER BY uploaded_at
+                        ''', ('design', line_result['line_id'])).fetchall()
+
+                        for img in images:
+                            # file_path는 이미 "static/uploads/..."로 시작
+                            # static/ 제거하여 상대 경로로 변환
+                            relative_path = img['file_path'].replace('static/', '', 1) if img['file_path'].startswith('static/') else img['file_path']
                             saved_images.append({
-                                'filename': filename,
+                                'filename': img['file_name'],
                                 'path': relative_path,
                                 'url': f"/static/{relative_path}"
                             })
-                else:
+                            images_found = True
+                except Exception as e:
+                    pass
+
+                # DB에 이미지가 없으면 파일 시스템에서 폴백 검색
+                if not images_found:
                     # 다른 header_id로 시도해보기
                     base_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id))
                     if os.path.exists(base_dir):
@@ -1089,13 +1153,27 @@ def download_evaluation_excel(rcm_id):
                         effectiveness = eval_result['overall_effectiveness'] or ''
                         header_id = eval_result['header_id']
                         
-                        # 파일 시스템에서 이미지 경로 찾기
+                        # DB에서 이미지 경로 찾기
                         images_info = ''
-                        image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(header_id), control_code)
-                        if os.path.exists(image_dir):
-                            image_files = [f for f in os.listdir(image_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
-                            if image_files:
-                                images_info = json.dumps([{'file': f, 'path': os.path.join(image_dir, f)} for f in image_files])
+                        try:
+                            # line_id 조회
+                            line_result = conn.execute('''
+                                SELECT line_id FROM sb_design_evaluation_line
+                                WHERE header_id = %s AND control_code = %s
+                            ''', (header_id, control_code)).fetchone()
+
+                            if line_result:
+                                images = conn.execute('''
+                                    SELECT file_path, file_name
+                                    FROM sb_evaluation_image
+                                    WHERE evaluation_type = %s AND line_id = %s
+                                    ORDER BY uploaded_at
+                                ''', ('design', line_result['line_id'])).fetchall()
+
+                                if images:
+                                    images_info = json.dumps([{'file': img['file_name'], 'path': img['file_path']} for img in images])
+                        except Exception as e:
+                            pass
                         
                         evaluation_data[control_code] = {
                             'evidence': evidence,
@@ -1676,6 +1754,7 @@ def download_design_evaluation():
             # 설계평가 결과 조회 (RCM attribute 메타 정보 포함)
             evaluations = conn.execute('''
                 SELECT
+                    l.line_id,
                     l.control_code,
                     rd.control_name,
                     rd.control_description,
@@ -1744,8 +1823,53 @@ def download_design_evaluation():
                 row_height = min(row_height, 300)
                 new_sheet.row_dimensions[11].height = row_height
 
+            # RCM attribute 메타 정보 수집 (C12, C13에서 공통 사용)
+            attributes_dict = {}
+            for i in range(10):
+                attr_key = f'attribute{i}'
+                attr_value = eval_dict.get(attr_key)
+                if attr_value:  # None이 아닌 경우만 저장
+                    attributes_dict[attr_key] = attr_value
+
+            population_count = eval_dict.get('population_attribute_count', 2)
+            evaluation_evidence_json = eval_dict.get('evaluation_evidence', '')
+
             # 설계 평가 코멘트 (C12)
             design_comment = eval_dict.get('design_comment', '')
+
+            # 설계평가 샘플의 증빙 항목을 검토 결과에 추가
+            line_id = eval_dict.get('line_id')
+            if line_id:
+                # 설계평가 샘플 조회
+                with get_db() as conn2:
+                    samples = conn2.execute('''
+                        SELECT sample_id, sample_number,
+                               attribute0, attribute1, attribute2, attribute3, attribute4,
+                               attribute5, attribute6, attribute7, attribute8, attribute9
+                        FROM sb_evaluation_sample
+                        WHERE line_id = %s AND evaluation_type = 'design'
+                        ORDER BY sample_number
+                        LIMIT 1
+                    ''', (line_id,)).fetchall()
+
+                    if samples and len(samples) > 0:
+                        sample = dict(samples[0])
+                        # 증빙 항목 (population_count부터) 수집
+                        attribute_lines = []
+                        for i in range(population_count, 10):
+                            attr_key = f'attribute{i}'
+                            attr_name = attributes_dict.get(attr_key)
+                            attr_value = sample.get(attr_key, '')
+
+                            if attr_name and attr_value:
+                                attribute_lines.append(f'{attr_name}: {attr_value}')
+
+                        # 검토 결과에 attribute 값 추가
+                        if attribute_lines:
+                            if design_comment:
+                                design_comment += '\n\n'
+                            design_comment += '\n'.join(attribute_lines)
+
             new_sheet['C12'] = design_comment
 
             # C12 셀의 행 높이 자동 조정
@@ -1756,17 +1880,6 @@ def download_design_evaluation():
                 new_sheet.row_dimensions[12].height = row_height
 
             # 증빙 내용 (C13) - 포맷팅된 텍스트
-            evaluation_evidence_json = eval_dict.get('evaluation_evidence', '')
-
-            # RCM attribute 메타 정보 수집
-            attributes_dict = {}
-            for i in range(10):
-                attr_key = f'attribute{i}'
-                attr_value = eval_dict.get(attr_key)
-                if attr_value:  # None이 아닌 경우만 저장
-                    attributes_dict[attr_key] = attr_value
-
-            population_count = eval_dict.get('population_attribute_count', 2)
 
             # 증빙 데이터 포맷팅 (컬럼명:증빙명 형식)
             formatted_evidence, evidence_line_count = format_evidence_for_excel(
@@ -1799,42 +1912,57 @@ def download_design_evaluation():
 
                 if header:
                     header_id = header['header_id']
-                    image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(header_id), control_code)
 
-                    if os.path.exists(image_dir):
-                        image_files = [f for f in os.listdir(image_dir) if os.path.isfile(os.path.join(image_dir, f))]
-                        if image_files:
-                            # C14 셀부터 이미지 삽입
-                            row_offset = 14  # C14부터 시작
-                            for idx, image_file in enumerate(image_files):
-                                image_path = os.path.join(image_dir, image_file)
-                                cell_position = f'C{row_offset + idx}'
-                                try:
-                                    # 이미지 객체 생성
-                                    img = OpenpyxlImage(image_path)
-                                    # 이미지 크기 조정 (너비 280px로 제한하여 셀보다 작게)
-                                    max_width = 280
-                                    if img.width > max_width:
-                                        ratio = max_width / img.width
-                                        img.width = max_width
-                                        img.height = int(img.height * ratio)
-                                    else:
-                                        # 원본이 280px보다 작으면 90%로 축소
-                                        img.width = int(img.width * 0.9)
-                                        img.height = int(img.height * 0.9)
-                                    # 이미지를 C14, C15, C16... 위치에 삽입
-                                    new_sheet.add_image(img, cell_position)
-                                    # 행 높이 조정 (이미지 높이보다 약간 크게 여백 추가)
-                                    new_sheet.row_dimensions[row_offset + idx].height = (img.height * 0.75) + 5
-                                    image_count += 1
-                                    print(f"이미지 삽입 성공: {image_file} -> {cell_position}")
-                                except Exception as e:
-                                    print(f"이미지 삽입 오류 ({image_file}): {e}")
-                                    import traceback
-                                    traceback.print_exc()
-                                    # 오류 발생 시 파일명만 표시
-                                    new_sheet[cell_position] = image_file
-                                    image_count += 1
+                    # DB에서 이미지 정보 조회
+                    try:
+                        # line_id 조회
+                        line_result = conn.execute('''
+                            SELECT line_id FROM sb_design_evaluation_line
+                            WHERE header_id = %s AND control_code = %s
+                        ''', (header_id, control_code)).fetchone()
+
+                        if line_result:
+                            images = conn.execute('''
+                                SELECT file_path, file_name
+                                FROM sb_evaluation_image
+                                WHERE evaluation_type = %s AND line_id = %s
+                                ORDER BY uploaded_at
+                            ''', ('design', line_result['line_id'])).fetchall()
+
+                            if images:
+                                # C14 셀부터 이미지 삽입
+                                row_offset = 14  # C14부터 시작
+                                for idx, img_data in enumerate(images):
+                                    image_path = img_data['file_path']
+                                    cell_position = f'C{row_offset + idx}'
+                                    try:
+                                        # 이미지 객체 생성
+                                        img = OpenpyxlImage(image_path)
+                                        # 이미지 크기 조정 (너비 280px로 제한하여 셀보다 작게)
+                                        max_width = 280
+                                        if img.width > max_width:
+                                            ratio = max_width / img.width
+                                            img.width = max_width
+                                            img.height = int(img.height * ratio)
+                                        else:
+                                            # 원본이 280px보다 작으면 90%로 축소
+                                            img.width = int(img.width * 0.9)
+                                            img.height = int(img.height * 0.9)
+                                        # 이미지를 C14, C15, C16... 위치에 삽입
+                                        new_sheet.add_image(img, cell_position)
+                                        # 행 높이 조정 (이미지 높이보다 약간 크게 여백 추가)
+                                        new_sheet.row_dimensions[row_offset + idx].height = (img.height * 0.75) + 5
+                                        image_count += 1
+                                        print(f"이미지 삽입 성공: {img_data['file_name']} -> {cell_position}")
+                                    except Exception as e:
+                                        print(f"이미지 삽입 오류 ({img_data['file_name']}): {e}")
+                                        import traceback
+                                        traceback.print_exc()
+                                        # 오류 발생 시 파일명만 표시
+                                        new_sheet[cell_position] = img_data['file_name']
+                                        image_count += 1
+                    except Exception as e:
+                        print(f"이미지 조회 오류: {e}")
 
             # 결론 (이미지 이후 행)
             conclusion_row = 15 if image_count == 0 else 14 + image_count

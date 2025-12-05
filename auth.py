@@ -191,6 +191,46 @@ def get_db():
 # 데이터베이스 초기화는 마이그레이션 시스템을 사용하세요:
 #   python migrate.py upgrade
 
+def get_lookup_name(lookup_type, lookup_code):
+    """
+    sb_lookup 테이블에서 lookup_name 조회
+
+    Args:
+        lookup_type: lookup 타입 (예: 'evaluation_status', 'control_frequency')
+        lookup_code: lookup 코드 (예: '0', 'N', 'D')
+
+    Returns:
+        lookup_name 문자열, 없으면 None
+    """
+    with get_db() as conn:
+        result = conn.execute('''
+            SELECT lookup_name
+            FROM sb_lookup
+            WHERE lookup_type = %s AND lookup_code = %s
+        ''', (lookup_type, str(lookup_code))).fetchone()
+
+        return result['lookup_name'] if result else None
+
+def get_lookup_dict(lookup_type):
+    """
+    sb_lookup 테이블에서 특정 타입의 모든 lookup을 딕셔너리로 반환
+
+    Args:
+        lookup_type: lookup 타입
+
+    Returns:
+        {lookup_code: lookup_name} 형태의 딕셔너리
+    """
+    with get_db() as conn:
+        results = conn.execute('''
+            SELECT lookup_code, lookup_name
+            FROM sb_lookup
+            WHERE lookup_type = %s
+            ORDER BY lookup_code
+        ''', (lookup_type,)).fetchall()
+
+        return {row['lookup_code']: row['lookup_name'] for row in results}
+
 def generate_otp():
     """6자리 OTP 코드 생성"""
     return ''.join(random.choices(string.digits, k=6))
@@ -602,7 +642,63 @@ def get_user_rcms(user_id, control_category=None):
                              r.upload_date DESC
                 ''', (user_id,)).fetchall()
 
-        return [dict(rcm) for rcm in rcms]
+        # 각 RCM의 평가 상태 정보 추가
+        rcm_list = [dict(rcm) for rcm in rcms]
+        for rcm in rcm_list:
+            rcm_id = rcm['rcm_id']
+
+            # 최신 설계평가와 운영평가 상태 조회
+            design_eval = conn.execute('''
+                SELECT evaluation_session, status, progress
+                FROM sb_evaluation_header
+                WHERE rcm_id = %s AND evaluation_session NOT LIKE 'OP_%%'
+                ORDER BY last_updated DESC
+                LIMIT 1
+            ''', (rcm_id,)).fetchone()
+
+            operation_eval = conn.execute('''
+                SELECT evaluation_session, status, progress
+                FROM sb_evaluation_header
+                WHERE rcm_id = %s AND evaluation_session LIKE 'OP_%%'
+                ORDER BY last_updated DESC
+                LIMIT 1
+            ''', (rcm_id,)).fetchone()
+
+            # 평가 상태 판단
+            # 0 - 설계 시작
+            # 1 - 설계 계속
+            # 2 - 운영 시작
+            # 3 - 운영 계속
+            # 4 - 완료
+
+            if operation_eval:
+                if operation_eval['status'] == 'COMPLETED':
+                    rcm['evaluation_status'] = 4
+                else:
+                    if operation_eval['progress'] > 0:
+                        rcm['evaluation_status'] = 3
+                    else:
+                        rcm['evaluation_status'] = 2
+                rcm['evaluation_session'] = operation_eval['evaluation_session']
+            elif design_eval:
+                if design_eval['status'] == 'COMPLETED':
+                    # 설계평가는 완료됐지만 운영평가가 없음
+                    rcm['evaluation_status'] = 2
+                else:
+                    if design_eval['progress'] > 0:
+                        rcm['evaluation_status'] = 1
+                    else:
+                        rcm['evaluation_status'] = 0
+                rcm['evaluation_session'] = design_eval['evaluation_session']
+            else:
+                # 평가 기록이 없음
+                rcm['evaluation_status'] = 0
+                rcm['evaluation_session'] = '-'
+
+            # sb_lookup에서 evaluation_status_text 조회
+            rcm['evaluation_status_text'] = get_lookup_name('evaluation_status', str(rcm['evaluation_status'])) or '설계 시작'
+
+        return rcm_list
 
 def get_rcm_info(rcm_id):
     """RCM 기본 정보 조회"""
@@ -988,6 +1084,7 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                     evaluation_rationale = %s, design_comment = %s,
                     recommended_actions = %s,
                     no_occurrence = %s, no_occurrence_reason = %s,
+                    evaluation_evidence = %s,
                     evaluation_date = CURRENT_TIMESTAMP, last_updated = CURRENT_TIMESTAMP
                 WHERE line_id = %s
             '''
@@ -1000,6 +1097,7 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 evaluation_data.get('recommended_actions'),
                 1 if evaluation_data.get('no_occurrence') else 0,
                 evaluation_data.get('no_occurrence_reason'),
+                evaluation_data.get('evaluation_evidence'),
                 line_id
             )
 
@@ -1027,8 +1125,9 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                     evaluation_rationale, design_comment,
                     recommended_actions,
                     no_occurrence, no_occurrence_reason,
+                    evaluation_evidence,
                     evaluation_date, last_updated
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             '''
             insert_params = (
                 header_id, control_code, control_sequence,
@@ -1039,7 +1138,8 @@ def save_design_evaluation(rcm_id, control_code, user_id, evaluation_data, evalu
                 evaluation_data.get('design_comment'),
                 evaluation_data.get('recommended_actions'),
                 1 if evaluation_data.get('no_occurrence') else 0,
-                evaluation_data.get('no_occurrence_reason')
+                evaluation_data.get('no_occurrence_reason'),
+                evaluation_data.get('evaluation_evidence')
             )
 
             cursor = conn.execute(insert_query, insert_params)
@@ -1329,7 +1429,11 @@ def get_user_evaluation_sessions(rcm_id, user_id):
         sessions = conn.execute('''
             SELECT h.header_id, h.evaluation_session, h.start_date, h.last_updated,
                    h.evaluated_controls, h.total_controls, h.progress_percentage,
-                   h.evaluation_status, h.completed_date
+                   h.evaluation_status, h.completed_date,
+                   CASE WHEN EXISTS (
+                       SELECT 1 FROM sb_operation_evaluation_header oh
+                       WHERE oh.rcm_id = h.rcm_id AND oh.design_evaluation_session = h.evaluation_session
+                   ) THEN 1 ELSE 0 END as has_operation_evaluation
             FROM sb_design_evaluation_header h
             WHERE h.rcm_id = %s
             ORDER BY h.start_date DESC
@@ -1379,6 +1483,8 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
 
     # sample_lines 데이터 추출
     sample_lines = evaluation_data.get('sample_lines', [])
+    print(f"[DEBUG save_operation_evaluation] sample_lines from evaluation_data: {sample_lines}")
+    print(f"[DEBUG save_operation_evaluation] sample_lines count: {len(sample_lines) if sample_lines else 0}")
 
     # 하위 호환성: sample_details도 확인
     if not sample_lines:
@@ -1386,6 +1492,7 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
         if sample_details_json:
             try:
                 sample_lines = json.loads(sample_details_json) if isinstance(sample_details_json, str) else sample_details_json
+                print(f"[DEBUG save_operation_evaluation] sample_lines from sample_details: {sample_lines}")
             except:
                 sample_lines = []
 
@@ -1533,12 +1640,15 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
             line_id = cursor.lastrowid
 
         # Sample 데이터 저장 (새 테이블 구조)
+        print(f"[DEBUG save_operation_evaluation] Saving samples - sample_lines: {len(sample_lines) if sample_lines else 0}, line_id: {line_id}")
         if sample_lines and line_id:
             # 기존 운영평가 샘플 데이터만 삭제 (설계평가 샘플은 보존)
             conn.execute('DELETE FROM sb_evaluation_sample WHERE line_id = %s AND evaluation_type = %s', (line_id, 'operation'))
+            print(f"[DEBUG save_operation_evaluation] Deleted existing operation samples for line_id: {line_id}")
 
             # 새 샘플 데이터 삽입 (evaluation_type='operation')
-            for sample in sample_lines:
+            for idx, sample in enumerate(sample_lines):
+                print(f"[DEBUG save_operation_evaluation] Inserting sample #{idx+1}: result={sample.get('result')}, mitigation={sample.get('mitigation', '')[:50]}")
                 attributes = sample.get('attributes', {})
                 conn.execute('''
                     INSERT INTO sb_evaluation_sample (
@@ -1564,6 +1674,16 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
         update_operation_evaluation_progress(conn, header_id)
 
         conn.commit()
+
+        # 저장 후 확인 로그
+        print(f"[DEBUG save_operation_evaluation] 저장 완료! line_id={line_id}")
+        saved_line = conn.execute('''
+            SELECT * FROM sb_operation_evaluation_line WHERE line_id = %s
+        ''', (line_id,)).fetchone()
+        if saved_line:
+            print(f"[DEBUG save_operation_evaluation] 저장된 데이터 확인: control_code={saved_line['control_code']}, sample_size={saved_line['sample_size']}, conclusion={saved_line['conclusion'][:50] if saved_line['conclusion'] else 'None'}")
+        else:
+            print(f"[DEBUG save_operation_evaluation] 경고: line_id={line_id} 데이터를 찾을 수 없음!")
 
 def update_operation_evaluation_progress(conn, header_id):
     """운영평가 진행률 업데이트"""
@@ -1655,14 +1775,14 @@ def get_operation_evaluations(rcm_id, user_id, evaluation_session, design_evalua
     with get_db() as conn:
         if design_evaluation_session:
             # 특정 설계평가 세션에 대한 운영평가 조회
-            query = '''SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session FROM sb_operation_evaluation_line l JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s AND h.design_evaluation_session = %s ORDER BY l.control_sequence, l.control_code'''
+            query = '''SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session FROM sb_operation_evaluation_line l JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s AND h.design_evaluation_session = %s ORDER BY l.control_code'''
             params = (rcm_id, user_id, evaluation_session, design_evaluation_session)
             print(f'[SQL] {query}')
             print(f'[PARAMS] {params}')
             evaluations = conn.execute(query, params).fetchall()
         else:
             # 운영평가 세션만으로 조회 (기존 호환성)
-            query = '''SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session FROM sb_operation_evaluation_line l JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s ORDER BY l.control_sequence, l.control_code'''
+            query = '''SELECT l.*, h.design_evaluation_session, h.evaluation_session as operation_evaluation_session FROM sb_operation_evaluation_line l JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s ORDER BY l.control_code'''
             params = (rcm_id, user_id, evaluation_session)
             print(f'[SQL] {query}')
             print(f'[PARAMS] {params}')
@@ -1673,6 +1793,7 @@ def get_operation_evaluations(rcm_id, user_id, evaluation_session, design_evalua
         result = []
         for eval in evaluations:
             eval_dict = dict(eval)
+            print(f"[DEBUG get_operation_evaluations] control_code={eval_dict.get('control_code')}, sample_size={eval_dict.get('sample_size')}, conclusion={eval_dict.get('conclusion')[:50] if eval_dict.get('conclusion') else 'None'}")
 
             # 샘플 데이터는 평가 버튼 클릭 시에만 별도 API로 조회
             # 페이지 로드 시에는 line 정보만 반환
@@ -1690,13 +1811,12 @@ def get_operation_evaluation_samples(line_id):
 
     with get_db() as conn:
         # 실제 실행될 SQL 쿼리 출력 (파라미터 바인딩 포함)
-        # 운영평가 샘플만 조회 (evaluation_type='operation')
         sample_query = '''
             SELECT sample_id, sample_number, evidence, has_exception, mitigation,
                    attribute0, attribute1, attribute2, attribute3, attribute4,
                    attribute5, attribute6, attribute7, attribute8, attribute9
             FROM sb_evaluation_sample
-            WHERE line_id = %s AND evaluation_type = 'operation'
+            WHERE line_id = %s
             ORDER BY sample_number
         '''
         # 쿼리를 한 줄로 변환하여 출력
