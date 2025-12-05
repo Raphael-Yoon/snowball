@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
-from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, save_operation_evaluation, get_operation_evaluations, count_design_evaluations, count_operation_evaluations, log_user_activity, initialize_standard_controls, get_standard_controls, save_rcm_standard_mapping, get_rcm_standard_mappings, get_rcm_detail_mappings, evaluate_rcm_completeness, save_rcm_review_result, get_rcm_review_result, save_rcm_mapping, delete_rcm_mapping, save_rcm_ai_review, get_control_review_result, save_control_review_result, get_db, clear_rcm_completion, has_rcm_access
+from auth import login_required, get_current_user, get_user_rcms, get_rcm_details, save_rcm_details, save_design_evaluation, get_design_evaluations, get_design_evaluations_by_header_id, save_operation_evaluation, get_operation_evaluations, count_design_evaluations, count_operation_evaluations, log_user_activity, initialize_standard_controls, get_standard_controls, save_rcm_standard_mapping, get_rcm_standard_mappings, get_rcm_detail_mappings, evaluate_rcm_completeness, save_rcm_review_result, get_rcm_review_result, save_rcm_mapping, delete_rcm_mapping, save_rcm_ai_review, get_control_review_result, save_control_review_result, get_db, clear_rcm_completion, has_rcm_access, get_lookup_name, get_lookup_dict
 import os
 import json
 from openai import OpenAI
@@ -91,82 +91,31 @@ def user_rcm():
     """사용자 RCM 조회 페이지 - 카테고리별 분류"""
     user_info = get_user_info()
 
-    # 사용자가 접근 권한을 가진 RCM 목록 조회
+    # 사용자가 접근 권한을 가진 RCM 목록 조회 (평가 상태 포함)
     all_rcms = get_user_rcms(user_info['user_id'])
 
-    # 각 RCM의 설계평가 및 운영평가 상태 조회
-    with get_db() as conn:
-        for rcm in all_rcms:
-            # 설계평가 상태 확인
-            design_eval = conn.execute('''
-                SELECT evaluation_session, evaluation_status
-                FROM sb_design_evaluation_header
-                WHERE rcm_id = %s AND user_id = %s
-                ORDER BY start_date DESC
-                LIMIT 1
-            ''', (rcm['rcm_id'], user_info['user_id'])).fetchone()
+    # sb_lookup에서 evaluation_status 버튼 레이블 조회
+    status_labels = get_lookup_dict('evaluation_status')
+    # lookup_code를 정수로 변환
+    status_labels = {int(k): v for k, v in status_labels.items()}
 
-            # 운영평가 상태 확인
-            operation_eval = conn.execute('''
-                SELECT evaluation_session, design_evaluation_session
-                FROM sb_operation_evaluation_header
-                WHERE rcm_id = %s AND user_id = %s
-                ORDER BY evaluation_session DESC
-                LIMIT 1
-            ''', (rcm['rcm_id'], user_info['user_id'])).fetchone()
+    # evaluation_status에 따른 액션 버튼 매핑 (URL과 스타일만 정의)
+    status_actions = {
+        0: {'type': 'start_design', 'url': '/user/design-evaluation', 'class': 'btn-primary'},
+        1: {'type': 'continue_design', 'url': '/user/design-evaluation', 'class': 'btn-warning'},
+        2: {'type': 'start_operation', 'url': '/user/operation-evaluation', 'class': 'btn-success'},
+        3: {'type': 'continue_operation', 'url': '/user/operation-evaluation', 'class': 'btn-info'},
+        4: {'type': 'completed', 'url': '/user/design-evaluation', 'class': 'btn-secondary'}
+    }
 
-            # 설계평가 상태 설정
-            if design_eval:
-                rcm['design_status'] = design_eval['evaluation_status']
-                rcm['design_session'] = design_eval['evaluation_session']
-            else:
-                rcm['design_status'] = 'NONE'
-                rcm['design_session'] = None
+    for rcm in all_rcms:
+        eval_status = rcm.get('evaluation_status', 0)
+        action = status_actions.get(eval_status, status_actions[0])
 
-            # 운영평가 상태 설정
-            if operation_eval:
-                rcm['operation_status'] = 'IN_PROGRESS'  # 운영평가 존재
-                rcm['operation_session'] = operation_eval['evaluation_session']
-            else:
-                rcm['operation_status'] = 'NONE'
-                rcm['operation_session'] = None
-
-            # 관리 컬럼 버튼 결정
-            # 1. 설계평가 없음, 운영평가 없음 -> 설계평가 시작
-            if rcm['design_status'] == 'NONE' and rcm['operation_status'] == 'NONE':
-                rcm['action_type'] = 'start_design'
-                rcm['action_label'] = '설계 시작'
-                rcm['action_url'] = f"/user/design-evaluation?rcm_id={rcm['rcm_id']}"
-                rcm['action_class'] = 'btn-primary'
-
-            # 2. 설계평가 진행중, 운영평가 없음 -> 설계평가 계속
-            elif rcm['design_status'] == 'IN_PROGRESS' and rcm['operation_status'] == 'NONE':
-                rcm['action_type'] = 'continue_design'
-                rcm['action_label'] = '설계 계속'
-                rcm['action_url'] = f"/user/design-evaluation?rcm_id={rcm['rcm_id']}"
-                rcm['action_class'] = 'btn-warning'
-
-            # 3. 설계평가 완료, 운영평가 없음 -> 운영평가 시작
-            elif rcm['design_status'] == 'COMPLETED' and rcm['operation_status'] == 'NONE':
-                rcm['action_type'] = 'start_operation'
-                rcm['action_label'] = '운영 시작'
-                rcm['action_url'] = f"/user/operation-evaluation?rcm_id={rcm['rcm_id']}"
-                rcm['action_class'] = 'btn-success'
-
-            # 4. 설계평가 완료, 운영평가 진행중 -> 운영평가 계속
-            elif rcm['design_status'] == 'COMPLETED' and rcm['operation_status'] == 'IN_PROGRESS':
-                rcm['action_type'] = 'continue_operation'
-                rcm['action_label'] = '운영 계속'
-                rcm['action_url'] = f"/user/operation-evaluation?rcm_id={rcm['rcm_id']}"
-                rcm['action_class'] = 'btn-info'
-
-            # 5. 설계평가 완료, 운영평가 완료 -> 설계평가 시작 (새 세션)
-            # 또는 기타 상태
-            else:
-                rcm['action_type'] = 'start_design'
-                rcm['action_label'] = '설계 시작'
-                rcm['action_url'] = f"/user/design-evaluation?rcm_id={rcm['rcm_id']}"
-                rcm['action_class'] = 'btn-primary'
+        rcm['action_type'] = action['type']
+        rcm['action_label'] = status_labels.get(eval_status, '설계 시작')  # sb_lookup에서 가져온 레이블 사용
+        rcm['action_url'] = f"{action['url']}?rcm_id={rcm['rcm_id']}"
+        rcm['action_class'] = action['class']
 
     # 카테고리별로 분류
     rcms_by_category = {
@@ -1861,8 +1810,10 @@ def save_rcm_detail_attributes(detail_id):
     """RCM 통제의 attribute 설정 저장"""
     try:
         data = request.get_json()
+        print(f'[DEBUG save_rcm_detail_attributes] Received data: {data}')
         attributes = data.get('attributes', {})
         population_attribute_count = data.get('population_attribute_count', 2)
+        print(f'[DEBUG save_rcm_detail_attributes] detail_id: {detail_id}, population_attribute_count: {population_attribute_count}, attributes: {attributes}')
 
         db = get_db()
         # DatabaseConnection 객체의 _is_mysql 속성 사용

@@ -236,6 +236,7 @@ def user_operation_evaluation_rcm():
 
     # 기존 운영평가 내역 불러오기 (Header-Line 구조)
     print("[DEBUG] Loading existing evaluations...")
+    print(f"[DEBUG] get_operation_evaluations 호출 파라미터: rcm_id={rcm_id}, user_id={user_info['user_id']}, operation_evaluation_session={operation_evaluation_session}, design_evaluation_session={design_evaluation_session}")
     try:
         evaluations = get_operation_evaluations(rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)
 
@@ -389,9 +390,10 @@ def save_operation_evaluation_api():
 
         recommended_size = rcm_detail['recommended_sample_size'] if rcm_detail and rcm_detail['recommended_sample_size'] is not None else 0
 
-        # 표본 크기 유효성 검사 (no_occurrence가 아닌 경우에만)
+        # 표본 크기 유효성 검사 (no_occurrence가 아니고, 설계평가 대체가 아닌 경우에만)
         is_no_occurrence = evaluation_data.get('no_occurrence', False)
-        if not is_no_occurrence and recommended_size > 0:
+        use_design_evaluation = evaluation_data.get('use_design_evaluation', False)
+        if not is_no_occurrence and not use_design_evaluation and recommended_size > 0:
             submitted_sample_size = evaluation_data.get('sample_size')
             if submitted_sample_size is not None:
                 submitted_sample_size = int(submitted_sample_size)
@@ -2134,6 +2136,9 @@ def download_operation_evaluation():
         flash('RCM ID, 운영평가 세션, 설계평가 세션, 통제번호가 필요합니다.', 'error')
         return redirect(url_for('link7.user_operation_evaluation'))
 
+    # 자동통제 여부 확인
+    is_auto_control = (evaluation_session == 'AUTO')
+
     try:
         # 템플릿 파일 경로
         template_path = os.path.join(os.path.dirname(__file__), 'paper_templates', 'Template_Manual.xlsx')
@@ -2158,39 +2163,98 @@ def download_operation_evaluation():
                 return redirect(url_for('link7.user_operation_evaluation'))
 
             # 운영평가 결과 조회 (해당 통제 1개만)
-            evaluation = conn.execute("""
-                SELECT
-                    l.line_id,
-                    l.control_code,
-                    rd.control_name,
-                    rd.control_description,
-                    rd.control_frequency,
-                    rd.control_type,
-                    rd.control_nature,
-                    l.sample_size,
-                    l.exception_count,
-                    l.exception_details,
-                    l.conclusion,
-                    l.improvement_plan,
-                    l.review_comment,
-                    l.evaluation_date,
-                    d.attribute0, d.attribute1, d.attribute2, d.attribute3, d.attribute4,
-                    d.attribute5, d.attribute6, d.attribute7, d.attribute8, d.attribute9,
-                    d.population_attribute_count,
-                    d.recommended_sample_size
-                FROM sb_operation_evaluation_line l
-                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
-                JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
-                JOIN sb_rcm_detail d ON d.rcm_id = h.rcm_id AND d.control_code = l.control_code
-                WHERE h.rcm_id = %s
-                  AND h.evaluation_session = %s
-                  AND h.design_evaluation_session = %s
-                  AND l.control_code = %s
-            """, (rcm_id, evaluation_session, design_evaluation_session, control_code)).fetchone()
+            # 자동통제인 경우에도 저장된 운영평가 데이터가 있으면 사용
+            if is_auto_control:
+                # 먼저 저장된 운영평가 데이터 찾기 (design_evaluation_session으로 연결)
+                evaluation = conn.execute("""
+                    SELECT
+                        l.line_id,
+                        l.control_code,
+                        rd.control_name,
+                        rd.control_description,
+                        rd.control_frequency,
+                        rd.control_type,
+                        rd.control_nature,
+                        l.sample_size,
+                        l.exception_count,
+                        l.exception_details,
+                        l.conclusion,
+                        l.improvement_plan,
+                        l.review_comment,
+                        l.evaluation_date,
+                        d.attribute0, d.attribute1, d.attribute2, d.attribute3, d.attribute4,
+                        d.attribute5, d.attribute6, d.attribute7, d.attribute8, d.attribute9,
+                        d.population_attribute_count,
+                        d.recommended_sample_size
+                    FROM sb_operation_evaluation_line l
+                    JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                    JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
+                    JOIN sb_rcm_detail d ON d.rcm_id = h.rcm_id AND d.control_code = l.control_code
+                    WHERE h.rcm_id = %s
+                      AND h.design_evaluation_session = %s
+                      AND l.control_code = %s
+                """, (rcm_id, design_evaluation_session, control_code)).fetchone()
 
-            # 설계평가 결과 조회 (design_comment 및 line_id 가져오기)
+                # 저장된 데이터가 없으면 RCM 정보만 가져오기
+                if not evaluation:
+                    evaluation = conn.execute("""
+                        SELECT
+                            NULL as line_id,
+                            d.control_code,
+                            rd.control_name,
+                            rd.control_description,
+                            rd.control_frequency,
+                            rd.control_type,
+                            rd.control_nature,
+                            0 as sample_size,
+                            0 as exception_count,
+                            NULL as exception_details,
+                            NULL as conclusion,
+                            NULL as improvement_plan,
+                            NULL as review_comment,
+                            NULL as evaluation_date,
+                            d.attribute0, d.attribute1, d.attribute2, d.attribute3, d.attribute4,
+                            d.attribute5, d.attribute6, d.attribute7, d.attribute8, d.attribute9,
+                            d.population_attribute_count,
+                            d.recommended_sample_size
+                        FROM sb_rcm_detail d
+                        JOIN sb_rcm_detail_v rd ON d.rcm_id = rd.rcm_id AND d.control_code = rd.control_code
+                        WHERE d.rcm_id = %s AND d.control_code = %s
+                    """, (rcm_id, control_code)).fetchone()
+            else:
+                evaluation = conn.execute("""
+                    SELECT
+                        l.line_id,
+                        l.control_code,
+                        rd.control_name,
+                        rd.control_description,
+                        rd.control_frequency,
+                        rd.control_type,
+                        rd.control_nature,
+                        l.sample_size,
+                        l.exception_count,
+                        l.exception_details,
+                        l.conclusion,
+                        l.improvement_plan,
+                        l.review_comment,
+                        l.evaluation_date,
+                        d.attribute0, d.attribute1, d.attribute2, d.attribute3, d.attribute4,
+                        d.attribute5, d.attribute6, d.attribute7, d.attribute8, d.attribute9,
+                        d.population_attribute_count,
+                        d.recommended_sample_size
+                    FROM sb_operation_evaluation_line l
+                    JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                    JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
+                    JOIN sb_rcm_detail d ON d.rcm_id = h.rcm_id AND d.control_code = l.control_code
+                    WHERE h.rcm_id = %s
+                      AND h.evaluation_session = %s
+                      AND h.design_evaluation_session = %s
+                      AND l.control_code = %s
+                """, (rcm_id, evaluation_session, design_evaluation_session, control_code)).fetchone()
+
+            # 설계평가 결과 조회 (design_comment, evaluation_evidence 및 line_id 가져오기)
             design_evaluation = conn.execute("""
-                SELECT l.design_comment, l.line_id
+                SELECT l.design_comment, l.line_id, l.evaluation_evidence
                 FROM sb_design_evaluation_line l
                 JOIN sb_design_evaluation_header h ON l.header_id = h.header_id
                 WHERE h.rcm_id = %s
@@ -2198,46 +2262,58 @@ def download_operation_evaluation():
                   AND l.control_code = %s
             """, (rcm_id, design_evaluation_session, control_code)).fetchone()
 
-            # 설계평가 이미지 조회 (파일 시스템에서)
+            # 설계평가 이미지 조회 (DB에서)
             design_image_files = []
             if design_evaluation:
-                # header_id 조회
-                header = conn.execute("""
-                    SELECT header_id
-                    FROM sb_design_evaluation_header
-                    WHERE rcm_id = %s AND evaluation_session = %s
-                """, (rcm_id, design_evaluation_session)).fetchone()
+                # line_id 조회
+                line_result = conn.execute("""
+                    SELECT line_id
+                    FROM sb_design_evaluation_line
+                    WHERE header_id = (
+                        SELECT header_id
+                        FROM sb_design_evaluation_header
+                        WHERE rcm_id = %s AND evaluation_session = %s
+                    ) AND control_code = %s
+                """, (rcm_id, design_evaluation_session, control_code)).fetchone()
 
-                if header:
-                    header_id = header['header_id']
-                    image_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(header_id), control_code)
+                if line_result:
+                    images = conn.execute("""
+                        SELECT file_path
+                        FROM sb_evaluation_image
+                        WHERE evaluation_type = %s AND line_id = %s
+                        ORDER BY uploaded_at
+                    """, ('design', line_result['line_id'])).fetchall()
 
-                    if os.path.exists(image_dir):
-                        design_image_files = [os.path.join(image_dir, f) for f in os.listdir(image_dir) if os.path.isfile(os.path.join(image_dir, f))]
+                    design_image_files = [img['file_path'] for img in images]
 
-            # 운영평가 이미지 조회 (파일 시스템에서)
+            # 운영평가 이미지 조회 (DB에서) - 자동통제는 건너뜀
             operation_image_files = []
-            if evaluation:
-                # header_id 조회
-                op_header = conn.execute("""
-                    SELECT header_id
-                    FROM sb_operation_evaluation_header
-                    WHERE rcm_id = %s AND evaluation_session = %s
-                """, (rcm_id, evaluation_session)).fetchone()
+            if evaluation and not is_auto_control:
+                # line_id 조회
+                op_line_result = conn.execute("""
+                    SELECT line_id
+                    FROM sb_operation_evaluation_line
+                    WHERE header_id = (
+                        SELECT header_id
+                        FROM sb_operation_evaluation_header
+                        WHERE rcm_id = %s AND evaluation_session = %s
+                    ) AND control_code = %s
+                """, (rcm_id, evaluation_session, control_code)).fetchone()
 
-                if op_header:
-                    op_header_id = op_header['header_id']
-                    op_image_dir = os.path.join('static', 'uploads', 'operation_evaluations', str(rcm_id), str(op_header_id), control_code)
-                    print(f"[DEBUG] 운영평가 이미지 디렉토리: {op_image_dir}")
-                    print(f"[DEBUG] 디렉토리 존재 여부: {os.path.exists(op_image_dir)}")
+                if op_line_result:
+                    op_images = conn.execute("""
+                        SELECT file_path
+                        FROM sb_evaluation_image
+                        WHERE evaluation_type = %s AND line_id = %s
+                        ORDER BY uploaded_at
+                    """, ('operation', op_line_result['line_id'])).fetchall()
 
-                    if os.path.exists(op_image_dir):
-                        operation_image_files = [os.path.join(op_image_dir, f) for f in os.listdir(op_image_dir) if os.path.isfile(os.path.join(op_image_dir, f))]
-                        print(f"[DEBUG] 운영평가 이미지 파일 수: {len(operation_image_files)}")
-                        for img_file in operation_image_files:
-                            print(f"[DEBUG]   - {img_file}")
+                    operation_image_files = [img['file_path'] for img in op_images]
+                    print(f"[DEBUG] 운영평가 이미지 파일 수: {len(operation_image_files)}")
+                    for img_file in operation_image_files:
+                        print(f"[DEBUG]   - {img_file}")
                 else:
-                    print(f"[DEBUG] 운영평가 header를 찾을 수 없음 (rcm_id={rcm_id}, evaluation_session={evaluation_session})")
+                    print(f"[DEBUG] 운영평가 line을 찾을 수 없음 (rcm_id={rcm_id}, evaluation_session={evaluation_session}, control_code={control_code})")
 
         if not evaluation:
             flash('다운로드할 운영평가 결과가 없습니다.', 'warning')
@@ -2268,7 +2344,18 @@ def download_operation_evaluation():
         template_sheet['C10'] = eval_dict.get('control_type', '')
 
         # 통제 설명 (C11)
-        template_sheet['C11'] = eval_dict.get('control_description', '')
+        control_description = eval_dict.get('control_description', '')
+        template_sheet['C11'] = control_description
+
+        # C11 셀의 행 높이 자동 조정 (텍스트 길이에 따라)
+        if control_description:
+            # 줄바꿈 개수 계산
+            line_count = control_description.count('\n') + 1
+            # 기본 행 높이(15) + 각 줄당 추가 높이(15)
+            row_height = 15 + (line_count * 15)
+            # 최대 높이 제한 (300)
+            row_height = min(row_height, 300)
+            template_sheet.row_dimensions[11].height = row_height
 
         # 설계평가 검토 결과 (C12)
         design_comment = design_eval_dict.get('design_comment', '')
@@ -2331,9 +2418,11 @@ def download_operation_evaluation():
         for i, name in evidence_attributes:
             print(f"  attribute{i}: {name}")
 
-        # 템플릿에 이미 C4~L4(10개 컬럼)과 5~64행(60개 샘플)이 준비되어 있음
-        # 1. C4~L4에 헤더를 채우고 사용하지 않는 컬럼 삭제
-        # 2. 5~64행에 샘플 데이터를 채우고 사용하지 않는 행 삭제
+        # 템플릿 구조:
+        # - C~L(3~12): Attribute0~9 (10개)
+        # - M(13): 결론
+        # - N(14): 천고사항/비고
+        # 작업: 사용하는 attribute만 헤더 작성하고, 사용안하는 attribute 컬럼 삭제
 
         from openpyxl.styles import PatternFill
         yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
@@ -2358,25 +2447,84 @@ def download_operation_evaluation():
             cell.fill = green_fill
             current_col += 1
 
-        # 사용하지 않는 컬럼 삭제 (L열=12번 컬럼까지 준비되어 있음)
-        # 결론, 비고는 템플릿에 이미 있으므로 추가 작성 불필요
-        # current_col: 모집단 + 증빙 사용한 마지막 컬럼 + 1
-        # current_col부터 12까지 삭제 (결론/비고 컬럼도 템플릿에 있으므로)
-        print(f"[DEBUG] current_col after evidence: {current_col}")
+        # 사용하지 않는 attribute 컬럼 삭제 (current_col부터 12번까지)
+        # 13번(M)은 결론, 14번(N)은 천고사항/비고 - 템플릿 그대로 유지
+        print(f"[DEBUG] Attributes end at column: {current_col - 1}")
         if current_col <= 12:
             cols_to_delete = 12 - current_col + 1
-            print(f"[DEBUG] Deleting columns from {current_col} to 12 (count: {cols_to_delete})")
+            print(f"[DEBUG] Deleting unused attribute columns from {current_col} to 12 (count: {cols_to_delete})")
             testing_table.delete_cols(current_col, cols_to_delete)
+
+            # 컬럼 삭제 후 3번 행의 "Detailed Testing Table" 병합 복원
+            # 삭제 후 마지막 컬럼은 current_col + 1 (결론 + 비고)
+            last_col = current_col + 1
+            from openpyxl.utils import get_column_letter
+            merge_range = f'B3:{get_column_letter(last_col)}3'
+            testing_table.merge_cells(merge_range)
+            print(f"[DEBUG] Re-merged row 3: {merge_range}")
+
+            # 삭제 후 결론 컬럼 위치는 current_col이 됨 (M열이 앞으로 당겨짐)
+            conclusion_col = current_col
         else:
-            print(f"[DEBUG] No columns to delete (current_col={current_col} > 12)")
+            # attribute가 10개 모두 사용되는 경우
+            conclusion_col = 13  # M열
+            print(f"[DEBUG] All attribute columns used, conclusion at column 13")
+
+        # 자동통제인 경우 처리
+        print(f"[DEBUG] is_auto_control={is_auto_control}, population_count={population_count}, evidence_attributes_count={len(evidence_attributes)}")
+        if is_auto_control:
+            # attribute가 하나도 없으면 Testing Table 전체 삭제
+            if population_count == 0 and len(evidence_attributes) == 0:
+                print(f"[DEBUG] 자동통제 - attribute 없음, Testing Table 전체 삭제")
+                # Testing Table 시트 전체를 삭제하는 대신, 필요한 행만 남기고 나머지 삭제
+                # 1~2행(설명), 3행(제목) 유지, 4행 이후 삭제
+                testing_table.delete_rows(3, 100)  # 3번 행부터 100개 행 삭제
+            else:
+                print(f"[DEBUG] 자동통제 - 설계평가 샘플 데이터에서 증빙 값 조회")
+                # 설계평가 샘플 데이터 조회 (sb_evaluation_sample에서)
+                evidence_data = {}
+                if design_eval_dict.get('line_id'):
+                    design_line_id = design_eval_dict['line_id']
+                    print(f"[DEBUG] 설계평가 line_id: {design_line_id}")
+
+                    design_sample = conn.execute("""
+                        SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
+                               attribute5, attribute6, attribute7, attribute8, attribute9
+                        FROM sb_evaluation_sample
+                        WHERE line_id = %s AND evaluation_type = 'design'
+                        LIMIT 1
+                    """, (design_line_id,)).fetchone()
+
+                    if design_sample:
+                        evidence_data = dict(design_sample)
+                        print(f"[DEBUG] 조회된 설계평가 샘플 데이터: {evidence_data}")
+                    else:
+                        print(f"[DEBUG] 설계평가 샘플 데이터 없음")
+
+                # 5번 행에 설계평가 증빙 값 표시
+                testing_table.cell(row=5, column=2, value=1)  # No.
+
+                # 증빙 attribute 값들을 해당 컬럼에 표시
+                col = 3
+                for i, attr_name in evidence_attributes:
+                    attr_key = f'attribute{i}'
+                    attr_value = evidence_data.get(attr_key, '')
+                    print(f"[DEBUG] attribute{i} ({attr_name}) = '{attr_value}' -> 컬럼 {col}")
+                    testing_table.cell(row=5, column=col, value=attr_value)
+                    col += 1
+
+                # 결론 컬럼
+                conclusion_value = 'Effective' if eval_dict.get('conclusion') == 'effective' else 'See Comments'
+                print(f"[DEBUG] 결론 '{conclusion_value}' -> 컬럼 {conclusion_col}")
+                testing_table.cell(row=5, column=conclusion_col, value=conclusion_value)
 
         # B열에 순번 작성 (1, 2, 3, ...)
         if sample_size > 0:
             for i in range(sample_size):
                 testing_table.cell(row=5 + i, column=2, value=i + 1)  # B열 = column 2
 
-        # 샘플 데이터 입력 (5행부터)
-        if line_id:
+        # 샘플 데이터 입력 (5행부터) - 자동통제는 건너뜀
+        if line_id and not is_auto_control:
             samples = get_operation_evaluation_samples(line_id)
             if samples:
                 for row_idx, sample in enumerate(samples, start=5):
@@ -2396,6 +2544,17 @@ def download_operation_evaluation():
                         attr_value = sample_attributes.get(attr_key, '')
                         testing_table.cell(row=row_idx, column=col, value=attr_value)
                         col += 1
+
+                    # 결과(결론) 데이터 - 저장된 결론 컬럼 위치에 작성
+                    # result: 'exception' -> 'Exception', 'no_exception' -> 'No Exception'
+                    result = sample.get('result', 'no_exception')
+                    result_text = 'Exception' if result == 'exception' else 'No Exception'
+                    testing_table.cell(row=row_idx, column=conclusion_col, value=result_text)
+
+                    # 경감요소(비고) 데이터 - 결론 다음 컬럼에 작성
+                    mitigation = sample.get('mitigation', '')
+                    if mitigation:
+                        testing_table.cell(row=row_idx, column=conclusion_col + 1, value=mitigation)
 
         # 66번 행("Testing Table")의 색상을 행 전체에 미리 적용 (행 삭제 전)
         from copy import copy
@@ -2581,8 +2740,9 @@ def download_operation_evaluation():
         wb.save(temp_file.name)
         temp_file.close()
 
-        # 다운로드 파일명 생성
-        filename = f"{control_code}_{evaluation_session}.xlsx"
+        # 다운로드 파일명 생성 (통제번호_통제명)
+        control_name = eval_dict.get('control_name', '')
+        filename = f"{control_code}_{control_name}.xlsx"
         unsafe_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
         for char in unsafe_chars:
             filename = filename.replace(char, '_')
@@ -2644,6 +2804,35 @@ def upload_operation_image():
         # 파일 저장
         file.save(filepath)
 
+        # DB에 이미지 정보 저장
+        from db_config import get_db
+        with get_db() as conn:
+            # line_id 조회
+            line_record = conn.execute('''
+                SELECT l.line_id FROM sb_operation_evaluation_line l
+                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                WHERE h.header_id = %s AND l.control_code = %s
+            ''', (header_id, control_code)).fetchone()
+
+            if line_record:
+                line_id = line_record['line_id']
+                relative_path = filepath.replace('\\', '/')
+                file_size = os.path.getsize(filepath)
+
+                # 중복 체크
+                existing = conn.execute('''
+                    SELECT image_id FROM sb_evaluation_image
+                    WHERE evaluation_type = %s AND line_id = %s AND file_path = %s
+                ''', ('operation', line_id, relative_path)).fetchone()
+
+                if not existing:
+                    conn.execute('''
+                        INSERT INTO sb_evaluation_image
+                        (evaluation_type, line_id, file_path, file_name, file_size, uploaded_at)
+                        VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    ''', ('operation', line_id, relative_path, filename, file_size))
+                    conn.commit()
+
         return jsonify({
             'success': True,
             'message': '이미지가 업로드되었습니다.',
@@ -2661,20 +2850,36 @@ def upload_operation_image():
 def get_operation_images(rcm_id, header_id, control_code):
     """운영평가 이미지 목록 조회"""
     try:
-        image_dir = os.path.join('static', 'uploads', 'operation_evaluations', str(rcm_id), str(header_id), control_code)
+        from db_config import get_db
+        with get_db() as conn:
+            # line_id 조회
+            line_record = conn.execute('''
+                SELECT l.line_id FROM sb_operation_evaluation_line l
+                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                WHERE h.header_id = %s AND l.control_code = %s
+            ''', (header_id, control_code)).fetchone()
 
-        if not os.path.exists(image_dir):
-            return jsonify({'success': True, 'images': []})
+            if not line_record:
+                return jsonify({'success': True, 'images': []})
 
-        images = []
-        for filename in os.listdir(image_dir):
-            if os.path.isfile(os.path.join(image_dir, filename)):
+            line_id = line_record['line_id']
+
+            # DB에서 이미지 조회
+            image_records = conn.execute('''
+                SELECT image_id, file_path, file_name, file_size, uploaded_at
+                FROM sb_evaluation_image
+                WHERE evaluation_type = %s AND line_id = %s
+                ORDER BY uploaded_at
+            ''', ('operation', line_id)).fetchall()
+
+            images = []
+            for img in image_records:
                 images.append({
-                    'filename': filename,
-                    'url': f'/{image_dir}/{filename}'.replace('\\', '/')
+                    'filename': img['file_name'],
+                    'url': f"/{img['file_path']}"
                 })
 
-        return jsonify({'success': True, 'images': images})
+            return jsonify({'success': True, 'images': images})
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2691,12 +2896,20 @@ def delete_operation_image():
         if not filepath:
             return jsonify({'success': False, 'message': '파일 경로가 없습니다.'}), 400
 
+        # DB에서 이미지 삭제
+        from db_config import get_db
+        with get_db() as conn:
+            conn.execute('''
+                DELETE FROM sb_evaluation_image
+                WHERE evaluation_type = %s AND file_path = %s
+            ''', ('operation', filepath))
+            conn.commit()
+
         # 파일 존재 확인 및 삭제
         if os.path.exists(filepath):
             os.remove(filepath)
-            return jsonify({'success': True, 'message': '이미지가 삭제되었습니다.'})
-        else:
-            return jsonify({'success': False, 'message': '파일을 찾을 수 없습니다.'}), 404
+
+        return jsonify({'success': True, 'message': '이미지가 삭제되었습니다.'})
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
