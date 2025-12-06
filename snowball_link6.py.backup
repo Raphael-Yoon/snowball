@@ -1612,69 +1612,63 @@ def elc_design_evaluation():
     elc_rcms = [rcm for rcm in all_rcms if rcm.get('control_category') == 'ELC']
 
     # 각 RCM에 대한 설계평가/운영평가 세션 정보 추가
-    from evaluation_utils import get_evaluation_status
-
     for rcm in elc_rcms:
         with get_db() as conn:
-            # 설계평가 현황: archived가 아닌 모든 평가
+            # 설계평가 현황: status 0 이상 (0: 설계 시작, 1: 설계 계속, 완료된 것도 포함)
             design_sessions = conn.execute('''
-                SELECT header_id, evaluation_name, created_at, last_updated
+                SELECT header_id, evaluation_name, status, progress, created_at, last_updated
                 FROM sb_evaluation_header
-                WHERE rcm_id = ? AND (archived IS NULL OR archived = 0)
+                WHERE rcm_id = %s AND status >= 0 AND status <= 1
                 ORDER BY last_updated DESC
             ''', (rcm['rcm_id'],)).fetchall()
 
-            # 운영평가 현황은 설계평가 세션 중에서 status >= 2인 것만 필터링 (나중에 처리)
+            # 운영평가 현황: status 2 이상 (2: 운영 시작, 3: 운영 계속, 4: 완료)
+            operation_sessions = conn.execute('''
+                SELECT header_id, evaluation_name, status, progress, created_at, last_updated
+                FROM sb_evaluation_header
+                WHERE rcm_id = %s AND status >= 2
+                ORDER BY last_updated DESC
+            ''', (rcm['rcm_id'],)).fetchall()
 
         # 설계평가 세션 정보 처리
         design_list = []
-        operation_list = []
-
         for session in design_sessions:
             session_dict = dict(session)
-            header_id = session_dict['header_id']
-
-            # 실시간으로 status와 progress 계산
-            with get_db() as conn:
-                status_info = get_evaluation_status(conn, header_id)
-
-            session_dict['status'] = status_info['status']
-            session_dict['progress'] = status_info['design_progress']
-
             # 템플릿 호환성을 위해 evaluation_session 키 추가
             session_dict['evaluation_session'] = session_dict['evaluation_name']
-
-            # status >= 2이면 설계평가는 완료된 것으로 간주
-            # status 0-1이면 progress 기준으로 완료 여부 판단
-            if session_dict["status"] >= 2:
-                session_dict["is_completed"] = True
-                session_dict["completed_date"] = session_dict.get("last_updated", "")
-                session_dict["progress"] = 100  # 설계평가는 항상 100%로 표시
-            else:
-                session_dict["is_completed"] = session_dict["progress"] == 100
-                session_dict["completed_date"] = session_dict.get("last_updated", "") if session_dict["progress"] == 100 else ""
+            # 완료일 추가 (progress 100이면 완료)
+            session_dict['completed_date'] = session_dict.get('last_updated', '') if session_dict['progress'] == 100 else ''
+            session_dict['is_completed'] = session_dict['progress'] == 100
 
             # 운영평가 가능한 통제 개수 (설계평가 완료된 경우만)
             if session_dict['is_completed']:
-                session_dict['eligible_control_count'] = status_info['operation_total_count']
+                eligible_controls = get_key_rcm_details(rcm['rcm_id'], user_info['user_id'], session_dict['evaluation_name'], control_category='ELC')
+                session_dict['eligible_control_count'] = len(eligible_controls)
             else:
                 session_dict['eligible_control_count'] = 0
 
             design_list.append(session_dict)
 
-            # 설계평가 완료(status >= 1)이고 운영평가 대상 통제가 있으면 운영평가 현황에 추가
-            if session_dict['status'] >= 1 and status_info['operation_total_count'] > 0:
-                op_dict = session_dict.copy()
-                op_dict['is_completed'] = session_dict['status'] == 4
-                op_dict['progress'] = status_info['operation_progress']
-                op_dict['operation_completed_count'] = status_info['operation_completed_count']
-                op_dict['design_evaluation_name'] = session_dict['evaluation_name']
-                op_dict['eligible_control_count'] = status_info['operation_total_count']
-                # 설계평가 완료 정보 추가 (템플릿에서 "설계평가 기반" 칼럼에 표시)
-                op_dict['design_completed_count'] = status_info['design_completed_count']
-                op_dict['design_total_count'] = status_info['design_total_count']
-                print(f"[DEBUG] 운영평가 세션 추가: {session_dict['evaluation_name']}, 설계평가 완료: {status_info['design_completed_count']}/{status_info['design_total_count']}")
-                operation_list.append(op_dict)
+        # 운영평가 세션 정보 처리
+        operation_list = []
+        for session in operation_sessions:
+            session_dict = dict(session)
+            session_dict['evaluation_session'] = session_dict['evaluation_name']
+            session_dict['is_completed'] = session_dict['progress'] == 100
+
+            # 운영평가 진행 상황 (완료된 통제 수)
+            completed_count = count_completed_operation_evaluations(session_dict['header_id'])
+            session_dict['operation_completed_count'] = completed_count
+
+            # 원본 설계평가명 추출 (OP_ 제거)
+            original_design_name = session_dict['evaluation_name'].replace('OP_', '', 1) if session_dict['evaluation_name'].startswith('OP_') else session_dict['evaluation_name']
+            session_dict['design_evaluation_name'] = original_design_name
+
+            # 전체 통제 개수
+            eligible_controls = get_key_rcm_details(rcm['rcm_id'], user_info['user_id'], original_design_name, control_category='ELC')
+            session_dict['eligible_control_count'] = len(eligible_controls)
+
+            operation_list.append(session_dict)
 
         rcm['design_sessions'] = design_list
         rcm['operation_sessions'] = operation_list
@@ -1682,14 +1676,7 @@ def elc_design_evaluation():
         rcm['has_operation_sessions'] = len(operation_list) > 0
 
         # 하위 호환성을 위해 기존 키도 유지
-        # 운영평가 시작 가능한 세션: status = 1 (설계평가 완료)이면서 운영평가가 아직 시작되지 않은 것만
-        # 운영평가가 시작되면 status >= 2가 되므로, status = 1인 것만 필터링하면 됨
-        # 하지만 안전하게 operation_list에 없는 것만 포함
-        operation_session_names = {s['evaluation_name'] for s in operation_list}
-        rcm['completed_design_sessions'] = [
-            s for s in design_list
-            if s['status'] == 1 and s['evaluation_name'] not in operation_session_names
-        ]
+        rcm['completed_design_sessions'] = [s for s in design_list if s['is_completed']]
         rcm['design_evaluation_completed'] = len(rcm['completed_design_sessions']) > 0
 
     log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 평가', '/elc/design-evaluation',
@@ -1749,104 +1736,6 @@ def elc_design_evaluation_start():
 
     flash(f'"{evaluation_name}" 설계평가를 시작합니다.', 'success')
     return redirect(url_for('link6.user_design_evaluation_rcm'))
-
-
-@bp_link6.route('/elc/evaluation/delete', methods=['POST'])
-@login_required
-def delete_elc_evaluation():
-    """ELC 평가 삭제 (진행중인 평가만 삭제 가능, 운영평가 시작된 경우 불가)"""
-    user_info = get_user_info()
-    data = request.get_json()
-    header_id = data.get('header_id')
-
-    if not header_id:
-        return jsonify({'success': False, 'error': 'header_id is required'}), 400
-
-    try:
-        with get_db() as conn:
-            # 평가 정보 조회
-            evaluation = conn.execute(
-                'SELECT evaluation_name, status FROM sb_evaluation_header WHERE header_id = ?',
-                (header_id,)
-            ).fetchone()
-
-            if not evaluation:
-                return jsonify({'success': False, 'error': '평가를 찾을 수 없습니다.'}), 404
-
-            eval_dict = dict(evaluation)
-            current_status = eval_dict['status']
-
-            # status 0 또는 1: 완전 삭제
-            # status >= 2: status를 1로 롤백 (운영평가 데이터 삭제)
-            if current_status <= 1:
-                # 설계평가만 있는 경우: 완전 삭제
-                conn.execute('DELETE FROM sb_evaluation_line WHERE header_id = ?', (header_id,))
-                conn.execute('DELETE FROM sb_evaluation_header WHERE header_id = ?', (header_id,))
-                action = '삭제'
-            else:
-                # 운영평가가 시작된 경우: status를 1로 롤백
-                conn.execute('UPDATE sb_evaluation_header SET status = 1, progress = 100 WHERE header_id = ?', (header_id,))
-                
-                # 운영평가 관련 필드만 NULL로 초기화
-                conn.execute('''
-                    UPDATE sb_evaluation_line 
-                    SET conclusion = NULL, 
-                        improvement_plan = NULL,
-                        sample_size = NULL,
-                        exception_details = NULL
-                    WHERE header_id = ?
-                ''', (header_id,))
-                action = 'status 롤백 (1로)'
-            
-            conn.commit()
-
-            log_user_activity(user_info, 'DELETE', f'ELC 평가 {action}',
-                             f'header_id={header_id}, evaluation_name={eval_dict["evaluation_name"]}, prev_status={current_status}',
-                             request.remote_addr, request.headers.get('User-Agent'))
-
-            return jsonify({'success': True, 'action': action})
-
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-
-@bp_link6.route('/elc/evaluation/archive', methods=['POST'])
-@login_required
-def archive_elc_evaluation():
-    """ELC 평가 아카이브 (status를 5로 변경)"""
-    user_info = get_user_info()
-    data = request.get_json()
-    header_id = data.get('header_id')
-
-    if not header_id:
-        return jsonify({'success': False, 'error': 'header_id is required'}), 400
-
-    try:
-        with get_db() as conn:
-            # 평가 정보 조회
-            evaluation = conn.execute(
-                'SELECT evaluation_name, status FROM sb_evaluation_header WHERE header_id = ?',
-                (header_id,)
-            ).fetchone()
-
-            if not evaluation:
-                return jsonify({'success': False, 'error': '평가를 찾을 수 없습니다.'}), 404
-
-            eval_dict = dict(evaluation)
-            
-            # status를 5(아카이브)로 변경
-            conn.execute('UPDATE sb_evaluation_header SET status = 5 WHERE header_id = ?', (header_id,))
-            conn.commit()
-
-            log_user_activity(user_info, 'ARCHIVE', 'ELC 평가 아카이브',
-                             f'header_id={header_id}, evaluation_name={eval_dict["evaluation_name"]}',
-                             request.remote_addr, request.headers.get('User-Agent'))
-
-            return jsonify({'success': True})
-
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================================================
 # TLC 설계평가 (자동통제 포함, 기준통제 매핑 없음)

@@ -127,17 +127,34 @@ def user_operation_evaluation_rcm():
 
     # 해당 설계평가 세션이 완료되었는지 확인
     print("[DEBUG] Checking completed sessions...")
-    completed_sessions = get_completed_design_evaluation_sessions(rcm_id, user_info['user_id'])
 
-    session_found = False
-    for session_item in completed_sessions:
-        if session_item['evaluation_session'] == design_evaluation_session:
-            session_found = True
-            break
+    # ELC 평가는 통합 테이블 사용 (sb_evaluation_header)
+    # status >= 2이면 운영평가 가능
+    with get_db() as conn:
+        evaluation_header = conn.execute('''
+            SELECT header_id, status, progress, evaluation_name
+            FROM sb_evaluation_header
+            WHERE rcm_id = ? AND evaluation_name = ?
+        ''', (rcm_id, design_evaluation_session)).fetchone()
 
-    if not session_found:
-        flash(f'설계평가 세션 "{design_evaluation_session}"이 완료되지 않아 운영평가를 수행할 수 없습니다.', 'warning')
-        return redirect(url_for('link7.user_operation_evaluation'))
+    if not evaluation_header:
+        # 통합 테이블에 없으면 기존 방식으로 확인 (ITGC용)
+        completed_sessions = get_completed_design_evaluation_sessions(rcm_id, user_info['user_id'])
+        session_found = False
+        for session_item in completed_sessions:
+            if session_item['evaluation_session'] == design_evaluation_session:
+                session_found = True
+                break
+
+        if not session_found:
+            flash(f'설계평가 세션 "{design_evaluation_session}"이 완료되지 않아 운영평가를 수행할 수 없습니다.', 'warning')
+            return redirect(url_for('link7.user_operation_evaluation'))
+    else:
+        # ELC 평가: status >= 2 확인
+        evaluation_dict = dict(evaluation_header)
+        if evaluation_dict['status'] < 2:
+            flash(f'설계평가 세션 "{design_evaluation_session}"이 완료되지 않아 운영평가를 수행할 수 없습니다.', 'warning')
+            return redirect(url_for('link6.elc_design_evaluation'))
     
     # RCM 정보 조회
     print("[DEBUG] Fetching RCM info...")
@@ -183,51 +200,95 @@ def user_operation_evaluation_rcm():
     print("[DEBUG] Syncing operation evaluation data...")
     sync_messages = []
     operation_header = None
+
+    # ELC 평가인지 확인
+    is_elc = rcm_info and rcm_info.get('control_category') == 'ELC'
+
     try:
-        # 기존 운영평가 헤더 확인
-        from auth import get_or_create_operation_evaluation_header
-        with get_db() as conn:
-            header_id = get_or_create_operation_evaluation_header(conn, rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)
+        if is_elc:
+            # ELC 평가: sb_evaluation_header 통합 테이블 사용
+            with get_db() as conn:
+                # 헤더 정보 조회 (진행률 표시용)
+                evaluation_header = conn.execute('''
+                    SELECT header_id, status, progress, evaluation_name
+                    FROM sb_evaluation_header
+                    WHERE rcm_id = ? AND evaluation_name = ?
+                ''', (rcm_id, design_evaluation_session)).fetchone()
 
-            # 헤더 정보 조회 (진행률 표시용)
-            operation_header = conn.execute('''
-                SELECT header_id, evaluated_controls, total_controls, progress_percentage, evaluation_status
-                FROM sb_operation_evaluation_header
-                WHERE header_id = %s
-            ''', (header_id,)).fetchone()
+                if evaluation_header:
+                    eval_dict = dict(evaluation_header)
+                    header_id = eval_dict['header_id']
 
-            # 현재 대상 통제 코드 목록 (핵심통제 + 설계평가 '적정')
-            current_control_codes = {detail['control_code'] for detail in rcm_details}
+                    # 운영평가 대상 통제 수 계산
+                    total_controls = len(rcm_details)
 
-            # 기존 Line 데이터 조회
-            existing_lines = conn.execute('''
-                SELECT line_id, control_code
-                FROM sb_operation_evaluation_line
-                WHERE header_id = %s
-            ''', (header_id,)).fetchall()
+                    # 운영평가 완료 통제 수 계산 (conclusion이 NULL이 아닌 것)
+                    # 단, 설계평가 결과가 '적정'인 통제만 대상
+                    evaluated_controls = conn.execute('''
+                        SELECT COUNT(*) as count
+                        FROM sb_evaluation_line
+                        WHERE header_id = ?
+                          AND overall_effectiveness IN ('적정', 'effective', '효과적')
+                          AND conclusion IS NOT NULL
+                    ''', (header_id,)).fetchone()
+                    evaluated_count = dict(evaluated_controls)['count'] if evaluated_controls else 0
 
-            existing_control_codes = {line['control_code'] for line in existing_lines}
+                    # 운영평가 진행률 계산 (실시간)
+                    progress_percentage = int((evaluated_count / total_controls) * 100) if total_controls > 0 else 0
 
-            # 신규 추가된 통제 (설계평가 부적정→적정 변경)
-            new_controls = current_control_codes - existing_control_codes
-            if new_controls:
-                for idx, detail in enumerate(rcm_details):
-                    if detail['control_code'] in new_controls:
-                        # recommended_sample_size 가져오기 (있으면 사용)
-                        recommended_size = detail.get('recommended_sample_size')
+                    # operation_header 형식으로 변환 (템플릿 호환성 유지)
+                    operation_header = {
+                        'header_id': header_id,
+                        'evaluated_controls': evaluated_count,
+                        'total_controls': total_controls,
+                        'progress_percentage': progress_percentage,  # 실시간 계산된 진행률 사용
+                        'evaluation_status': 'COMPLETED' if eval_dict['status'] == 4 else 'IN_PROGRESS'
+                    }
+        else:
+            # ITGC 평가: 기존 sb_operation_evaluation_header 테이블 사용
+            from auth import get_or_create_operation_evaluation_header
+            with get_db() as conn:
+                header_id = get_or_create_operation_evaluation_header(conn, rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)
 
-                        conn.execute('''
-                            INSERT INTO sb_operation_evaluation_line (
-                                header_id, control_code, control_sequence, sample_size
-                            ) VALUES (%s, %s, %s, %s)
-                        ''', (header_id, detail['control_code'], idx + 1, recommended_size))
-                sync_messages.append(f"📌 신규 추가: {len(new_controls)}개 (설계평가 부적정→적정)")
+                # 헤더 정보 조회 (진행률 표시용)
+                operation_header = conn.execute('''
+                    SELECT header_id, evaluated_controls, total_controls, progress_percentage, evaluation_status
+                    FROM sb_operation_evaluation_header
+                    WHERE header_id = %s
+                ''', (header_id,)).fetchone()
 
-            conn.commit()
+                # 현재 대상 통제 코드 목록 (핵심통제 + 설계평가 '적정')
+                current_control_codes = {detail['control_code'] for detail in rcm_details}
 
-            # 동기화 메시지 표시
-            if sync_messages:
-                flash(' '.join(sync_messages), 'success')
+                # 기존 Line 데이터 조회
+                existing_lines = conn.execute('''
+                    SELECT line_id, control_code
+                    FROM sb_operation_evaluation_line
+                    WHERE header_id = %s
+                ''', (header_id,)).fetchall()
+
+                existing_control_codes = {line['control_code'] for line in existing_lines}
+
+                # 신규 추가된 통제 (설계평가 부적정→적정 변경)
+                new_controls = current_control_codes - existing_control_codes
+                if new_controls:
+                    for idx, detail in enumerate(rcm_details):
+                        if detail['control_code'] in new_controls:
+                            # recommended_sample_size 가져오기 (있으면 사용)
+                            recommended_size = detail.get('recommended_sample_size')
+
+                            conn.execute('''
+                                INSERT INTO sb_operation_evaluation_line (
+                                    header_id, control_code, control_sequence, sample_size
+                                ) VALUES (%s, %s, %s, %s)
+                            ''', (header_id, detail['control_code'], idx + 1, recommended_size))
+                    sync_messages.append(f"📌 신규 추가: {len(new_controls)}개 (설계평가 부적정→적정)")
+
+                conn.commit()
+
+        # 동기화 메시지 표시
+        if sync_messages:
+            flash(' '.join(sync_messages), 'success')
     except Exception as e:
         print(f"[DEBUG] Sync error: {e}")
         import traceback

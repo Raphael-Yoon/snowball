@@ -32,18 +32,10 @@
                             <i class="fas fa-database me-1"></i>RCM
                         </a>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="elcDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-building me-1"></i>ELC
+                    <li class="nav-item">
+                        <a href="{{ url_for('link6.elc_design_evaluation') }}" class="nav-link">
+                            <i class="fas fa-building me-1"></i>ELC 평가
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="elcDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('link6.elc_design_evaluation') }}">
-                                <i class="fas fa-clipboard-check me-2"></i>설계평가
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link7.elc_operation_evaluation') }}">
-                                <i class="fas fa-cogs me-2"></i>운영평가
-                            </a></li>
-                        </ul>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="tlcDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

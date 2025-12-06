@@ -2863,36 +2863,8 @@
         // ===================================================================
 
         function viewDesignEvaluation() {
-            // 모달 표시
-            const modal = new bootstrap.Modal(document.getElementById('designEvaluationViewModal'));
-            modal.show();
-
-            // 설계평가 데이터 조회
-            fetch(`/api/design-evaluation/get?rcm_id=${currentRcmId}&design_evaluation_session=${currentEvaluationSession}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        renderDesignEvaluationTable(data.evaluations);
-                    } else {
-                        document.getElementById('designEvaluationTableBody').innerHTML = `
-                            <tr>
-                                <td colspan="7" class="text-center text-danger py-4">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>${data.message || '설계평가 데이터를 불러올 수 없습니다.'}
-                                </td>
-                            </tr>
-                        `;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('designEvaluationTableBody').innerHTML = `
-                        <tr>
-                            <td colspan="7" class="text-center text-danger py-4">
-                                <i class="fas fa-exclamation-triangle me-2"></i>설계평가 데이터를 불러오는 중 오류가 발생했습니다.
-                            </td>
-                        </tr>
-                    `;
-                });
+            // 같은 세션의 설계평가 상세 화면으로 이동
+            window.location.href = `/link6_design_detail?rcm_id=${currentRcmId}&evaluation_name=${currentEvaluationSession}`;
         }
 
         function renderDesignEvaluationTable(evaluations) {
