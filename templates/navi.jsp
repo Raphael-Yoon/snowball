@@ -37,31 +37,15 @@
                             <i class="fas fa-building me-1"></i>ELC 평가
                         </a>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="tlcDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-exchange-alt me-1"></i>TLC
+                    <li class="nav-item">
+                        <a href="{{ url_for('link6.tlc_evaluation') }}" class="nav-link">
+                            <i class="fas fa-exchange-alt me-1"></i>TLC 평가
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="tlcDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('link6.tlc_design_evaluation') }}">
-                                <i class="fas fa-clipboard-check me-2"></i>설계평가
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link7.tlc_operation_evaluation') }}">
-                                <i class="fas fa-cogs me-2"></i>운영평가
-                            </a></li>
-                        </ul>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="itgcDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-server me-1"></i>ITGC
+                    <li class="nav-item">
+                        <a href="{{ url_for('link6.itgc_evaluation') }}" class="nav-link">
+                            <i class="fas fa-server me-1"></i>ITGC 평가
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="itgcDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('link6.user_design_evaluation') }}">
-                                <i class="fas fa-clipboard-check me-2"></i>설계평가
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link7.user_operation_evaluation') }}">
-                                <i class="fas fa-cogs me-2"></i>운영평가
-                            </a></li>
-                        </ul>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="publicMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

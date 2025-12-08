@@ -81,7 +81,7 @@ def user_operation_evaluation_rcm():
         rcm_id = request.form.get('rcm_id')
         design_evaluation_session = request.form.get('design_evaluation_session')
         new_operation_session = request.form.get('new_operation_session')  # 신규 운영평가 세션명
-
+        action = request.form.get('action')  # 'start', 'continue' 등
 
         if not rcm_id:
             flash('RCM 정보가 없습니다.', 'error')
@@ -128,7 +128,7 @@ def user_operation_evaluation_rcm():
     # 해당 설계평가 세션이 완료되었는지 확인
     print("[DEBUG] Checking completed sessions...")
 
-    # ELC 평가는 통합 테이블 사용 (sb_evaluation_header)
+    # 통합 테이블 사용 (sb_evaluation_header) - ELC, TLC, ITGC 모두
     # status >= 2이면 운영평가 가능
     with get_db() as conn:
         evaluation_header = conn.execute('''
@@ -138,7 +138,7 @@ def user_operation_evaluation_rcm():
         ''', (rcm_id, design_evaluation_session)).fetchone()
 
     if not evaluation_header:
-        # 통합 테이블에 없으면 기존 방식으로 확인 (ITGC용)
+        # 통합 테이블에 없으면 기존 방식으로 확인 (구 ITGC용)
         completed_sessions = get_completed_design_evaluation_sessions(rcm_id, user_info['user_id'])
         session_found = False
         for session_item in completed_sessions:
@@ -150,12 +150,52 @@ def user_operation_evaluation_rcm():
             flash(f'설계평가 세션 "{design_evaluation_session}"이 완료되지 않아 운영평가를 수행할 수 없습니다.', 'warning')
             return redirect(url_for('link7.user_operation_evaluation'))
     else:
-        # ELC 평가: status >= 2 확인
+        # 통합 테이블 사용: status 확인 및 업데이트
         evaluation_dict = dict(evaluation_header)
-        if evaluation_dict['status'] < 2:
+
+        # action='start'이고 status=1(설계평가 완료)이면 status를 2(운영평가 시작)로 변경
+        if request.method == 'POST' and action == 'start' and evaluation_dict['status'] == 1:
+            with get_db() as conn:
+                conn.execute('''
+                    UPDATE sb_evaluation_header
+                    SET status = 2, last_updated = CURRENT_TIMESTAMP
+                    WHERE header_id = ?
+                ''', (evaluation_dict['header_id'],))
+                conn.commit()
+            evaluation_dict['status'] = 2  # 메모리상 값도 업데이트
+
+        # status < 1 (설계평가 미완료)이면 리다이렉트
+        if evaluation_dict['status'] < 1:
             flash(f'설계평가 세션 "{design_evaluation_session}"이 완료되지 않아 운영평가를 수행할 수 없습니다.', 'warning')
-            return redirect(url_for('link6.elc_design_evaluation'))
-    
+            # RCM 정보 조회하여 동적 리다이렉트
+            user_rcms_temp = get_user_rcms(user_info['user_id'])
+            rcm_info_temp = None
+            for rcm in user_rcms_temp:
+                if rcm['rcm_id'] == rcm_id:
+                    rcm_info_temp = rcm
+                    break
+
+            if rcm_info_temp:
+                control_category = rcm_info_temp.get('control_category', 'ELC')
+                if control_category == 'ITGC':
+                    return redirect(url_for('link6.itgc_evaluation'))
+                elif control_category == 'TLC':
+                    return redirect(url_for('link6.tlc_evaluation'))
+                else:
+                    return redirect(url_for('link6.elc_design_evaluation'))
+            else:
+                return redirect(url_for('link6.elc_design_evaluation'))
+
+        # status가 2이면 3으로 변경 (운영평가 시작 → 진행중)
+        if evaluation_dict['status'] == 2:
+            with get_db() as conn:
+                conn.execute('''
+                    UPDATE sb_evaluation_header
+                    SET status = 3, last_updated = CURRENT_TIMESTAMP
+                    WHERE header_id = ?
+                ''', (evaluation_dict['header_id'],))
+                conn.commit()
+
     # RCM 정보 조회
     print("[DEBUG] Fetching RCM info...")
     rcm_info = None
@@ -205,90 +245,36 @@ def user_operation_evaluation_rcm():
     is_elc = rcm_info and rcm_info.get('control_category') == 'ELC'
 
     try:
-        if is_elc:
-            # ELC 평가: sb_evaluation_header 통합 테이블 사용
-            with get_db() as conn:
-                # 헤더 정보 조회 (진행률 표시용)
-                evaluation_header = conn.execute('''
-                    SELECT header_id, status, progress, evaluation_name
-                    FROM sb_evaluation_header
-                    WHERE rcm_id = ? AND evaluation_name = ?
-                ''', (rcm_id, design_evaluation_session)).fetchone()
+        # 모든 평가 유형(ELC, ITGC, TLC): 통합 테이블 + get_evaluation_status() 함수 사용
+        from evaluation_utils import get_evaluation_status
 
-                if evaluation_header:
-                    eval_dict = dict(evaluation_header)
-                    header_id = eval_dict['header_id']
+        with get_db() as conn:
+            # 헤더 정보 조회
+            evaluation_header = conn.execute('''
+                SELECT header_id, status, evaluation_name
+                FROM sb_evaluation_header
+                WHERE rcm_id = ? AND evaluation_name = ?
+            ''', (rcm_id, design_evaluation_session)).fetchone()
 
-                    # 운영평가 대상 통제 수 계산
-                    total_controls = len(rcm_details)
+            if evaluation_header:
+                eval_dict = dict(evaluation_header)
+                header_id = eval_dict['header_id']
 
-                    # 운영평가 완료 통제 수 계산 (conclusion이 NULL이 아닌 것)
-                    # 단, 설계평가 결과가 '적정'인 통제만 대상
-                    evaluated_controls = conn.execute('''
-                        SELECT COUNT(*) as count
-                        FROM sb_evaluation_line
-                        WHERE header_id = ?
-                          AND overall_effectiveness IN ('적정', 'effective', '효과적')
-                          AND conclusion IS NOT NULL
-                    ''', (header_id,)).fetchone()
-                    evaluated_count = dict(evaluated_controls)['count'] if evaluated_controls else 0
+                # get_evaluation_status() 함수로 진행률 계산 (통일된 방식)
+                status_info = get_evaluation_status(conn, header_id)
 
-                    # 운영평가 진행률 계산 (실시간)
-                    progress_percentage = int((evaluated_count / total_controls) * 100) if total_controls > 0 else 0
-
-                    # operation_header 형식으로 변환 (템플릿 호환성 유지)
-                    operation_header = {
-                        'header_id': header_id,
-                        'evaluated_controls': evaluated_count,
-                        'total_controls': total_controls,
-                        'progress_percentage': progress_percentage,  # 실시간 계산된 진행률 사용
-                        'evaluation_status': 'COMPLETED' if eval_dict['status'] == 4 else 'IN_PROGRESS'
-                    }
-        else:
-            # ITGC 평가: 기존 sb_operation_evaluation_header 테이블 사용
-            from auth import get_or_create_operation_evaluation_header
-            with get_db() as conn:
-                header_id = get_or_create_operation_evaluation_header(conn, rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)
-
-                # 헤더 정보 조회 (진행률 표시용)
-                operation_header = conn.execute('''
-                    SELECT header_id, evaluated_controls, total_controls, progress_percentage, evaluation_status
-                    FROM sb_operation_evaluation_header
-                    WHERE header_id = %s
-                ''', (header_id,)).fetchone()
-
-                # 현재 대상 통제 코드 목록 (핵심통제 + 설계평가 '적정')
-                current_control_codes = {detail['control_code'] for detail in rcm_details}
-
-                # 기존 Line 데이터 조회
-                existing_lines = conn.execute('''
-                    SELECT line_id, control_code
-                    FROM sb_operation_evaluation_line
-                    WHERE header_id = %s
-                ''', (header_id,)).fetchall()
-
-                existing_control_codes = {line['control_code'] for line in existing_lines}
-
-                # 신규 추가된 통제 (설계평가 부적정→적정 변경)
-                new_controls = current_control_codes - existing_control_codes
-                if new_controls:
-                    for idx, detail in enumerate(rcm_details):
-                        if detail['control_code'] in new_controls:
-                            # recommended_sample_size 가져오기 (있으면 사용)
-                            recommended_size = detail.get('recommended_sample_size')
-
-                            conn.execute('''
-                                INSERT INTO sb_operation_evaluation_line (
-                                    header_id, control_code, control_sequence, sample_size
-                                ) VALUES (%s, %s, %s, %s)
-                            ''', (header_id, detail['control_code'], idx + 1, recommended_size))
-                    sync_messages.append(f"📌 신규 추가: {len(new_controls)}개 (설계평가 부적정→적정)")
-
-                conn.commit()
-
-        # 동기화 메시지 표시
-        if sync_messages:
-            flash(' '.join(sync_messages), 'success')
+                # operation_header 형식으로 변환 (템플릿 호환성 유지)
+                operation_header = {
+                    'header_id': header_id,
+                    'evaluated_controls': status_info['operation_completed_count'],
+                    'total_controls': status_info['operation_total_count'],
+                    'progress_percentage': status_info['operation_progress'],
+                    'evaluation_status': 'COMPLETED' if eval_dict['status'] == 4 else 'IN_PROGRESS'
+                }
+            else:
+                # 헤더가 없으면 생성할 수 없음 (설계평가가 선행되어야 함)
+                flash('설계평가 정보를 찾을 수 없습니다.', 'error')
+                return redirect(url_for('link7.user_operation_evaluation'))
     except Exception as e:
         print(f"[DEBUG] Sync error: {e}")
         import traceback
@@ -528,25 +514,24 @@ def load_operation_evaluation(rcm_id, design_evaluation_session):
 @bp_link7.route('/api/operation-evaluation/samples/<int:line_id>')
 @login_required
 def load_operation_evaluation_samples(line_id):
-    """평가 버튼 클릭 시 특정 line_id의 샘플 데이터 조회 API"""
+    """평가 버튼 클릭 시 특정 line_id의 샘플 데이터 조회 API
+    통합 테이블(sb_evaluation_line) 사용
+    """
     user_info = get_user_info()
 
     try:
-        # line_id에 해당하는 통제의 권한 확인
+        # line_id에 해당하는 통제 정보 조회
         with get_db() as conn:
             line_info = conn.execute('''
-                SELECT h.rcm_id, h.user_id
-                FROM sb_operation_evaluation_line l
-                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
-                WHERE l.line_id = %s
+                SELECT h.rcm_id, r.control_category, l.control_code
+                FROM sb_evaluation_line l
+                JOIN sb_evaluation_header h ON l.header_id = h.header_id
+                JOIN sb_rcm r ON h.rcm_id = r.rcm_id
+                WHERE l.line_id = ?
             ''', (line_id,)).fetchone()
 
             if not line_info:
                 return jsonify({'success': False, 'message': '평가 데이터를 찾을 수 없습니다.'}), 404
-
-            # 권한 체크
-            if line_info['user_id'] != user_info['user_id']:
-                return jsonify({'success': False, 'message': '접근 권한이 없습니다.'}), 403
 
         # 샘플 데이터 조회
         sample_lines = get_operation_evaluation_samples(line_id)
@@ -559,47 +544,39 @@ def load_operation_evaluation_samples(line_id):
         population_attribute_count = 0
 
         with get_db() as conn:
-            # line_id로부터 control_code와 rcm_id 조회
-            line_detail = conn.execute('''
-                SELECT l.control_code, h.rcm_id
-                FROM sb_operation_evaluation_line l
-                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
-                WHERE l.line_id = %s
-            ''', (line_id,)).fetchone()
+            # line_info에서 이미 control_code와 rcm_id를 가져옴
+            # RCM detail에서 attribute 정의 조회
+            rcm_detail = conn.execute('''
+                SELECT population_attribute_count,
+                       attribute0, attribute1, attribute2, attribute3, attribute4,
+                       attribute5, attribute6, attribute7, attribute8, attribute9
+                FROM sb_rcm_detail
+                WHERE rcm_id = ? AND control_code = ?
+            ''', (line_info['rcm_id'], line_info['control_code'])).fetchone()
 
-            if line_detail:
-                # RCM detail에서 attribute 정의 조회
-                rcm_detail = conn.execute('''
-                    SELECT population_attribute_count,
-                           attribute0, attribute1, attribute2, attribute3, attribute4,
-                           attribute5, attribute6, attribute7, attribute8, attribute9
-                    FROM sb_rcm_detail
-                    WHERE rcm_id = %s AND control_code = %s
-                ''', (line_detail['rcm_id'], line_detail['control_code'])).fetchone()
+            if rcm_detail:
+                population_attribute_count = rcm_detail['population_attribute_count'] or 0
 
-                if rcm_detail:
-                    population_attribute_count = rcm_detail['population_attribute_count'] or 0
+                # attribute 정의 생성 (RCM detail에 정의된 모든 attributes 반환)
+                for i in range(10):
+                    # RCM detail에서 attribute 이름 가져오기
+                    attr_name = rcm_detail[f'attribute{i}'] if rcm_detail[f'attribute{i}'] else None
 
-                    # attribute 정의 생성 (RCM detail에 정의된 모든 attributes 반환)
-                    for i in range(10):
-                        # RCM detail에서 attribute 이름 가져오기
-                        attr_name = rcm_detail[f'attribute{i}'] if rcm_detail[f'attribute{i}'] else None
+                    # 이름이 정의되지 않은 attribute는 skip
+                    if not attr_name:
+                        continue
 
-                        # 이름이 정의되지 않은 attribute는 skip
-                        if not attr_name:
-                            continue
+                    # population_attribute_count를 기준으로 모집단/증빙 구분
+                    if i < population_attribute_count:
+                        attr_type = 'population'
+                    else:
+                        attr_type = 'evidence'
 
-                        # population_attribute_count를 기준으로 모집단/증빙 구분
-                        if i < population_attribute_count:
-                            attr_type = 'population'
-                        else:
-                            attr_type = 'evidence'
-
-                        attributes.append({
-                            'attribute': f'attribute{i}',
-                            'name': attr_name,
-                            'type': attr_type
-                        })
+                    attributes.append({
+                        'attribute': f'attribute{i}',
+                        'name': attr_name,
+                        'type': attr_type
+                    })
 
         return jsonify({
             'success': True,
@@ -2974,3 +2951,68 @@ def delete_operation_image():
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp_link7.route('/api/design-evaluation/samples', methods=['GET'])
+@login_required
+def get_design_evaluation_samples():
+    """설계평가 표본 데이터 조회 (운영평가에서 참고용)"""
+    try:
+        user_info = get_user_info()
+        rcm_id = request.args.get('rcm_id')
+        evaluation_session = request.args.get('evaluation_session')
+        control_code = request.args.get('control_code')
+
+        if not all([rcm_id, evaluation_session, control_code]):
+            return jsonify({'success': False, 'message': '필수 파라미터가 누락되었습니다.'})
+
+        rcm_id = int(rcm_id)
+
+        # 통합 테이블에서 설계평가 line_id 조회
+        with get_db() as conn:
+            # 헤더 조회
+            header = conn.execute('''
+                SELECT header_id
+                FROM sb_evaluation_header
+                WHERE rcm_id = %s AND evaluation_name = %s
+            ''', (rcm_id, evaluation_session)).fetchone()
+
+            if not header:
+                return jsonify({'success': False, 'message': '설계평가 세션을 찾을 수 없습니다.'})
+
+            header_id = dict(header)['header_id']
+
+            # 해당 통제의 라인 조회
+            line = conn.execute('''
+                SELECT line_id
+                FROM sb_evaluation_line
+                WHERE header_id = %s AND control_code = %s
+            ''', (header_id, control_code)).fetchone()
+
+            if not line:
+                return jsonify({'success': False, 'message': '해당 통제의 평가 데이터를 찾을 수 없습니다.'})
+
+            line_id = dict(line)['line_id']
+
+            # 표본 데이터 조회
+            samples = conn.execute('''
+                SELECT sample_number, purposefulness, evidence_content, result
+                FROM sb_evaluation_sample
+                WHERE line_id = %s
+                ORDER BY sample_number
+            ''', (line_id,)).fetchall()
+
+            # 딕셔너리로 변환
+            samples_list = [dict(sample) for sample in samples]
+
+            return jsonify({
+                'success': True,
+                'samples': samples_list,
+                'count': len(samples_list)
+            })
+
+    except Exception as e:
+        print(f"[get_design_evaluation_samples] 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'조회 오류: {str(e)}'})

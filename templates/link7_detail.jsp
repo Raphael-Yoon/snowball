@@ -57,9 +57,23 @@
                         <button type="button" class="btn btn-info" onclick="viewDesignEvaluation()">
                             <i class="fas fa-drafting-compass me-1"></i>설계평가 보기
                         </button>
+                        {% if rcm_info.control_category == 'ELC' %}
+                        <a href="{{ url_for('link6.elc_design_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% elif rcm_info.control_category == 'TLC' %}
+                        <a href="{{ url_for('link6.tlc_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% elif rcm_info.control_category == 'ITGC' %}
+                        <a href="{{ url_for('link6.itgc_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% else %}
                         <a href="/user/operation-evaluation" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>목록으로
                         </a>
+                        {% endif %}
                     </div>
                 </div>
                 <hr>
@@ -317,23 +331,35 @@
                         </div>
                     </div>
 
-                    <!-- 설계평가 의견 표시 섹션 (읽기 전용) -->
-                    <div class="mb-3" id="designCommentSection" style="display: none;">
+                    <!-- 설계평가 표본 데이터 표시 섹션 -->
+                    <div class="mb-3" id="designSamplesSection" style="display: none;">
                         <label class="form-label fw-bold">
-                            <i class="fas fa-clipboard-check me-1"></i>설계평가 검토 의견
+                            <i class="fas fa-table me-1"></i>설계평가 표본 데이터
                         </label>
-                        <div class="p-3 bg-light border rounded" style="white-space: pre-wrap; min-height: 60px;">
-                            <span id="designCommentText" class="text-dark"></span>
+                        <div class="border rounded p-3 bg-light">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0" id="designSamplesTable">
+                                    <thead class="table-secondary">
+                                        <tr>
+                                            <th width="10%">표본 #</th>
+                                            <th width="45%">증빙 내용</th>
+                                            <th width="15%">결과</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="designSamplesTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                         <div class="form-text">
                             <small class="text-muted">
                                 <i class="fas fa-info-circle me-1"></i>
-                                설계평가 시 작성된 검토 의견입니다 (읽기 전용)
+                                설계평가 시 입력된 표본 데이터입니다.
                             </small>
                         </div>
                     </div>
 
-                    <!-- 설계평가 이미지 표시 섹션 -->
+                    <!-- 설계평가 이미지 표시 섹션 (증빙) -->
                     <div class="mb-3" id="designEvaluationImagesSection" style="display: none;">
                         <label class="form-label fw-bold">
                             <i class="fas fa-clipboard-check me-1"></i>설계평가 증빙 이미지
@@ -345,6 +371,12 @@
                                 설계평가 시 업로드된 이미지입니다. 클릭하면 원본 크기로 볼 수 있습니다.
                             </small>
                         </div>
+                    </div>
+
+                    <!-- 설계평가 의견 표시 섹션 (코멘트) -->
+                    <div class="mb-3" id="designCommentSection" style="display: none;">
+                        <label for="designCommentText" class="form-label fw-bold">설계 평가 코멘트</label>
+                        <textarea class="form-control" id="designCommentText" rows="3" readonly style="background-color: #e9ecef;"></textarea>
                     </div>
 
                     <form id="operationEvaluationForm">
@@ -364,8 +396,8 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="use_design_evaluation" name="use_design_evaluation" onchange="toggleDesignEvaluationSubstitute()">
                                 <label class="form-check-label" for="use_design_evaluation">
-                                    <strong>설계평가 결과로 운영평가 대체</strong>
-                                    <small class="text-muted d-block">자동통제 또는 연간 통제의 경우, 설계평가 결과를 운영평가로 사용할 수 있습니다</small>
+                                    <strong>설계평가 확인으로 완료</strong>
+                                    <small class="text-muted d-block">자동통제 또는 연간 통제의 경우, 설계평가 확인만으로 운영평가를 완료할 수 있습니다</small>
                                 </label>
                             </div>
                             <div id="design-evaluation-info" class="mt-2" style="display: none;"></div>
@@ -452,16 +484,14 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- 검토 의견 -->
-                                <div class="row mt-3 mb-4">
-                                    <div class="col-md-12">
-                                        <label for="review_comment" class="form-label fw-bold">검토 의견</label>
-                                        <textarea class="form-control" id="review_comment" name="review_comment" rows="3"
-                                            placeholder="검토 의견을 작성하세요"></textarea>
-                                    </div>
-                                </div>
                             </div>
+                        </div>
+
+                        <!-- 검토 의견 (항상 표시) -->
+                        <div class="mb-3">
+                            <label for="review_comment" class="form-label fw-bold">검토 의견</label>
+                            <textarea class="form-control" id="review_comment" name="review_comment" rows="3"
+                                placeholder="검토 의견을 작성하세요"></textarea>
                         </div>
 
                         <div class="mb-3" id="exception-details-section" style="display: none;">
@@ -906,20 +936,28 @@
 
         // 통제주기에 따른 기본 표본수 매핑 (코드값 기준)
         function getDefaultSampleSize(controlFrequency, controlType) {
-            // 통제주기 코드에서 첫 글자만 추출 (lookup_name이 올 수도 있음)
-            const frequencyCode = controlFrequency ? controlFrequency.charAt(0).toUpperCase() : '';
+            if (!controlFrequency) return 0;
+
+            const frequency = controlFrequency.toUpperCase();
+
+            // 전체 문자열 먼저 체크 (Ad-Hoc, 필요시 등)
+            if (frequency.includes('AD-HOC') || frequency.includes('ADHOC') || frequency === 'N' || frequency.includes('필요시')) {
+                return 0;
+            }
+
+            // 첫 글자로 판단
+            const frequencyCode = frequency.charAt(0);
 
             const frequencyMapping = {
-                'A': 1,  // 연간
-                'Q': 2,  // 분기
-                'M': 2,  // 월
-                'W': 5,  // 주
-                'D': 20, // 일
-                'O': 1,  // 기타 (자동통제 포함)
-                'N': 1   // 필요시
+                'A': 1,  // 연간 (Annual)
+                'Q': 2,  // 분기 (Quarterly)
+                'M': 2,  // 월 (Monthly)
+                'W': 5,  // 주 (Weekly)
+                'D': 20, // 일 (Daily)
+                'O': 1   // 기타 (Other, 자동통제 포함)
             };
 
-            return frequencyMapping[frequencyCode] || 1;
+            return frequencyMapping[frequencyCode] || 0;  // 매핑에 없으면 0
         }
 
         // 자동통제 확인 모달 열기 (안전 장치 포함)
@@ -1187,13 +1225,13 @@
             // 의견이 없으면 섹션 숨김
             if (!comment || comment.trim() === '') {
                 section.style.display = 'none';
-                textElement.textContent = '';
+                textElement.value = '';
                 return;
             }
 
             // 의견이 있으면 섹션 표시
             section.style.display = 'block';
-            textElement.textContent = comment;
+            textElement.value = comment;
         }
 
         // 설계평가 이미지 표시 함수
@@ -1314,7 +1352,8 @@
             console.log('[Attribute Info] Attribute Names:', window.currentAttributeNames);
 
             // 자동통제 판별
-            if (controlNatureCode && (controlNatureCode === 'A' || controlNatureCode === '자동' || controlNatureCode === 'Automated')) {
+            if ((controlNatureCode && (controlNatureCode === 'A' || controlNatureCode === '자동' || controlNatureCode === 'Automated')) ||
+                (controlType && (controlType.toUpperCase() === 'AUTO' || controlType.includes('자동') || controlType.toLowerCase().includes('auto')))) {
                 console.log('Auto control detected:', controlCode);
                 openAutoControlCheckModal(controlCode, controlName);
                 return;
@@ -1416,6 +1455,10 @@
                 controlNature.toUpperCase() === 'A' ||
                 controlNature.includes('자동') ||
                 controlNature.toLowerCase().includes('auto')
+            )) || (controlType && (
+                controlType.toUpperCase() === 'AUTO' ||
+                controlType.includes('자동') ||
+                controlType.toLowerCase().includes('auto')
             ));
 
             if (useDesignEvaluationSection) {
@@ -1589,7 +1632,11 @@
                                 if (data.attributes && data.attributes.length > 0) {
                                     console.log('[openOperationEvaluationModal] generateSampleLinesWithAttributes 호출');
                                     console.log('[openOperationEvaluationModal] design_sample:', data.design_sample);
-                                    generateSampleLinesWithAttributes(data.attributes, data.samples.length, data.design_sample);
+                                    // 표본수는 입력 필드의 값 사용 (data.samples.length가 아님)
+                                    const sampleSizeEl = document.getElementById('sample_size');
+                                    const currentSampleSize = sampleSizeEl ? parseInt(sampleSizeEl.value) || 0 : 0;
+                                    console.log('[openOperationEvaluationModal] currentSampleSize:', currentSampleSize);
+                                    generateSampleLinesWithAttributes(data.attributes, currentSampleSize, data.design_sample);
                                 } else {
                                     console.log('[openOperationEvaluationModal] generateSampleLines 호출');
                                     generateSampleLines();
@@ -2439,8 +2486,10 @@
         function toggleDesignEvaluationSubstitute() {
             const useDesignEvaluationCheckbox = document.getElementById('use_design_evaluation');
             const noOccurrenceCheckbox = document.getElementById('no_occurrence');
-            const evaluationFields = document.getElementById('evaluation-fields');
             const designEvaluationInfo = document.getElementById('design-evaluation-info');
+            const sampleSizeRow = document.querySelector('.row.mb-3:has(#sample_size)');
+            const overallConclusionSection = document.querySelector('.alert.alert-info:has(#overall-conclusion)');
+            const operationImagesSection = document.getElementById('operationEvaluationImagesSection');
 
             if (!useDesignEvaluationCheckbox) return;
 
@@ -2450,22 +2499,40 @@
                     noOccurrenceCheckbox.checked = false;
                 }
 
-                // 평가 필드 숨기고 비활성화
-                if (evaluationFields) {
-                    evaluationFields.style.display = 'none';
-                    disableEvaluationFields(true);
+                // 표본 크기 입력 필드 숨김
+                if (sampleSizeRow) {
+                    sampleSizeRow.style.display = 'none';
+                }
+
+                // 전체 결론 섹션 숨김
+                if (overallConclusionSection) {
+                    overallConclusionSection.style.display = 'none';
+                }
+
+                // 운영평가 증빙 이미지 업로드 섹션 숨김
+                if (operationImagesSection) {
+                    operationImagesSection.style.display = 'none';
                 }
 
                 // 설계평가 정보 표시
                 if (designEvaluationInfo) {
                     designEvaluationInfo.style.display = 'block';
-                    designEvaluationInfo.innerHTML = '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i><small>설계평가 결과로 운영평가를 대체합니다. 설계평가와 동일한 결과가 적용됩니다.</small></div>';
+                    designEvaluationInfo.innerHTML = '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i><small>설계평가 확인으로 운영평가를 완료합니다. 표본 데이터는 그대로 유지되며, 검토 의견을 작성해주세요.</small></div>';
                 }
             } else {
-                // 평가 필드 표시하고 활성화
-                if (evaluationFields) {
-                    evaluationFields.style.display = 'block';
-                    disableEvaluationFields(false);
+                // 표본 크기 입력 필드 표시
+                if (sampleSizeRow) {
+                    sampleSizeRow.style.display = '';
+                }
+
+                // 전체 결론 섹션 표시
+                if (overallConclusionSection) {
+                    overallConclusionSection.style.display = '';
+                }
+
+                // 운영평가 증빙 이미지 업로드 섹션 표시
+                if (operationImagesSection) {
+                    operationImagesSection.style.display = '';
                 }
 
                 // 설계평가 정보 숨김
@@ -2864,7 +2931,7 @@
 
         function viewDesignEvaluation() {
             // 같은 세션의 설계평가 상세 화면으로 이동
-            window.location.href = `/link6_design_detail?rcm_id=${currentRcmId}&evaluation_name=${currentEvaluationSession}`;
+            window.location.href = `/design-evaluation/rcm?rcm_id=${currentRcmId}&session=${currentEvaluationSession}`;
         }
 
         function renderDesignEvaluationTable(evaluations) {
@@ -3554,7 +3621,9 @@
             // 테이블 바디 생성
             tbody.innerHTML = '';
 
-            const samplesToDisplay = sampleSize || existingSampleLines.length;
+            // 표본수가 0이면 모집단 업로드 방식 - 기존 샘플 개수 사용
+            // 그 외에는 항상 sampleSize 사용
+            const samplesToDisplay = sampleSize === 0 ? existingSampleLines.length : sampleSize;
 
             for (let i = 1; i <= samplesToDisplay; i++) {
                 const sample = existingSampleLines.find(s => s.sample_number === i);
@@ -3578,41 +3647,28 @@
                     console.log(`[generateSampleLinesWithAttributes] ${attr.attribute} value:`, attrValue);
                     const isPopulation = attr.type === 'population';
 
-                    // 첫 번째 행 처리
+                    // 첫 번째 행 (설계평가 샘플) 처리
                     if (isFirstRow && designSample) {
-                        // 모집단 항목: 드롭다운으로 변경 (모집단 업로드된 데이터에서 선택)
-                        if (isPopulation) {
-                            rowHtml += `
-                                <td class="align-middle">
-                                    <input type="text" class="form-control form-control-sm"
-                                           id="sample-${i}-${attr.attribute}"
-                                           placeholder="${attr.name} (선택하세요)"
-                                           value="${attrValue}"
-                                           style="height: 31px;">
-                                </td>`;
-                        } else {
-                            // 증빙 항목: 설계평가 샘플 값으로 채우고 readonly
-                            const designValue = designSample?.attributes?.[attr.attribute] || '';
-                            rowHtml += `
-                                <td class="align-middle">
-                                    <input type="text" class="form-control form-control-sm"
-                                           id="sample-${i}-${attr.attribute}"
-                                           placeholder="${attr.name}"
-                                           value="${designValue}"
-                                           style="height: 31px;"
-                                           readonly>
-                                </td>`;
-                        }
+                        // 설계평가 샘플 데이터로 채우고 readonly (운영평가에서 수정 불가)
+                        const designValue = designSample?.attributes?.[attr.attribute] || '';
+                        rowHtml += `
+                            <td class="align-middle">
+                                <input type="text" class="form-control form-control-sm"
+                                       id="sample-${i}-${attr.attribute}"
+                                       placeholder="${attr.name}"
+                                       value="${designValue}"
+                                       style="height: 31px;"
+                                       readonly>
+                            </td>`;
                     } else {
-                        // 나머지 행: 기존과 동일
+                        // 운영평가 샘플은 모두 입력 가능
                         rowHtml += `
                             <td class="align-middle">
                                 <input type="text" class="form-control form-control-sm"
                                        id="sample-${i}-${attr.attribute}"
                                        placeholder="${attr.name}"
                                        value="${attrValue}"
-                                       style="height: 31px;"
-                                       ${isPopulation ? 'readonly' : ''}>
+                                       style="height: 31px;">
                             </td>`;
                     }
                 });

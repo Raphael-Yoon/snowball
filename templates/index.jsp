@@ -114,9 +114,9 @@
                             <h5 class="feature-title text-center"><i class="fas fa-building me-2"></i>ELC</h5>
                             <p class="feature-description">전사수준통제 설계평가 및 운영평가를 수행합니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="#" onclick="event.preventDefault(); checkEvaluationType('ELC', '/elc/design-evaluation', '/elc/operation-evaluation');" class="feature-link"
+                                <a href="{{ url_for('link6.elc_design_evaluation') }}" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• Entity Level Controls 평가<br>• 설계평가 및 운영평가<br>• 수동통제 중심 평가<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
+                                   title="<div>• Entity Level Controls 평가<br>• 설계평가 및 운영평가 통합<br>• 수동통제 중심 평가<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -130,9 +130,9 @@
                             <h5 class="feature-title text-center"><i class="fas fa-exchange-alt me-2"></i>TLC</h5>
                             <p class="feature-description">거래수준통제 설계평가 및 운영평가를 수행합니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="#" onclick="event.preventDefault(); checkEvaluationType('TLC', '/tlc/design-evaluation', '/tlc/operation-evaluation');" class="feature-link"
+                                <a href="{{ url_for('link6.tlc_evaluation') }}" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• Transaction Level Controls 평가<br>• 설계평가 및 운영평가<br>• 자동통제 포함 평가<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
+                                   title="<div>• Transaction Level Controls 평가<br>• 설계평가 및 운영평가 통합<br>• 자동통제 포함 평가<br>• 평가 결과 리포트 생성</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -146,9 +146,9 @@
                             <h5 class="feature-title text-center"><i class="fas fa-server me-2"></i>ITGC</h5>
                             <p class="feature-description">IT일반통제 설계평가 및 운영평가를 수행합니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="#" onclick="event.preventDefault(); checkEvaluationType('ITGC', '/user/design-evaluation', '/user/operation-evaluation');" class="feature-link"
+                                <a href="{{ url_for('link6.itgc_evaluation') }}" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-                                   title="<div>• IT General Controls 평가<br>• 설계평가 및 운영평가<br>• 자동통제 및 수동통제 평가<br>• 기준통제 매핑 및 리포트 생성</div>">자세히 보기</a>
+                                   title="<div>• IT General Controls 평가<br>• 설계평가 및 운영평가 통합<br>• 자동통제 및 수동통제 평가<br>• 기준통제 매핑 및 리포트 생성</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>

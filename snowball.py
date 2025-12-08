@@ -33,7 +33,6 @@ import re
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', '150606')
-
 # 세션 만료 시간 설정 (24시간으로 연장)
 # 브라우저 종료시에만 세션 만료 (permanent session 사용하지 않음)
 
@@ -801,10 +800,8 @@ def user_rcm_view():
 @app.route('/user/design-evaluation')
 @login_required
 def user_design_evaluation():
-    """설계평가 페이지 - link6으로 리디렉션"""
-    return redirect(url_for('link6.user_design_evaluation'))
-
-# 이 라우트는 snowball_link6.py로 이전됨 - RCM ID는 POST 방식으로 처리
+    """레거시 설계평가 페이지 - ITGC 통합 평가로 리디렉트"""
+    return redirect(url_for('link6.itgc_evaluation'))
 
 # 이 함수는 snowball_link6.py로 이전됨 - 전체 주석 처리
 # @app.route('/api/design-evaluation/save', methods=['POST'])

@@ -24,10 +24,29 @@
                             평가명: <span id="currentEvaluationName"></span>
                         </div>
                     </div>
-                    <div>
+                    <div class="d-flex gap-2">
+                        {% if has_operation_evaluation %}
+                        <button type="button" class="btn btn-warning" onclick="viewOperationEvaluation()">
+                            <i class="fas fa-chart-line me-1"></i>운영평가 보기
+                        </button>
+                        {% endif %}
+                        {% if evaluation_type == 'ELC' %}
+                        <a href="{{ url_for('link6.elc_design_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% elif evaluation_type == 'TLC' %}
+                        <a href="{{ url_for('link6.tlc_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% elif evaluation_type == 'ITGC' %}
+                        <a href="{{ url_for('link6.itgc_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% else %}
                         <a href="/user/design-evaluation" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>목록으로
                         </a>
+                        {% endif %}
                     </div>
                 </div>
                 <hr>
@@ -2881,6 +2900,34 @@
                 });
             };
         });
+
+        // 운영평가 보기 함수
+        function viewOperationEvaluation() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/operation-evaluation/rcm';
+
+            const rcmInput = document.createElement('input');
+            rcmInput.type = 'hidden';
+            rcmInput.name = 'rcm_id';
+            rcmInput.value = '{{ rcm_id }}';
+
+            const sessionInput = document.createElement('input');
+            sessionInput.type = 'hidden';
+            sessionInput.name = 'design_evaluation_session';
+            sessionInput.value = document.getElementById('currentEvaluationName').textContent;
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'continue';
+
+            form.appendChild(rcmInput);
+            form.appendChild(sessionInput);
+            form.appendChild(actionInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
     </script>
 </body>
 </html>

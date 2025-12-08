@@ -123,7 +123,6 @@
                                                         <th>평가명</th>
                                                         <th>진행률</th>
                                                         <th>최종 업데이트</th>
-                                                        <th>상태</th>
                                                         <th>작업</th>
                                                     </tr>
                                                 </thead>
@@ -147,13 +146,6 @@
                                                             </div>
                                                         </td>
                                                         <td>{{ session.last_updated[:10] if session.last_updated else '-' }}</td>
-                                                        <td>
-                                                            {% if session.is_completed %}
-                                                            <span class="badge bg-success">완료</span>
-                                                            {% else %}
-                                                            <span class="badge bg-warning text-dark">진행중</span>
-                                                            {% endif %}
-                                                        </td>
                                                         <td>
                                                             {% if not session.is_completed %}
                                                             <button class="btn btn-sm btn-primary me-1" onclick="continueDesignEvaluation({{ rcm.rcm_id }}, '{{ session.evaluation_session }}')">
@@ -215,8 +207,8 @@
                                 <h2 class="accordion-header" id="opheading{{ rcm.rcm_id }}">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#opcollapse{{ rcm.rcm_id }}">
                                         <i class="fas fa-file-alt me-2"></i>{{ rcm.rcm_name }}
-                                        {% set completed_count = rcm.operation_sessions|selectattr('is_completed')|list|length %}
-                                        {% set in_progress_count = rcm.operation_sessions|length - completed_count %}
+                                        {% set completed_count = rcm.operation_sessions|selectattr('status', 'equalto', 4)|list|length %}
+                                        {% set in_progress_count = rcm.operation_sessions|selectattr('status', 'equalto', 3)|list|length %}
                                         {% if completed_count > 0 %}
                                         <span class="badge bg-success ms-2">완료 {{ completed_count }}개</span>
                                         {% endif %}
@@ -234,7 +226,6 @@
                                                         <th>평가명</th>
                                                         <th>진행률</th>
                                                         <th>최종 업데이트</th>
-                                                        <th>상태</th>
                                                         <th>작업</th>
                                                     </tr>
                                                 </thead>
@@ -260,14 +251,14 @@
                                                         </td>
                                                         <td>{{ session.last_updated[:10] if session.last_updated else '-' }}</td>
                                                         <td>
-                                                            {% if session.is_completed %}
-                                                            <span class="badge bg-success">완료</span>
-                                                            {% else %}
-                                                            <span class="badge bg-warning text-dark">진행중</span>
-                                                            {% endif %}
-                                                        </td>
-                                                        <td>
-                                                            {% if not session.is_completed %}
+                                                            {% if session.status == 2 %}
+                                                            <button class="btn btn-sm btn-success me-1" onclick="continueOperationEvaluation({{ rcm.rcm_id }}, '{{ session.design_evaluation_name }}')">
+                                                                <i class="fas fa-play-circle me-1"></i>시작하기
+                                                            </button>
+                                                            <button class="btn btn-sm btn-danger" onclick="deleteEvaluation({{ session.header_id }}, '{{ session.evaluation_session }}')">
+                                                                <i class="fas fa-trash me-1"></i>삭제
+                                                            </button>
+                                                            {% elif session.status == 3 %}
                                                             <button class="btn btn-sm btn-warning me-1" onclick="continueOperationEvaluation({{ rcm.rcm_id }}, '{{ session.design_evaluation_name }}')">
                                                                 <i class="fas fa-play me-1"></i>계속하기
                                                             </button>
@@ -561,9 +552,36 @@
         }
 
         // 진행 중인 운영평가 계속하기
-        function continueOperationEvaluation(rcmId, designSession) {
-            console.log('[DEBUG] continueOperationEvaluation 호출됨:', rcmId, designSession);
-            continueDirectly(rcmId, designSession);
+        function continueOperationEvaluation(rcmId, evaluationName) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/operation-evaluation/rcm';
+
+            const rcmInput = document.createElement('input');
+            rcmInput.type = 'hidden';
+            rcmInput.name = 'rcm_id';
+            rcmInput.value = rcmId;
+
+            const sessionInput = document.createElement('input');
+            sessionInput.type = 'hidden';
+            sessionInput.name = 'design_evaluation_session';
+            sessionInput.value = evaluationName;
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'continue';
+
+            form.appendChild(rcmInput);
+            form.appendChild(sessionInput);
+            form.appendChild(actionInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        // 완료된 운영평가 보기
+        function viewOperationEvaluation(rcmId, evaluationName) {
+            continueOperationEvaluation(rcmId, evaluationName);
         }
 
         function showOperationStartModal(rcmId, designSession, operationCount, totalCount) {

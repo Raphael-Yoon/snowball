@@ -1,5 +1,63 @@
 # Snowball 프로젝트 작업 로그
 
+## 2025-12-07
+- **ELC 통합 테이블 마이그레이션 완료**
+  - 설계평가와 운영평가 데이터를 별도 테이블에서 통합 테이블로 마이그레이션
+  - 기존: `sb_design_evaluation_*`, `sb_operation_evaluation_*` (ITGC용)
+  - 신규: `sb_evaluation_header`, `sb_evaluation_line` (ELC용 통합)
+  - 하나의 header/line 레코드가 설계평가 + 운영평가 데이터를 모두 포함
+
+- **운영평가 저장 로직 수정**
+  - 문제: ELC 운영평가 데이터 저장 시 ITGC 테이블에 저장되어 데이터가 유실됨
+  - 원인: `save_operation_evaluation()` 함수가 모든 RCM에 대해 ITGC 테이블만 사용
+  - 수정 (auth.py:1490-1603):
+    - RCM의 `control_category` 확인 추가
+    - ELC: `_save_operation_evaluation_unified()` 호출 → 통합 테이블(`sb_evaluation_line`) 사용
+    - ITGC/TLC: 기존 로직 유지 → 별도 테이블(`sb_operation_evaluation_line`) 사용
+  - `_save_operation_evaluation_unified()` 함수 신규 추가:
+    - `sb_evaluation_line` 테이블에 운영평가 데이터 업데이트
+    - 샘플 데이터는 `sb_evaluation_sample` 테이블에 `evaluation_type='operation'`으로 저장
+    - 운영평가 진행에 따라 header의 status 자동 업데이트 (3=진행중, 4=완료)
+
+- **설계평가 완료 확인 로직 수정**
+  - 문제: 운영평가 저장 시 "설계평가 세션이 완료되지 않음" 오류 발생
+  - 원인: `get_completed_design_evaluation_sessions()` 함수가 `status IN (0, 1)`만 체크
+    - status=3 (운영평가 진행중)인 세션을 설계평가 완료로 인식하지 못함
+  - 수정 (auth.py:1973-2011):
+    - ELC: `status >= 1` AND `archived = 0` 조건으로 변경
+    - ITGC/TLC: 기존 `progress = 100` 로직 유지
+    - 설계평가 완료 = status가 1 이상 (설계평가 완료, 운영평가 시작/진행/완료 모두 포함)
+
+- **UI 개선**
+  - link6_elc_evaluation.jsp:
+    - 설계/운영평가 설명 카드에 collapse 기능 추가 (좌우 2열 레이아웃 유지)
+    - "세션명" → "평가명"으로 용어 변경
+    - 운영평가 테이블에서 "(33개 통제)" 표시 제거 (진행률로 충분)
+    - "운영평가 시작 가능" 섹션에 "설계평가 보기" 버튼 추가
+  - link7_detail.jsp:
+    - 운영평가 상단 "설계평가 보기" 버튼 기능 변경
+    - 모달 표시 대신 설계평가 상세 화면으로 이동 (`/design-evaluation/rcm?rcm_id=...&session=...`)
+  - link7_elc_operation_evaluation.jsp:
+    - 각 운영평가 세션별 "설계평가 보기" 버튼 추가
+
+- **마이그레이션 스크립트**
+  - `migrations/migrate_to_unified_evaluation_table.py`: 설계평가 데이터 마이그레이션 (33개 세션)
+  - `migrations/migrate_operation_data_to_unified_table.py`: 운영평가 데이터 마이그레이션 (7개 완료된 평가)
+  - `migrations/add_archived_to_evaluation_header.py`: archived 컬럼 추가 및 status=5 데이터 변환
+
+- **평가 상태 관리 체계 정립**
+  - status 값 의미:
+    - 0: 설계평가 진행중
+    - 1: 설계평가 완료
+    - 2: 운영평가 시작 가능
+    - 3: 운영평가 진행중
+    - 4: 운영평가 완료
+    - 5: 아카이브 (deprecated, archived=1로 대체)
+  - evaluation_utils.py:
+    - `calculate_design_progress()`: 설계평가 진행률 계산 (overall_effectiveness 기준)
+    - `calculate_operation_progress()`: 운영평가 진행률 계산 (conclusion 기준)
+    - `get_evaluation_status()`: 상태 정보 통합 조회
+
 ## 2025-12-04
 - **운영평가 엑셀 다운로드 Testing Table 개선**
   - Testing Table 결과(결론) 컬럼 동적 배치:
