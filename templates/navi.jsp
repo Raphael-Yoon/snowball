@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SnowBall Navigation</title>
+    <title>Snowball Navigation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     		<link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
@@ -13,7 +13,7 @@
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
             <a class="navbar-brand" href="/">
-                <img src="{{ url_for('static', filename='img/logo.jpg')}}" class="logo" alt="SnowBall Logo" style="max-height: 40px; width: auto;">
+                <img src="{{ url_for('static', filename='img/logo.jpg')}}" class="logo" alt="Snowball Logo" style="max-height: 40px; width: auto;">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -32,44 +32,20 @@
                             <i class="fas fa-database me-1"></i>RCM
                         </a>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="elcDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-building me-1"></i>ELC
+                    <li class="nav-item">
+                        <a href="{{ url_for('link6.elc_design_evaluation') }}" class="nav-link">
+                            <i class="fas fa-building me-1"></i>ELC 평가
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="elcDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('link6.elc_design_evaluation') }}">
-                                <i class="fas fa-clipboard-check me-2"></i>설계평가
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link7.elc_operation_evaluation') }}">
-                                <i class="fas fa-cogs me-2"></i>운영평가
-                            </a></li>
-                        </ul>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="tlcDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-exchange-alt me-1"></i>TLC
+                    <li class="nav-item">
+                        <a href="{{ url_for('link6.tlc_evaluation') }}" class="nav-link">
+                            <i class="fas fa-exchange-alt me-1"></i>TLC 평가
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="tlcDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('link6.tlc_design_evaluation') }}">
-                                <i class="fas fa-clipboard-check me-2"></i>설계평가
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link7.tlc_operation_evaluation') }}">
-                                <i class="fas fa-cogs me-2"></i>운영평가
-                            </a></li>
-                        </ul>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="itgcDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-server me-1"></i>ITGC
+                    <li class="nav-item">
+                        <a href="{{ url_for('link6.itgc_evaluation') }}" class="nav-link">
+                            <i class="fas fa-server me-1"></i>ITGC 평가
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="itgcDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('link6.user_design_evaluation') }}">
-                                <i class="fas fa-clipboard-check me-2"></i>설계평가
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link7.user_operation_evaluation') }}">
-                                <i class="fas fa-cogs me-2"></i>운영평가
-                            </a></li>
-                        </ul>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="publicMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

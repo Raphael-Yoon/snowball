@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>내부평가 상세 - {{ rcm_info.rcm_name }} - SnowBall</title>
+    <title>내부평가 상세 - {{ rcm_info.rcm_name }} - Snowball</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">

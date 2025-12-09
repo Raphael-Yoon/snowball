@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>RCM 목록 - SnowBall</title>
+    <title>RCM 목록 - Snowball</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">

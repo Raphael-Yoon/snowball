@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>사용자 관리 - SnowBall 관리자</title>
+    <title>사용자 관리 - Snowball 관리자</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">

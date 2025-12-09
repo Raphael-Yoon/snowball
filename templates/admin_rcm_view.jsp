@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SnowBall - RCM 상세보기</title>
+    <title>Snowball - RCM 상세보기</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -282,7 +282,7 @@
                         <input type="number"
                                class="form-control form-control-sm"
                                id="population-attr-count"
-                               min="1"
+                               min="0"
                                max="10"
                                value="2"
                                style="width: 100px;"
@@ -609,7 +609,8 @@
                         // population_attribute_count 로드
                         const popCountInput = document.getElementById('population-attr-count');
                         if (popCountInput) {
-                            popCountInput.value = data.population_attribute_count || 2;
+                            // 0도 유효한 값이므로 null/undefined만 체크
+                            popCountInput.value = data.population_attribute_count !== null && data.population_attribute_count !== undefined ? data.population_attribute_count : 2;
                         }
                     } else {
                         console.error('Failed to load attributes:', data.message);

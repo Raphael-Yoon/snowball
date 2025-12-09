@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SnowBall - {{ evaluation_type|default('ITGC') }} 설계평가 - {{ rcm_info.rcm_name }}</title>
+    <title>Snowball - {{ evaluation_type|default('ITGC') }} 설계평가 - {{ rcm_info.rcm_name }}</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -24,10 +24,29 @@
                             평가명: <span id="currentEvaluationName"></span>
                         </div>
                     </div>
-                    <div>
+                    <div class="d-flex gap-2">
+                        {% if has_operation_evaluation %}
+                        <button type="button" class="btn btn-warning" onclick="viewOperationEvaluation()">
+                            <i class="fas fa-chart-line me-1"></i>운영평가 보기
+                        </button>
+                        {% endif %}
+                        {% if evaluation_type == 'ELC' %}
+                        <a href="{{ url_for('link6.elc_design_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% elif evaluation_type == 'TLC' %}
+                        <a href="{{ url_for('link6.tlc_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% elif evaluation_type == 'ITGC' %}
+                        <a href="{{ url_for('link6.itgc_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% else %}
                         <a href="/user/design-evaluation" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>목록으로
                         </a>
+                        {% endif %}
                     </div>
                 </div>
                 <hr>
@@ -295,25 +314,35 @@
                             <h6 class="mb-0"><i class="fas fa-check-circle me-2"></i>설계 효과성 종합 평가</h6>
                         </div>
                         <div class="card-body">
-                            <!-- 당기 발생사실 없음 옵션 -->
-                            <div class="mb-3" id="no-occurrence-section-design" style="display: none;">
+                            <!-- 해당 없음 (통제 미시행) 옵션 -->
+                            <div class="mb-3" id="no-occurrence-section-design">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="no_occurrence_design" name="no_occurrence_design">
+                                    <input class="form-check-input" type="checkbox" id="no_occurrence_design" name="no_occurrence_design"
+                                           onchange="
+                                               console.log('체크박스 클릭됨');
+                                               const checked = this.checked;
+                                               console.log('체크 상태:', checked);
+                                               document.getElementById('design-evidence-section').style.display = checked ? 'none' : 'block';
+                                               document.getElementById('recommended-actions-section').style.display = checked ? 'none' : 'block';
+                                               document.getElementById('design-comment-section').style.display = checked ? 'none' : 'block';
+                                               document.getElementById('evaluation-images-section').style.display = checked ? 'none' : 'block';
+                                               document.getElementById('no-occurrence-reason-section-design').style.display = checked ? 'block' : 'none';
+                                           ">
                                     <label class="form-check-label" for="no_occurrence_design">
-                                        <strong>당기 발생사실 없음</strong>
-                                        <small class="text-muted d-block">해당 통제활동이 평가 기간 동안 발생하지 않은 경우 체크하세요</small>
+                                        <strong>해당 없음 (통제 미시행)</strong>
+                                        <small class="text-muted d-block">평가 기간 동안 해당 통제가 아직 시행되지 않은 경우 체크하세요</small>
                                     </label>
                                 </div>
                             </div>
 
-                            <!-- 당기 발생사실 없음 사유 -->
+                            <!-- 통제 미시행 사유 -->
                             <div class="mb-3" id="no-occurrence-reason-section-design" style="display: none;">
                                 <label for="no_occurrence_reason_design" class="form-label fw-bold">
-                                    비고 (선택사항)
+                                    미시행 사유
                                 </label>
                                 <textarea class="form-control" id="no_occurrence_reason_design" name="no_occurrence_reason_design"
                                     rows="3"
-                                    placeholder="필요한 경우 추가 설명을 입력하세요&#10;예) 당기 중 신규 직원 채용이 없었음, 시스템 변경이 발생하지 않았음 등"></textarea>
+                                    placeholder="통제가 미시행된 사유를 입력하세요&#10;예) 분기 통제로 평가 시점에 아직 시행 전, 시스템 도입 예정, 신규 통제로 시행 준비 중 등"></textarea>
                             </div>
 
                             <div class="mb-3" id="design-evidence-section">
@@ -330,19 +359,7 @@
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="recommendedActions" class="form-label">권고 조치사항</label>
-                                <textarea class="form-control" id="recommendedActions" rows="2"
-                                          placeholder="실무와 문서 간 차이 해소나 통제 운영 개선을 위한 구체적인 조치사항을 제안하세요..."></textarea>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="designComment" class="form-label">설계 평가 코멘트</label>
-                                <textarea class="form-control" id="designComment" rows="3"
-                                          placeholder="설계 효과성에 대한 종합적인 의견이나 특이사항을 입력하세요..."></textarea>
-                            </div>
-
-                            <div class="mb-3">
+                            <div class="mb-3" id="evaluation-images-section">
                                 <label for="evaluationImages" class="form-label">평가 증빙 자료 (이미지)</label>
                                 <div id="imageUploadSection">
                                     <input type="file" class="form-control" id="evaluationImages"
@@ -351,12 +368,24 @@
                                 </div>
                                 <div id="imagePreview" class="mt-2"></div>
                             </div>
+
+                            <div class="mb-3" id="design-comment-section">
+                                <label for="designComment" class="form-label">설계 평가 코멘트</label>
+                                <textarea class="form-control" id="designComment" rows="3"
+                                          placeholder="설계 효과성에 대한 종합적인 의견이나 특이사항을 입력하세요..."></textarea>
+                            </div>
+
+                            <div class="mb-3" id="recommended-actions-section">
+                                <label for="recommendedActions" class="form-label">권고 조치사항</label>
+                                <textarea class="form-control" id="recommendedActions" rows="2"
+                                          placeholder="실무와 문서 간 차이 해소나 통제 운영 개선을 위한 구체적인 조치사항을 제안하세요..."></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
-                        <i class="fas fa-times me-1"></i>취소
+                        <i class="fas fa-times me-1"></i>닫기
                     </button>
                     <button type="button" id="saveEvaluationBtn" class="btn btn-sm btn-success" onclick="saveEvaluation()" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
                         <i class="fas fa-save me-1"></i>평가 저장
@@ -435,7 +464,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
-                        <i class="fas fa-times me-1"></i>취소
+                        <i class="fas fa-times me-1"></i>닫기
                     </button>
                     <button type="button" class="btn btn-sm btn-info" onclick="uploadEvaluationFile()" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">
                         <i class="fas fa-upload me-1"></i>업로드 및 적용
@@ -525,7 +554,8 @@
                 return;
             }
 
-            const popAttrCount = attrData.populationAttributeCount || 2;
+            // 0도 유효한 값이므로 null/undefined만 체크
+            const popAttrCount = attrData.populationAttributeCount !== null && attrData.populationAttributeCount !== undefined ? attrData.populationAttributeCount : 2;
             const attributes = attrData.attributes || {};
 
             console.log('[generateDesignEvidenceTable] popAttrCount:', popAttrCount);
@@ -913,11 +943,93 @@
             }
         }
         
+        // 해당 없음 (통제 미시행) 체크 시 필드 토글 (설계평가)
+        function toggleNoOccurrenceDesign() {
+            const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
+            const designEvidenceSection = document.getElementById('design-evidence-section');
+            const noOccurrenceReasonSection = document.getElementById('no-occurrence-reason-section-design');
+            const recommendedActionsSection = document.getElementById('recommended-actions-section');
+            const designCommentSection = document.getElementById('design-comment-section');
+            const evaluationImagesSection = document.getElementById('evaluation-images-section');
+
+            console.log('[toggleNoOccurrenceDesign] 호출됨');
+            console.log('[toggleNoOccurrenceDesign] 체크박스 상태:', noOccurrenceCheckbox?.checked);
+            console.log('[toggleNoOccurrenceDesign] 찾은 요소들:', {
+                designEvidenceSection: !!designEvidenceSection,
+                recommendedActionsSection: !!recommendedActionsSection,
+                designCommentSection: !!designCommentSection,
+                evaluationImagesSection: !!evaluationImagesSection
+            });
+
+            if (noOccurrenceCheckbox && noOccurrenceCheckbox.checked) {
+                console.log('[toggleNoOccurrenceDesign] 섹션 숨기기 시작');
+                // 증빙 섹션 숨기기
+                if (designEvidenceSection) {
+                    designEvidenceSection.style.display = 'none';
+                    console.log('[toggleNoOccurrenceDesign] 증빙 섹션 숨김');
+                }
+
+                // 권고 조치사항, 설계 평가 코멘트, 이미지 업로드 섹션 숨기기
+                if (recommendedActionsSection) {
+                    recommendedActionsSection.style.display = 'none';
+                    console.log('[toggleNoOccurrenceDesign] 권고 조치사항 숨김');
+                }
+                if (designCommentSection) {
+                    designCommentSection.style.display = 'none';
+                    console.log('[toggleNoOccurrenceDesign] 설계 평가 코멘트 숨김');
+                }
+                if (evaluationImagesSection) {
+                    evaluationImagesSection.style.display = 'none';
+                    console.log('[toggleNoOccurrenceDesign] 이미지 업로드 숨김');
+                }
+
+                // 사유 입력란 표시
+                if (noOccurrenceReasonSection) {
+                    noOccurrenceReasonSection.style.display = 'block';
+                    console.log('[toggleNoOccurrenceDesign] 사유 입력란 표시');
+                }
+            } else {
+                console.log('[toggleNoOccurrenceDesign] 섹션 표시 시작');
+                // 증빙 섹션 표시
+                if (designEvidenceSection) {
+                    designEvidenceSection.style.display = 'block';
+                }
+
+                // 권고 조치사항, 설계 평가 코멘트, 이미지 업로드 섹션 표시
+                if (recommendedActionsSection) {
+                    recommendedActionsSection.style.display = 'block';
+                }
+                if (designCommentSection) {
+                    designCommentSection.style.display = 'block';
+                }
+                if (evaluationImagesSection) {
+                    evaluationImagesSection.style.display = 'block';
+                }
+
+                // 사유 입력란 숨김
+                if (noOccurrenceReasonSection) {
+                    noOccurrenceReasonSection.style.display = 'none';
+                }
+            }
+        }
+
         // 권고 조치사항 필드 활성화/비활성화
         function toggleRecommendedActions(effectivenessValue) {
+            console.log('[toggleRecommendedActions] 호출됨, effectivenessValue:', effectivenessValue);
             const recommendedActionsField = document.getElementById('recommendedActions');
             const evaluationEvidence = document.getElementById('evaluationEvidence');
             const container = recommendedActionsField.closest('.mb-3');
+
+            // 해당 없음이 체크되어 있으면 권고 조치사항을 표시하지 않음
+            const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
+            console.log('[toggleRecommendedActions] 해당 없음 체크 상태:', noOccurrenceCheckbox?.checked);
+            if (noOccurrenceCheckbox && noOccurrenceCheckbox.checked) {
+                console.log('[toggleRecommendedActions] 해당 없음이 체크되어 있어서 권고 조치사항 숨김');
+                if (container) {
+                    container.style.display = 'none';
+                }
+                return;
+            }
 
             if (effectivenessValue === 'effective') {
                 // 효과적인 경우 완전히 숨김
@@ -1423,6 +1535,7 @@
                 const noOccurrenceReason = document.getElementById('no_occurrence_reason_design');
                 if (noOccurrenceCheckbox) noOccurrenceCheckbox.checked = false;
                 if (noOccurrenceReason) noOccurrenceReason.value = '';
+                toggleNoOccurrenceDesign();
 
                 // 폼 초기화 시 권고 조치사항 필드 숨김
                 toggleRecommendedActions('');
@@ -1465,14 +1578,7 @@
                 }
             }
 
-            // 취소/닫기 버튼 텍스트 변경
-            if (cancelButton) {
-                if (isHeaderCompleted) {
-                    cancelButton.innerHTML = '<i class="fas fa-times me-1"></i>닫기';
-                } else {
-                    cancelButton.innerHTML = '<i class="fas fa-times me-1"></i>취소';
-                }
-            }
+            // 닫기 버튼은 항상 "닫기"로 표시 (이미 HTML에 설정됨)
 
             // 이미지 업로드 버튼 및 입력 필드 제어
             const uploadImageBtn = document.querySelector('#evaluationModal button[onclick*="uploadImageModal"]');
@@ -1542,16 +1648,25 @@
             // 표준 표본수가 0인 경우 "당기 발생사실 없음" 체크박스 표시
             {% for detail in rcm_details %}
             if ({{ loop.index }} === index) {
-                const recommendedSampleSize = {{ detail.recommended_sample_size or 0 }};
+                // 자동통제 판별
+                const controlNature = '{{ detail.control_nature or "" }}';
+                const isAutomated = controlNature && (
+                    controlNature.toUpperCase() === 'A' ||
+                    controlNature.includes('자동') ||
+                    controlNature.toLowerCase().includes('auto') ||
+                    controlNature.toLowerCase().includes('automated')
+                );
+
+                // 자동통제가 아닐 때만 당기 발생사실 없음 옵션 표시
                 const noOccurrenceSection = document.getElementById('no-occurrence-section-design');
                 if (noOccurrenceSection) {
-                    if (recommendedSampleSize === 0) {
-                        noOccurrenceSection.style.display = 'block';
-                    } else {
+                    if (isAutomated) {
                         noOccurrenceSection.style.display = 'none';
-                        // 표본수가 0이 아니면 체크 해제
+                        // 자동통제의 경우 체크 해제
                         const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
                         if (noOccurrenceCheckbox) noOccurrenceCheckbox.checked = false;
+                    } else {
+                        noOccurrenceSection.style.display = 'block';
                     }
                 }
             }
@@ -1559,6 +1674,11 @@
 
             const modal = new bootstrap.Modal(document.getElementById('evaluationModal'));
             modal.show();
+
+            // 모달이 완전히 표시된 후 해당 없음 체크박스 상태에 따라 섹션 표시/숨김 적용
+            setTimeout(() => {
+                toggleNoOccurrenceDesign();
+            }, 100);
         }
         
         // 평가 결과 저장
@@ -1587,22 +1707,40 @@
                 return;
             }
             
-            const adequacy = document.getElementById('descriptionAdequacy').value;
-            const effectiveness = document.getElementById('overallEffectiveness').value;
-            
-            console.log('Form validation - adequacy:', adequacy, 'effectiveness:', effectiveness);
-            
-            if (!adequacy) {
-                alert('[DESIGN-004] 통제활동 설명 적절성 평가는 필수 항목입니다.');
-                return;
+            // 해당 없음 (통제 미시행) 데이터 수집
+            const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
+            const noOccurrenceReason = document.getElementById('no_occurrence_reason_design');
+            const noOccurrence = noOccurrenceCheckbox ? noOccurrenceCheckbox.checked : false;
+            const noOccurrenceReasonText = noOccurrenceReason ? noOccurrenceReason.value : '';
+
+            // 해당 없음이 체크된 경우 사유만 필수 검증
+            if (noOccurrence) {
+                if (!noOccurrenceReasonText || noOccurrenceReasonText.trim() === '') {
+                    alert('통제 미시행 사유를 입력해주세요.');
+                    return;
+                }
+            } else {
+                // 해당 없음이 아닌 경우에만 일반 검증 수행
+                const adequacy = document.getElementById('descriptionAdequacy').value;
+                const effectiveness = document.getElementById('overallEffectiveness').value;
+
+                console.log('Form validation - adequacy:', adequacy, 'effectiveness:', effectiveness);
+
+                if (!adequacy) {
+                    alert('[DESIGN-004] 통제활동 설명 적절성 평가는 필수 항목입니다.');
+                    return;
+                }
+
+                // 적절함인 경우에만 효과성 평가 필수
+                if (adequacy === 'adequate' && !effectiveness) {
+                    alert('[DESIGN-005] 종합 설계 효과성 평가는 필수 항목입니다.');
+                    return;
+                }
             }
 
-            // 적절함인 경우에만 효과성 평가 필수
-            if (adequacy === 'adequate' && !effectiveness) {
-                alert('[DESIGN-005] 종합 설계 효과성 평가는 필수 항목입니다.');
-                return;
-            }
-            
+            const adequacy = document.getElementById('descriptionAdequacy').value;
+            const effectiveness = document.getElementById('overallEffectiveness').value;
+
             // 증빙 데이터 수집 (항상 JSON 형식으로 저장)
             let evidenceData = '';
             const evidenceEl = document.getElementById('evaluationEvidence');
@@ -1621,12 +1759,6 @@
                 }
             }
             evidenceData = JSON.stringify(attrData);
-
-            // 당기 발생사실 없음 데이터 수집
-            const noOccurrenceCheckbox = document.getElementById('no_occurrence_design');
-            const noOccurrenceReason = document.getElementById('no_occurrence_reason_design');
-            const noOccurrence = noOccurrenceCheckbox ? noOccurrenceCheckbox.checked : false;
-            const noOccurrenceReasonText = noOccurrenceReason ? noOccurrenceReason.value : '';
 
             const evaluation = {
                 description_adequacy: adequacy,
@@ -1672,8 +1804,8 @@
             const existingImages = (evaluationResults[currentEvaluationIndex]?.images || []).length;
             const totalImageCount = imageData.length + existingImages;
 
-            // 증빙자료 업로드 확인 (적정이면서 효과적인 경우에만, 새로 업로드한 이미지 + 기존 이미지 모두 확인)
-            if (adequacy === 'adequate' && effectiveness === 'effective' && totalImageCount === 0) {
+            // 증빙자료 업로드 확인 (해당 없음이 아니고, 적정이면서 효과적인 경우에만)
+            if (!noOccurrence && adequacy === 'adequate' && effectiveness === 'effective' && totalImageCount === 0) {
                 const confirmed = confirm('평가 결과가 "적정" 및 "효과적"이지만 업로드된 증빙자료가 없습니다.\n\n증빙자료 없이 평가를 저장하시겠습니까?');
                 if (!confirmed) {
                     console.log('User cancelled save due to no evidence files');
@@ -2768,6 +2900,34 @@
                 });
             };
         });
+
+        // 운영평가 보기 함수
+        function viewOperationEvaluation() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/operation-evaluation/rcm';
+
+            const rcmInput = document.createElement('input');
+            rcmInput.type = 'hidden';
+            rcmInput.name = 'rcm_id';
+            rcmInput.value = '{{ rcm_id }}';
+
+            const sessionInput = document.createElement('input');
+            sessionInput.type = 'hidden';
+            sessionInput.name = 'design_evaluation_session';
+            sessionInput.value = document.getElementById('currentEvaluationName').textContent;
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'continue';
+
+            form.appendChild(rcmInput);
+            form.appendChild(sessionInput);
+            form.appendChild(actionInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
     </script>
 </body>
 </html>

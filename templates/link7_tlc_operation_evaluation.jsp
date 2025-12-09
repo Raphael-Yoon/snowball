@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SnowBall - TLC 운영평가</title>
+    <title>Snowball - TLC 운영평가</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -205,17 +205,23 @@
                                                         <span class="text-muted">진행상황:</span>
                                                         <strong>{{ session.operation_completed_count }}/{{ session.eligible_control_count }}</strong> 통제
                                                     </div>
-                                                    {% if session.operation_completed_count > 0 %}
-                                                    <button type="button" class="btn btn-warning btn-sm"
-                                                            onclick="continueDirectly({{ rcm.rcm_id }}, '{{ session.evaluation_session }}')">
-                                                        <i class="fas fa-play-circle me-1"></i>계속하기
-                                                    </button>
-                                                    {% else %}
-                                                    <button type="button" class="btn btn-primary btn-sm"
-                                                            onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count }}, {{ session.eligible_control_count }})">
-                                                        <i class="fas fa-plus-circle me-1"></i>시작하기
-                                                    </button>
-                                                    {% endif %}
+                                                    <div>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm me-1"
+                                                                onclick="viewDesignEvaluation({{ rcm.rcm_id }}, '{{ session.evaluation_session }}')">
+                                                            <i class="fas fa-pencil-alt me-1"></i>설계평가 보기
+                                                        </button>
+                                                        {% if session.operation_completed_count > 0 %}
+                                                        <button type="button" class="btn btn-warning btn-sm"
+                                                                onclick="continueDirectly({{ rcm.rcm_id }}, '{{ session.evaluation_session }}')">
+                                                            <i class="fas fa-play-circle me-1"></i>계속하기
+                                                        </button>
+                                                        {% else %}
+                                                        <button type="button" class="btn btn-primary btn-sm"
+                                                                onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count }}, {{ session.eligible_control_count }})">
+                                                            <i class="fas fa-plus-circle me-1"></i>시작하기
+                                                        </button>
+                                                        {% endif %}
+                                                    </div>
                                                 </div>
                                                 {% if session.operation_completed_count > 0 %}
                                                 <div class="progress" style="height: 20px;">
@@ -372,6 +378,11 @@
             form.appendChild(actionInput);
             document.body.appendChild(form);
             form.submit();
+        }
+
+        function viewDesignEvaluation(rcmId, evaluationSession) {
+            // 설계평가 상세 화면으로 이동
+            window.location.href = `/design-evaluation/rcm?rcm_id=${rcmId}&session=${encodeURIComponent(evaluationSession)}`;
         }
     </script>
 </body>

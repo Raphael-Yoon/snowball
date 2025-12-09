@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SnowBall - ITGC 설계평가</title>
+    <title>Snowball - ITGC 설계평가</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -578,9 +578,13 @@
                                                                 </button>`)
                                                         }
                                                         ${session.evaluation_status !== 'ARCHIVED' ?
-                                                            `<button class="btn btn-sm btn-outline-danger" onclick="deleteEvaluationSession(${rcmId}, '${session.evaluation_session}')">
-                                                                <i class="fas fa-trash me-1"></i>삭제
-                                                            </button>` : ''}
+                                                            (session.has_operation_evaluation ?
+                                                                `<button class="btn btn-sm btn-outline-secondary" disabled title="운영평가가 존재하여 삭제할 수 없습니다">
+                                                                    <i class="fas fa-lock me-1"></i>삭제
+                                                                </button>` :
+                                                                `<button class="btn btn-sm btn-outline-danger" onclick="deleteEvaluationSession(${rcmId}, '${session.evaluation_session}')">
+                                                                    <i class="fas fa-trash me-1"></i>삭제
+                                                                </button>`) : ''}
                                                     </div>
                                                 </div>
                                             </div>

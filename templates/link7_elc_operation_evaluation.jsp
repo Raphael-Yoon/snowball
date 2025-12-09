@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SnowBall - ELC 운영평가</title>
+    <title>Snowball - ELC 운영평가</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -164,17 +164,23 @@
                                                         <span class="text-muted">진행상황:</span>
                                                         <strong>{{ session.operation_completed_count }}/{{ session.eligible_control_count }}</strong> 통제
                                                     </div>
-                                                    {% if session.operation_completed_count > 0 %}
-                                                    <button type="button" class="btn btn-warning btn-sm"
-                                                            onclick="continueDirectly({{ rcm.rcm_id }}, '{{ session.evaluation_session }}')">
-                                                        <i class="fas fa-play-circle me-1"></i>계속하기
-                                                    </button>
-                                                    {% else %}
-                                                    <button type="button" class="btn btn-primary btn-sm"
-                                                            onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count }}, {{ session.eligible_control_count }})">
-                                                        <i class="fas fa-plus-circle me-1"></i>시작하기
-                                                    </button>
-                                                    {% endif %}
+                                                    <div>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm me-1"
+                                                                onclick="window.location.href='/link6_design_detail?rcm_id={{ rcm.rcm_id }}&evaluation_name={{ session.evaluation_session }}'">
+                                                            <i class="fas fa-pencil-alt me-1"></i>설계평가 보기
+                                                        </button>
+                                                        {% if session.operation_completed_count > 0 %}
+                                                        <button type="button" class="btn btn-warning btn-sm"
+                                                                onclick="continueDirectly({{ rcm.rcm_id }}, '{{ session.evaluation_session }}')">
+                                                            <i class="fas fa-play-circle me-1"></i>계속하기
+                                                        </button>
+                                                        {% else %}
+                                                        <button type="button" class="btn btn-primary btn-sm"
+                                                                onclick="showOperationStartModal({{ rcm.rcm_id }}, '{{ session.evaluation_session }}', {{ session.operation_completed_count }}, {{ session.eligible_control_count }})">
+                                                            <i class="fas fa-plus-circle me-1"></i>시작하기
+                                                        </button>
+                                                        {% endif %}
+                                                    </div>
                                                 </div>
                                                 {% if session.operation_completed_count > 0 %}
                                                 <div class="progress" style="height: 20px;">

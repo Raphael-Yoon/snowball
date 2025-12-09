@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SnowBall - 내 RCM 조회</title>
+    <title>Snowball - 내 RCM 조회</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -76,6 +76,7 @@
                                         <th>설명</th>
                                         <th>내 권한</th>
                                         <th>업로드일</th>
+                                        <th>평가 세션</th>
                                         <th>관리</th>
                                     </tr>
                                 </thead>
@@ -103,6 +104,7 @@
                                             </span>
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
+                                        <td><small class="text-muted">{{ rcm.evaluation_session }}</small></td>
                                         <td>
                                             <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
                                                 <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
@@ -145,6 +147,7 @@
                                         <th>설명</th>
                                         <th>내 권한</th>
                                         <th>업로드일</th>
+                                        <th>평가 세션</th>
                                         <th>관리</th>
                                     </tr>
                                 </thead>
@@ -163,6 +166,7 @@
                                             </span>
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
+                                        <td><small class="text-muted">{{ rcm.evaluation_session }}</small></td>
                                         <td>
                                             <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
                                                 <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
@@ -210,6 +214,7 @@
                                         <th>설명</th>
                                         <th>내 권한</th>
                                         <th>업로드일</th>
+                                        <th>평가 세션</th>
                                         <th>관리</th>
                                     </tr>
                                 </thead>
@@ -228,6 +233,7 @@
                                             </span>
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
+                                        <td><small class="text-muted">{{ rcm.evaluation_session }}</small></td>
                                         <td>
                                             <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
                                                 <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}
@@ -275,6 +281,7 @@
                                         <th>설명</th>
                                         <th>내 권한</th>
                                         <th>업로드일</th>
+                                        <th>평가 세션</th>
                                         <th>관리</th>
                                     </tr>
                                 </thead>
@@ -293,6 +300,7 @@
                                             </span>
                                         </td>
                                         <td>{{ rcm.upload_date.split(' ')[0] if rcm.upload_date else '-' }}</td>
+                                        <td><small class="text-muted">{{ rcm.evaluation_session }}</small></td>
                                         <td>
                                             <a href="{{ rcm.action_url }}" class="btn btn-sm {{ rcm.action_class }} me-1" style="min-width: 110px; display: inline-block; text-align: center;">
                                                 <i class="fas fa-{{ 'play' if 'continue' in rcm.action_type else 'plus' }} me-1"></i>{{ rcm.action_label }}

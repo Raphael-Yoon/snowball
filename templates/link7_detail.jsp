@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>SnowBall - {{ rcm_info.control_category or 'RCM' }} 운영평가 - {{ rcm_info.rcm_name }}</title>
+    <title>Snowball - {{ rcm_info.control_category or 'RCM' }} 운영평가 - {{ rcm_info.rcm_name }}</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -57,9 +57,23 @@
                         <button type="button" class="btn btn-info" onclick="viewDesignEvaluation()">
                             <i class="fas fa-drafting-compass me-1"></i>설계평가 보기
                         </button>
+                        {% if rcm_info.control_category == 'ELC' %}
+                        <a href="{{ url_for('link6.elc_design_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% elif rcm_info.control_category == 'TLC' %}
+                        <a href="{{ url_for('link6.tlc_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% elif rcm_info.control_category == 'ITGC' %}
+                        <a href="{{ url_for('link6.itgc_evaluation') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>목록으로
+                        </a>
+                        {% else %}
                         <a href="/user/operation-evaluation" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>목록으로
                         </a>
+                        {% endif %}
                     </div>
                 </div>
                 <hr>
@@ -158,11 +172,11 @@
                                     <tr>
                                         <th width="8%">통제코드</th>
                                         <th width="14%">통제명</th>
-                                        <th width="22%">통제활동설명</th>
+                                        <th width="27%">통제활동설명</th>
                                         <th width="7%">통제주기</th>
                                         <th width="7%">통제유형</th>
                                         <th width="7%">통제구분</th>
-                                        <th width="10%">운영평가</th>
+                                        <th width="5%">운영평가</th>
                                         <th width="10%">평가결과</th>
                                     </tr>
                                 </thead>
@@ -202,8 +216,7 @@
                                             </button>
                                         </td>
                                         <td>
-                                            <span id="evaluation-result-{{ loop.index }}" class="badge bg-secondary">Not
-                                                Evaluated</span>
+                                            <span id="evaluation-result-{{ loop.index }}" class="badge bg-secondary">평가 필요</span>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -317,26 +330,35 @@
                         </div>
                     </div>
 
-                    <!-- 설계평가 의견 표시 섹션 (읽기 전용) -->
-                    <div class="mb-3" id="designCommentSection" style="display: none;">
-                        <label class="form-label fw-bold">
-                            <i class="fas fa-clipboard-check me-1"></i>설계평가 검토 의견
-                        </label>
-                        <div class="p-3 bg-light border rounded" style="white-space: pre-wrap; min-height: 60px;">
-                            <span id="designCommentText" class="text-dark"></span>
-                        </div>
-                        <div class="form-text">
-                            <small class="text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
-                                설계평가 시 작성된 검토 의견입니다 (읽기 전용)
-                            </small>
+                    <!-- 표본 수 입력 필드 -->
+                    <div class="mb-3">
+                        <label for="sample_size" class="form-label fw-bold">표본 수</label>
+                        <input type="number" class="form-control" id="sample_size" name="sample_size" min="1" value="1">
+                        <div class="form-text">설계평가 표본 1개 포함 (입력한 수만큼 표본이 생성됩니다)</div>
+                    </div>
+
+                    <!-- 표본별 테스트 결과 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">표본별 테스트 결과</label>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm" id="sample-lines-table">
+                                <thead class="table-light" id="sample-lines-thead">
+                                    <tr>
+                                        <th width="10%">표본 #</th>
+                                        <th width="70%">증빙 내용</th>
+                                        <th width="20%">결과</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sample-lines-tbody">
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
-                    <!-- 설계평가 이미지 표시 섹션 -->
+                    <!-- 설계평가 이미지 표시 섹션 (증빙 자료) -->
                     <div class="mb-3" id="designEvaluationImagesSection" style="display: none;">
                         <label class="form-label fw-bold">
-                            <i class="fas fa-clipboard-check me-1"></i>설계평가 증빙 이미지
+                            <i class="fas fa-images me-1"></i>평가 증빙 자료 (이미지)
                         </label>
                         <div id="designEvaluationImagesPreview" class="border rounded p-2 bg-light"></div>
                         <div class="form-text">
@@ -347,8 +369,46 @@
                         </div>
                     </div>
 
+                    <!-- 설계평가 의견 표시 섹션 (코멘트) -->
+                    <div class="mb-3" id="designCommentSection" style="display: none;">
+                        <label for="designCommentText" class="form-label fw-bold">설계 평가 코멘트</label>
+                        <textarea class="form-control" id="designCommentText" rows="3" readonly style="background-color: #e9ecef;"></textarea>
+                    </div>
+
+                    <!-- 설계평가 대체 옵션 (연간 통제 또는 자동 통제만 표시) -->
+                    <div class="mb-3" id="use-design-evaluation-section" style="display: none;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="use_design_evaluation" name="use_design_evaluation" onchange="toggleDesignEvaluationSubstitute()">
+                            <label class="form-check-label" for="use_design_evaluation">
+                                <strong>설계평가 확인으로 완료</strong>
+                                <small class="text-muted d-block">자동통제 또는 연간 통제의 경우, 설계평가 확인만으로 운영평가를 완료할 수 있습니다</small>
+                            </label>
+                        </div>
+                        <div id="design-evaluation-info" class="mt-2" style="display: none;"></div>
+                    </div>
+
+                    <!-- 운영평가 이미지 업로드 섹션 -->
+                    <div class="mb-3" id="operationEvaluationImagesSection">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-image me-1"></i>운영평가 증빙 이미지
+                        </label>
+                        <input type="file" class="form-control mb-2" id="operationImageFile" accept="image/*" multiple>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="uploadOperationImage()">
+                            <i class="fas fa-upload me-1"></i>이미지 업로드
+                        </button>
+                        <div id="operationImagesPreview" class="mt-3 border rounded p-2 bg-light" style="min-height: 100px;">
+                            <small class="text-muted">업로드된 이미지가 여기에 표시됩니다.</small>
+                        </div>
+                        <div class="form-text">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                운영평가 증빙 이미지를 업로드하세요. 여러 파일을 한번에 선택할 수 있습니다.
+                            </small>
+                        </div>
+                    </div>
+
                     <form id="operationEvaluationForm">
-                        <!-- 당기 발생사실 없음 옵션 (표본수가 0일 때만 표시) -->
+                        <!-- 당기 발생사실 없음 옵션 (자동통제가 아닐 때만 표시) -->
                         <div class="mb-3" id="no-occurrence-section" style="display: none;">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="no_occurrence" name="no_occurrence">
@@ -392,64 +452,13 @@
                         </div>
 
                         <div id="evaluation-fields">
-                            <!-- 표본 크기 입력 -->
-                            <div class="row mb-3">
-                                <div class="col-md-3">
-                                    <label for="sample_size" class="form-label fw-bold">표본 크기</label>
-                                    <input type="number" class="form-control text-end" id="sample_size"
-                                        name="sample_size" min="0" max="100" placeholder="공란: 모집단 크기 기반 자동 결정"
-                                        onchange="generateSampleLines()"
-                                        onkeyup="if(event.key === 'Enter') generateSampleLines()">
-                                    <div id="sampleSizeMessage" class="mt-1" style="display: none;"></div>
-                                </div>
-                                <div class="col-md-9 d-flex align-items-end">
-                                    <div class="form-text">
-                                        <small>권장 표본수: 연간(1), 분기(2), 월(2), 주(5), 일(20), 기타(1). 입력 후 자동으로 표본 라인이 생성됩니다.</small>
-                                    </div>
-                                </div>
-                            </div>
+                        </div>
 
-                            <!-- 표본 라인 테이블 -->
-                            <div id="sample-lines-container" style="display: none;">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">표본별 테스트 결과</label>
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-sm" id="sample-lines-table">
-                                            <thead class="table-light" id="sample-lines-thead">
-                                                <tr>
-                                                    <th width="10%">표본 #</th>
-                                                    <th width="70%">증빙 내용</th>
-                                                    <th width="20%">결과</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="sample-lines-tbody">
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                <!-- 전체 결론 -->
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <div class="alert alert-info">
-                                            <strong>전체 결론:</strong>
-                                            <span id="overall-conclusion" class="badge bg-secondary ms-2">-</span>
-                                            <div class="mt-2">
-                                                <small id="conclusion-summary">표본별 결과를 입력하면 자동으로 계산됩니다.</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- 검토 의견 -->
-                                <div class="row mt-3 mb-4">
-                                    <div class="col-md-12">
-                                        <label for="review_comment" class="form-label fw-bold">검토 의견</label>
-                                        <textarea class="form-control" id="review_comment" name="review_comment" rows="3"
-                                            placeholder="검토 의견을 작성하세요"></textarea>
-                                    </div>
-                                </div>
-                            </div>
+                        <!-- 검토 의견 (항상 표시) -->
+                        <div class="mb-3">
+                            <label for="review_comment" class="form-label fw-bold">검토 의견</label>
+                            <textarea class="form-control" id="review_comment" name="review_comment" rows="3"
+                                placeholder="검토 의견을 작성하세요"></textarea>
                         </div>
 
                         <div class="mb-3" id="exception-details-section" style="display: none;">
@@ -464,22 +473,16 @@
                                 placeholder="개선이 필요한 경우 개선계획을 작성하세요"></textarea>
                         </div>
 
-                        <!-- 운영평가 이미지 업로드 섹션 -->
-                        <div class="mb-3" id="operationEvaluationImagesSection">
-                            <label class="form-label fw-bold">
-                                <i class="fas fa-image me-1"></i>운영평가 증빙 이미지
-                            </label>
-                            <input type="file" class="form-control mb-2" id="operationImageFile" accept="image/*" multiple>
-                            <button type="button" class="btn btn-sm btn-primary" onclick="uploadOperationImage()">
-                                <i class="fas fa-upload me-1"></i>이미지 업로드
-                            </button>
-                            <div id="operationImagesPreview" class="mt-3 border rounded p-2 bg-light" style="min-height: 100px;">
-                                <small class="text-muted">업로드된 이미지가 여기에 표시됩니다.</small>
-                            </div>
-                            <div class="form-text">
-                                <small class="text-muted">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    운영평가 증빙 이미지를 업로드하세요. 여러 파일을 한번에 선택할 수 있습니다.
+                        <!-- 전체 결론 -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">전체 결론</label>
+                            <select class="form-select" id="overall-conclusion-select" name="conclusion">
+                                <option value="효과적" selected>효과적 (Effective)</option>
+                                <option value="효과적이지않음">효과적이지 않음 (Ineffective)</option>
+                            </select>
+                            <div class="mt-2">
+                                <small class="text-muted" id="conclusion-summary">
+                                    <i class="fas fa-info-circle me-1"></i>표본별 결과를 기반으로 자동 추천되지만, 직접 선택할 수 있습니다.
                                 </small>
                             </div>
                         </div>
@@ -510,18 +513,17 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
-                        style="min-width: auto; padding: 0.375rem 0.75rem;">닫기</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="padding: 0.375rem 0.75rem;">닫기</button>
                     <button type="button" id="resetPopulationBtn" class="btn btn-danger"
-                        onclick="resetPopulationUpload();" style="display: none;">
+                        onclick="resetPopulationUpload();" style="display: none; padding: 0.375rem 0.75rem;">
                         <i class="fas fa-redo me-1"></i>초기화
                     </button>
                     <!-- 운영평가 다운로드 버튼 (평가 완료 시 표시) -->
-                    <a id="downloadOperationBtn" href="#" class="btn btn-success" style="display: none;">
+                    <a id="downloadOperationBtn" href="#" class="btn btn-success" style="display: none; padding: 0.375rem 0.75rem;">
                         <i class="fas fa-download me-1"></i>조서 다운로드
                     </a>
                     <button type="button" id="saveOperationEvaluationBtn" class="btn btn-warning"
-                        onclick="saveOperationEvaluation();">
+                        onclick="saveOperationEvaluation();" style="padding: 0.375rem 0.75rem;">
                         <i class="fas fa-save me-1"></i>저장
                     </button>
                 </div>
@@ -531,7 +533,7 @@
 
     <!-- 자동통제 확인 모달 -->
     <div class="modal fade" id="autoControlCheckModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog" style="max-width: 750px;">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title"><i class="fas fa-robot me-2"></i>자동통제 운영평가</h5>
@@ -588,8 +590,11 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-sm btn-success" onclick="saveAutoControlCheck()">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="padding: 0.375rem 0.75rem;">닫기</button>
+                    <button type="button" class="btn btn-primary" onclick="downloadAutoControlDocument()" style="padding: 0.375rem 0.75rem;">
+                        <i class="fas fa-download me-1"></i>조서 다운로드
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="saveAutoControlCheck()" style="padding: 0.375rem 0.75rem;">
                         <i class="fas fa-check me-1"></i>확인 완료
                     </button>
                 </div>
@@ -892,20 +897,28 @@
 
         // 통제주기에 따른 기본 표본수 매핑 (코드값 기준)
         function getDefaultSampleSize(controlFrequency, controlType) {
-            // 통제주기 코드에서 첫 글자만 추출 (lookup_name이 올 수도 있음)
-            const frequencyCode = controlFrequency ? controlFrequency.charAt(0).toUpperCase() : '';
+            if (!controlFrequency) return 0;
+
+            const frequency = controlFrequency.toUpperCase();
+
+            // 전체 문자열 먼저 체크 (Ad-Hoc, 필요시 등)
+            if (frequency.includes('AD-HOC') || frequency.includes('ADHOC') || frequency === 'N' || frequency.includes('필요시')) {
+                return 0;
+            }
+
+            // 첫 글자로 판단
+            const frequencyCode = frequency.charAt(0);
 
             const frequencyMapping = {
-                'A': 1,  // 연간
-                'Q': 2,  // 분기
-                'M': 2,  // 월
-                'W': 5,  // 주
-                'D': 20, // 일
-                'O': 1,  // 기타 (자동통제 포함)
-                'N': 1   // 필요시
+                'A': 1,  // 연간 (Annual)
+                'Q': 2,  // 분기 (Quarterly)
+                'M': 2,  // 월 (Monthly)
+                'W': 5,  // 주 (Weekly)
+                'D': 20, // 일 (Daily)
+                'O': 1   // 기타 (Other, 자동통제 포함)
             };
 
-            return frequencyMapping[frequencyCode] || 1;
+            return frequencyMapping[frequencyCode] || 0;  // 매핑에 없으면 0
         }
 
         // 자동통제 확인 모달 열기 (안전 장치 포함)
@@ -931,7 +944,131 @@
 
             codeEl.textContent = controlCode;
             nameEl.textContent = controlName;
-            resultEl.innerHTML = '<p class="text-info mb-0"><i class="fas fa-check-circle me-2"></i>설계평가에서 정상 작동 확인됨</p>';
+
+            // 저장된 운영평가 결과 로드 및 표시
+            if (evaluated_controls[controlCode] && evaluated_controls[controlCode].conclusion) {
+                const savedConclusion = evaluated_controls[controlCode].conclusion;
+                console.log(`[openAutoControlCheckModal] 저장된 결론: ${savedConclusion}`);
+
+                // 결론에 따라 상태 선택
+                if (savedConclusion === 'effective') {
+                    statusEl.value = 'confirmed';
+                } else if (savedConclusion === 'ineffective') {
+                    statusEl.value = 'issue_found';
+                    issueSection.style.display = 'block';
+
+                    // 이상 내용 표시
+                    const issueEl = document.getElementById('auto-check-issue-details');
+                    if (issueEl && evaluated_controls[controlCode].exception_details) {
+                        issueEl.value = evaluated_controls[controlCode].exception_details;
+                    }
+                }
+            } else {
+                // 저장된 데이터 없으면 초기화
+                statusEl.value = '';
+                issueSection.style.display = 'none';
+                const issueEl = document.getElementById('auto-check-issue-details');
+                if (issueEl) issueEl.value = '';
+            }
+
+            // 설계평가 데이터 로드
+            resultEl.innerHTML = '<p class="text-muted mb-0"><i class="fas fa-spinner fa-spin me-2"></i>설계평가 결과를 불러오는 중...</p>';
+
+            fetch(`/api/design-evaluation/get?rcm_id=${currentRcmId}&control_code=${controlCode}&design_evaluation_session=${currentEvaluationSession}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.evaluation) {
+                        const eval_data = data.evaluation;
+                        let html = '';
+
+                        // 1. 적절성 및 효과성 결과
+                        html += '<div class="mb-3">';
+                        html += '<h6 class="mb-2"><i class="fas fa-clipboard-check me-2"></i>평가 결과</h6>';
+                        html += '<div class="row g-2">';
+
+                        if (eval_data.description_adequacy) {
+                            const adequacyText = eval_data.description_adequacy === 'adequate' ? '적절함' : '부적절함';
+                            const adequacyClass = eval_data.description_adequacy === 'adequate' ? 'success' : 'danger';
+                            html += `<div class="col-6"><span class="badge bg-${adequacyClass}">적절성: ${adequacyText}</span></div>`;
+                        }
+
+                        if (eval_data.overall_effectiveness) {
+                            const effectivenessText = eval_data.overall_effectiveness === 'effective' ? '효과적' :
+                                                      eval_data.overall_effectiveness === 'partially_effective' ? '부분적 효과적' : '비효과적';
+                            const effectivenessClass = eval_data.overall_effectiveness === 'effective' ? 'success' :
+                                                       eval_data.overall_effectiveness === 'partially_effective' ? 'warning' : 'danger';
+                            html += `<div class="col-6"><span class="badge bg-${effectivenessClass}">효과성: ${effectivenessText}</span></div>`;
+                        }
+
+                        html += '</div></div>';
+
+                        // 2. 설계평가 코멘트
+                        if (eval_data.design_comment && eval_data.design_comment.trim()) {
+                            html += '<div class="mb-3">';
+                            html += '<h6 class="mb-2"><i class="fas fa-comment me-2"></i>설계평가 코멘트</h6>';
+                            html += `<div class="p-2 bg-white border rounded" style="white-space: pre-wrap;">${eval_data.design_comment}</div>`;
+                            html += '</div>';
+                        }
+
+                        // 3. 증빙 내용 (evaluation_evidence에서 attribute 값들 표시)
+                        if (eval_data.evaluation_evidence) {
+                            try {
+                                const evidenceData = typeof eval_data.evaluation_evidence === 'string'
+                                    ? JSON.parse(eval_data.evaluation_evidence)
+                                    : eval_data.evaluation_evidence;
+
+                                let hasEvidence = false;
+                                let evidenceHtml = '<div class="mb-3">';
+                                evidenceHtml += '<h6 class="mb-2"><i class="fas fa-file-alt me-2"></i>증빙 내용</h6>';
+                                evidenceHtml += '<div class="p-2 bg-white border rounded">';
+
+                                for (let key in evidenceData) {
+                                    if (evidenceData[key] && evidenceData[key].trim()) {
+                                        hasEvidence = true;
+                                        evidenceHtml += `<div class="mb-1" style="white-space: pre-wrap;">${evidenceData[key]}</div>`;
+                                    }
+                                }
+
+                                evidenceHtml += '</div></div>';
+
+                                if (hasEvidence) {
+                                    html += evidenceHtml;
+                                }
+                            } catch (e) {
+                                console.error('증빙 데이터 파싱 오류:', e);
+                            }
+                        }
+
+                        // 4. 설계평가 이미지
+                        if (data.images && data.images.length > 0) {
+                            html += '<div class="mb-3">';
+                            html += '<h6 class="mb-2"><i class="fas fa-images me-2"></i>평가 증빙 이미지</h6>';
+                            html += '<div class="row g-2">';
+
+                            data.images.forEach(img => {
+                                html += '<div class="col-12 mb-2">';
+                                html += `<a href="/${img.file_path}" target="_blank">`;
+                                html += `<img src="/${img.file_path}" class="img-thumbnail" style="max-width: 100%; height: auto; cursor: pointer;" alt="증빙 이미지">`;
+                                html += '</a>';
+                                html += '</div>';
+                            });
+
+                            html += '</div></div>';
+                        }
+
+                        if (html) {
+                            resultEl.innerHTML = html;
+                        } else {
+                            resultEl.innerHTML = '<p class="text-muted mb-0">설계평가 데이터가 없습니다.</p>';
+                        }
+                    } else {
+                        resultEl.innerHTML = '<p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>설계평가 결과를 찾을 수 없습니다.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('설계평가 데이터 로드 오류:', error);
+                    resultEl.innerHTML = '<p class="text-danger mb-0"><i class="fas fa-times-circle me-2"></i>설계평가 결과 로드 실패</p>';
+                });
 
             statusEl.onchange = function () {
                 issueSection.style.display = (this.value === 'issue_found') ? 'block' : 'none';
@@ -965,37 +1102,75 @@
                         exception_count: status === 'issue_found' ? 1 : 0
             };
 
+        const requestData = {
+            rcm_id: currentRcmId,
+            design_evaluation_session: currentEvaluationSession,
+            control_code: data.control_code,
+            evaluation_data: {
+                conclusion: data.conclusion,
+                exception_details: data.exception_details,
+                improvement_plan: data.improvement_plan,
+                sample_size: data.sample_size,
+                exception_count: data.exception_count,
+                use_design_evaluation: true  // 자동통제는 설계평가 대체
+            }
+        };
+
+        console.log('[saveAutoControlCheck] 저장 요청 데이터:', requestData);
+
         fetch('/api/operation-evaluation/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                rcm_id: currentRcmId,
-                design_evaluation_session: currentEvaluationSession,
-                control_code: data.control_code,
-                evaluation_data: {
-                    conclusion: data.conclusion,
-                    exception_details: data.exception_details,
-                    improvement_plan: data.improvement_plan,
-                    sample_size: data.sample_size,
-                    exception_count: data.exception_count
-                }
-            })
+            body: JSON.stringify(requestData)
         })
             .then(response => response.json())
             .then(result => {
+                console.log('[saveAutoControlCheck] 서버 응답:', result);
                 if (result.success) {
+                    // evaluated_controls 업데이트
+                    if (!evaluated_controls[data.control_code]) {
+                        evaluated_controls[data.control_code] = {};
+                    }
+                    evaluated_controls[data.control_code].conclusion = data.conclusion;
+                    evaluated_controls[data.control_code].exception_details = data.exception_details;
+                    evaluated_controls[data.control_code].improvement_plan = data.improvement_plan;
+                    evaluated_controls[data.control_code].sample_size = data.sample_size;
+                    evaluated_controls[data.control_code].exception_count = data.exception_count;
+                    evaluated_controls[data.control_code].line_id = result.line_id;
+                    console.log('[saveAutoControlCheck] evaluated_controls 업데이트 완료:', evaluated_controls[data.control_code]);
+
                     const modal = bootstrap.Modal.getInstance(document.getElementById('autoControlCheckModal'));
                     if (modal) modal.hide();
                     showSuccessToast('자동통제 확인이 완료되었습니다.');
+                    console.log('[saveAutoControlCheck] 저장 성공!');
+
+                    // 페이지 새로고침 (데이터 반영 확인)
                     setTimeout(() => location.reload(), 1500);
                 } else {
+                    console.error('[saveAutoControlCheck] 저장 실패:', result.message);
                     showErrorToast('저장 실패: ' + (result.message || '알 수 없는 오류'));
                 }
             })
             .catch(error => {
-                console.error('저장 오류:', error);
+                console.error('[saveAutoControlCheck] 저장 오류:', error);
                 showErrorToast('저장 중 오류가 발생했습니다. 자세한 내용은 콘솔을 확인하세요.');
             });
+        }
+
+        // 자동통제 조서 다운로드
+        function downloadAutoControlDocument() {
+            const controlCode = document.getElementById('auto-check-control-code').textContent;
+
+            if (!controlCode) {
+                showErrorToast('통제 코드를 찾을 수 없습니다.');
+                return;
+            }
+
+            // 운영평가 다운로드 URL 생성 (자동통제는 evaluation_session을 'AUTO'로 전달)
+            const downloadUrl = `/operation-evaluation/download?rcm_id=${currentRcmId}&evaluation_session=AUTO&design_evaluation_session=${encodeURIComponent(currentEvaluationSession)}&control_code=${encodeURIComponent(controlCode)}`;
+
+            // 새 창에서 다운로드 실행
+            window.open(downloadUrl, '_blank');
         }
 
         // 설계평가 의견 표시 함수
@@ -1011,13 +1186,13 @@
             // 의견이 없으면 섹션 숨김
             if (!comment || comment.trim() === '') {
                 section.style.display = 'none';
-                textElement.textContent = '';
+                textElement.value = '';
                 return;
             }
 
             // 의견이 있으면 섹션 표시
             section.style.display = 'block';
-            textElement.textContent = comment;
+            textElement.value = comment;
         }
 
         // 설계평가 이미지 표시 함수
@@ -1083,6 +1258,171 @@
             });
         }
 
+        // 설계평가 표본 데이터 표시
+        function displayDesignEvaluationSamples(samples) {
+            const section = document.getElementById('designSamplesSection');
+            const tableBody = document.getElementById('designSamplesTableBody');
+
+            console.log('[displayDesignEvaluationSamples] Called with samples:', samples);
+
+            if (!section || !tableBody) {
+                console.error('Design samples section not found');
+                return;
+            }
+
+            // 표본 데이터가 없으면 섹션 숨김
+            if (!samples || samples.length === 0) {
+                console.log('[displayDesignEvaluationSamples] No samples to display, hiding section');
+                section.style.display = 'none';
+                tableBody.innerHTML = '';
+                return;
+            }
+
+            // 표본 데이터가 있으면 섹션 표시
+            console.log('[displayDesignEvaluationSamples] Displaying samples, showing section');
+            section.style.display = 'block';
+
+            // 테이블 행 생성
+            tableBody.innerHTML = '';
+            samples.forEach((sample, index) => {
+                const row = document.createElement('tr');
+
+                // 표본 번호
+                const sampleNumCell = document.createElement('td');
+                sampleNumCell.className = 'text-center';
+                sampleNumCell.textContent = sample.sample_number || (index + 1);
+                row.appendChild(sampleNumCell);
+
+                // 증빙 내용
+                const evidenceCell = document.createElement('td');
+                evidenceCell.textContent = sample.evidence || '-';
+                row.appendChild(evidenceCell);
+
+                // 결과
+                const resultCell = document.createElement('td');
+                resultCell.className = 'text-center';
+                if (sample.result === 'no_exception') {
+                    resultCell.innerHTML = '<span class="badge bg-success">No Exception</span>';
+                } else if (sample.result === 'exception') {
+                    resultCell.innerHTML = '<span class="badge bg-danger">Exception</span>';
+                    // 경감요소가 있으면 표시
+                    if (sample.mitigation && sample.mitigation.trim() !== '') {
+                        resultCell.innerHTML += `<br><small class="text-muted">경감: ${sample.mitigation}</small>`;
+                    }
+                } else {
+                    resultCell.textContent = sample.result || '-';
+                }
+                row.appendChild(resultCell);
+
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 설계평가 표본 데이터 로드
+        function loadDesignEvaluationSamples(controlCode) {
+            console.log('[loadDesignEvaluationSamples] Loading samples for control:', controlCode);
+
+            // API를 통해 설계평가 표본 데이터 가져오기
+            fetch(`/api/design-evaluation/samples?rcm_id=${currentRcmId}&evaluation_session=${encodeURIComponent(currentEvaluationSession)}&control_code=${encodeURIComponent(controlCode)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('[loadDesignEvaluationSamples] Server response:', data);
+                    if (data.success && data.samples) {
+                        displayDesignEvaluationSamples(data.samples);
+                    } else {
+                        console.log('[loadDesignEvaluationSamples] No samples found or error:', data.message);
+                        displayDesignEvaluationSamples([]);
+                    }
+                })
+                .catch(error => {
+                    console.error('[loadDesignEvaluationSamples] Error loading samples:', error);
+                    displayDesignEvaluationSamples([]);
+                });
+        }
+
+        // 설계평가 증빙 및 결과 데이터 표시 (설계평가 화면과 동일한 형태)
+        function displayDesignEvaluationEvidence(evidenceData) {
+            const section = document.getElementById('designEvidenceSection');
+            const thead = document.getElementById('design-evidence-display-thead');
+            const tbody = document.getElementById('design-evidence-display-tbody');
+
+            console.log('[displayDesignEvaluationEvidence] Called with data:', evidenceData);
+
+            if (!section || !thead || !tbody) {
+                console.error('Design evidence section not found');
+                return;
+            }
+
+            // 데이터가 없거나 빈 객체/문자열이면 섹션 숨김
+            if (!evidenceData || evidenceData === '' || (typeof evidenceData === 'object' && Object.keys(evidenceData).length === 0)) {
+                console.log('[displayDesignEvaluationEvidence] No evidence data to display, hiding section');
+                section.style.display = 'none';
+                thead.innerHTML = '';
+                tbody.innerHTML = '';
+                return;
+            }
+
+            // JSON 문자열인 경우 파싱
+            let parsedData = evidenceData;
+            if (typeof evidenceData === 'string') {
+                try {
+                    parsedData = JSON.parse(evidenceData);
+                } catch (e) {
+                    console.error('[displayDesignEvaluationEvidence] Failed to parse evidence data:', e);
+                    section.style.display = 'none';
+                    return;
+                }
+            }
+
+            // 데이터가 있으면 섹션 표시
+            console.log('[displayDesignEvaluationEvidence] Displaying evidence data, showing section');
+            section.style.display = 'block';
+
+            // 테이블 헤더 생성 - 설계평가와 동일한 형태
+            let headerHtml = '<tr><th width="10%">표본 #</th>';
+
+            // 데이터의 키들로 컬럼 생성
+            const keys = Object.keys(parsedData);
+            if (keys.length > 0) {
+                keys.forEach(key => {
+                    headerHtml += `<th>${key}</th>`;
+                });
+            } else {
+                // 키가 없으면 기본 증빙 컬럼
+                headerHtml += '<th width="70%">증빙 내용</th>';
+            }
+
+            headerHtml += '<th width="15%">결과</th></tr>';
+            thead.innerHTML = headerHtml;
+
+            // 테이블 바디 생성 - 단일 행 (#1 표본)
+            let rowHtml = '<tr><td class="text-center align-middle">#1</td>';
+
+            if (keys.length > 0) {
+                // 각 attribute 값 표시
+                keys.forEach(key => {
+                    const value = parsedData[key] || '-';
+                    rowHtml += `<td class="align-middle">${value}</td>`;
+                });
+            } else {
+                rowHtml += '<td class="align-middle">-</td>';
+            }
+
+            // 결과 컬럼 (항상 효과적으로 표시 - 설계평가 통과한 통제만 운영평가 진입)
+            rowHtml += `<td class="align-middle">
+                <select class="form-select form-select-sm" disabled style="height: 31px;">
+                    <option value="effective" selected>효과적</option>
+                </select>
+            </td></tr>`;
+
+            tbody.innerHTML = rowHtml;
+        }
+
         // 운영평가 모달 열기
         function openOperationEvaluationModal(buttonElement) {
             const controlCode = buttonElement.getAttribute('data-control-code');
@@ -1138,7 +1478,8 @@
             console.log('[Attribute Info] Attribute Names:', window.currentAttributeNames);
 
             // 자동통제 판별
-            if (controlNatureCode && (controlNatureCode === 'A' || controlNatureCode === '자동' || controlNatureCode === 'Automated')) {
+            if ((controlNatureCode && (controlNatureCode === 'A' || controlNatureCode === '자동' || controlNatureCode === 'Automated')) ||
+                (controlType && (controlType.toUpperCase() === 'AUTO' || controlType.includes('자동') || controlType.toLowerCase().includes('auto')))) {
                 console.log('Auto control detected:', controlCode);
                 openAutoControlCheckModal(controlCode, controlName);
                 return;
@@ -1230,18 +1571,46 @@
             // 설계평가 대체 옵션 표시 여부 결정 (연간 통제 또는 자동 통제만)
             const useDesignEvaluationSection = document.getElementById('use-design-evaluation-section');
             const isAnnually = controlFrequency && (controlFrequency === 'Annually' || controlFrequency === 'A' || controlFrequency === '연간');
-            const isAutomated = controlNatureCode && (controlNatureCode === 'A' || controlNatureCode === '자동' || controlNature === 'Automated');
 
-            if (useDesignEvaluationSection) {
-                if (isAnnually || isAutomated) {
+            // 자동통제 판별: 다양한 형태 지원 (A, Auto, Automated, 자동 등)
+            const isAutomated = (controlNatureCode && (
+                controlNatureCode.toUpperCase() === 'A' ||
+                controlNatureCode.includes('자동') ||
+                controlNatureCode.toLowerCase().includes('auto')
+            )) || (controlNature && (
+                controlNature.toUpperCase() === 'A' ||
+                controlNature.includes('자동') ||
+                controlNature.toLowerCase().includes('auto')
+            )) || (controlType && (
+                controlType.toUpperCase() === 'AUTO' ||
+                controlType.includes('자동') ||
+                controlType.toLowerCase().includes('auto')
+            ));
+
+            // 자동통제/연간통제 여부에 따라 옵션 표시
+            const noOccurrenceSection = document.getElementById('no-occurrence-section');
+            if (isAnnually || isAutomated) {
+                // 자동통제 또는 연간통제: 설계평가 대체 옵션 표시
+                if (useDesignEvaluationSection) {
                     useDesignEvaluationSection.style.display = 'block';
-                } else {
+                }
+                // 당기 발생사실 없음 숨김
+                if (noOccurrenceSection) {
+                    noOccurrenceSection.style.display = 'none';
+                }
+            } else {
+                // 일반 통제: 당기 발생사실 없음 표시
+                if (useDesignEvaluationSection) {
                     useDesignEvaluationSection.style.display = 'none';
                     // 체크박스도 초기화
                     const useDesignEvaluationEl = document.getElementById('use_design_evaluation');
                     if (useDesignEvaluationEl) {
                         useDesignEvaluationEl.checked = false;
                     }
+                }
+                // 당기 발생사실 없음 표시
+                if (noOccurrenceSection) {
+                    noOccurrenceSection.style.display = 'block';
                 }
             }
 
@@ -1252,7 +1621,7 @@
             const exceptionCountEl = document.getElementById('exception_count');
             const mitigatingFactorsEl = document.getElementById('mitigating_factors');
             const exceptionDetailsEl = document.getElementById('exception_details');
-            const conclusionEl = document.getElementById('conclusion');
+            const conclusionEl = document.getElementById('overall-conclusion-select');
             const improvementPlanEl = document.getElementById('improvement_plan');
             const evaluationFieldsEl = document.getElementById('evaluation-fields');
             const noOccurrenceReasonSectionEl = document.getElementById('no-occurrence-reason-section');
@@ -1272,7 +1641,16 @@
                     if (exceptionCountEl) exceptionCountEl.value = data.exception_count || '';
                     if (mitigatingFactorsEl) mitigatingFactorsEl.value = data.mitigating_factors || '';
                     if (exceptionDetailsEl) exceptionDetailsEl.value = data.exception_details || '';
-                    if (conclusionEl) conclusionEl.value = data.conclusion || '';
+
+                    // 결론 값 매핑 (영문 -> 한글)
+                    if (conclusionEl && data.conclusion) {
+                        const conclusionMap = {
+                            'effective': '효과적',
+                            'ineffective': '효과적이지않음'
+                        };
+                        conclusionEl.value = conclusionMap[data.conclusion] || '';
+                    }
+
                     if (improvementPlanEl) improvementPlanEl.value = data.improvement_plan || '';
 
                     // 설계평가 대체 체크박스 복원
@@ -1403,7 +1781,11 @@
                                 if (data.attributes && data.attributes.length > 0) {
                                     console.log('[openOperationEvaluationModal] generateSampleLinesWithAttributes 호출');
                                     console.log('[openOperationEvaluationModal] design_sample:', data.design_sample);
-                                    generateSampleLinesWithAttributes(data.attributes, data.samples.length, data.design_sample);
+                                    // 표본수는 입력 필드의 값 사용 (data.samples.length가 아님)
+                                    const sampleSizeEl = document.getElementById('sample_size');
+                                    const currentSampleSize = sampleSizeEl ? parseInt(sampleSizeEl.value) || 0 : 0;
+                                    console.log('[openOperationEvaluationModal] currentSampleSize:', currentSampleSize);
+                                    generateSampleLinesWithAttributes(data.attributes, currentSampleSize, data.design_sample);
                                 } else {
                                     console.log('[openOperationEvaluationModal] generateSampleLines 호출');
                                     generateSampleLines();
@@ -1425,7 +1807,9 @@
                                         sampleSizeEl.dispatchEvent(event);
                                         console.log('[openOperationEvaluationModal] change 이벤트 발생 완료');
                                     } else {
-                                        console.error('[openOperationEvaluationModal] sample_size 요소를 찾을 수 없음!');
+                                        // sample_size 요소가 없으면 직접 generateSampleLines 호출
+                                        console.log('[openOperationEvaluationModal] sample_size 요소가 없어 직접 generateSampleLines() 호출');
+                                        generateSampleLines();
                                     }
                                 } else {
                                     console.log('[openOperationEvaluationModal] 권장 표본수가 0이므로 라인 생성 안 함');
@@ -1517,11 +1901,14 @@
                 updateConclusionBasedOnExceptions();
             }
 
-            // 설계평가 의견 표시
-            displayDesignComment(designComment);
+            // 설계평가 증빙 및 결과 표시
+            displayDesignEvaluationEvidence(designEvaluationEvidence);
 
             // 설계평가 이미지 표시
             displayDesignEvaluationImages(designEvaluationImages);
+
+            // 설계평가 의견 표시
+            displayDesignComment(designComment);
 
             // 다운로드 버튼 업데이트
             updateDownloadButton(controlCode, evaluated_controls[controlCode]);
@@ -1543,14 +1930,7 @@
 
                     console.log('[shown.bs.modal] 표본 크기:', sampleSizeValue, ', 기존 행 수:', existingRows);
 
-                    // 당기 발생사실 없음 섹션 표시/숨김
-                    if (noOccurrenceSection) {
-                        if (sampleSizeValue === '0' || sampleSizeValue === '') {
-                            noOccurrenceSection.style.display = 'block';
-                        } else {
-                            noOccurrenceSection.style.display = 'none';
-                        }
-                    }
+                    // "당기 발생사실 없음" 섹션은 자동통제 여부로만 제어됨 (openOperationEvaluationModal에서 이미 처리됨)
 
                     // 표본 크기가 설정되어 있고, 기존 라인이 없으면 자동 생성
                     if (sampleSizeInt > 0 && existingRows === 0) {
@@ -1581,7 +1961,7 @@
         function updateConclusionBasedOnExceptions() {
             const exceptionCountInput = document.getElementById('exception_count');
             const mitigatingFactorsInput = document.getElementById('mitigating_factors');
-            const conclusionSelect = document.getElementById('conclusion');
+            const conclusionSelect = document.getElementById('overall-conclusion-select');
             const helpText = document.getElementById('conclusion-help-text');
 
             if (exceptionCountInput && conclusionSelect && mitigatingFactorsInput && helpText) {
@@ -1641,25 +2021,12 @@
         // 표본 라인 생성
         function generateSampleLines() {
             const sampleSizeInput = document.getElementById('sample_size');
-            const sampleSizeValue = sampleSizeInput.value.trim();
+            const sampleSizeValue = sampleSizeInput ? sampleSizeInput.value.trim() : '1';  // 표본 크기 입력 필드가 없으면 기본값 1
             const tbody = document.getElementById('sample-lines-tbody');
             const thead = document.getElementById('sample-lines-thead');
             const noOccurrenceSection = document.getElementById('no-occurrence-section');
 
-            // 표본 크기에 따라 "당기 발생사실 없음" 섹션 표시/숨김
-            if (noOccurrenceSection) {
-                if (sampleSizeValue === '0' || sampleSizeValue === '') {
-                    // 표본 크기가 0이거나 공란인 경우에만 표시
-                    noOccurrenceSection.style.display = 'block';
-                } else {
-                    // 표본이 있는 경우 숨김
-                    noOccurrenceSection.style.display = 'none';
-                    const noOccurrenceCheckbox = document.getElementById('no_occurrence');
-                    if (noOccurrenceCheckbox) {
-                        noOccurrenceCheckbox.checked = false;
-                    }
-                }
-            }
+            // "당기 발생사실 없음" 섹션은 자동통제 여부로만 제어됨 (openOperationEvaluationModal에서 처리)
 
             // 전역 변수에서 RCM attribute 정보 가져오기
             const popAttrCount = window.currentPopulationAttributeCount || 0;
@@ -1926,7 +2293,7 @@
                                            id="sample-attr${attrIdx}-${i}"
                                            placeholder="${attrName}"
                                            value="${attrValue}"
-                                           oninput="updateOverallConclusion()"
+                                           oninput="updateOverallConclusion(true)"
                                            style="height: 31px;" />
                                 </td>`;
                             }
@@ -1939,7 +2306,7 @@
                                id="sample-evidence-${i}"
                                placeholder="예: 증빙서류 확인"
                                value="${evidence}"
-                               oninput="updateOverallConclusion()"
+                               oninput="updateOverallConclusion(true)"
                                style="height: 31px;" />
                     </td>`;
                 }
@@ -1974,7 +2341,7 @@
                                        id="sample-mitigation-${i}"
                                        placeholder="경감요소를 입력하세요"
                                        value="${mitigation}"
-                                       oninput="updateOverallConclusion()"
+                                       oninput="updateOverallConclusion(true)"
                                        style="height: 31px;" />
                             </div>
                         </td>
@@ -1983,8 +2350,11 @@
                 }
             }
 
-            // 컨테이너 표시
-            document.getElementById('sample-lines-container').style.display = 'block';
+            // 컨테이너 표시 (요소가 있는 경우에만)
+            const sampleLinesContainer = document.getElementById('sample-lines-container');
+            if (sampleLinesContainer) {
+                sampleLinesContainer.style.display = 'block';
+            }
 
             // 전체 결론 업데이트
             updateOverallConclusion();
@@ -2015,7 +2385,7 @@
                                        id="sample-mitigation-${sampleNumber}"
                                        placeholder="경감요소를 입력하세요"
                                        value=""
-                                       oninput="updateOverallConclusion()"
+                                       oninput="updateOverallConclusion(true)"
                                        style="height: 31px;" />
                             </div>
                         </td>
@@ -2029,15 +2399,16 @@
                 }
             }
 
-            // 전체 결론 업데이트
-            updateOverallConclusion();
+            // 전체 결론 업데이트 (사용자가 표본 결과를 변경했으므로 강제 업데이트)
+            updateOverallConclusion(true);
         }
 
         // 전체 결론 자동 계산
-        function updateOverallConclusion() {
+        // forceUpdate: true면 현재 값과 관계없이 추천값으로 업데이트
+        function updateOverallConclusion(forceUpdate = false) {
             const sampleSizeInput = document.getElementById('sample_size');
-            let sampleSize = parseInt(sampleSizeInput.value) || 0;
-            const conclusionSpan = document.getElementById('overall-conclusion');
+            let sampleSize = sampleSizeInput ? (parseInt(sampleSizeInput.value) || 0) : 0;
+            const conclusionSelect = document.getElementById('overall-conclusion-select');
             const summaryDiv = document.getElementById('conclusion-summary');
 
             // 표본 크기가 0이어도 모집단 업로드 케이스가 있을 수 있음
@@ -2050,9 +2421,7 @@
 
             if (sampleSize === 0) {
                 // 표본도 없고 모집단도 없으면 결론을 표시하지 않음
-                conclusionSpan.textContent = '-';
-                conclusionSpan.className = 'badge bg-secondary ms-2';
-                summaryDiv.innerHTML = `<small>표본별 결과를 입력하면 자동으로 계산됩니다.</small>`;
+                summaryDiv.innerHTML = `<small class="text-muted"><i class="fas fa-info-circle me-1"></i>표본별 결과를 입력하면 자동 추천됩니다.</small>`;
                 return;
             }
 
@@ -2081,27 +2450,36 @@
                 }
             }
 
-            // 결론 계산
+            // 결론 계산 및 자동 선택 (사용자가 이미 선택했으면 변경하지 않음)
+            let recommendedConclusion = '';
+            let summaryText = '';
+
             if (exceptionWithoutMitigationCount > 0) {
-                conclusionSpan.textContent = 'Ineffective';
-                conclusionSpan.className = 'badge bg-danger ms-2';
-                summaryDiv.innerHTML = `
-                    <small>
-                        <i class="fas fa-times-circle text-danger me-1"></i>
-                        경감요소 없는 예외 ${exceptionWithoutMitigationCount}건 발견
+                recommendedConclusion = '효과적이지않음';
+                summaryText = `
+                    <small class="text-danger">
+                        <i class="fas fa-times-circle me-1"></i>
+                        경감요소 없는 예외 ${exceptionWithoutMitigationCount}건 발견 → 추천: 효과적이지 않음
                     </small>
                 `;
             } else {
                 // 모든 Exception에 경감요소가 있거나 Exception이 없으면 Effective
-                conclusionSpan.textContent = 'Effective';
-                conclusionSpan.className = 'badge bg-success ms-2';
-                summaryDiv.innerHTML = `
-                    <small>
-                        <i class="fas fa-check-circle text-success me-1"></i>
-                        No Exception: ${noExceptionCount}건, 경감요소 있는 Exception: ${exceptionWithMitigationCount}건
+                recommendedConclusion = '효과적';
+                summaryText = `
+                    <small class="text-success">
+                        <i class="fas fa-check-circle me-1"></i>
+                        No Exception: ${noExceptionCount}건, 경감요소 있는 Exception: ${exceptionWithMitigationCount}건 → 추천: 효과적
                     </small>
                 `;
             }
+
+            // forceUpdate가 true이거나 저장된 값이 없을 때만 추천값으로 자동 업데이트
+            // 사용자가 이미 선택했거나 저장된 값이 있으면 유지 (단, forceUpdate=true면 무조건 업데이트)
+            if (forceUpdate || !conclusionSelect.value || conclusionSelect.value === '') {
+                conclusionSelect.value = recommendedConclusion;
+            }
+
+            summaryDiv.innerHTML = summaryText;
         }
 
         // 예외사항 관련 필드 표시/숨기기
@@ -2246,6 +2624,67 @@
 
                 // 발생하지 않은 사유 입력란 숨김
                 noOccurrenceReasonSection.style.display = 'none';
+            }
+        }
+
+        // 설계평가 대체 토글
+        function toggleDesignEvaluationSubstitute() {
+            const useDesignEvaluationCheckbox = document.getElementById('use_design_evaluation');
+            const noOccurrenceCheckbox = document.getElementById('no_occurrence');
+            const designEvaluationInfo = document.getElementById('design-evaluation-info');
+            const sampleSizeRow = document.querySelector('.row.mb-3:has(#sample_size)');
+            const overallConclusionSection = document.querySelector('.row.mb-3:has(#overall-conclusion-select)');
+            const operationImagesSection = document.getElementById('operationEvaluationImagesSection');
+
+            if (!useDesignEvaluationCheckbox) return;
+
+            if (useDesignEvaluationCheckbox.checked) {
+                // 당기 발생사실 없음 체크박스 해제
+                if (noOccurrenceCheckbox) {
+                    noOccurrenceCheckbox.checked = false;
+                }
+
+                // 표본 크기 입력 필드 숨김
+                if (sampleSizeRow) {
+                    sampleSizeRow.style.display = 'none';
+                }
+
+                // 전체 결론 섹션 숨김
+                if (overallConclusionSection) {
+                    overallConclusionSection.style.display = 'none';
+                }
+
+                // 운영평가 증빙 이미지 업로드 섹션 숨김
+                if (operationImagesSection) {
+                    operationImagesSection.style.display = 'none';
+                }
+
+                // 설계평가 정보 표시
+                if (designEvaluationInfo) {
+                    designEvaluationInfo.style.display = 'block';
+                    designEvaluationInfo.innerHTML = '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i><small>설계평가 확인으로 운영평가를 완료합니다. 표본 데이터는 그대로 유지되며, 검토 의견을 작성해주세요.</small></div>';
+                }
+            } else {
+                // 표본 크기 입력 필드 표시
+                if (sampleSizeRow) {
+                    sampleSizeRow.style.display = '';
+                }
+
+                // 전체 결론 섹션 표시
+                if (overallConclusionSection) {
+                    overallConclusionSection.style.display = '';
+                }
+
+                // 운영평가 증빙 이미지 업로드 섹션 표시
+                if (operationImagesSection) {
+                    operationImagesSection.style.display = '';
+                }
+
+                // 설계평가 정보 숨김
+                if (designEvaluationInfo) {
+                    designEvaluationInfo.style.display = 'none';
+                    designEvaluationInfo.innerHTML = '';
+                }
             }
         }
 
@@ -2414,17 +2853,45 @@
                         }
                     }
 
-                    // 결론 결정: 표본별 결과를 기반으로 자동 계산
-                    // 경감요소 없는 Exception이 하나라도 있으면 'exception' (Ineffective)
-                    // 그 외에는 'effective' (Effective)
-                    const finalConclusion = exceptionWithoutMitigationCount > 0 ? 'exception' : 'effective';
+                    // 결론 결정
+                    let finalConclusion;
+
+                    // 설계평가 대체인 경우 무조건 '효과적'
+                    if (useDesignEvaluation) {
+                        finalConclusion = 'effective';
+                    } else {
+                        // 일반 평가인 경우: 사용자가 선택한 값 사용 (드롭다운에서)
+                        const conclusionSelectEl = document.getElementById('overall-conclusion-select');
+                        let userConclusion = conclusionSelectEl ? conclusionSelectEl.value : '';
+
+                        // 자동 추천값 계산
+                        const recommendedConclusion = exceptionWithoutMitigationCount > 0 ? '효과적이지않음' : '효과적';
+
+                        // 사용자가 선택하지 않았다면 자동 계산값 사용
+                        if (!userConclusion) {
+                            userConclusion = recommendedConclusion;
+                        } else if (userConclusion !== recommendedConclusion) {
+                            // 사용자가 선택한 값이 추천값과 다른 경우 확인
+                            const confirmMessage = `자동 추천 결론은 "${recommendedConclusion}"이지만, "${userConclusion}"을(를) 선택하셨습니다.\n이대로 저장하시겠습니까?`;
+                            if (!confirm(confirmMessage)) {
+                                return; // 저장 취소
+                            }
+                        }
+
+                        // 한글 결론을 영문으로 매핑
+                        const conclusionMap = {
+                            '효과적': 'effective',
+                            '효과적이지않음': 'ineffective'
+                        };
+                        finalConclusion = conclusionMap[userConclusion] || 'effective';
+                    }
 
                     evaluationData = {
                         sample_size: sampleSize,
                         exception_count: exceptionCount,  // 표본별로 계산된 값
                         mitigating_factors: '',  // 더 이상 사용 안 함 (표본별로 관리)
                         exception_details: formData.get('exception_details'),
-                        conclusion: finalConclusion,  // 표본별 결과 기반 자동 계산
+                        conclusion: finalConclusion,  // 사용자가 선택한 값 또는 자동 계산값
                         improvement_plan: formData.get('improvement_plan'),
                         review_comment: formData.get('review_comment'),  // 검토 의견
                         no_occurrence: false,
@@ -2522,8 +2989,9 @@
             const resultElement = document.getElementById(`evaluation-result-${rowIndex}`);
             if (resultElement && data.conclusion) {
                 const resultMap = {
-                    'effective': { text: 'Effective', class: 'bg-success' },
-                    'exception': { text: 'Exception', class: 'bg-danger' }
+                    'effective': { text: '효과적', class: 'bg-success' },
+                    'ineffective': { text: '효과적이지않음', class: 'bg-danger' },
+                    'exception': { text: '효과적이지않음', class: 'bg-danger' }  // 하위 호환성
                 };
 
                 const result = resultMap[data.conclusion];
@@ -2636,36 +3104,8 @@
         // ===================================================================
 
         function viewDesignEvaluation() {
-            // 모달 표시
-            const modal = new bootstrap.Modal(document.getElementById('designEvaluationViewModal'));
-            modal.show();
-
-            // 설계평가 데이터 조회
-            fetch(`/api/design-evaluation/get?rcm_id=${currentRcmId}&design_evaluation_session=${currentEvaluationSession}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        renderDesignEvaluationTable(data.evaluations);
-                    } else {
-                        document.getElementById('designEvaluationTableBody').innerHTML = `
-                            <tr>
-                                <td colspan="7" class="text-center text-danger py-4">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>${data.message || '설계평가 데이터를 불러올 수 없습니다.'}
-                                </td>
-                            </tr>
-                        `;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('designEvaluationTableBody').innerHTML = `
-                        <tr>
-                            <td colspan="7" class="text-center text-danger py-4">
-                                <i class="fas fa-exclamation-triangle me-2"></i>설계평가 데이터를 불러오는 중 오류가 발생했습니다.
-                            </td>
-                        </tr>
-                    `;
-                });
+            // 같은 세션의 설계평가 상세 화면으로 이동
+            window.location.href = `/design-evaluation/rcm?rcm_id=${currentRcmId}&session=${currentEvaluationSession}`;
         }
 
         function renderDesignEvaluationTable(evaluations) {
@@ -3266,7 +3706,7 @@
                         const resultBadge = document.getElementById(`evaluation-result-${rowIndex}`);
                         if (resultBadge) {
                             resultBadge.className = 'badge bg-secondary';
-                            resultBadge.textContent = 'Not Evaluated';
+                            resultBadge.textContent = '평가 필요';
                             console.log('[resetPopulationUpload] 평가 결과 배지 업데이트:', currentControlCode);
                         }
                     }
@@ -3355,7 +3795,9 @@
             // 테이블 바디 생성
             tbody.innerHTML = '';
 
-            const samplesToDisplay = sampleSize || existingSampleLines.length;
+            // 표본수가 0이면 모집단 업로드 방식 - 기존 샘플 개수 사용
+            // 그 외에는 사용자가 입력한 표본 수(설계평가 1개 포함) 사용
+            const samplesToDisplay = sampleSize === 0 ? existingSampleLines.length : sampleSize;
 
             for (let i = 1; i <= samplesToDisplay; i++) {
                 const sample = existingSampleLines.find(s => s.sample_number === i);
@@ -3363,12 +3805,8 @@
 
                 const row = document.createElement('tr');
 
-                // 표본 번호 (첫 번째 행에 "설계" 배지 추가)
-                let rowHtml = `<td class="text-center align-middle">#${i}`;
-                if (isFirstRow && designSample) {
-                    rowHtml += ` <span class="badge bg-info ms-1" style="font-size: 0.7em;">설계</span>`;
-                }
-                rowHtml += `</td>`;
+                // 표본 번호
+                let rowHtml = `<td class="text-center align-middle">#${i}</td>`;
 
                 // Attribute 필드들
                 console.log(`[generateSampleLinesWithAttributes] Sample #${i}:`, sample);
@@ -3379,55 +3817,57 @@
                     console.log(`[generateSampleLinesWithAttributes] ${attr.attribute} value:`, attrValue);
                     const isPopulation = attr.type === 'population';
 
-                    // 첫 번째 행 처리
-                    if (isFirstRow && designSample) {
-                        // 모집단 항목: 드롭다운으로 변경 (모집단 업로드된 데이터에서 선택)
-                        if (isPopulation) {
-                            rowHtml += `
-                                <td class="align-middle">
-                                    <input type="text" class="form-control form-control-sm"
-                                           id="sample-${i}-${attr.attribute}"
-                                           placeholder="${attr.name} (선택하세요)"
-                                           value="${attrValue}"
-                                           style="height: 31px;">
-                                </td>`;
-                        } else {
-                            // 증빙 항목: 설계평가 샘플 값으로 채우고 readonly
-                            const designValue = designSample?.attributes?.[attr.attribute] || '';
-                            rowHtml += `
-                                <td class="align-middle">
-                                    <input type="text" class="form-control form-control-sm"
-                                           id="sample-${i}-${attr.attribute}"
-                                           placeholder="${attr.name}"
-                                           value="${designValue}"
-                                           style="height: 31px;"
-                                           readonly>
-                                </td>`;
-                        }
-                    } else {
-                        // 나머지 행: 기존과 동일
+                    // 첫 번째 행에서 설계평가 데이터 가져오기
+                    // - 모집단 항목: 설계평가 값을 가져오되 수정 가능
+                    // - 증빙 항목: 설계평가 값을 가져오고 readonly (모집단 업로드 방식 제외)
+                    let displayValue = attrValue;
+                    if (isFirstRow && designSample && sampleSize !== 0) {
+                        displayValue = designSample?.attributes?.[attr.attribute] || '';
+                    }
+
+                    // 모집단(population) 항목은 항상 수정 가능
+                    // 증빙(evidence) 항목은 첫 번째 행에서 readonly (모집단 업로드 방식 제외)
+                    if (isFirstRow && designSample && sampleSize !== 0 && !isPopulation) {
+                        // 설계평가 샘플 데이터로 채우고 readonly (운영평가에서 수정 불가)
                         rowHtml += `
                             <td class="align-middle">
                                 <input type="text" class="form-control form-control-sm"
                                        id="sample-${i}-${attr.attribute}"
                                        placeholder="${attr.name}"
-                                       value="${attrValue}"
+                                       value="${displayValue}"
                                        style="height: 31px;"
-                                       ${isPopulation ? 'readonly' : ''}>
+                                       readonly>
+                            </td>`;
+                    } else {
+                        // 운영평가 샘플, 모집단 업로드 방식, 또는 모집단 항목은 모두 입력 가능
+                        rowHtml += `
+                            <td class="align-middle">
+                                <input type="text" class="form-control form-control-sm"
+                                       id="sample-${i}-${attr.attribute}"
+                                       placeholder="${attr.name}"
+                                       value="${displayValue}"
+                                       style="height: 31px;">
                             </td>`;
                     }
                 });
 
-                // 결과
-                rowHtml += `
-                    <td class="align-middle">
-                        <select class="form-select form-select-sm"
-                                id="sample-result-${i}"
-                                onchange="handleSampleResultChange(${i})">
-                            <option value="no_exception" selected>No Exception</option>
-                            <option value="exception">Exception</option>
-                        </select>
-                    </td>`;
+                // 결과 (첫 번째 행은 설계평가 결과이므로 텍스트로 표시, 단 모집단 업로드 방식은 제외)
+                if (isFirstRow && sampleSize !== 0) {
+                    rowHtml += `
+                        <td class="align-middle">
+                            <span id="sample-result-${i}" class="badge bg-secondary" style="font-size: 0.875rem;">No Exception</span>
+                        </td>`;
+                } else {
+                    rowHtml += `
+                        <td class="align-middle">
+                            <select class="form-select form-select-sm"
+                                    id="sample-result-${i}"
+                                    onchange="handleSampleResultChange(${i})">
+                                <option value="no_exception" selected>No Exception</option>
+                                <option value="exception">Exception</option>
+                            </select>
+                        </td>`;
+                }
 
                 row.innerHTML = rowHtml;
                 tbody.appendChild(row);
@@ -3436,8 +3876,9 @@
                 attributes.forEach(attr => {
                     let attrValue = sample?.attributes?.[attr.attribute] || '';
 
-                    // 첫 번째 행의 증빙 항목은 설계평가 값 사용
-                    if (isFirstRow && designSample && attr.type === 'evidence') {
+                    // 첫 번째 행은 설계평가 값 사용 (모집단 업로드 방식 제외)
+                    // 모집단 항목과 증빙 항목 모두 설계평가 값을 가져옴
+                    if (isFirstRow && designSample && sampleSize !== 0) {
                         attrValue = designSample?.attributes?.[attr.attribute] || '';
                     }
 
