@@ -75,19 +75,35 @@ def get_table_schema(sqlite_conn, table_name):
 
 
 def drop_all_mysql_tables(mysql_conn):
-    """MySQL의 모든 테이블 삭제"""
+    """MySQL의 모든 테이블 및 뷰 삭제"""
     cursor = mysql_conn.cursor()
 
     # 외래 키 제약 조건 비활성화
     cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
 
+    print("\n" + "=" * 80)
+    print("MySQL 테이블 및 뷰 삭제 시작")
+    print("=" * 80)
+
+    # 모든 뷰 삭제 (먼저 뷰를 삭제)
+    cursor.execute("""
+        SELECT TABLE_NAME
+        FROM information_schema.VIEWS
+        WHERE TABLE_SCHEMA = DATABASE()
+    """)
+    views = cursor.fetchall()
+
+    for view_tuple in views:
+        if isinstance(view_tuple, dict):
+            view_name = list(view_tuple.values())[0]
+        else:
+            view_name = view_tuple[0]
+        print(f"🗑️  뷰 삭제: {view_name}")
+        cursor.execute(f"DROP VIEW IF EXISTS `{view_name}`")
+
     # 모든 테이블 조회
     cursor.execute("SHOW TABLES")
     tables = cursor.fetchall()
-
-    print("\n" + "=" * 80)
-    print("MySQL 테이블 삭제 시작")
-    print("=" * 80)
 
     for table_tuple in tables:
         # tuple 또는 dict 모두 처리
@@ -102,7 +118,7 @@ def drop_all_mysql_tables(mysql_conn):
     cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
     mysql_conn.commit()
 
-    print(f"\n✅ 총 {len(tables)}개 테이블 삭제 완료\n")
+    print(f"\n✅ 총 {len(views)}개 뷰, {len(tables)}개 테이블 삭제 완료\n")
 
 
 def create_mysql_table(mysql_conn, table_name, columns):
