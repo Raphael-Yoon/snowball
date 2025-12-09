@@ -278,7 +278,7 @@ def send_otp_email(email, otp_code, user_name):
     """이메일로 OTP 발송"""
     try:
         from snowball_mail import send_gmail
-        subject = "[SnowBall] 로그인 인증 코드"
+        subject = "[Snowball] 로그인 인증 코드"
         body = f"""
 안녕하세요 {user_name}님,
 
@@ -289,7 +289,7 @@ def send_otp_email(email, otp_code, user_name):
 이 코드는 5분간 유효합니다.
 본인이 요청하지 않았다면 이 메일을 무시하세요.
 
-SnowBall 시스템
+Snowball 시스템
         """
         send_gmail(email, subject, body)
         return True, "인증 코드가 이메일로 전송되었습니다."

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SnowBall - {{ evaluation_type|default('ITGC') }} 설계평가 - {{ rcm_info.rcm_name }}</title>
+    <title>Snowball - {{ evaluation_type|default('ITGC') }} 설계평가 - {{ rcm_info.rcm_name }}</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -359,18 +359,6 @@
                                 </div>
                             </div>
 
-                            <div class="mb-3" id="recommended-actions-section">
-                                <label for="recommendedActions" class="form-label">권고 조치사항</label>
-                                <textarea class="form-control" id="recommendedActions" rows="2"
-                                          placeholder="실무와 문서 간 차이 해소나 통제 운영 개선을 위한 구체적인 조치사항을 제안하세요..."></textarea>
-                            </div>
-
-                            <div class="mb-3" id="design-comment-section">
-                                <label for="designComment" class="form-label">설계 평가 코멘트</label>
-                                <textarea class="form-control" id="designComment" rows="3"
-                                          placeholder="설계 효과성에 대한 종합적인 의견이나 특이사항을 입력하세요..."></textarea>
-                            </div>
-
                             <div class="mb-3" id="evaluation-images-section">
                                 <label for="evaluationImages" class="form-label">평가 증빙 자료 (이미지)</label>
                                 <div id="imageUploadSection">
@@ -379,6 +367,18 @@
                                     <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
                                 </div>
                                 <div id="imagePreview" class="mt-2"></div>
+                            </div>
+
+                            <div class="mb-3" id="design-comment-section">
+                                <label for="designComment" class="form-label">설계 평가 코멘트</label>
+                                <textarea class="form-control" id="designComment" rows="3"
+                                          placeholder="설계 효과성에 대한 종합적인 의견이나 특이사항을 입력하세요..."></textarea>
+                            </div>
+
+                            <div class="mb-3" id="recommended-actions-section">
+                                <label for="recommendedActions" class="form-label">권고 조치사항</label>
+                                <textarea class="form-control" id="recommendedActions" rows="2"
+                                          placeholder="실무와 문서 간 차이 해소나 통제 운영 개선을 위한 구체적인 조치사항을 제안하세요..."></textarea>
                             </div>
                         </div>
                     </div>

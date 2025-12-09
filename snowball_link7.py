@@ -36,7 +36,7 @@ def user_operation_evaluation():
             from auth import count_completed_operation_evaluations
             with get_db() as conn:
                 header = conn.execute('''
-                    SELECT header_id FROM sb_operation_evaluation_header
+                    SELECT header_id FROM sb_evaluation_header
                     WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
                 ''', (rcm['rcm_id'], user_info['user_id'], operation_evaluation_session, session['evaluation_session'])).fetchone()
 
@@ -638,7 +638,7 @@ def apd01_upload_population():
 
         with get_db() as conn:
             header = conn.execute('''
-                SELECT header_id FROM sb_operation_evaluation_header
+                SELECT header_id FROM sb_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
@@ -739,7 +739,7 @@ def operation_evaluation_reset():
         from auth import get_db
         with get_db() as conn:
             header = conn.execute('''
-                SELECT header_id FROM sb_operation_evaluation_header
+                SELECT header_id FROM sb_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
@@ -750,7 +750,7 @@ def operation_evaluation_reset():
 
                 # DB 라인 데이터 삭제 (해당 통제만)
                 deleted_rows = conn.execute('''
-                    DELETE FROM sb_operation_evaluation_line
+                    DELETE FROM sb_evaluation_line
                     WHERE header_id = %s AND control_code = %s
                 ''', (operation_header_id, control_code))
                 conn.commit()
@@ -873,7 +873,7 @@ def user_operation_evaluation_apd07():
         with get_db() as conn:
             # 운영평가 헤더 조회 (있으면)
             header = conn.execute('''
-                SELECT header_id FROM sb_operation_evaluation_header
+                SELECT header_id FROM sb_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
@@ -968,7 +968,7 @@ def apd07_upload_population():
 
         with get_db() as conn:
             header = conn.execute('''
-                SELECT header_id FROM sb_operation_evaluation_header
+                SELECT header_id FROM sb_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
@@ -1155,7 +1155,7 @@ def user_operation_evaluation_apd09():
         with get_db() as conn:
             # 운영평가 헤더 조회 (있으면)
             header = conn.execute('''
-                SELECT header_id FROM sb_operation_evaluation_header
+                SELECT header_id FROM sb_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
@@ -1245,7 +1245,7 @@ def upload_apd09_population():
 
         with get_db() as conn:
             header = conn.execute('''
-                SELECT header_id FROM sb_operation_evaluation_header
+                SELECT header_id FROM sb_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
@@ -1430,7 +1430,7 @@ def user_operation_evaluation_apd12():
         with get_db() as conn:
             # 운영평가 헤더 조회 (있으면)
             header = conn.execute('''
-                SELECT header_id FROM sb_operation_evaluation_header
+                SELECT header_id FROM sb_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
@@ -1520,7 +1520,7 @@ def upload_apd12_population():
 
         with get_db() as conn:
             header = conn.execute('''
-                SELECT header_id FROM sb_operation_evaluation_header
+                SELECT header_id FROM sb_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
@@ -1703,7 +1703,7 @@ def elc_operation_evaluation():
             from auth import count_completed_operation_evaluations
             with get_db() as conn:
                 header = conn.execute('''
-                    SELECT header_id FROM sb_operation_evaluation_header
+                    SELECT header_id FROM sb_evaluation_header
                     WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
                 ''', (rcm['rcm_id'], user_info['user_id'], operation_evaluation_session, session['evaluation_session'])).fetchone()
 
@@ -1764,7 +1764,7 @@ def tlc_operation_evaluation():
             from auth import count_completed_operation_evaluations
             with get_db() as conn:
                 header = conn.execute('''
-                    SELECT header_id FROM sb_operation_evaluation_header
+                    SELECT header_id FROM sb_evaluation_header
                     WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
                 ''', (rcm['rcm_id'], user_info['user_id'], operation_evaluation_session, session['evaluation_session'])).fetchone()
 
@@ -1910,19 +1910,19 @@ def upload_general_population():
         with get_db() as conn:
             # Header 확인/생성
             header = conn.execute('''
-                SELECT header_id FROM sb_operation_evaluation_header
+                SELECT header_id FROM sb_evaluation_header
                 WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
             ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
             if not header:
                 conn.execute('''
-                    INSERT INTO sb_operation_evaluation_header (rcm_id, user_id, evaluation_session, design_evaluation_session)
+                    INSERT INTO sb_evaluation_header (rcm_id, user_id, evaluation_session, design_evaluation_session)
                     VALUES (%s, %s, %s, %s)
                 ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session))
                 conn.commit()
 
                 header = conn.execute('''
-                    SELECT header_id FROM sb_operation_evaluation_header
+                    SELECT header_id FROM sb_evaluation_header
                     WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
                 ''', (rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)).fetchone()
 
@@ -1930,7 +1930,7 @@ def upload_general_population():
 
             # 기존 Line 확인
             existing_line = conn.execute('''
-                SELECT line_id FROM sb_operation_evaluation_line
+                SELECT line_id FROM sb_evaluation_line
                 WHERE header_id = %s AND control_code = %s
             ''', (header_id, control_code)).fetchone()
 
@@ -1942,14 +1942,14 @@ def upload_general_population():
 
                 # Line 업데이트 (sample_size만)
                 conn.execute('''
-                    UPDATE sb_operation_evaluation_line
+                    UPDATE sb_evaluation_line
                     SET sample_size = %s
                     WHERE line_id = %s
                 ''', (sample_size, line_id))
             else:
                 # 새 Line 생성
                 conn.execute('''
-                    INSERT INTO sb_operation_evaluation_line
+                    INSERT INTO sb_evaluation_line
                     (header_id, control_code, sample_size)
                     VALUES (%s, %s, %s)
                 ''', (header_id, control_code, sample_size))
@@ -2130,7 +2130,7 @@ def reset_population_upload():
                 conn.execute('DELETE FROM sb_evaluation_sample WHERE line_id = %s', (line_id,))
 
                 # 라인 데이터 삭제
-                conn.execute('DELETE FROM sb_operation_evaluation_line WHERE line_id = %s', (line_id,))
+                conn.execute('DELETE FROM sb_evaluation_line WHERE line_id = %s', (line_id,))
 
                 conn.commit()
                 print(f"[reset_population_upload] DB 데이터 삭제 완료: line_id={line_id}")
@@ -2224,8 +2224,8 @@ def download_operation_evaluation():
                         d.attribute5, d.attribute6, d.attribute7, d.attribute8, d.attribute9,
                         d.population_attribute_count,
                         d.recommended_sample_size
-                    FROM sb_operation_evaluation_line l
-                    JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                    FROM sb_evaluation_line l
+                    JOIN sb_evaluation_header h ON l.header_id = h.header_id
                     JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
                     JOIN sb_rcm_detail d ON d.rcm_id = h.rcm_id AND d.control_code = l.control_code
                     WHERE h.rcm_id = %s
@@ -2280,8 +2280,8 @@ def download_operation_evaluation():
                         d.attribute5, d.attribute6, d.attribute7, d.attribute8, d.attribute9,
                         d.population_attribute_count,
                         d.recommended_sample_size
-                    FROM sb_operation_evaluation_line l
-                    JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                    FROM sb_evaluation_line l
+                    JOIN sb_evaluation_header h ON l.header_id = h.header_id
                     JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
                     JOIN sb_rcm_detail d ON d.rcm_id = h.rcm_id AND d.control_code = l.control_code
                     WHERE h.rcm_id = %s
@@ -2330,10 +2330,10 @@ def download_operation_evaluation():
                 # line_id 조회
                 op_line_result = conn.execute("""
                     SELECT line_id
-                    FROM sb_operation_evaluation_line
+                    FROM sb_evaluation_line
                     WHERE header_id = (
                         SELECT header_id
-                        FROM sb_operation_evaluation_header
+                        FROM sb_evaluation_header
                         WHERE rcm_id = %s AND evaluation_session = %s
                     ) AND control_code = %s
                 """, (rcm_id, evaluation_session, control_code)).fetchone()
@@ -2847,8 +2847,8 @@ def upload_operation_image():
         with get_db() as conn:
             # line_id 조회
             line_record = conn.execute('''
-                SELECT l.line_id FROM sb_operation_evaluation_line l
-                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                SELECT l.line_id FROM sb_evaluation_line l
+                JOIN sb_evaluation_header h ON l.header_id = h.header_id
                 WHERE h.header_id = %s AND l.control_code = %s
             ''', (header_id, control_code)).fetchone()
 
@@ -2892,8 +2892,8 @@ def get_operation_images(rcm_id, header_id, control_code):
         with get_db() as conn:
             # line_id 조회
             line_record = conn.execute('''
-                SELECT l.line_id FROM sb_operation_evaluation_line l
-                JOIN sb_operation_evaluation_header h ON l.header_id = h.header_id
+                SELECT l.line_id FROM sb_evaluation_line l
+                JOIN sb_evaluation_header h ON l.header_id = h.header_id
                 WHERE h.header_id = %s AND l.control_code = %s
             ''', (header_id, control_code)).fetchone()
 
@@ -2974,7 +2974,7 @@ def get_design_evaluation_samples():
             header = conn.execute('''
                 SELECT header_id
                 FROM sb_evaluation_header
-                WHERE rcm_id = %s AND evaluation_name = %s
+                WHERE rcm_id = ? AND evaluation_name = ?
             ''', (rcm_id, evaluation_session)).fetchone()
 
             if not header:
@@ -2986,7 +2986,7 @@ def get_design_evaluation_samples():
             line = conn.execute('''
                 SELECT line_id
                 FROM sb_evaluation_line
-                WHERE header_id = %s AND control_code = %s
+                WHERE header_id = ? AND control_code = ?
             ''', (header_id, control_code)).fetchone()
 
             if not line:
@@ -2996,9 +2996,9 @@ def get_design_evaluation_samples():
 
             # 표본 데이터 조회
             samples = conn.execute('''
-                SELECT sample_number, purposefulness, evidence_content, result
+                SELECT sample_number, evidence, result, mitigation
                 FROM sb_evaluation_sample
-                WHERE line_id = %s
+                WHERE line_id = ?
                 ORDER BY sample_number
             ''', (line_id,)).fetchall()
 

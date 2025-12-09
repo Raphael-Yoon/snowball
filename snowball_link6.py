@@ -786,7 +786,7 @@ def delete_evaluation_session_api():
             # 해당 설계평가 세션을 기반으로 한 운영평가가 있는지 확인
             operation_check = conn.execute('''
                 SELECT COUNT(*) as count
-                FROM sb_operation_evaluation_header
+                FROM sb_evaluation_header
                 WHERE rcm_id = %s AND design_evaluation_session = %s
             ''', (rcm_id, evaluation_session)).fetchone()
 

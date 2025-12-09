@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SnowBall</title>
+    <title>Snowball</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -20,10 +20,10 @@
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-lg-2">
-                    <img src="{{ url_for('static', filename='img/snowball.jpg')}}" alt="SnowBall" class="img-fluid" style="max-height: 80px; width: auto;">
+                    <img src="{{ url_for('static', filename='img/snowball.jpg')}}" alt="Snowball" class="img-fluid" style="max-height: 80px; width: auto;">
                 </div>
                 <div class="col-lg-8 hero-content">
-                    <h1 class="hero-title">SnowBall System</h1>
+                    <h1 class="hero-title">Snowball System</h1>
                     <p class="hero-subtitle">내부회계관리제도(ICFR) 평가 및 IT감사 대응 종합 솔루션</p>
                 </div>
                 <div class="col-lg-2 text-end">

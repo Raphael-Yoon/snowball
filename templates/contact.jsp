@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>서비스 문의 - SnowBall</title>
+    <title>서비스 문의 - Snowball</title>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -25,16 +25,16 @@
         <div class="row">
             <div class="col-md-6 d-flex align-items-center justify-content-center" style="border-right:1px solid #eee; min-height:400px;">
                 <div>
-                    <h2 class="mb-4 text-primary"><i class="fas fa-snowflake me-2"></i>SnowBall 소개</h2>
+                    <h2 class="mb-4 text-primary"><i class="fas fa-snowflake me-2"></i>Snowball 소개</h2>
                     <p style="font-size:1.1rem;">
-                        SnowBall은 내부통제 평가와 IT감사 대응을 전문적으로 하고 있습니다.<br><br>
+                        Snowball은 내부통제 평가와 IT감사 대응을 전문적으로 하고 있습니다.<br><br>
                         <b>서비스 분야</b><br>
                         - ITGC RCM 구축<br>
                         - ITGC 설계 및 운영평가(PA)<br>
                         - ITGC 설명 및 교육<br>
                         - IT감사 대응<br>
                         - 회사 RCM에 맞춘 자동화 시스템 구축<br><br>
-                        SnowBall은 기업의 IT 리스크를 최소화하고, 효율적인 내부통제 환경을 구축할 수 있도록 지원합니다.
+                        Snowball은 기업의 IT 리스크를 최소화하고, 효율적인 내부통제 환경을 구축할 수 있도록 지원합니다.
                     </p>
                 </div>
             </div>

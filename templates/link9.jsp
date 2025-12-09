@@ -7,7 +7,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     		<link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
 		<link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
-    <title>SnowBall</title>
+    <title>Snowball</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">

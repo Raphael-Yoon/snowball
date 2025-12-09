@@ -1199,7 +1199,7 @@ def check_operation_evaluation(control_type):
                 oeh.rcm_id,
                 r.rcm_name,
                 r.control_category
-            FROM sb_operation_evaluation_header oeh
+            FROM sb_evaluation_header oeh
             JOIN sb_rcm r ON oeh.rcm_id = r.rcm_id
             WHERE oeh.user_id = %s
               AND r.control_category = %s
