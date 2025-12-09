@@ -90,7 +90,11 @@ def drop_all_mysql_tables(mysql_conn):
     print("=" * 80)
 
     for table_tuple in tables:
-        table_name = list(table_tuple.values())[0]
+        # tuple 또는 dict 모두 처리
+        if isinstance(table_tuple, dict):
+            table_name = list(table_tuple.values())[0]
+        else:
+            table_name = table_tuple[0]
         print(f"🗑️  테이블 삭제: {table_name}")
         cursor.execute(f"DROP TABLE IF EXISTS `{table_name}`")
 
@@ -305,10 +309,18 @@ def verify_migration():
         mysql_cursor.execute("SHOW TABLES")
         mysql_tables = {}
         for row in mysql_cursor.fetchall():
-            table_name = list(row.values())[0]
+            # tuple 또는 dict 모두 처리
+            if isinstance(row, dict):
+                table_name = list(row.values())[0]
+            else:
+                table_name = row[0]
             mysql_cursor.execute(f"SELECT COUNT(*) FROM `{table_name}`")
             count = mysql_cursor.fetchone()
-            mysql_tables[table_name] = list(count.values())[0]
+            # tuple 또는 dict 모두 처리
+            if isinstance(count, dict):
+                mysql_tables[table_name] = list(count.values())[0]
+            else:
+                mysql_tables[table_name] = count[0]
 
         # 비교 결과 출력
         print(f"\n{'테이블명':<40} {'SQLite':<15} {'MySQL':<15} {'상태':<10}")
