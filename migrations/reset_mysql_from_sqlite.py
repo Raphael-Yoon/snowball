@@ -13,11 +13,27 @@ import sys
 import os
 from datetime import datetime
 
+# .env 파일 로드
+def load_env():
+    """프로젝트 루트의 .env 파일을 로드"""
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+    if os.path.exists(env_path):
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    # 환경변수에 없으면 .env 값 사용
+                    if not os.getenv(key.strip()):
+                        os.environ[key.strip()] = value.strip()
+
+load_env()
+
 # 환경 변수에서 MySQL 설정 로드
 MYSQL_CONFIG = {
     'host': os.getenv('MYSQL_HOST', 'itap.mysql.pythonanywhere-services.com'),
     'user': os.getenv('MYSQL_USER', 'itap'),
-    'password': os.getenv('MYSQL_PASSWORD', ''),
+    'password': os.getenv('MYSQL_PASSWORD'),  # None if not set
     'database': os.getenv('MYSQL_DATABASE', 'itap$snowball'),
     'port': int(os.getenv('MYSQL_PORT', '3306')),
     'charset': 'utf8mb4',
@@ -325,6 +341,11 @@ if __name__ == '__main__':
     if sys.platform == 'win32':
         import io
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+    # 비밀번호가 환경변수에 없으면 입력받기
+    if not MYSQL_CONFIG['password']:
+        import getpass
+        MYSQL_CONFIG['password'] = getpass.getpass("MySQL 비밀번호를 입력하세요: ")
 
     print("\n⚠️  경고: 이 스크립트는 MySQL의 모든 테이블을 삭제합니다!")
     print(f"대상 서버: {MYSQL_CONFIG['host']}")
