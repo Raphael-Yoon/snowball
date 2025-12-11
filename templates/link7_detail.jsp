@@ -477,7 +477,8 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">전체 결론</label>
                             <select class="form-select" id="overall-conclusion-select" name="conclusion">
-                                <option value="효과적" selected>효과적 (Effective)</option>
+                                <option value="">-- 보류 (결론 미정) --</option>
+                                <option value="효과적">효과적 (Effective)</option>
                                 <option value="효과적이지않음">효과적이지 않음 (Ineffective)</option>
                             </select>
                             <div class="mt-2">

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Gmail 스케줄 스크립트
-- MySQL → SQLite 백업 실행
+- MySQL → SQLite 백업 실행 (migrations/backup_mysql_to_sqlite.py 사용)
 - 결과를 Gmail로 전송
 """
 
@@ -13,10 +13,15 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import pickle
 import os
+import sys
 from datetime import datetime, timedelta
-import pymysql
-import sqlite3
 from dotenv import load_dotenv
+
+# migrations 폴더를 path에 추가
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'migrations'))
+
+# backup_mysql_to_sqlite 모듈 import
+from backup_mysql_to_sqlite import backup_mysql_to_sqlite as run_backup
 
 # .env 파일 로드
 load_dotenv()
@@ -25,47 +30,14 @@ load_dotenv()
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 # ============================================================================
-# MySQL → SQLite 백업 설정
+# 백업 설정
 # ============================================================================
-
-# MySQL 연결 정보 (.env에서 로드)
-MYSQL_CONFIG = {
-    'host': os.getenv('MYSQL_HOST', 'localhost'),
-    'user': os.getenv('MYSQL_USER'),
-    'password': os.getenv('MYSQL_PASSWORD'),
-    'database': os.getenv('MYSQL_DATABASE'),
-    'port': int(os.getenv('MYSQL_PORT', 3306)),
-    'charset': 'utf8mb4'
-}
 
 # 백업 디렉토리
 BACKUP_DIR = '/home/itap/snowball/backups'
 
 # 보관 기간 (일)
 RETENTION_DAYS = 7
-
-# 백업할 테이블 목록
-TABLES = [
-    'sb_user',
-    'sb_rcm',
-    'sb_standard_control',
-    'sb_rcm_detail',
-    'sb_lookup',
-    'sb_design_evaluation_header',
-    'sb_design_evaluation_line',
-    'sb_operation_evaluation_header',
-    'sb_operation_evaluation_line',
-    'sb_evaluation_sample',
-    'sb_user_rcm',
-    'sb_user_activity_log',
-    'sb_rcm_standard_mapping',
-    'sb_rcm_completeness_eval',
-    'sb_internal_assessment',
-    'sb_request',
-    'sb_user_request',
-    'sb_user_log',
-    'sb_migration_history'
-]
 
 # ============================================================================
 # Gmail API 함수
@@ -127,20 +99,7 @@ def get_backup_filename():
 
 
 def backup_mysql_to_sqlite():
-    """MySQL 데이터를 SQLite로 백업"""
-
-    log_lines = []
-
-    def log(message):
-        """로그 메시지 저장"""
-        print(message)
-        log_lines.append(message)
-
-    log("=" * 70)
-    log("MySQL → SQLite 백업 시작")
-    log("=" * 70)
-    log(f"시작 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    log("")
+    """MySQL 데이터를 SQLite로 백업 (backup_mysql_to_sqlite.py 사용)"""
 
     # 백업 디렉토리 생성
     os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -151,100 +110,122 @@ def backup_mysql_to_sqlite():
 
     # 이미 오늘 백업이 있으면 삭제
     if os.path.exists(backup_path):
-        log(f"[INFO] 기존 백업 파일 삭제: {backup_filename}")
+        print(f"[INFO] 기존 백업 파일 삭제: {backup_filename}")
         os.remove(backup_path)
 
-    log(f"[INFO] 백업 파일: {backup_path}")
-    log("")
+    print(f"[INFO] 백업 파일: {backup_path}")
+    print("")
 
     try:
-        # MySQL 연결
-        log("[CONNECT] MySQL 연결 중...")
-        mysql_conn = pymysql.connect(**MYSQL_CONFIG, cursorclass=pymysql.cursors.DictCursor)
-        log("  ✅ MySQL 연결 성공")
+        # 로그 캡처를 위한 변수
+        import io
+        from contextlib import redirect_stdout
 
-        # SQLite 연결
-        log("[CONNECT] SQLite 파일 생성 중...")
-        sqlite_conn = sqlite3.connect(backup_path)
-        sqlite_cursor = sqlite_conn.cursor()
-        log("  ✅ SQLite 파일 생성 완료")
-        log("")
+        log_buffer = io.StringIO()
 
-        total_rows = 0
+        # stdout을 캡처하면서 백업 실행
+        with redirect_stdout(log_buffer):
+            # backup_mysql_to_sqlite 모듈의 함수 직접 호출
+            # (내부적으로 print를 사용하므로 로그가 캡처됨)
+            import pymysql
+            import sqlite3
+            from backup_mysql_to_sqlite import (
+                get_mysql_table_schema,
+                create_sqlite_table,
+                migrate_table_data,
+                MYSQL_CONFIG
+            )
 
-        # 각 테이블 백업
-        for table_name in TABLES:
-            try:
-                log(f"[BACKUP] {table_name}")
+            # MySQL 연결
+            print("[CONNECT] MySQL 연결 중...")
+            mysql_conn = pymysql.connect(**MYSQL_CONFIG)
+            print("  ✅ MySQL 연결 성공")
 
-                # MySQL에서 데이터 읽기
-                mysql_cursor = mysql_conn.cursor()
-                mysql_cursor.execute(f"SELECT * FROM {table_name}")
-                rows = mysql_cursor.fetchall()
+            # SQLite 연결
+            print(f"[CONNECT] SQLite 파일 생성 중... ({backup_path})")
+            sqlite_conn = sqlite3.connect(backup_path)
+            print("  ✅ SQLite 파일 생성 완료")
+            print("")
 
-                if not rows:
-                    log(f"  ⏭️  데이터 없음")
-                    continue
+            # MySQL에서 모든 테이블 조회
+            mysql_cursor = mysql_conn.cursor()
+            mysql_cursor.execute("SHOW TABLES")
+            table_results = mysql_cursor.fetchall()
 
-                # 컬럼명 가져오기
-                columns = list(rows[0].keys())
+            # 테이블 이름 추출
+            tables = []
+            for row in table_results:
+                if isinstance(row, dict):
+                    table_name = list(row.values())[0]
+                else:
+                    table_name = row[0]
+                tables.append(table_name)
 
-                # SQLite 테이블 생성
-                columns_def = ', '.join([f'`{col}` TEXT' for col in columns])
-                create_sql = f"CREATE TABLE `{table_name}` ({columns_def})"
-                sqlite_cursor.execute(create_sql)
+            print("=" * 70)
+            print(f"백업 대상 테이블: {len(tables)}개")
+            print("=" * 70)
+            print("")
 
-                # 데이터 삽입
-                placeholders = ','.join(['?' for _ in columns])
-                insert_sql = f"INSERT INTO `{table_name}` ({','.join([f'`{col}`' for col in columns])}) VALUES ({placeholders})"
+            total_rows = 0
+            success_count = 0
 
-                for row in rows:
-                    values = [row[col] for col in columns]
-                    sqlite_cursor.execute(insert_sql, values)
+            # 각 테이블 백업
+            for i, table_name in enumerate(tables, 1):
+                print(f"[{i}/{len(tables)}] {table_name}")
+                print("-" * 70)
 
-                row_count = len(rows)
-                total_rows += row_count
-                log(f"  ✅ {row_count:,}개 행 백업 완료")
+                try:
+                    # 스키마 조회
+                    columns = get_mysql_table_schema(mysql_conn, table_name)
 
-            except Exception as e:
-                log(f"  ❌ 실패: {e}")
+                    # SQLite 테이블 생성
+                    create_sqlite_table(sqlite_conn, table_name, columns)
 
-        # 커밋
-        sqlite_conn.commit()
+                    # 데이터 마이그레이션
+                    row_count = migrate_table_data(mysql_conn, sqlite_conn, table_name)
+                    total_rows += row_count
+                    success_count += 1
 
-        log("")
-        log("=" * 70)
-        log("백업 완료!")
-        log("=" * 70)
-        log(f"총 테이블: {len(TABLES)}개")
-        log(f"총 데이터: {total_rows:,}개 행")
-        log(f"파일 크기: {os.path.getsize(backup_path) / 1024 / 1024:.2f} MB")
-        log(f"저장 위치: {backup_path}")
-        log("")
+                except Exception as e:
+                    print(f"   ❌ 오류 발생: {e}")
 
-        mysql_conn.close()
-        sqlite_conn.close()
+            # 연결 종료
+            sqlite_conn.close()
+            mysql_conn.close()
+
+            print("")
+            print("=" * 70)
+            print("백업 완료!")
+            print("=" * 70)
+            print(f"✅ 성공: {success_count}/{len(tables)} 테이블")
+            print(f"📊 총 백업된 데이터: {total_rows:,} rows")
+            print(f"💾 백업 파일: {backup_path}")
+            print(f"📦 파일 크기: {os.path.getsize(backup_path) / 1024 / 1024:.2f} MB")
+            print("=" * 70)
+
+        # 로그 가져오기
+        log_content = log_buffer.getvalue()
+
+        # 콘솔에도 출력
+        print(log_content)
 
         return {
             'success': True,
-            'log': '\n'.join(log_lines),
+            'log': log_content,
             'backup_file': backup_filename,
-            'total_tables': len(TABLES),
+            'total_tables': len(tables),
             'total_rows': total_rows,
             'file_size': os.path.getsize(backup_path)
         }
 
     except Exception as e:
-        log("")
-        log("=" * 70)
-        log("❌ 백업 실패!")
-        log("=" * 70)
-        log(f"오류: {e}")
-        log("")
+        import traceback
+        error_log = f"❌ 백업 실패!\n오류: {e}\n{traceback.format_exc()}"
+        print(error_log)
 
         return {
             'success': False,
-            'log': '\n'.join(log_lines),
+            'log': error_log,
             'error': str(e)
         }
 

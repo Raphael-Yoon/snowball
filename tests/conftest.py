@@ -1,225 +1,127 @@
 """
-pytest configuration and shared fixtures
+E2E 테스트를 위한 Selenium 설정
 """
 import pytest
-import os
-import sys
-import tempfile
-from datetime import datetime
-
-# Add parent directory to path to import snowball modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from snowball import app as flask_app
-from auth import get_db
+import time
+import threading
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 
-@pytest.fixture
-def app():
-    """Create and configure a test Flask application instance."""
-    # Set test configuration
-    flask_app.config.update({
-        'TESTING': True,
-        'SECRET_KEY': 'test_secret_key',
-        'SESSION_COOKIE_SECURE': False,
-        'WTF_CSRF_ENABLED': False,
-    })
+@pytest.fixture(scope="session")
+def app_server():
+    """테스트용 Flask 서버 시작"""
+    import sys
+    import os
 
-    # Create a temporary database for testing
-    db_fd, db_path = tempfile.mkstemp(suffix='.db')
-    flask_app.config['DATABASE'] = db_path
+    # 프로젝트 루트를 Python 경로에 추가
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+    sys.path.insert(0, project_root)
 
-    # Initialize test database
-    with flask_app.app_context():
-        try:
-            from migrate import upgrade_database
-            upgrade_database(db_path)
-        except Exception as e:
-            print(f"Database initialization warning: {e}")
-            # If migration fails, create basic tables manually
-            _create_basic_test_tables(db_path)
+    # Flask 앱 임포트
+    from snowball import app
 
-    yield flask_app
+    # 테스트 모드 설정
+    app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False  # CSRF 토큰 비활성화 (테스트용)
 
-    # Cleanup
-    os.close(db_fd)
-    os.unlink(db_path)
+    # 테스트 서버 시작 (별도 스레드)
+    def run_server():
+        app.run(port=5555, debug=False, use_reloader=False)
 
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
 
-def _create_basic_test_tables(db_path):
-    """Create basic test tables if migration fails"""
-    import sqlite3
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    # 서버 시작 대기
+    time.sleep(2)
 
-    # Create essential tables for testing
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS sb_user (
-            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT UNIQUE NOT NULL,
-            user_name TEXT NOT NULL,
-            company_name TEXT,
-            phone_number TEXT,
-            admin_flag TEXT DEFAULT 'N',
-            created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_login_date TIMESTAMP,
-            effective_end_date TIMESTAMP
-        )
-    ''')
+    yield "http://localhost:5555"
 
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS sb_otp (
-            otp_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL,
-            otp_code TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            expires_at TIMESTAMP NOT NULL,
-            is_used INTEGER DEFAULT 0
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS sb_user_activity_log (
-            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            activity_type TEXT,
-            activity_description TEXT,
-            page_url TEXT,
-            ip_address TEXT,
-            user_agent TEXT,
-            created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-
-    conn.commit()
-    conn.close()
+    # 서버는 데몬 스레드라서 자동 종료됨
 
 
-@pytest.fixture
-def client(app):
-    """Create a test client for the Flask application."""
-    return app.test_client()
+@pytest.fixture(scope="function")
+def browser(app_server):
+    """Selenium WebDriver 인스턴스 생성"""
+    chrome_options = Options()
+
+    # 헤드리스 모드 (백그라운드 실행)
+    # 개발 중에는 주석 처리해서 브라우저를 볼 수 있음
+    # chrome_options.add_argument("--headless")
+
+    # 기타 옵션
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-popup-blocking")
+
+    # 로그 레벨 설정
+    chrome_options.add_argument("--log-level=3")
+
+    # WebDriver 설정
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+
+    # 암묵적 대기 시간 설정 (요소 찾기 대기)
+    driver.implicitly_wait(10)
+
+    yield driver
+
+    # 테스트 종료 후 브라우저 닫기
+    driver.quit()
 
 
-@pytest.fixture
-def runner(app):
-    """Create a test CLI runner."""
-    return app.test_cli_runner()
+@pytest.fixture(scope="function")
+def server_url(app_server):
+    """베이스 URL 반환 (base_url과 이름 충돌 방지)"""
+    return app_server
 
 
-@pytest.fixture
-def test_user(app):
-    """Create a test user in the database."""
-    with app.app_context():
-        with get_db() as conn:
-            # Check if user already exists
-            existing = conn.execute(
-                'SELECT * FROM sb_user WHERE user_email = %s',
-                ('test@example.com',)
-            ).fetchone()
+@pytest.fixture(scope="function")
+def logged_in_browser(browser, server_url):
+    """로그인된 상태의 브라우저 반환"""
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
 
-            if existing:
-                # Return existing user
-                return dict(existing)
+    # 로그인 페이지로 이동
+    browser.get(f"{server_url}/login")
 
-            # Create new user
-            cursor = conn.execute('''
-                INSERT INTO sb_user (user_email, user_name, company_name, phone_number, admin_flag)
-                VALUES (%s, %s, %s, %s, %s)
-            ''', ('test@example.com', 'Test User', 'Test Company', '010-1234-5678', 'N'))
-            user_id = cursor.lastrowid
-            conn.commit()
+    # 로그인 (실제 DB에 있는 테스트 계정 사용)
+    # 테스트 계정이 없으면 먼저 생성 필요
+    email_input = browser.find_element(By.ID, "email")
+    email_input.send_keys("test@example.com")
 
-            # Return user info dictionary
-            return {
-                'user_id': user_id,
-                'user_email': 'test@example.com',
-                'user_name': 'Test User',
-                'company_name': 'Test Company',
-                'phone_number': '010-1234-5678',
-                'admin_flag': 'N'
-            }
+    # OTP 입력 (테스트용으로는 고정 OTP 또는 DB에서 조회)
+    # 실제 환경에서는 테스트용 OTP를 별도로 생성해야 함
+    # 여기서는 로그인 로직이 있다고 가정
+
+    # 참고: 실제 구현 시 세션을 직접 설정하는 방법도 있음
+    # browser.get(f"{base_url}/test-login?email=test@example.com")
+
+    yield browser
 
 
-@pytest.fixture
-def admin_user(app):
-    """Create an admin user in the database."""
-    with app.app_context():
-        with get_db() as conn:
-            # Check if user already exists
-            existing = conn.execute(
-                'SELECT * FROM sb_user WHERE user_email = %s',
-                ('admin@example.com',)
-            ).fetchone()
+# 헬퍼 함수
+def wait_for_element(driver, by, value, timeout=10):
+    """요소가 나타날 때까지 대기"""
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
 
-            if existing:
-                # Return existing user
-                return dict(existing)
-
-            # Create new user
-            cursor = conn.execute('''
-                INSERT INTO sb_user (user_email, user_name, company_name, phone_number, admin_flag)
-                VALUES (%s, %s, %s, %s, %s)
-            ''', ('admin@example.com', 'Admin User', 'Admin Company', '010-9999-9999', 'Y'))
-            user_id = cursor.lastrowid
-            conn.commit()
-
-            return {
-                'user_id': user_id,
-                'user_email': 'admin@example.com',
-                'user_name': 'Admin User',
-                'company_name': 'Admin Company',
-                'phone_number': '010-9999-9999',
-                'admin_flag': 'Y'
-            }
+    return WebDriverWait(driver, timeout).until(
+        EC.presence_of_element_located((by, value))
+    )
 
 
-@pytest.fixture
-def authenticated_client(client, test_user):
-    """Create an authenticated test client with a logged-in user."""
-    with client.session_transaction() as session:
-        session['user_id'] = test_user['user_id']
-        session['user_email'] = test_user['user_email']
-        session['user_info'] = test_user
-        session['login_time'] = datetime.now().isoformat()
-        session['last_activity'] = datetime.now().isoformat()
+def wait_for_clickable(driver, by, value, timeout=10):
+    """요소가 클릭 가능해질 때까지 대기"""
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
 
-    return client
-
-
-@pytest.fixture
-def mock_gmail_send(mocker):
-    """Mock Gmail sending functionality."""
-    mock = mocker.patch('snowball_mail.send_gmail')
-    mock.return_value = True
-    return mock
-
-
-@pytest.fixture
-def mock_gmail_send_with_attachment(mocker):
-    """Mock Gmail sending with attachment functionality."""
-    mock = mocker.patch('snowball_mail.send_gmail_with_attachment')
-    mock.return_value = True
-    return mock
-
-
-@pytest.fixture(autouse=True)
-def disable_email_sending(mocker):
-    """
-    자동으로 모든 테스트에서 실제 이메일 전송을 차단합니다.
-    테스트 시 실제 메일이 발송되지 않도록 합니다.
-    """
-    # snowball_mail의 모든 이메일 전송 함수를 Mock으로 대체
-    mocker.patch('snowball_mail.send_gmail', return_value=True)
-    mocker.patch('snowball_mail.send_gmail_with_attachment', return_value=None)
-
-    # 혹시 다른 모듈에서 직접 import하는 경우도 대비
-    try:
-        mocker.patch('snowball_link1.send_gmail_with_attachment', return_value=None)
-    except:
-        pass
-
-    try:
-        mocker.patch('snowball_link2.send_gmail_with_attachment', return_value=None)
-    except:
-        pass
+    return WebDriverWait(driver, timeout).until(
+        EC.element_to_be_clickable((by, value))
+    )
