@@ -5,3 +5,8 @@ google-auth-oauthlib
 google-auth
 openpyxl
 openai>=1.30.0
+pandas
+pymysql
+pytest
+pytest-mock
+selenium

@@ -53,7 +53,7 @@ def internal_assessment():
         cursor = db.execute('''
             SELECT control_category, COUNT(*) as count
             FROM sb_rcm_detail
-            WHERE rcm_id = %s
+            WHERE rcm_id = ?
             GROUP BY control_category
         ''', (rcm['rcm_id'],))
 
@@ -68,47 +68,46 @@ def internal_assessment():
 
         primary_category = max(category_counts.items(), key=lambda x: x[1])[0] if category_counts else 'ITGC'
 
-        # 해당 RCM의 설계평가 세션 조회
+        # 해당 RCM의 평가 세션 조회 (통합 테이블)
+        # user_id 필터 제거 - 관리자도 모든 RCM의 평가 세션을 볼 수 있어야 함
+        print(f"[DEBUG] Querying sessions for rcm_id={rcm['rcm_id']}")
         cursor = db.execute('''
             SELECT DISTINCT
-                dh.evaluation_session,
-                dh.evaluation_status,
-                dh.start_date,
-                dh.completed_date,
-                oh.evaluation_status as operation_status
-            FROM sb_design_evaluation_header dh
-            LEFT JOIN sb_operation_evaluation_header oh
-                ON dh.rcm_id = oh.rcm_id
-                AND dh.evaluation_session = oh.design_evaluation_session
-                AND dh.user_id = oh.user_id
-            WHERE dh.rcm_id = %s AND dh.user_id = %s
-            AND dh.evaluation_status != 'ARCHIVED'
-            ORDER BY dh.start_date DESC
-        ''', (rcm['rcm_id'], user_info['user_id']))
+                evaluation_name,
+                status,
+                created_at as start_date,
+                NULL as completed_date,
+                status as operation_status
+            FROM sb_evaluation_header
+            WHERE rcm_id = ?
+            AND (archived IS NULL OR archived = 0)
+            ORDER BY created_at DESC
+        ''', (rcm['rcm_id'],))
 
         sessions = cursor.fetchall()
+        print(f"[DEBUG] Found {len(sessions)} sessions for rcm_id={rcm['rcm_id']}")
 
         if sessions:
             for session_data in sessions:
                 # 딕셔너리 형태일 경우와 튜플 형태일 경우 모두 처리
                 if isinstance(session_data, dict):
-                    evaluation_session = session_data['evaluation_session']
-                    evaluation_status = session_data['evaluation_status']
+                    evaluation_name = session_data['evaluation_name']
+                    evaluation_status = session_data['status']
                     start_date = session_data['start_date']
                     completed_date = session_data['completed_date']
                     operation_status = session_data['operation_status']
                 else:
-                    evaluation_session = session_data[0]
+                    evaluation_name = session_data[0]
                     evaluation_status = session_data[1]
                     start_date = session_data[2]
                     completed_date = session_data[3]
                     operation_status = session_data[4]
 
-                progress = get_assessment_progress(rcm['rcm_id'], user_info['user_id'], evaluation_session)
+                progress = get_assessment_progress(rcm['rcm_id'], user_info['user_id'], evaluation_name)
 
                 rcm_data = {
                     'rcm_info': rcm,
-                    'evaluation_session': evaluation_session,
+                    'evaluation_session': evaluation_name,
                     'evaluation_status': evaluation_status,
                     'operation_status': operation_status,
                     'start_date': start_date,
@@ -149,7 +148,7 @@ def internal_assessment():
 @bp_link8.route('/internal-assessment/<int:rcm_id>')
 @bp_link8.route('/internal-assessment/<int:rcm_id>/<evaluation_session>')
 @login_required
-def assessment_detail(rcm_id, evaluation_session='DEFAULT'):
+def assessment_detail(rcm_id, evaluation_name='DEFAULT'):
     """특정 RCM의 특정 설계평가 세션에 대한 내부평가 상세 페이지"""
     user_info = get_user_info()
 
@@ -162,19 +161,19 @@ def assessment_detail(rcm_id, evaluation_session='DEFAULT'):
         return redirect(url_for('link8.internal_assessment'))
 
     # 내부평가 진행 상황 조회 (세션별)
-    progress = get_assessment_progress(rcm_id, user_info['user_id'], evaluation_session)
+    progress = get_assessment_progress(rcm_id, user_info['user_id'], evaluation_name)
 
     # 평가 단계별 데이터 조회
-    assessment_data = get_assessment_data(rcm_id, user_info['user_id'], evaluation_session)
+    assessment_data = get_assessment_data(rcm_id, user_info['user_id'], evaluation_name)
 
     log_user_activity(user_info, 'PAGE_ACCESS', '내부평가 상세 페이지',
                      f'/internal-assessment/{rcm_id}/{evaluation_session}',
                      request.remote_addr, request.headers.get('User-Agent'),
-                     {'rcm_id': rcm_id, 'evaluation_session': evaluation_session})
+                     {'rcm_id': rcm_id, 'evaluation_session': evaluation_name})
 
     return render_template('assessment_detail.jsp',
                          rcm_info=rcm_info,
-                         evaluation_session=evaluation_session,
+                         evaluation_name=evaluation_session,
                          progress=progress,
                          assessment_data=assessment_data,
                          is_logged_in=is_logged_in(),
@@ -183,7 +182,7 @@ def assessment_detail(rcm_id, evaluation_session='DEFAULT'):
 # API: 내부평가 상세 정보 (JSON)
 @bp_link8.route('/internal-assessment/api/detail/<int:rcm_id>/<evaluation_session>')
 @login_required
-def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
+def assessment_detail_api(rcm_id, evaluation_name='DEFAULT'):
     """내부평가 상세 정보를 JSON으로 반환하는 API"""
     user_info = get_user_info()
 
@@ -195,16 +194,16 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
         return jsonify({'success': False, 'message': '해당 RCM에 대한 접근 권한이 없습니다.'}), 403
 
     # 내부평가 진행 상황 조회 (세션별)
-    progress = get_assessment_progress(rcm_id, user_info['user_id'], evaluation_session)
+    progress = get_assessment_progress(rcm_id, user_info['user_id'], evaluation_name)
 
     db = get_db()
 
     # 설계평가 상세 정보
     design_detail = {}
     cursor = db.execute('''
-        SELECT header_id FROM sb_design_evaluation_header
-        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
-    ''', (rcm_id, user_info['user_id'], evaluation_session))
+        SELECT header_id FROM sb_evaluation_header
+        WHERE rcm_id = ? AND evaluation_name = ?
+    ''', (rcm_id, evaluation_name))
     design_header = cursor.fetchone()
 
     if design_header:
@@ -219,8 +218,8 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
             SELECT
                 overall_effectiveness,
                 COUNT(*) as count
-            FROM sb_design_evaluation_line
-            WHERE header_id = %s AND overall_effectiveness IS NOT NULL AND overall_effectiveness != ''
+            FROM sb_evaluation_line
+            WHERE header_id = ? AND overall_effectiveness IS NOT NULL AND overall_effectiveness != ''
             GROUP BY overall_effectiveness
         ''', (header_id,))
 
@@ -238,8 +237,8 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
                 control_code,
                 overall_effectiveness,
                 evaluation_rationale
-            FROM sb_design_evaluation_line
-            WHERE header_id = %s
+            FROM sb_evaluation_line
+            WHERE header_id = ?
             AND overall_effectiveness IN ('부적정', '일부 미흡')
             ORDER BY control_code
         ''', (header_id,))
@@ -251,29 +250,23 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
             'total_inadequate': len(inadequate_controls)
         }
 
-    # 운영평가 상세 정보
+    # 운영평가 상세 정보 - 같은 헤더의 conclusion 컬럼 사용
     operation_detail = {}
-    operation_session = f"OP_{evaluation_session}"
-    cursor = db.execute('''
-        SELECT header_id FROM sb_operation_evaluation_header
-        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
-    ''', (rcm_id, user_info['user_id'], operation_session))
-    operation_header = cursor.fetchone()
-
-    if operation_header:
+    # 설계평가와 같은 헤더 사용
+    if design_header:
         # 딕셔너리 형태일 경우와 튜플 형태일 경우 모두 처리
-        if isinstance(operation_header, dict):
-            header_id = operation_header['header_id']
+        if isinstance(design_header, dict):
+            header_id = design_header['header_id']
         else:
-            header_id = operation_header[0]
+            header_id = design_header[0]
 
         # 전체 통제 수와 평가 완료된 통제 수 조회
         cursor = db.execute('''
             SELECT
                 COUNT(*) as total,
                 COUNT(CASE WHEN conclusion IS NOT NULL AND conclusion != '' THEN 1 END) as evaluated
-            FROM sb_operation_evaluation_line
-            WHERE header_id = %s
+            FROM sb_evaluation_line
+            WHERE header_id = ?
         ''', (header_id,))
         counts = cursor.fetchone()
 
@@ -291,8 +284,8 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
             SELECT
                 conclusion,
                 COUNT(*) as count
-            FROM sb_operation_evaluation_line
-            WHERE header_id = %s AND conclusion IS NOT NULL AND conclusion != ''
+            FROM sb_evaluation_line
+            WHERE header_id = ? AND conclusion IS NOT NULL AND conclusion != ''
             GROUP BY conclusion
         ''', (header_id,))
 
@@ -328,8 +321,8 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
                 control_code,
                 conclusion,
                 exception_details
-            FROM sb_operation_evaluation_line
-            WHERE header_id = %s
+            FROM sb_evaluation_line
+            WHERE header_id = ?
             AND (conclusion IN ('예외사항 발견', 'ineffective', '비효과적')
                  OR (exception_details IS NOT NULL AND exception_details != ''))
             ORDER BY control_code
@@ -348,7 +341,7 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
     return jsonify({
         'success': True,
         'rcm_info': rcm_info,
-        'evaluation_session': evaluation_session,
+        'evaluation_session': evaluation_name,
         'progress': progress,
         'design_detail': design_detail,
         'operation_detail': operation_detail
@@ -411,7 +404,7 @@ def save_assessment_progress(rcm_id):
         data = request.get_json()
 
         step = data.get('step')
-        evaluation_session = data.get('evaluation_session', 'DEFAULT')
+        evaluation_name = data.get('evaluation_session', 'DEFAULT')
         progress_data = data.get('data', {})
         status = data.get('status', 'in_progress')  # pending, in_progress, completed
 
@@ -421,8 +414,8 @@ def save_assessment_progress(rcm_id):
         # 기존 데이터 확인 후 업데이트 또는 삽입
         existing_cursor = db.execute('''
             SELECT assessment_id FROM sb_internal_assessment
-            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND step = %s
-        ''', (rcm_id, user_info['user_id'], evaluation_session, step))
+            WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND step = ?
+        ''', (rcm_id, user_info['user_id'], evaluation_name, step))
 
         existing = existing_cursor.fetchone()
 
@@ -436,16 +429,16 @@ def save_assessment_progress(rcm_id):
             # 업데이트
             db.execute('''
                 UPDATE sb_internal_assessment
-                SET progress_data = %s, status = %s, updated_date = %s
-                WHERE assessment_id = %s
+                SET progress_data = ?, status = ?, updated_date = ?
+                WHERE assessment_id = ?
             ''', (json.dumps(progress_data), status, datetime.now(), assessment_id))
         else:
             # 신규 삽입
             db.execute('''
                 INSERT INTO sb_internal_assessment
-                (rcm_id, user_id, evaluation_session, step, progress_data, status, created_date, updated_date)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (rcm_id, user_info['user_id'], evaluation_session, step, json.dumps(progress_data),
+                (rcm_id, user_id, evaluation_name, step, progress_data, status, created_date, updated_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (rcm_id, user_info['user_id'], evaluation_name, step, json.dumps(progress_data),
                   status, datetime.now(), datetime.now()))
         
         db.commit()
@@ -468,7 +461,7 @@ def save_assessment_progress(rcm_id):
         }), 500
 
 # 헬퍼 함수들
-def get_assessment_progress(rcm_id, user_id, evaluation_session='DEFAULT'):
+def get_assessment_progress(rcm_id, user_id, evaluation_name='DEFAULT'):
     """특정 RCM의 특정 설계평가 세션에 대한 내부평가 진행 상황 조회"""
     db = get_db()
 
@@ -476,9 +469,9 @@ def get_assessment_progress(rcm_id, user_id, evaluation_session='DEFAULT'):
     steps_cursor = db.execute('''
         SELECT step, status, updated_date
         FROM sb_internal_assessment
-        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
+        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
         ORDER BY step
-    ''', (rcm_id, user_id, evaluation_session))
+    ''', (rcm_id, user_id, evaluation_name))
     
     steps_data = steps_cursor.fetchall()
 
@@ -500,7 +493,7 @@ def get_assessment_progress(rcm_id, user_id, evaluation_session='DEFAULT'):
             progress['steps'][step_num - 1]['updated_date'] = updated_date
 
     # 각 단계별 실제 진행상황을 확인하여 자동 업데이트
-    progress = update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progress)
+    progress = update_progress_from_actual_data(rcm_id, user_id, evaluation_name, progress)
 
     # 전체 진행률 계산 (각 단계의 실제 진행률 평균)
     total_progress = 0
@@ -524,7 +517,7 @@ def get_assessment_progress(rcm_id, user_id, evaluation_session='DEFAULT'):
 
     return progress
 
-def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progress):
+def update_progress_from_actual_data(rcm_id, user_id, evaluation_name, progress):
     """특정 설계평가 세션의 실제 데이터를 확인하여 진행상황 자동 업데이트"""
 
     try:
@@ -534,7 +527,7 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
         cursor = db.execute('''
             SELECT control_category, COUNT(*) as total_count
             FROM sb_rcm_detail
-            WHERE rcm_id = %s
+            WHERE rcm_id = ?
             GROUP BY control_category
         ''', (rcm_id,))
 
@@ -548,10 +541,10 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
 
         # 1단계: 설계평가 (Link6) - 특정 세션의 완료율 계산
         cursor = db.execute('''
-            SELECT evaluation_status, total_controls, evaluated_controls, progress_percentage, header_id
-            FROM sb_design_evaluation_header
-            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
-        ''', (rcm_id, user_id, evaluation_session))
+            SELECT status, NULL as total_controls, NULL as evaluated_controls, progress as progress_percentage, header_id
+            FROM sb_evaluation_header
+            WHERE rcm_id = ? AND evaluation_name = ?
+        ''', (rcm_id, evaluation_name))
 
         design_eval = cursor.fetchone()
 
@@ -562,7 +555,7 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
         if design_eval:
             # 딕셔너리 형태일 경우와 튜플 형태일 경우 모두 처리
             if isinstance(design_eval, dict):
-                evaluation_status = design_eval['evaluation_status']
+                evaluation_status = design_eval['status']
                 total_controls_header = design_eval['total_controls'] or 0
                 evaluated_controls = design_eval['evaluated_controls'] or 0
                 design_progress = int(design_eval['progress_percentage'] or 0)
@@ -578,8 +571,8 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
             cursor = db.execute('''
                 SELECT COUNT(*) as actual_total,
                        COUNT(CASE WHEN overall_effectiveness IS NOT NULL AND overall_effectiveness != '' THEN 1 END) as actual_evaluated
-                FROM sb_design_evaluation_line
-                WHERE header_id = %s AND control_code IS NOT NULL AND control_code != ''
+                FROM sb_evaluation_line
+                WHERE header_id = ? AND control_code IS NOT NULL AND control_code != ''
             ''', (header_id,))
             actual_counts = cursor.fetchone()
 
@@ -600,9 +593,9 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                 cursor = db.execute('''
                     SELECT COUNT(*) as total,
                            COUNT(CASE WHEN overall_effectiveness IS NOT NULL AND overall_effectiveness != '' THEN 1 END) as evaluated
-                    FROM sb_design_evaluation_line line
-                    JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = %s
-                    WHERE line.header_id = %s AND detail.control_category = %s
+                    FROM sb_evaluation_line line
+                    JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = ?
+                    WHERE line.header_id = ? AND detail.control_category = ?
                 ''', (rcm_id, header_id, category))
                 cat_data = cursor.fetchone()
 
@@ -630,73 +623,56 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                 'category_stats': category_stats
             }
 
-            # evaluation_status가 COMPLETED일 때만 완료 처리
-            if evaluation_status == 'COMPLETED':
+            # evaluation_status가 3 이상(운영평가 시작)일 때 설계평가 완료 처리
+            if evaluation_status >= 3:
                 progress['steps'][0]['status'] = 'completed'
             elif evaluated_controls > 0:
                 progress['steps'][0]['status'] = 'in-progress'
         else:
             progress['steps'][0]['status'] = 'pending'
 
-        # 2단계: 운영평가 (Link7) - 특정 세션의 통제별 완료율 계산
-        # 운영평가 데이터 확인 (헤더와 조인)
-        operation_session = f"OP_{evaluation_session}"
+        # 2단계: 운영평가 (Link7) - 같은 헤더에서 conclusion 컬럼으로 운영평가 진행률 확인
+        # 운영평가는 별도 세션이 아니라 같은 헤더의 conclusion 컬럼을 사용
 
-        # 운영평가 헤더의 evaluation_status 조회
-        cursor = db.execute('''
-            SELECT evaluation_status
-            FROM sb_operation_evaluation_header
-            WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
-        ''', (rcm_id, user_id, operation_session))
+        operation_evaluation_status = None
+        total_operation_controls = 0
+        completed_operation_controls = 0
 
-        operation_header = cursor.fetchone()
+        if design_eval:
+            # 같은 헤더에서 운영평가 진행률 확인
+            cursor = db.execute('''
+                SELECT COUNT(*) as total,
+                       SUM(CASE WHEN conclusion IS NOT NULL AND conclusion != '' THEN 1 ELSE 0 END) as completed
+                FROM sb_evaluation_line
+                WHERE header_id = ?
+            ''', (header_id,))
 
-        # operation_header - 딕셔너리/튜플 모두 처리
-        if operation_header:
-            if isinstance(operation_header, dict):
-                operation_evaluation_status = operation_header['evaluation_status']
+            op_data = cursor.fetchone()
+
+            # op_data - 딕셔너리/튜플 모두 처리
+            if op_data:
+                if isinstance(op_data, dict):
+                    total_operation_controls = op_data['total'] or 0
+                    completed_operation_controls = op_data['completed'] or 0
+                else:
+                    total_operation_controls = op_data[0] if op_data[0] else 0
+                    completed_operation_controls = op_data[1] if op_data[1] else 0
             else:
-                operation_evaluation_status = operation_header[0]
-        else:
-            operation_evaluation_status = None
+                total_operation_controls = 0
+                completed_operation_controls = 0
 
-        cursor = db.execute('''
-            SELECT COUNT(*) as total,
-                   SUM(CASE WHEN line.conclusion IS NOT NULL AND line.conclusion != '' THEN 1 ELSE 0 END) as completed
-            FROM sb_operation_evaluation_line line
-            JOIN sb_operation_evaluation_header header ON line.header_id = header.header_id
-            WHERE header.rcm_id = %s AND header.user_id = %s AND header.evaluation_session = %s
-        ''', (rcm_id, user_id, operation_session))
-
-        op_data = cursor.fetchone()
-
-        # op_data - 딕셔너리/튜플 모두 처리
-        if op_data:
-            if isinstance(op_data, dict):
-                total_operation_controls = op_data['total'] or 0
-                completed_operation_controls = op_data['completed'] or 0
-            else:
-                total_operation_controls = op_data[0] if op_data[0] else 0
-                completed_operation_controls = op_data[1] if op_data[1] else 0
-        else:
-            total_operation_controls = 0
-            completed_operation_controls = 0
-
-        # 운영평가 진행 상황 업데이트 (설계평가 완료 후에만)
-        if total_operation_controls > 0:
-            # 카테고리별 운영평가 진행률 계산
-            category_progress_op = {}
-            for category in category_stats.keys():
-                cursor = db.execute('''
-                    SELECT COUNT(*) as total,
-                           COUNT(CASE WHEN line.conclusion IS NOT NULL AND line.conclusion != '' THEN 1 END) as completed
-                    FROM sb_operation_evaluation_line line
-                    JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = %s
-                    WHERE line.header_id = (
-                        SELECT header_id FROM sb_operation_evaluation_header
-                        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
-                    ) AND detail.control_category = %s
-                ''', (rcm_id, rcm_id, user_id, operation_session, category))
+            # 운영평가 진행 상황 업데이트 (설계평가 완료 후에만)
+            if total_operation_controls > 0:
+                # 카테고리별 운영평가 진행률 계산
+                category_progress_op = {}
+                for category in category_stats.keys():
+                    cursor = db.execute('''
+                        SELECT COUNT(*) as total,
+                               COUNT(CASE WHEN line.conclusion IS NOT NULL AND line.conclusion != '' THEN 1 END) as completed
+                        FROM sb_evaluation_line line
+                        JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = ?
+                        WHERE line.header_id = ? AND detail.control_category = ?
+                    ''', (rcm_id, header_id, category))
                 cat_data = cursor.fetchone()
 
                 # cat_data - 딕셔너리/튜플 모두 처리
@@ -715,32 +691,32 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
                             'progress': int((cat_completed / cat_total) * 100) if cat_total > 0 else 0
                         }
 
-            progress['steps'][1]['details'] = {
-                'total_controls': total_operation_controls,
-                'completed_controls': completed_operation_controls,
-                'progress': int((completed_operation_controls / max(total_operation_controls, 1)) * 100),
-                'category_progress': category_progress_op,
-                'category_stats': category_stats
-            }
+                progress['steps'][1]['details'] = {
+                    'total_controls': total_operation_controls,
+                    'completed_controls': completed_operation_controls,
+                    'progress': int((completed_operation_controls / max(total_operation_controls, 1)) * 100),
+                    'category_progress': category_progress_op,
+                    'category_stats': category_stats
+                }
 
-            # 운영평가 상태 결정 로직
-            # - 설계평가 완료 여부: evaluation_status == 'COMPLETED' (버튼 클릭 기준)
-            # - 운영평가 완료 여부: 모든 통제의 conclusion이 입력되었는지 (completed_operation_controls == total_operation_controls)
+                # 운영평가 상태 결정 로직
+                # - 설계평가 완료 여부: evaluation_status >= 3 (운영평가 시작)
+                # - 운영평가 완료 여부: 모든 통제의 conclusion이 입력되었는지 (completed_operation_controls == total_operation_controls)
 
-            if evaluation_status == 'COMPLETED':
-                # 설계평가 완료 상태
-                if total_operation_controls > 0 and completed_operation_controls == total_operation_controls:
-                    # 상태 5: 모든 통제 평가 완료 -> 운영평가 완료
-                    progress['steps'][1]['status'] = 'completed'
-                elif completed_operation_controls > 0:
-                    # 상태 4: 일부 통제만 평가 완료 -> 운영평가 진행중
-                    progress['steps'][1]['status'] = 'in-progress'
+                if evaluation_status >= 3:
+                    # 설계평가 완료 상태
+                    if total_operation_controls > 0 and completed_operation_controls == total_operation_controls:
+                        # 상태 4: 모든 통제 평가 완료 -> 운영평가 완료
+                        progress['steps'][1]['status'] = 'completed'
+                    elif completed_operation_controls > 0:
+                        # 상태 3: 일부 통제만 평가 완료 -> 운영평가 진행중
+                        progress['steps'][1]['status'] = 'in-progress'
+                    else:
+                        # 상태 3: 설계평가 완료, 운영평가 시작 전 (통제 평가 없음)
+                        progress['steps'][1]['status'] = 'pending'
                 else:
-                    # 상태 3: 설계평가 완료, 운영평가 시작 전 (통제 평가 없음)
+                    # 상태 1, 2: 설계평가 미완료 시 운영평가는 비활성화
                     progress['steps'][1]['status'] = 'pending'
-            else:
-                # 상태 1, 2: 설계평가 미완료 시 운영평가는 비활성화
-                progress['steps'][1]['status'] = 'pending'
 
     except Exception as e:
         print(f"진행상황 업데이트 오류: {e}")
@@ -749,16 +725,16 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_session, progre
 
     return progress
 
-def get_assessment_data(rcm_id, user_id, evaluation_session='DEFAULT'):
+def get_assessment_data(rcm_id, user_id, evaluation_name='DEFAULT'):
     """특정 RCM의 특정 세션에 대한 내부평가 데이터 조회"""
     db = get_db()
 
     data_cursor = db.execute('''
         SELECT step, progress_data, status
         FROM sb_internal_assessment
-        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
+        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ?
         ORDER BY step
-    ''', (rcm_id, user_id, evaluation_session))
+    ''', (rcm_id, user_id, evaluation_name))
 
     data = {}
     for row in data_cursor.fetchall():
@@ -773,15 +749,15 @@ def get_assessment_data(rcm_id, user_id, evaluation_session='DEFAULT'):
 
     return data
 
-def get_step_data(rcm_id, user_id, step, evaluation_session='DEFAULT'):
+def get_step_data(rcm_id, user_id, step, evaluation_name='DEFAULT'):
     """특정 단계의 데이터 조회"""
     db = get_db()
 
     result_cursor = db.execute('''
         SELECT progress_data, status
         FROM sb_internal_assessment
-        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND step = %s
-    ''', (rcm_id, user_id, evaluation_session, step))
+        WHERE rcm_id = ? AND user_id = ? AND evaluation_session = ? AND step = ?
+    ''', (rcm_id, user_id, evaluation_name, step))
     
     result = result_cursor.fetchone()
     if result:

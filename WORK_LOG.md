@@ -1,5 +1,117 @@
 # Snowball 프로젝트 작업 로그
 
+## 2025-12-11
+- **E2E 테스트 환경 구축 및 체크리스트 작성**
+  - Selenium 기반 E2E 테스트 인프라 설정
+  - pytest-mock 패키지 설치 (fixture 의존성 해결)
+  - tests/conftest.py: Selenium 설정, pytest fixtures (browser, server_url, app_server)
+  - tests/test_login.py: 로그인 기능 테스트 구현 (30개 항목, 11 PASS / 19 SKIP)
+
+- **테스트 체크리스트 통합**
+  - tests/테스트_항목.md: 단일 통합 체크리스트 생성 (250개 항목)
+    - 로그인 (1-30)
+    - 대시보드 (31-60)
+    - RCM 관리 (61-100)
+    - 설계평가 (101-150)
+    - 운영평가 (151-250)
+  - 각 항목은 독립적으로 테스트 가능하도록 번호 부여
+  - 선택적 테스트 실행 가능 (예: 항목 1, 2, 3만 테스트)
+
+- **테스트 폴더 구조 재정리**
+  - tests/unit/: 기존 유닛 테스트 20개 파일 이동
+  - tests/: E2E 테스트 파일 및 체크리스트 배치
+  - 별도의 e2e/ 서브폴더 사용하지 않음
+
+- **파일 정리 및 코드 통합**
+  - operation_evaluation_generic.py를 snowball_link7.py로 병합
+    - 5개 운영평가 관련 라우트 통합
+    - bp_generic Blueprint 제거
+    - 파일명 일관성 확보 (snowball_*.py 패턴)
+  - control_config.py를 snowball_link7.py로 병합
+    - MANUAL_CONTROLS 설정 (APD01, APD07, APD09, APD12, PC01-03, CO01, GENERIC)
+    - 운영평가 통제 설정 함수 통합 (get_control_config, get_all_manual_controls, is_manual_control)
+  - rcm_utils.py를 snowball_link5.py로 병합
+    - RCM 엑셀 업로드 및 검증 유틸리티 통합
+  - file_manager.py 삭제 (미사용 파일)
+  - full_sync_sqlite_to_mysql.py 삭제 (미사용 마이그레이션 유틸리티)
+  - sqlite_to_mysql.py 삭제 (구버전, reset_mysql_from_sqlite.py로 대체)
+  - work_log.txt 내용을 work_log.md로 병합 및 삭제
+
+- **마이그레이션 스크립트 정비**
+  - migrations/backup_mysql_to_sqlite.py 신규 작성 (443줄)
+    - MySQL → SQLite 백업 스크립트 (운영 환경 → 로컬 백업용)
+    - 환경변수(.env) 지원, 검증 기능 포함
+    - 백업 파일명: snowball_YYYYMMDD.db (날짜별 백업, 스케줄러용)
+    - MySQL 타입 → SQLite 타입 변환 (INT, REAL, TEXT, BLOB, DATETIME 등)
+    - 스키마 보존 (PRIMARY KEY, AUTO_INCREMENT, NOT NULL, DEFAULT 등)
+    - 명령행 옵션: --output, --verify
+  - gmail_schedule.py 리팩토링
+    - 중복 백업 로직 제거 (~120줄)
+    - backup_mysql_to_sqlite.py의 함수 재사용
+    - 더 나은 백업 품질 (스키마 정보 보존)
+    - 로그 캡처 기능 유지 (이메일 전송용)
+  - 양방향 마이그레이션 완성
+    - 배포: reset_mysql_from_sqlite.py (로컬 → 운영)
+    - 백업: backup_mysql_to_sqlite.py (운영 → 로컬)
+    - 스케줄: gmail_schedule.py (매일 자동 백업 + 이메일 알림)
+
+- **의존성 관리 개선**
+  - requirements.txt 업데이트
+    - pandas, pymysql 추가 (데이터 처리 및 DB 연결)
+    - pytest, pytest-mock, selenium 추가 (테스트 환경)
+  - Python 3.14 환경에 pandas 설치 (Flask 실행 환경)
+
+- **테스트 실행 결과**
+  - test_login.py: 30개 테스트 중 11개 PASS, 19개 SKIP
+  - PASS: 페이지 로드, UI 요소 존재 확인 등
+  - SKIP: 실제 OTP/로그인이 필요한 테스트 (추후 구현)
+
+- **작업 요약**
+  - 총 코드 정리: 2,469줄 (통합 753줄 + 삭제 1,716줄)
+  - 파일 수 감소: 순 3개 감소
+  - 신규 작성: backup_mysql_to_sqlite.py (443줄)
+  - 리팩토링: gmail_schedule.py (120줄 감소)
+
+## 2025-12-10
+- **운영평가 표본별 테스트 UI/UX 개선**
+  - 설계평가 샘플 결과를 읽기전용 badge로 표시 (disabled dropdown 제거)
+  - 표본수 입력 필드 추가 및 위치 조정 (표본별 테스트 결과 상단)
+  - 표본수 로직 명확화: 사용자 입력 = 설계평가(1) + 운영평가(n-1) 총 개수
+  - 모집단 업로드 모드(표준표본수=0): 설계평가 부분도 수정 가능하도록 변경
+  - 모집단 필드에 설계평가 값 자동 복사 기능 추가
+
+- **구 평가 테이블 완전 제거 (ITGC/TLC 통합 테이블 마이그레이션)**
+  - 배경: ELC만 통합 테이블 사용, ITGC/TLC는 구 테이블 사용 중이었음
+  - 모든 control_category (ELC/ITGC/TLC)가 통합 테이블(`sb_evaluation_header/line`) 사용하도록 변경
+  - 수정된 파일:
+    - `auth.py`: 구 테이블 참조 코드 삭제 (200여 라인), ITGC/TLC 로직을 통합 테이블 사용으로 변경
+    - `snowball_link5.py`: RCM 삭제 시 통합 테이블만 삭제
+    - `snowball_link7.py`: 구 테이블 import 제거, 쿼리 수정
+    - `snowball_link8.py`: 모든 구 테이블 참조를 통합 테이블로 변경
+    - `gmail_schedule.py`: 백업 대상 테이블 목록 업데이트
+    - `operation_evaluation_generic.py`: 구 테이블 참조를 통합 테이블로 변경
+  - 삭제 대상 테이블:
+    - `sb_design_evaluation_header`, `sb_design_evaluation_line`
+    - `sb_operation_evaluation_header`, `sb_operation_evaluation_line`
+
+- **MySQL 마이그레이션 스크립트 개선**
+  - `migrations/reset_mysql_from_sqlite.py` 수정:
+    - `.env` 파일 로드 기능 추가 (MySQL 접속 정보 자동 로드)
+    - PyMySQL cursor 타입 호환성 개선 (tuple/dict 자동 처리)
+    - MySQL 뷰(view) 삭제 기능 추가 (테이블 삭제 전 뷰 먼저 삭제)
+    - 비밀번호 입력 프롬프트 추가 (환경변수 없을 시)
+
+- **불필요한 파일 정리**
+  - 디버깅 스크립트 삭제: `check_sample_count.py`, `check_saved_data.py`, `check_table_schema.py`
+  - 백업 파일 삭제: `snowball_link6.py.backup`, `templates/link6_itgc_evaluation_old.jsp`
+  - 사용하지 않는 모듈 삭제: `elc_utils.py`, `snowball_app.db`
+  - `__pycache__` 폴더 및 `.pyc` 파일 삭제
+
+- **구 테이블 삭제 준비 완료**
+  - 마이그레이션 스크립트: `migrations/drop_old_evaluation_tables.py`
+  - 삭제할 테이블: `sb_design_evaluation_header2`, `sb_design_evaluation_line2`, `sb_operation_evaluation_header`, `sb_operation_evaluation_line`
+  - 실제 코드에서 모든 참조 제거 완료 (migrations 폴더 제외)
+
 ## 2025-12-07
 - **ELC 통합 테이블 마이그레이션 완료**
   - 설계평가와 운영평가 데이터를 별도 테이블에서 통합 테이블로 마이그레이션

@@ -161,11 +161,11 @@
                                     </div>
                                     <!-- 버튼 (ELC용) -->
                                     <div class="d-grid gap-2">
-                                        {% if item.evaluation_status == 'COMPLETED' %}
+                                        {% if item.progress.steps[0].status == 'completed' %}
                                         <a href="/elc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                             <i class="fas fa-check-circle"></i> 설계평가 확인
                                         </a>
-                                        {% elif item.evaluation_status == 'IN_PROGRESS' %}
+                                        {% elif item.progress.steps[0].status == 'in-progress' %}
                                         <a href="/elc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-clipboard-check"></i> 설계평가 계속
                                         </a>
@@ -175,7 +175,7 @@
                                         </a>
                                         {% endif %}
 
-                                        {% if item.evaluation_status == 'COMPLETED' and item.completed_date %}
+                                        {% if item.progress.steps[0].status == 'completed' %}
                                             {% if item.progress.steps[1].status == 'completed' %}
                                             <a href="/elc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
@@ -255,11 +255,11 @@
                                     </div>
                                     <!-- 버튼 (TLC용) -->
                                     <div class="d-grid gap-2">
-                                        {% if item.evaluation_status == 'COMPLETED' %}
+                                        {% if item.progress.steps[0].status == 'completed' %}
                                         <a href="/tlc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                             <i class="fas fa-check-circle"></i> 설계평가 확인
                                         </a>
-                                        {% elif item.evaluation_status == 'IN_PROGRESS' %}
+                                        {% elif item.progress.steps[0].status == 'in-progress' %}
                                         <a href="/tlc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-clipboard-check"></i> 설계평가 계속
                                         </a>
@@ -269,7 +269,7 @@
                                         </a>
                                         {% endif %}
 
-                                        {% if item.evaluation_status == 'COMPLETED' and item.completed_date %}
+                                        {% if item.progress.steps[0].status == 'completed' %}
                                             {% if item.progress.steps[1].status == 'completed' %}
                                             <a href="/tlc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인
@@ -348,11 +348,11 @@
                                     </div>
                                     <!-- 버튼 -->
                                     <div class="d-grid gap-1">
-                                        {% if item.evaluation_status == 'COMPLETED' %}
+                                        {% if item.progress.steps[0].status == 'completed' %}
                                         <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                             <i class="fas fa-check-circle"></i> 설계평가 확인
                                         </a>
-                                        {% elif item.evaluation_status == 'IN_PROGRESS' %}
+                                        {% elif item.progress.steps[0].status == 'in-progress' %}
                                         <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-clipboard-check"></i> 설계평가 계속
                                         </a>
@@ -361,7 +361,7 @@
                                             <i class="fas fa-clipboard-check"></i> 설계평가 시작
                                         </a>
                                         {% endif %}
-                                        {% if item.evaluation_status == 'COMPLETED' and item.completed_date %}
+                                        {% if item.progress.steps[0].status == 'completed' %}
                                             {% if item.progress.steps[1].status == 'completed' %}
                                             <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
                                                 <i class="fas fa-check-circle"></i> 운영평가 확인

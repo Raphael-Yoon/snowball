@@ -835,17 +835,17 @@ def get_key_rcm_details(rcm_id, user_id=None, design_evaluation_session=None, co
                 '''
                 params = [rcm_id, design_evaluation_session]
             else:
-                # 기타: 기존 테이블 사용
+                # 기타(ITGC/TLC): 통합 테이블 사용
                 query = '''
                     SELECT DISTINCT d.*, l.evaluation_evidence, l.design_comment, h.header_id
                     FROM sb_rcm_detail_v d
-                    INNER JOIN sb_design_evaluation_header h ON d.rcm_id = h.rcm_id
-                    INNER JOIN sb_design_evaluation_line l ON h.header_id = l.header_id AND d.control_code = l.control_code
+                    INNER JOIN sb_evaluation_header h ON d.rcm_id = h.rcm_id
+                    INNER JOIN sb_evaluation_line l ON h.header_id = l.header_id AND d.control_code = l.control_code
                     WHERE d.rcm_id = ?
                         AND (d.key_control = 'Y' OR d.key_control = '핵심' OR d.key_control = 'KEY')
                         AND h.user_id = ?
-                        AND h.evaluation_session = ?
-                        AND l.overall_effectiveness = 'effective'
+                        AND h.evaluation_name = ?
+                        AND l.design_conclusion = '적정'
                 '''
                 params = [rcm_id, user_id, design_evaluation_session]
 
@@ -1619,8 +1619,7 @@ def _save_operation_evaluation_unified(conn, rcm_id, control_code, evaluation_se
 
 def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session, design_evaluation_session, evaluation_data):
     """운영평가 결과 저장 (Header-Line-Sample 3단 구조)
-    ELC: 통합 테이블(sb_evaluation_line) 사용
-    ITGC/TLC: 기존 테이블(sb_operation_evaluation_line) 사용
+    모든 control_category: 통합 테이블(sb_evaluation_header/line) 사용
     """
     import json
 
@@ -1651,275 +1650,35 @@ def save_operation_evaluation(rcm_id, control_code, user_id, evaluation_session,
         # 모든 유형(ELC, ITGC, TLC)이 통합 테이블 사용
         return _save_operation_evaluation_unified(conn, rcm_id, control_code, design_evaluation_session, evaluation_data, sample_lines)
 
-        # 아래 코드는 더 이상 실행되지 않음 (하위 호환성 위해 보존)
-        # Header 생성 또는 조회
-        header_id = get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_session, design_evaluation_session)
+def count_operation_evaluations(rcm_id, user_id, evaluation_session=None, design_evaluation_session=None):
+    """특정 RCM의 사용자별 운영평가 Header 존재 여부 조회 (통합 테이블 사용)
 
-        # 기존 Line 데이터 확인
-        existing_line = conn.execute('''
-            SELECT line_id FROM sb_operation_evaluation_line
-            WHERE header_id = %s AND control_code = %s
-        ''', (header_id, control_code)).fetchone()
-
-        line_id = None
-        if existing_line:
-            line_id = existing_line['line_id']
-            # 업데이트
-            # conclusion이 있으면 evaluation_date도 업데이트
-            conclusion = evaluation_data.get('conclusion')
-            if conclusion and conclusion.strip():
-                conn.execute('''
-                    UPDATE sb_operation_evaluation_line
-                    SET sample_size = %s,
-                        exception_count = %s,
-                        mitigating_factors = %s,
-                        exception_details = %s,
-                        conclusion = %s,
-                        improvement_plan = %s,
-                        review_comment = %s,
-                        population_path = %s,
-                        samples_path = %s,
-                        test_results_path = %s,
-                        population_count = %s,
-                        no_occurrence = %s,
-                        no_occurrence_reason = %s,
-                        evaluation_date = CURRENT_TIMESTAMP,
-                        last_updated = CURRENT_TIMESTAMP
-                    WHERE line_id = %s
-                ''', (
-                    evaluation_data.get('sample_size'),
-                    evaluation_data.get('exception_count'),
-                    evaluation_data.get('mitigating_factors'),
-                    evaluation_data.get('exception_details'),
-                    conclusion,
-                    evaluation_data.get('improvement_plan'),
-                    evaluation_data.get('review_comment'),
-                    evaluation_data.get('population_path'),
-                    evaluation_data.get('samples_path'),
-                    evaluation_data.get('test_results_path'),
-                    evaluation_data.get('population_count'),
-                    1 if evaluation_data.get('no_occurrence') else 0,
-                    evaluation_data.get('no_occurrence_reason'),
-                    line_id
-                ))
-            else:
-                # conclusion이 없으면 evaluation_date는 업데이트하지 않음
-                conn.execute('''
-                    UPDATE sb_operation_evaluation_line
-                    SET sample_size = %s,
-                        exception_count = %s,
-                        mitigating_factors = %s,
-                        exception_details = %s,
-                        conclusion = %s,
-                        improvement_plan = %s,
-                        review_comment = %s,
-                        population_path = %s,
-                        samples_path = %s,
-                        test_results_path = %s,
-                        population_count = %s,
-                        no_occurrence = %s,
-                        no_occurrence_reason = %s,
-                        last_updated = CURRENT_TIMESTAMP
-                    WHERE line_id = %s
-                ''', (
-                    evaluation_data.get('sample_size'),
-                    evaluation_data.get('exception_count'),
-                    evaluation_data.get('mitigating_factors'),
-                    evaluation_data.get('exception_details'),
-                    conclusion,
-                    evaluation_data.get('improvement_plan'),
-                    evaluation_data.get('review_comment'),
-                    evaluation_data.get('population_path'),
-                    evaluation_data.get('samples_path'),
-                    evaluation_data.get('test_results_path'),
-                    evaluation_data.get('population_count'),
-                    1 if evaluation_data.get('no_occurrence') else 0,
-                    evaluation_data.get('no_occurrence_reason'),
-                    line_id
-                ))
+    Note: Header가 존재하면 운영평가 세션이 시작된 것으로 판단
+    Returns: Header 존재 시 1, 없으면 0
+    """
+    with get_db() as conn:
+        if evaluation_session:
+            row = conn.execute('''
+                SELECT COUNT(*) FROM sb_evaluation_header
+                WHERE rcm_id = ? AND user_id = ? AND evaluation_name = ?
+            ''', (rcm_id, user_id, evaluation_session)).fetchone()
         else:
-            # 삽입
-            # conclusion이 있을 때만 evaluation_date 설정
-            conclusion = evaluation_data.get('conclusion')
-            if conclusion and conclusion.strip():
-                cursor = conn.execute('''
-                    INSERT INTO sb_operation_evaluation_line (
-                        header_id, control_code, sample_size,
-                        exception_count, mitigating_factors, exception_details, conclusion, improvement_plan, review_comment,
-                        population_path, samples_path, test_results_path, population_count,
-                        no_occurrence, no_occurrence_reason,
-                        evaluation_date, last_updated
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                ''', (
-                    header_id, control_code,
-                    evaluation_data.get('sample_size'),
-                    evaluation_data.get('exception_count'),
-                    evaluation_data.get('mitigating_factors'),
-                    evaluation_data.get('exception_details'),
-                    conclusion,
-                    evaluation_data.get('improvement_plan'),
-                    evaluation_data.get('review_comment'),
-                    evaluation_data.get('population_path'),
-                    evaluation_data.get('samples_path'),
-                    evaluation_data.get('test_results_path'),
-                    evaluation_data.get('population_count'),
-                    1 if evaluation_data.get('no_occurrence') else 0,
-                    evaluation_data.get('no_occurrence_reason')
-                ))
-            else:
-                # conclusion이 없으면 evaluation_date는 NULL
-                cursor = conn.execute('''
-                    INSERT INTO sb_operation_evaluation_line (
-                        header_id, control_code, sample_size,
-                        exception_count, mitigating_factors, exception_details, conclusion, improvement_plan, review_comment,
-                        population_path, samples_path, test_results_path, population_count,
-                        no_occurrence, no_occurrence_reason,
-                        last_updated
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-                ''', (
-                    header_id, control_code,
-                    evaluation_data.get('sample_size'),
-                    evaluation_data.get('exception_count'),
-                    evaluation_data.get('mitigating_factors'),
-                    evaluation_data.get('exception_details'),
-                    conclusion,
-                    evaluation_data.get('improvement_plan'),
-                    evaluation_data.get('review_comment'),
-                    evaluation_data.get('population_path'),
-                    evaluation_data.get('samples_path'),
-                    evaluation_data.get('test_results_path'),
-                    evaluation_data.get('population_count'),
-                    1 if evaluation_data.get('no_occurrence') else 0,
-                    evaluation_data.get('no_occurrence_reason')
-                ))
-            line_id = cursor.lastrowid
+            # 전체 운영평가 수량 조회 (세션 구분 없음)
+            row = conn.execute('''
+                SELECT COUNT(*) FROM sb_evaluation_header
+                WHERE rcm_id = ? AND user_id = ?
+            ''', (rcm_id, user_id)).fetchone()
+        return _get_first_value(row) or 0
 
-        # Sample 데이터 저장 (새 테이블 구조)
-        print(f"[DEBUG save_operation_evaluation] Saving samples - sample_lines: {len(sample_lines) if sample_lines else 0}, line_id: {line_id}")
-        if sample_lines and line_id:
-            # 기존 운영평가 샘플 데이터만 삭제 (설계평가 샘플은 보존)
-            conn.execute('DELETE FROM sb_evaluation_sample WHERE line_id = %s AND evaluation_type = %s', (line_id, 'operation'))
-            print(f"[DEBUG save_operation_evaluation] Deleted existing operation samples for line_id: {line_id}")
-
-            # 새 샘플 데이터 삽입 (evaluation_type='operation')
-            for idx, sample in enumerate(sample_lines):
-                print(f"[DEBUG save_operation_evaluation] Inserting sample #{idx+1}: result={sample.get('result')}, mitigation={sample.get('mitigation', '')[:50]}")
-                attributes = sample.get('attributes', {})
-                conn.execute('''
-                    INSERT INTO sb_evaluation_sample (
-                        line_id, sample_number, evaluation_type, evidence, has_exception, mitigation,
-                        attribute0, attribute1, attribute2, attribute3, attribute4,
-                        attribute5, attribute6, attribute7, attribute8, attribute9
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ''', (
-                    line_id,
-                    sample.get('sample_number'),
-                    'operation',  # 운영평가 샘플임을 표시
-                    sample.get('evidence', ''),
-                    1 if sample.get('result') == 'exception' else 0,
-                    sample.get('mitigation', ''),
-                    attributes.get('attribute0'), attributes.get('attribute1'),
-                    attributes.get('attribute2'), attributes.get('attribute3'),
-                    attributes.get('attribute4'), attributes.get('attribute5'),
-                    attributes.get('attribute6'), attributes.get('attribute7'),
-                    attributes.get('attribute8'), attributes.get('attribute9')
-                ))
-
-        # Header의 last_updated 갱신 및 상태 업데이트
-        update_operation_evaluation_progress(conn, header_id)
-
-        conn.commit()
-
-        # 저장 후 확인 로그
-        print(f"[DEBUG save_operation_evaluation] 저장 완료! line_id={line_id}")
-        saved_line = conn.execute('''
-            SELECT * FROM sb_operation_evaluation_line WHERE line_id = %s
-        ''', (line_id,)).fetchone()
-        if saved_line:
-            print(f"[DEBUG save_operation_evaluation] 저장된 데이터 확인: control_code={saved_line['control_code']}, sample_size={saved_line['sample_size']}, conclusion={saved_line['conclusion'][:50] if saved_line['conclusion'] else 'None'}")
-        else:
-            print(f"[DEBUG save_operation_evaluation] 경고: line_id={line_id} 데이터를 찾을 수 없음!")
-
-def update_operation_evaluation_progress(conn, header_id):
-    """운영평가 진행률 업데이트"""
-    # 완료된 평가 수 계산 (conclusion이 있는 경우만 완료로 간주)
-    result = conn.execute('''
-        SELECT COUNT(*) as evaluated_count
-        FROM sb_operation_evaluation_line
-        WHERE header_id = %s AND conclusion IS NOT NULL AND conclusion != ''
-    ''', (header_id,)).fetchone()
-    
-    evaluated_count = result['evaluated_count'] if result and result['evaluated_count'] is not None else 0
-
-    # 헤더 정보 조회
-    header = conn.execute('''
-        SELECT total_controls FROM sb_operation_evaluation_header
-        WHERE header_id = %s
-    ''', (header_id,)).fetchone()
-
-    total_controls = header['total_controls'] if header and header['total_controls'] is not None else 0
-    
-    # total_controls가 0이면 설계평가에서 운영평가 대상 통제 수를 계산
-    if total_controls == 0:
-        # 설계평가 세션에서 운영평가 대상 통제 수 계산
-        design_session_result = conn.execute('''
-            SELECT h.design_evaluation_session, h.rcm_id
-            FROM sb_operation_evaluation_header h
-            WHERE h.header_id = %s
+def count_completed_operation_evaluations(header_id):
+    """운영평가 헤더에 대해 완료된 통제 개수를 계산합니다 (통합 테이블 사용)"""
+    with get_db() as conn:
+        # conclusion이 NULL이 아닌 라인 수를 계산 (평가 완료의 명확한 지표)
+        row = conn.execute('''
+            SELECT COUNT(*) FROM sb_evaluation_line
+            WHERE header_id = ? AND conclusion IS NOT NULL
         ''', (header_id,)).fetchone()
-        
-        if design_session_result:
-            design_session = design_session_result['design_evaluation_session']
-            rcm_id = design_session_result['rcm_id']
-            
-            # 설계평가에서 '적정'으로 평가된 핵심통제 수 계산 (통합 테이블 사용)
-            total_result = conn.execute('''
-                SELECT COUNT(DISTINCT d.detail_id) as total
-                FROM sb_rcm_detail d
-                JOIN sb_evaluation_line el ON d.control_code = el.control_code
-                JOIN sb_evaluation_header eh ON el.header_id = eh.header_id
-                WHERE d.rcm_id = %s
-                  AND eh.rcm_id = %s
-                  AND eh.evaluation_name = %s
-                  AND (d.key_control = 'Y' OR d.key_control = '핵심' OR d.key_control = 'KEY')
-                  AND el.overall_effectiveness IN ('적정', 'effective', '효과적')
-            ''', (rcm_id, rcm_id, design_session)).fetchone()
-
-            total_controls = total_result['total'] if total_result and total_result['total'] is not None else 0
-    
-    progress = (evaluated_count / total_controls * 100) if total_controls > 0 else 0
-    status = 'COMPLETED' if progress >= 100 and total_controls > 0 else 'IN_PROGRESS'
-    
-    # 헤더 업데이트 (completed_date는 수동으로만 설정)
-    conn.execute('''
-        UPDATE sb_operation_evaluation_header
-        SET evaluated_controls = %s,
-            total_controls = %s,
-            progress_percentage = %s,
-            evaluation_status = %s,
-            last_updated = CURRENT_TIMESTAMP
-        WHERE header_id = %s
-    ''', (evaluated_count, total_controls, progress, status, header_id))
-
-def get_or_create_operation_evaluation_header(conn, rcm_id, user_id, evaluation_session, design_evaluation_session):
-    """운영평가 헤더 생성 또는 조회"""
-    # 기존 헤더 조회
-    header = conn.execute('''
-        SELECT header_id FROM sb_operation_evaluation_header
-        WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
-    ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchone()
-
-    if header:
-        return header['header_id']
-
-    # 새 헤더 생성
-    cursor = conn.execute('''
-        INSERT INTO sb_operation_evaluation_header (
-            rcm_id, user_id, evaluation_session, design_evaluation_session
-        ) VALUES (%s, %s, %s, %s)
-    ''', (rcm_id, user_id, evaluation_session, design_evaluation_session))
-
-    return cursor.lastrowid
+        return _get_first_value(row) or 0
 
 def get_operation_evaluations(rcm_id, user_id, evaluation_session, design_evaluation_session=None):
     """특정 RCM의 사용자별 운영평가 결과 조회 (세션별, Header-Line-Sample 3단 구조)"""
@@ -2059,40 +1818,6 @@ def count_design_evaluations(rcm_id, user_id):
         ''', (rcm_id, user_id)).fetchone()
         return _get_first_value(row) or 0
 
-def count_operation_evaluations(rcm_id, user_id, evaluation_session=None, design_evaluation_session=None):
-    """특정 RCM의 사용자별 운영평가 Header 존재 여부 조회 (세션별, Header-Line 구조)
-
-    Note: Header가 존재하면 운영평가 세션이 시작된 것으로 판단
-    Returns: Header 존재 시 1, 없으면 0
-    """
-    with get_db() as conn:
-        if evaluation_session and design_evaluation_session:
-            row = conn.execute('''
-                SELECT COUNT(*) FROM sb_operation_evaluation_header
-                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s AND design_evaluation_session = %s
-            ''', (rcm_id, user_id, evaluation_session, design_evaluation_session)).fetchone()
-        elif evaluation_session:
-            row = conn.execute('''
-                SELECT COUNT(*) FROM sb_operation_evaluation_header
-                WHERE rcm_id = %s AND user_id = %s AND evaluation_session = %s
-            ''', (rcm_id, user_id, evaluation_session)).fetchone()
-        else:
-            # 전체 운영평가 수량 조회 (세션 구분 없음)
-            row = conn.execute('''
-                SELECT COUNT(*) FROM sb_operation_evaluation_header
-                WHERE rcm_id = %s AND user_id = %s
-            ''', (rcm_id, user_id)).fetchone()
-        return _get_first_value(row) or 0
-
-def count_completed_operation_evaluations(header_id):
-    """운영평가 헤더에 대해 완료된 통제 개수를 계산합니다."""
-    with get_db() as conn:
-        # conclusion이 NULL이 아닌 라인 수를 계산 (평가 완료의 명확한 지표)
-        row = conn.execute('''
-            SELECT COUNT(*) FROM sb_operation_evaluation_line
-            WHERE header_id = %s AND conclusion IS NOT NULL
-        ''', (header_id,)).fetchone()
-        return _get_first_value(row) or 0
 
 def get_completed_design_evaluation_sessions(rcm_id, user_id=None):
     """특정 RCM의 완료된 설계평가 세션 목록 조회 (Archive된 세션 제외)
