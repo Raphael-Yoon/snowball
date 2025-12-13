@@ -585,7 +585,11 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_name, progress)
                 evaluated_controls = actual_counts[1] if actual_counts else evaluated_controls
 
             # 실제 진행률 재계산
-            design_progress = int((evaluated_controls / max(total_controls, 1)) * 100) if total_controls > 0 else 0
+            # total_controls가 0이면 진행률도 0으로 설정
+            if total_controls > 0:
+                design_progress = int((evaluated_controls / total_controls) * 100)
+            else:
+                design_progress = 0
 
             # 카테고리별 설계평가 진행률 계산
             category_progress = {}
@@ -623,10 +627,14 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_name, progress)
                 'category_stats': category_stats
             }
 
-            # evaluation_status가 3 이상(운영평가 시작)일 때 설계평가 완료 처리
-            if evaluation_status >= 3:
+            # evaluation_status에 따른 설계평가 상태 설정
+            # status 0: 진행중, 1: 설계평가 완료, 2+: 운영평가 단계
+            # 단, 통제가 0개인 경우는 완료로 간주하지 않음
+            if evaluation_status >= 1 and total_controls > 0 and evaluated_controls == total_controls:
+                # status가 1 이상이고 모든 통제를 평가했으면 설계평가 완료
                 progress['steps'][0]['status'] = 'completed'
             elif evaluated_controls > 0:
+                # 평가된 통제가 있으면 진행중
                 progress['steps'][0]['status'] = 'in-progress'
         else:
             progress['steps'][0]['status'] = 'pending'

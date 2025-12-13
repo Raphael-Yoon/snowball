@@ -697,12 +697,13 @@ def has_rcm_access(user_id, rcm_id):
         
         return access is not None
 
-def get_rcm_details(rcm_id, control_category=None):
+def get_rcm_details(rcm_id, control_category=None, evaluation_session=None):
     """RCM 상세 데이터 조회
 
     Args:
         rcm_id: RCM ID
         control_category: 통제 카테고리 필터 ('ITGC', 'ELC', 'TLC', None=전체)
+        evaluation_session: 평가 세션명 (지정 시 해당 세션의 sb_evaluation_line과 조인)
 
     Returns:
         RCM 상세 데이터 목록
@@ -712,65 +713,111 @@ def get_rcm_details(rcm_id, control_category=None):
         db_type = 'mysql' if conn._is_mysql else 'sqlite'
 
         if db_type == 'mysql':
-            query = '''
-                SELECT *
-                FROM sb_rcm_detail_v
-                WHERE rcm_id = %s
-            '''
-            params = [rcm_id]
+            # evaluation_session이 있으면 sb_evaluation_line과 조인
+            if evaluation_session:
+                query = '''
+                    SELECT v.detail_id, v.rcm_id, v.control_code, v.control_name, v.control_description,
+                           v.key_control, v.control_frequency, v.control_type, v.control_nature,
+                           v.population, v.population_completeness_check, v.population_count, v.test_procedure,
+                           v.mapped_std_control_id, v.mapped_date, v.mapped_by,
+                           v.ai_review_status, v.ai_review_recommendation, v.ai_reviewed_date, v.ai_reviewed_by,
+                           v.mapping_status, v.control_category, v.recommended_sample_size, v.population_attribute_count,
+                           v.attribute0, v.attribute1, v.attribute2, v.attribute3, v.attribute4,
+                           v.attribute5, v.attribute6, v.attribute7, v.attribute8, v.attribute9,
+                           v.control_frequency_code, v.control_type_code, v.control_nature_code,
+                           v.control_frequency_name, v.control_type_name, v.control_nature_name,
+                           line.line_id
+                    FROM sb_rcm_detail_v v
+                    INNER JOIN sb_evaluation_line line ON v.control_code = line.control_code
+                    INNER JOIN sb_evaluation_header h ON line.header_id = h.header_id
+                    WHERE v.rcm_id = %s AND h.evaluation_name = %s AND h.rcm_id = %s
+                '''
+                params = [rcm_id, evaluation_session, rcm_id]
+            else:
+                query = '''
+                    SELECT *
+                    FROM sb_rcm_detail_v
+                    WHERE rcm_id = %s
+                '''
+                params = [rcm_id]
 
             # 통제 카테고리 필터 추가
             if control_category:
-                query += ' AND control_category = %s'
+                query += ' AND v.control_category = %s' if 'v.rcm_id' in query else ' AND control_category = %s'
                 params.append(control_category)
 
             order_params = ['PWC%', 'APD%', 'PC%', 'CO%', 'PD%', 'ST%']
             params.extend(order_params)
             params = tuple(params)
 
-            query += '''
+            # ORDER BY 절에서 테이블 alias 사용 (evaluation_session이 있으면 v. prefix 필요)
+            control_code_ref = 'v.control_code' if evaluation_session else 'control_code'
+            query += f'''
                 ORDER BY
                     CASE
-                        WHEN control_code LIKE %s THEN 1
-                        WHEN control_code LIKE %s THEN 2
-                        WHEN control_code LIKE %s THEN 3
-                        WHEN control_code LIKE %s THEN 4
-                        WHEN control_code LIKE %s THEN 5
-                        WHEN control_code LIKE %s THEN 6
+                        WHEN {control_code_ref} LIKE %s THEN 1
+                        WHEN {control_code_ref} LIKE %s THEN 2
+                        WHEN {control_code_ref} LIKE %s THEN 3
+                        WHEN {control_code_ref} LIKE %s THEN 4
+                        WHEN {control_code_ref} LIKE %s THEN 5
+                        WHEN {control_code_ref} LIKE %s THEN 6
                         ELSE 7
                     END,
-                    control_code
+                    {control_code_ref}
             '''
         else:
             # SQLite
-            query = '''
-                SELECT *
-                FROM sb_rcm_detail_v
-                WHERE rcm_id = ?
-            '''
-            params = [rcm_id]
+            # evaluation_session이 있으면 sb_evaluation_line과 조인
+            if evaluation_session:
+                query = '''
+                    SELECT v.detail_id, v.rcm_id, v.control_code, v.control_name, v.control_description,
+                           v.key_control, v.control_frequency, v.control_type, v.control_nature,
+                           v.population, v.population_completeness_check, v.population_count, v.test_procedure,
+                           v.mapped_std_control_id, v.mapped_date, v.mapped_by,
+                           v.ai_review_status, v.ai_review_recommendation, v.ai_reviewed_date, v.ai_reviewed_by,
+                           v.mapping_status, v.control_category, v.recommended_sample_size, v.population_attribute_count,
+                           v.attribute0, v.attribute1, v.attribute2, v.attribute3, v.attribute4,
+                           v.attribute5, v.attribute6, v.attribute7, v.attribute8, v.attribute9,
+                           v.control_frequency_code, v.control_type_code, v.control_nature_code,
+                           v.control_frequency_name, v.control_type_name, v.control_nature_name,
+                           line.line_id
+                    FROM sb_rcm_detail_v v
+                    INNER JOIN sb_evaluation_line line ON v.control_code = line.control_code
+                    INNER JOIN sb_evaluation_header h ON line.header_id = h.header_id
+                    WHERE v.rcm_id = ? AND h.evaluation_name = ? AND h.rcm_id = ?
+                '''
+                params = [rcm_id, evaluation_session, rcm_id]
+            else:
+                query = '''
+                    SELECT *
+                    FROM sb_rcm_detail_v
+                    WHERE rcm_id = ?
+                '''
+                params = [rcm_id]
 
             # 통제 카테고리 필터 추가
             if control_category:
-                query += ' AND control_category = ?'
+                query += ' AND v.control_category = ?' if 'v.rcm_id' in query else ' AND control_category = ?'
                 params.append(control_category)
 
             order_params = ['PWC%', 'APD%', 'PC%', 'CO%', 'PD%', 'ST%']
             params.extend(order_params)
             params = tuple(params)
 
-            query += '''
+            # ORDER BY 절에서 테이블 alias 사용 (evaluation_session이 있으면 v. prefix 필요)
+            control_code_ref = 'v.control_code' if evaluation_session else 'control_code'
+            query += f'''
                 ORDER BY
                     CASE
-                        WHEN control_code LIKE ? THEN 1
-                        WHEN control_code LIKE ? THEN 2
-                        WHEN control_code LIKE ? THEN 3
-                        WHEN control_code LIKE ? THEN 4
-                        WHEN control_code LIKE ? THEN 5
-                        WHEN control_code LIKE ? THEN 6
+                        WHEN {control_code_ref} LIKE ? THEN 1
+                        WHEN {control_code_ref} LIKE ? THEN 2
+                        WHEN {control_code_ref} LIKE ? THEN 3
+                        WHEN {control_code_ref} LIKE ? THEN 4
+                        WHEN {control_code_ref} LIKE ? THEN 5
+                        WHEN {control_code_ref} LIKE ? THEN 6
                         ELSE 7
                     END,
-                    control_code
+                    {control_code_ref}
             '''
 
         details = conn.execute(query, params).fetchall()

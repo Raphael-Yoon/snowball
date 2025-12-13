@@ -440,7 +440,7 @@ def user_operation_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', '운영평가', '/user/operation-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
-    return render_template('link7_operation_evaluation_unified.jsp',
+    return render_template('link7_evaluation.jsp',
                          evaluation_type='ITGC',
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
@@ -2104,7 +2104,7 @@ def elc_operation_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 운영평가', '/elc/operation-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
-    return render_template('link7_operation_evaluation_unified.jsp',
+    return render_template('link7_evaluation.jsp',
                          evaluation_type='ELC',
                          user_rcms=elc_rcms,
                          is_logged_in=is_logged_in(),
@@ -2165,7 +2165,7 @@ def tlc_operation_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', 'TLC 운영평가', '/tlc/operation-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
-    return render_template('link7_operation_evaluation_unified.jsp',
+    return render_template('link7_evaluation.jsp',
                          evaluation_type='TLC',
                          user_rcms=tlc_rcms,
                          is_logged_in=is_logged_in(),

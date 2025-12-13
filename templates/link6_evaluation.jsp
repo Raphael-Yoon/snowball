@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Snowball - ITGC 평가</title>
+    <title>Snowball - {{ category }} 평가</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -18,7 +18,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><img src="{{ url_for('static', filename='img/itgc.jpg') }}" alt="ELC" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">ITGC 평가</h1>
+                    <h1><img src="{{ url_for('static', filename='img/' + category.lower() + '.jpg') }}" alt="{{ category }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; margin-right: 12px;">{{ category }} 평가</h1>
                     <a href="/" class="btn btn-secondary">
                         <i class="fas fa-home me-1"></i>홈으로
                     </a>
@@ -94,11 +94,11 @@
                         <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>설계평가 현황</h5>
                     </div>
                     <div class="card-body">
-                        {% if itgc_rcms %}
-                        {% set has_design_sessions = itgc_rcms|selectattr('has_design_sessions')|list|length > 0 %}
+                        {% if rcms %}
+                        {% set has_design_sessions = rcms|selectattr('has_design_sessions')|list|length > 0 %}
                         {% if has_design_sessions %}
                         <div class="accordion" id="designEvaluationAccordion">
-                            {% for rcm in itgc_rcms %}
+                            {% for rcm in rcms %}
                             {% if rcm.has_design_sessions %}
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="heading{{ rcm.rcm_id }}">
@@ -197,16 +197,16 @@
                         <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>운영평가 현황</h5>
                     </div>
                     <div class="card-body">
-                        {% if itgc_rcms %}
+                        {% if rcms %}
                         {% set has_any_sessions = namespace(found=false) %}
-                        {% for rcm in itgc_rcms %}
+                        {% for rcm in rcms %}
                         {% if rcm.has_operation_sessions or rcm.design_sessions|selectattr('status', 'equalto', 1)|list|length > 0 %}
                         {% set has_any_sessions.found = true %}
                         {% endif %}
                         {% endfor %}
                         {% if has_any_sessions.found %}
                         <div class="accordion" id="operationEvaluationAccordion">
-                            {% for rcm in itgc_rcms %}
+                            {% for rcm in rcms %}
                             {% if rcm.has_operation_sessions or rcm.design_sessions|selectattr('status', 'equalto', 1)|list|length > 0 %}
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="opheading{{ rcm.rcm_id }}">
@@ -348,14 +348,14 @@
                 <div class="modal-body">
                     <div id="rcmSelectionStep">
                         <p class="mb-3">평가할 RCM을 선택하세요.</p>
-                        {% if itgc_rcms %}
+                        {% if rcms %}
                         <div class="list-group">
-                            {% for rcm in itgc_rcms %}
+                            {% for rcm in rcms %}
                             <a href="#" class="list-group-item list-group-item-action" onclick="selectRcmForDesignEvaluation({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}'); return false;">
                                 <div class="d-flex w-100 justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1"><i class="fas fa-file-alt me-2"></i>{{ rcm.rcm_name }}</h6>
-                                        <small class="text-muted">Control Category: ITGC</small>
+                                        <small class="text-muted">Control Category: {{ category }}</small>
                                     </div>
                                     {% if rcm.design_evaluation_completed %}
                                     <div>
@@ -368,7 +368,7 @@
                         </div>
                         {% else %}
                         <div class="text-center py-4">
-                            <p class="text-muted">접근 가능한 ITGC RCM이 없습니다.</p>
+                            <p class="text-muted">접근 가능한 {{ category }} RCM이 없습니다.</p>
                         </div>
                         {% endif %}
                     </div>
@@ -382,6 +382,18 @@
                             <label for="evaluationNameInput" class="form-label">평가명 <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="evaluationNameInput" placeholder="예: FY25_1차평가" required>
                             <small class="text-muted">평가 세션을 구분할 수 있는 이름을 입력하세요.</small>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="evaluationPeriodStart" class="form-label">평가 대상 기간 시작일</label>
+                                <input type="date" class="form-control" id="evaluationPeriodStart" placeholder="YYYY-MM-DD">
+                                <small class="text-muted">예: 2025-01-01</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="evaluationPeriodEnd" class="form-label">평가 대상 기간 종료일</label>
+                                <input type="date" class="form-control" id="evaluationPeriodEnd" placeholder="YYYY-MM-DD">
+                                <small class="text-muted">예: 2025-12-31</small>
+                            </div>
                         </div>
                         <div class="d-grid">
                             <button type="button" class="btn btn-success" onclick="startDesignEvaluationWithName()">
@@ -423,6 +435,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const CATEGORY = '{{ category }}';
         let currentRcmId, currentDesignSession;
         let selectedRcmIdForDesign, selectedRcmNameForDesign;
 
@@ -461,6 +474,8 @@
         // 평가명 입력 후 설계평가 시작
         function startDesignEvaluationWithName() {
             const evaluationName = document.getElementById('evaluationNameInput').value.trim();
+            const periodStart = document.getElementById('evaluationPeriodStart').value;
+            const periodEnd = document.getElementById('evaluationPeriodEnd').value;
 
             if (!evaluationName) {
                 alert('평가명을 입력해주세요.');
@@ -468,10 +483,17 @@
                 return;
             }
 
+            // 날짜 유효성 검사
+            if (periodStart && periodEnd && periodStart > periodEnd) {
+                alert('시작일이 종료일보다 늦을 수 없습니다.');
+                document.getElementById('evaluationPeriodStart').focus();
+                return;
+            }
+
             // POST 요청으로 평가 세션 생성 및 설계평가 시작
             const form = document.createElement('form');
             form.method = 'POST';
-            form.action = '/itgc/design-evaluation/start';
+            form.action = `/${CATEGORY.toLowerCase()}/design-evaluation/start`;
 
             const rcmInput = document.createElement('input');
             rcmInput.type = 'hidden';
@@ -482,6 +504,23 @@
             nameInput.type = 'hidden';
             nameInput.name = 'evaluation_name';
             nameInput.value = evaluationName;
+
+            // 평가 기간 추가
+            if (periodStart) {
+                const startInput = document.createElement('input');
+                startInput.type = 'hidden';
+                startInput.name = 'evaluation_period_start';
+                startInput.value = periodStart;
+                form.appendChild(startInput);
+            }
+
+            if (periodEnd) {
+                const endInput = document.createElement('input');
+                endInput.type = 'hidden';
+                endInput.name = 'evaluation_period_end';
+                endInput.value = periodEnd;
+                form.appendChild(endInput);
+            }
 
             form.appendChild(rcmInput);
             form.appendChild(nameInput);

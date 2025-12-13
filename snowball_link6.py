@@ -33,9 +33,26 @@ def user_design_evaluation_rcm():
         rcm_id = request.form.get('rcm_id')
         evaluation_type = request.form.get('evaluation_type', 'ITGC')  # 기본값 ITGC
         evaluation_session = request.form.get('session')  # 평가 세션
+
+        # 디버깅: POST 파라미터 확인
+        print(f"[DEBUG POST] rcm_id={rcm_id}, evaluation_type={evaluation_type}, session={evaluation_session}")
+
         if not rcm_id:
             flash('RCM 정보가 없습니다.', 'error')
             return redirect(url_for('link6.user_design_evaluation'))
+
+        # RCM의 실제 control_category를 조회하여 evaluation_type 설정
+        # (클라이언트에서 전달한 값이 잘못될 수 있으므로 서버에서 재확인)
+        with get_db() as conn:
+            rcm_category = conn.execute('''
+                SELECT control_category FROM sb_rcm WHERE rcm_id = %s
+            ''', (int(rcm_id),)).fetchone()
+
+            if rcm_category and rcm_category['control_category']:
+                evaluation_type = rcm_category['control_category']
+                print(f"[DEBUG POST] RCM의 실제 control_category: {evaluation_type}")
+            else:
+                print(f"[DEBUG POST] RCM에 control_category가 없음, 기본값 사용: {evaluation_type}")
 
         # 세션에 저장
         session['current_design_rcm_id'] = int(rcm_id)
@@ -113,8 +130,15 @@ def user_design_evaluation_rcm():
     # ITGC, ELC, TLC는 해당 카테고리만 보여줌
     control_category = evaluation_type if evaluation_type in ['ITGC', 'ELC', 'TLC'] else None
 
-    # RCM 세부 데이터 조회
-    rcm_details = get_rcm_details(rcm_id, control_category=control_category)
+    # 디버깅: 파라미터 확인
+    print(f"[DEBUG] request.method={request.method}, evaluation_type={evaluation_type}")
+    print(f"[DEBUG] rcm_id={rcm_id}, evaluation_session={evaluation_session}, control_category={control_category}")
+
+    # RCM 세부 데이터 조회 (evaluation_session이 있으면 해당 세션의 데이터만 조회)
+    rcm_details = get_rcm_details(rcm_id, control_category=control_category, evaluation_session=evaluation_session)
+
+    # 디버깅: 조회 결과 확인
+    print(f"[DEBUG] rcm_details 개수: {len(rcm_details)}")
 
     # 매핑 정보 조회
     rcm_mappings = get_rcm_detail_mappings(rcm_id)
@@ -1741,8 +1765,9 @@ def elc_design_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 평가', '/elc/design-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
-    return render_template('link6_elc_evaluation.jsp',
-                         elc_rcms=elc_rcms,
+    return render_template('link6_evaluation.jsp',
+                         category='ELC',
+                         rcms=elc_rcms,
                          is_logged_in=is_logged_in(),
                          user_info=user_info)
 
@@ -1777,11 +1802,25 @@ def elc_design_evaluation_start():
             return redirect(url_for('link6.elc_design_evaluation'))
 
         # 새 평가 세션 생성
+        # 평가 기간 날짜 가져오기
+        evaluation_period_start = request.form.get('evaluation_period_start', '').strip() or None
+        evaluation_period_end = request.form.get('evaluation_period_end', '').strip() or None
+
         cursor = conn.execute('''
-            INSERT INTO sb_evaluation_header (rcm_id, evaluation_name, status, progress)
-            VALUES (%s, %s, 0, 0)
-        ''', (rcm_id, evaluation_name))
+            INSERT INTO sb_evaluation_header
+            (rcm_id, evaluation_name, evaluation_period_start, evaluation_period_end, status, progress)
+            VALUES (%s, %s, %s, %s, 0, 0)
+        ''', (rcm_id, evaluation_name, evaluation_period_start, evaluation_period_end))
         header_id = cursor.lastrowid
+
+        # RCM의 ELC 통제 목록을 sb_evaluation_line에 삽입
+        conn.execute('''
+            INSERT INTO sb_evaluation_line (header_id, control_code)
+            SELECT %s, control_code
+            FROM sb_rcm_detail
+            WHERE rcm_id = %s AND control_category = 'ELC'
+        ''', (header_id, rcm_id))
+
         conn.commit()
 
         log_user_activity(user_info, 'CREATE', 'ELC 설계평가 시작',
@@ -2003,8 +2042,9 @@ def tlc_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', 'TLC 통합 평가', '/tlc-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
-    return render_template('link6_tlc_evaluation.jsp',
-                         tlc_rcms=tlc_rcms,
+    return render_template('link6_evaluation.jsp',
+                         category='TLC',
+                         rcms=tlc_rcms,
                          is_logged_in=is_logged_in(),
                          user_info=user_info)
 
@@ -2095,8 +2135,9 @@ def itgc_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', 'ITGC 통합 평가', '/itgc-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
-    return render_template('link6_itgc_evaluation.jsp',
-                         itgc_rcms=itgc_rcms,
+    return render_template('link6_evaluation.jsp',
+                         category='ITGC',
+                         rcms=itgc_rcms,
                          is_logged_in=is_logged_in(),
                          user_info=user_info)
 
@@ -2131,11 +2172,25 @@ def itgc_design_evaluation_start():
             return redirect(url_for('link6.itgc_evaluation'))
 
         # 새 평가 세션 생성
+        # 평가 기간 날짜 가져오기
+        evaluation_period_start = request.form.get('evaluation_period_start', '').strip() or None
+        evaluation_period_end = request.form.get('evaluation_period_end', '').strip() or None
+
         cursor = conn.execute('''
-            INSERT INTO sb_evaluation_header (rcm_id, evaluation_name, status, progress)
-            VALUES (?, ?, 0, 0)
-        ''', (rcm_id, evaluation_name))
+            INSERT INTO sb_evaluation_header
+            (rcm_id, evaluation_name, evaluation_period_start, evaluation_period_end, status, progress)
+            VALUES (?, ?, ?, ?, 0, 0)
+        ''', (rcm_id, evaluation_name, evaluation_period_start, evaluation_period_end))
         header_id = cursor.lastrowid
+
+        # RCM의 ITGC 통제 목록을 sb_evaluation_line에 삽입
+        conn.execute('''
+            INSERT INTO sb_evaluation_line (header_id, control_code)
+            SELECT ?, control_code
+            FROM sb_rcm_detail
+            WHERE rcm_id = ? AND control_category = 'ITGC'
+        ''', (header_id, rcm_id))
+
         conn.commit()
 
         log_user_activity(user_info, 'CREATE', 'ITGC 설계평가 시작',
