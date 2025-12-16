@@ -2063,10 +2063,32 @@ def elc_operation_evaluation():
     all_rcms = get_user_rcms(user_info['user_id'])
     elc_rcms = [rcm for rcm in all_rcms if rcm.get('control_category') == 'ELC']
 
-    # 각 RCM에 대해 모든 설계평가 세션 조회 (진행중 + 완료)
-    from auth import get_all_design_evaluation_sessions
+    # 각 RCM에 대해 모든 설계평가 세션 조회 (통합 테이블에서)
+    from evaluation_utils import get_evaluation_status
     for rcm in elc_rcms:
-        all_sessions = get_all_design_evaluation_sessions(rcm['rcm_id'], user_info['user_id'])
+        with get_db() as conn:
+            # 설계평가 세션 조회 (archived가 아닌 것만)
+            sessions = conn.execute('''
+                SELECT header_id, evaluation_name, created_at, last_updated
+                FROM sb_evaluation_header
+                WHERE rcm_id = ? AND user_id = ? AND (archived IS NULL OR archived = 0)
+                ORDER BY last_updated DESC
+            ''', (rcm['rcm_id'], user_info['user_id'])).fetchall()
+
+        all_sessions = []
+        for session_row in sessions:
+            session = dict(session_row)
+            header_id = session['header_id']
+
+            # 실시간으로 status 계산
+            with get_db() as conn:
+                status_info = get_evaluation_status(conn, header_id)
+
+            session['evaluation_session'] = session['evaluation_name']
+            session['status'] = status_info['status']
+            session['completed_date'] = session['last_updated'] if status_info['status'] >= 1 else None
+            all_sessions.append(session)
+
         completed_sessions = [s for s in all_sessions if s['completed_date'] is not None]
         in_progress_sessions = [s for s in all_sessions if s['completed_date'] is None]
 
@@ -2104,11 +2126,18 @@ def elc_operation_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 운영평가', '/elc/operation-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
+    # 세션에서 현재 선택된 RCM과 평가 세션 정보 가져오기
+    from flask import session as flask_session
+    current_rcm_id = flask_session.get('current_rcm_id')
+    current_evaluation_session = flask_session.get('current_evaluation_session')
+
     return render_template('link7_evaluation.jsp',
                          evaluation_type='ELC',
                          user_rcms=elc_rcms,
                          is_logged_in=is_logged_in(),
-                         user_info=user_info)
+                         user_info=user_info,
+                         current_rcm_id=current_rcm_id,
+                         current_evaluation_session=current_evaluation_session)
 
 # ============================================================================
 # TLC 운영평가 (자동통제 포함)

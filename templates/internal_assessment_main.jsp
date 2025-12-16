@@ -162,37 +162,56 @@
                                     <!-- 버튼 (ELC용) -->
                                     <div class="d-grid gap-2">
                                         {% if item.progress.steps[0].status == 'completed' %}
-                                        <a href="/elc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                            <i class="fas fa-check-circle"></i> 설계평가 확인
-                                        </a>
+                                        <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                            <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                                                <i class="fas fa-check-circle"></i> 설계평가 확인
+                                            </button>
+                                        </form>
                                         {% elif item.progress.steps[0].status == 'in-progress' %}
-                                        <a href="/elc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-clipboard-check"></i> 설계평가 계속
-                                        </a>
+                                        <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                            <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                                <i class="fas fa-clipboard-check"></i> 설계평가 계속
+                                            </button>
+                                        </form>
                                         {% else %}
-                                        <a href="/elc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-clipboard-check"></i> 설계평가 시작
+                                        <a href="{{ url_for('link6.elc_design_evaluation') }}" class="btn btn-sm btn-info w-100">
+                                            <i class="fas fa-play"></i> 설계평가 시작
                                         </a>
                                         {% endif %}
 
                                         {% if item.progress.steps[0].status == 'completed' %}
                                             {% if item.progress.steps[1].status == 'completed' %}
-                                            <a href="/elc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-check-circle"></i> 운영평가 확인
-                                            </a>
+                                            <form action="/user/operation-evaluation" method="POST" style="display: inline;">
+                                                <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                                <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                                                    <i class="fas fa-check-circle"></i> 운영평가 확인
+                                                </button>
+                                            </form>
                                             {% elif item.progress.steps[1].status == 'in-progress' %}
-                                            <a href="/elc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
-                                                <i class="fas fa-cogs"></i> 운영평가 계속
-                                            </a>
+                                            <form action="/user/operation-evaluation" method="POST" style="display: inline;">
+                                                <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                                <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                                <button type="submit" class="btn btn-sm btn-success w-100">
+                                                    <i class="fas fa-cogs"></i> 운영평가 계속
+                                                </button>
+                                            </form>
                                             {% else %}
-                                            <a href="/elc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-cogs"></i> 운영평가 시작
+                                            <a href="{{ url_for('link7.elc_operation_evaluation') }}" class="btn btn-sm btn-warning w-100">
+                                                <i class="fas fa-play"></i> 운영평가 시작
                                             </a>
                                             {% endif %}
                                         {% else %}
-                                        <button class="btn btn-sm btn-outline-secondary" disabled>
-                                            <i class="fas fa-lock"></i> 운영평가 (잠김)
-                                        </button>
+                                        <div data-bs-toggle="tooltip" data-bs-placement="top"
+                                             title="설계평가를 먼저 완료해주세요">
+                                            <button class="btn btn-sm btn-outline-secondary w-100" disabled style="pointer-events: none;">
+                                                <i class="fas fa-lock"></i> 운영평가 (잠김)
+                                            </button>
+                                        </div>
                                         {% endif %}
                                     </div>
                                 {% else %}
@@ -256,37 +275,56 @@
                                     <!-- 버튼 (TLC용) -->
                                     <div class="d-grid gap-2">
                                         {% if item.progress.steps[0].status == 'completed' %}
-                                        <a href="/tlc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                            <i class="fas fa-check-circle"></i> 설계평가 확인
-                                        </a>
+                                        <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                            <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                                                <i class="fas fa-check-circle"></i> 설계평가 확인
+                                            </button>
+                                        </form>
                                         {% elif item.progress.steps[0].status == 'in-progress' %}
-                                        <a href="/tlc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-clipboard-check"></i> 설계평가 계속
-                                        </a>
+                                        <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                            <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                                <i class="fas fa-clipboard-check"></i> 설계평가 계속
+                                            </button>
+                                        </form>
                                         {% else %}
-                                        <a href="/tlc/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-clipboard-check"></i> 설계평가 시작
+                                        <a href="{{ url_for('link6.tlc_design_evaluation') }}" class="btn btn-sm btn-info w-100">
+                                            <i class="fas fa-play"></i> 설계평가 시작
                                         </a>
                                         {% endif %}
 
                                         {% if item.progress.steps[0].status == 'completed' %}
                                             {% if item.progress.steps[1].status == 'completed' %}
-                                            <a href="/tlc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-check-circle"></i> 운영평가 확인
-                                            </a>
+                                            <form action="/user/operation-evaluation" method="POST" style="display: inline;">
+                                                <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                                <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                                                    <i class="fas fa-check-circle"></i> 운영평가 확인
+                                                </button>
+                                            </form>
                                             {% elif item.progress.steps[1].status == 'in-progress' %}
-                                            <a href="/tlc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
-                                                <i class="fas fa-cogs"></i> 운영평가 계속
-                                            </a>
+                                            <form action="/user/operation-evaluation" method="POST" style="display: inline;">
+                                                <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                                <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                                <button type="submit" class="btn btn-sm btn-success w-100">
+                                                    <i class="fas fa-cogs"></i> 운영평가 계속
+                                                </button>
+                                            </form>
                                             {% else %}
-                                            <a href="/tlc/operation-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-cogs"></i> 운영평가 시작
+                                            <a href="{{ url_for('link7.tlc_operation_evaluation') }}" class="btn btn-sm btn-warning w-100">
+                                                <i class="fas fa-play"></i> 운영평가 시작
                                             </a>
                                             {% endif %}
                                         {% else %}
-                                        <button class="btn btn-sm btn-outline-secondary" disabled>
-                                            <i class="fas fa-lock"></i> 운영평가 (잠김)
-                                        </button>
+                                        <div data-bs-toggle="tooltip" data-bs-placement="top"
+                                             title="설계평가를 먼저 완료해주세요">
+                                            <button class="btn btn-sm btn-outline-secondary w-100" disabled style="pointer-events: none;">
+                                                <i class="fas fa-lock"></i> 운영평가 (잠김)
+                                            </button>
+                                        </div>
                                         {% endif %}
                                     </div>
                                 {% else %}
@@ -349,36 +387,55 @@
                                     <!-- 버튼 -->
                                     <div class="d-grid gap-1">
                                         {% if item.progress.steps[0].status == 'completed' %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                            <i class="fas fa-check-circle"></i> 설계평가 확인
-                                        </a>
+                                        <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                            <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                                                <i class="fas fa-check-circle"></i> 설계평가 확인
+                                            </button>
+                                        </form>
                                         {% elif item.progress.steps[0].status == 'in-progress' %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-clipboard-check"></i> 설계평가 계속
-                                        </a>
+                                        <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                            <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                                <i class="fas fa-clipboard-check"></i> 설계평가 계속
+                                            </button>
+                                        </form>
                                         {% else %}
-                                        <a href="/user/design-evaluation?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-clipboard-check"></i> 설계평가 시작
+                                        <a href="{{ url_for('link6.itgc_evaluation') }}" class="btn btn-sm btn-info w-100">
+                                            <i class="fas fa-play"></i> 설계평가 시작
                                         </a>
                                         {% endif %}
                                         {% if item.progress.steps[0].status == 'completed' %}
                                             {% if item.progress.steps[1].status == 'completed' %}
-                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-check-circle"></i> 운영평가 확인
-                                            </a>
+                                            <form action="/user/operation-evaluation" method="POST" style="display: inline;">
+                                                <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                                <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                                                    <i class="fas fa-check-circle"></i> 운영평가 확인
+                                                </button>
+                                            </form>
                                             {% elif item.progress.steps[1].status == 'in-progress' %}
-                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-success">
-                                                <i class="fas fa-cogs"></i> 운영평가 계속
-                                            </a>
+                                            <form action="/user/operation-evaluation" method="POST" style="display: inline;">
+                                                <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
+                                                <input type="hidden" name="session" value="{{ item.evaluation_session }}">
+                                                <button type="submit" class="btn btn-sm btn-success w-100">
+                                                    <i class="fas fa-cogs"></i> 운영평가 계속
+                                                </button>
+                                            </form>
                                             {% else %}
-                                            <a href="/operation-evaluation/rcm?rcm_id={{ item.rcm_info.rcm_id }}&session={{ item.evaluation_session }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-cogs"></i> 운영평가 시작
+                                            <a href="{{ url_for('link7.itgc_operation_evaluation') }}" class="btn btn-sm btn-warning w-100">
+                                                <i class="fas fa-play"></i> 운영평가 시작
                                             </a>
                                             {% endif %}
                                         {% else %}
-                                        <button class="btn btn-sm btn-outline-secondary" disabled>
-                                            <i class="fas fa-lock"></i> 운영평가 (잠김)
-                                        </button>
+                                        <div data-bs-toggle="tooltip" data-bs-placement="top"
+                                             title="설계평가를 먼저 완료해주세요">
+                                            <button class="btn btn-sm btn-outline-secondary w-100" disabled style="pointer-events: none;">
+                                                <i class="fas fa-lock"></i> 운영평가 (잠김)
+                                            </button>
+                                        </div>
                                         {% endif %}
                                     </div>
                                 {% else %}
@@ -411,5 +468,14 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Bootstrap 툴팁 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
 </body>
 </html>

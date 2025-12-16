@@ -237,6 +237,41 @@ body {
     margin-right: 0.5rem;
 }
 
+/* 버튼 호버 효과 */
+.btn-success:hover {
+    background-color: #218838 !important;
+    border-color: #1e7e34 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(33, 136, 56, 0.3);
+    transition: all 0.2s ease;
+}
+
+.btn-outline-success:hover {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3 !important;
+    border-color: #004085 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 86, 179, 0.3);
+    transition: all 0.2s ease;
+}
+
+.btn-outline-primary:hover {
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+    transition: all 0.2s ease;
+}
+
 /* 네비게이션 바 스타일 */
 /* 드롭다운 서브메뉴 스타일 */
 .dropdown-menu .dropdown-menu {

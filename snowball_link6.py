@@ -1765,11 +1765,18 @@ def elc_design_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', 'ELC 평가', '/elc/design-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
+    # 세션에서 현재 선택된 RCM과 평가 세션 정보 가져오기
+    from flask import session as flask_session
+    current_rcm_id = flask_session.get('current_rcm_id')
+    current_evaluation_session = flask_session.get('current_evaluation_session')
+
     return render_template('link6_evaluation.jsp',
                          category='ELC',
                          rcms=elc_rcms,
                          is_logged_in=is_logged_in(),
-                         user_info=user_info)
+                         user_info=user_info,
+                         current_rcm_id=current_rcm_id,
+                         current_evaluation_session=current_evaluation_session)
 
 @bp_link6.route('/elc/design-evaluation/start', methods=['POST'])
 @login_required
@@ -1940,20 +1947,101 @@ def archive_elc_evaluation():
 @bp_link6.route('/tlc/design-evaluation')
 @login_required
 def tlc_design_evaluation():
-    """TLC 설계평가 페이지"""
+    """TLC 평가 페이지 (설계평가 + 운영평가 통합)"""
     user_info = get_user_info()
 
     # TLC RCM 목록만 필터링
     all_rcms = get_user_rcms(user_info['user_id'])
     tlc_rcms = [rcm for rcm in all_rcms if rcm.get('control_category') == 'TLC']
 
-    log_user_activity(user_info, 'PAGE_ACCESS', 'TLC 설계평가', '/tlc/design-evaluation',
+    # 각 RCM에 대한 설계평가/운영평가 세션 정보 추가
+    from evaluation_utils import get_evaluation_status
+
+    for rcm in tlc_rcms:
+        with get_db() as conn:
+            # 설계평가 현황: archived가 아닌 모든 평가
+            design_sessions = conn.execute('''
+                SELECT header_id, evaluation_name, created_at, last_updated
+                FROM sb_evaluation_header
+                WHERE rcm_id = ? AND (archived IS NULL OR archived = 0)
+                ORDER BY last_updated DESC
+            ''', (rcm['rcm_id'],)).fetchall()
+
+        # 설계평가 세션 정보 처리
+        design_list = []
+        operation_list = []
+
+        for session in design_sessions:
+            session_dict = dict(session)
+            header_id = session_dict['header_id']
+
+            # 실시간으로 status와 progress 계산
+            with get_db() as conn:
+                status_info = get_evaluation_status(conn, header_id)
+
+            session_dict['status'] = status_info['status']
+            session_dict['progress'] = status_info['design_progress']
+
+            # 템플릿 호환성을 위해 evaluation_session 키 추가
+            session_dict['evaluation_session'] = session_dict['evaluation_name']
+
+            # 설계평가 완료 여부: status >= 1
+            if session_dict["status"] >= 1:
+                session_dict["is_completed"] = True
+                session_dict["completed_date"] = session_dict.get("last_updated", "")
+            else:
+                session_dict["is_completed"] = False
+                session_dict["completed_date"] = ""
+
+            # 운영평가 가능한 통제 개수 (설계평가 완료된 경우만)
+            if session_dict['is_completed']:
+                session_dict['eligible_control_count'] = status_info['operation_total_count']
+            else:
+                session_dict['eligible_control_count'] = 0
+
+            # 설계평가 목록: status >= 0 (모든 평가 세션을 표시)
+            design_list.append(session_dict)
+
+            # 운영평가 목록: status >= 2 (운영평가가 시작된 것)
+            if session_dict['status'] >= 2:
+                op_dict = session_dict.copy()
+                op_dict['is_completed'] = session_dict['status'] == 4
+                op_dict['progress'] = status_info['operation_progress']
+                op_dict['operation_completed_count'] = status_info['operation_completed_count']
+                op_dict['design_evaluation_name'] = session_dict['evaluation_name']
+                op_dict['eligible_control_count'] = status_info['operation_total_count']
+                op_dict['design_completed_count'] = status_info['design_completed_count']
+                op_dict['design_total_count'] = status_info['design_total_count']
+                operation_list.append(op_dict)
+
+        rcm['design_sessions'] = design_list
+        rcm['operation_sessions'] = operation_list
+        rcm['has_design_sessions'] = len(design_list) > 0
+        rcm['has_operation_sessions'] = len(operation_list) > 0
+
+        # 하위 호환성을 위해 기존 키도 유지
+        operation_session_names = {s['evaluation_name'] for s in operation_list}
+        rcm['completed_design_sessions'] = [
+            s for s in design_list
+            if s['status'] == 1 and s['evaluation_name'] not in operation_session_names
+        ]
+        rcm['design_evaluation_completed'] = len(rcm['completed_design_sessions']) > 0
+
+    log_user_activity(user_info, 'PAGE_ACCESS', 'TLC 평가', '/tlc/design-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
-    return render_template('link6_tlc_design_evaluation.jsp',
-                         tlc_rcms=tlc_rcms,
+    # 세션에서 현재 선택된 RCM과 평가 세션 정보 가져오기
+    from flask import session as flask_session
+    current_rcm_id = flask_session.get('current_rcm_id')
+    current_evaluation_session = flask_session.get('current_evaluation_session')
+
+    return render_template('link6_evaluation.jsp',
+                         category='TLC',
+                         rcms=tlc_rcms,
                          is_logged_in=is_logged_in(),
-                         user_info=user_info)
+                         user_info=user_info,
+                         current_rcm_id=current_rcm_id,
+                         current_evaluation_session=current_evaluation_session)
 
 @bp_link6.route('/tlc-evaluation')
 @login_required
@@ -2042,11 +2130,18 @@ def tlc_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', 'TLC 통합 평가', '/tlc-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
+    # 세션에서 현재 선택된 RCM과 평가 세션 정보 가져오기
+    from flask import session as flask_session
+    current_rcm_id = flask_session.get('current_rcm_id')
+    current_evaluation_session = flask_session.get('current_evaluation_session')
+
     return render_template('link6_evaluation.jsp',
                          category='TLC',
                          rcms=tlc_rcms,
                          is_logged_in=is_logged_in(),
-                         user_info=user_info)
+                         user_info=user_info,
+                         current_rcm_id=current_rcm_id,
+                         current_evaluation_session=current_evaluation_session)
 
 @bp_link6.route('/itgc-evaluation')
 @login_required
@@ -2135,11 +2230,18 @@ def itgc_evaluation():
     log_user_activity(user_info, 'PAGE_ACCESS', 'ITGC 통합 평가', '/itgc-evaluation',
                      request.remote_addr, request.headers.get('User-Agent'))
 
+    # 세션에서 현재 선택된 RCM과 평가 세션 정보 가져오기
+    from flask import session as flask_session
+    current_rcm_id = flask_session.get('current_rcm_id')
+    current_evaluation_session = flask_session.get('current_evaluation_session')
+
     return render_template('link6_evaluation.jsp',
                          category='ITGC',
                          rcms=itgc_rcms,
                          is_logged_in=is_logged_in(),
-                         user_info=user_info)
+                         user_info=user_info,
+                         current_rcm_id=current_rcm_id,
+                         current_evaluation_session=current_evaluation_session)
 
 @bp_link6.route('/itgc/design-evaluation/start', methods=['POST'])
 @login_required
