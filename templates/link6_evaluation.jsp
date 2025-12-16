@@ -849,6 +849,27 @@
                 alert('삭제 중 오류가 발생했습니다: ' + error);
             });
         }
+
+        // 페이지 로드 시 세션에서 선택된 RCM 자동 확장
+        document.addEventListener('DOMContentLoaded', function() {
+            {% if current_rcm_id %}
+            const rcmId = {{ current_rcm_id }};
+            const collapseElement = document.getElementById('collapse' + rcmId);
+            const opCollapseElement = document.getElementById('opcollapse' + rcmId);
+
+            if (collapseElement) {
+                const bsCollapse = new bootstrap.Collapse(collapseElement, {toggle: true});
+                // 스크롤하여 해당 RCM으로 이동
+                setTimeout(function() {
+                    collapseElement.scrollIntoView({behavior: 'smooth', block: 'center'});
+                }, 300);
+            }
+
+            if (opCollapseElement) {
+                const bsOpCollapse = new bootstrap.Collapse(opCollapseElement, {toggle: true});
+            }
+            {% endif %}
+        });
     </script>
 </body>
 </html>

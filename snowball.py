@@ -796,11 +796,36 @@ def user_rcm_view():
     """사용자 RCM 상세 보기 - link5로 리다이렉션"""
     return redirect(url_for('link5.user_rcm_view'))
 
-@app.route('/user/design-evaluation')
+@app.route('/user/design-evaluation', methods=['GET', 'POST'])
 @login_required
 def user_design_evaluation():
-    """레거시 설계평가 페이지 - ITGC 통합 평가로 리디렉트"""
-    return redirect(url_for('link6.itgc_evaluation'))
+    """설계평가 페이지 - 세션에 데이터 저장 후 설계평가 작업 페이지로 리디렉트"""
+    if request.method == 'POST':
+        # POST로 받은 데이터를 세션에 저장
+        rcm_id = request.form.get('rcm_id')
+        evaluation_session = request.form.get('session')
+
+        if rcm_id and evaluation_session:
+            # 세션에 저장 (설계평가 작업 페이지에서 사용)
+            session['current_design_rcm_id'] = int(rcm_id)
+            session['current_evaluation_session'] = evaluation_session
+
+            # RCM 정보 조회하여 카테고리 확인
+            with get_db() as conn:
+                rcm = conn.execute("SELECT control_category FROM sb_rcm WHERE rcm_id = ?", (rcm_id,)).fetchone()
+
+            if rcm:
+                category = rcm['control_category']
+                session['current_evaluation_type'] = category
+
+            # 설계평가 작업 페이지로 리디렉트
+            return redirect(url_for('link6.user_design_evaluation_rcm'))
+
+        flash('잘못된 요청입니다.', 'danger')
+        return redirect(url_for('link8.internal_assessment'))
+    else:
+        # GET 요청 - 레거시 지원
+        return redirect(url_for('link6.itgc_evaluation'))
 
 # 이 함수는 snowball_link6.py로 이전됨 - 전체 주석 처리
 # @app.route('/api/design-evaluation/save', methods=['POST'])
@@ -1022,11 +1047,29 @@ def upload_control_sample():
             'message': '업로드 중 오류가 발생했습니다.'
         })
 
-@app.route('/user/operation-evaluation')
+@app.route('/user/operation-evaluation', methods=['GET', 'POST'])
 @login_required
 def user_operation_evaluation():
-    """운영평가 페이지 - link7로 리디렉션"""
-    return redirect(url_for('link7.user_operation_evaluation'))
+    """운영평가 페이지 - 세션에 데이터 저장 후 운영평가 작업 페이지로 리디렉트"""
+    if request.method == 'POST':
+        # POST로 받은 데이터를 세션에 저장
+        rcm_id = request.form.get('rcm_id')
+        evaluation_session = request.form.get('session')
+
+        if rcm_id and evaluation_session:
+            # 세션에 저장 (운영평가 페이지에서 사용)
+            session['current_operation_rcm_id'] = int(rcm_id)
+            session['current_design_evaluation_session'] = evaluation_session
+            session['redirect_to_operation'] = True
+
+            # 운영평가 작업 페이지로 리디렉트
+            return redirect(url_for('link7.user_operation_evaluation_rcm'))
+
+        flash('잘못된 요청입니다.', 'danger')
+        return redirect(url_for('link8.internal_assessment'))
+    else:
+        # GET 요청 - 레거시 지원
+        return redirect(url_for('link7.user_operation_evaluation'))
 
 @app.route('/user/internal-assessment')
 @login_required

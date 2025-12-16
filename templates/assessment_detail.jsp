@@ -208,38 +208,54 @@
                         <!-- 액션 버튼 -->
                         <div class="mt-3">
                             {% if step.step == 1 %}
-                                <a href="/user/design-evaluation?rcm_id={{ rcm_info.rcm_id }}&session={{ evaluation_session }}"
-                                   class="btn btn-sm
-                                   {% if step.status == 'completed' %}btn-outline-success
-                                   {% else %}btn-primary{% endif %}">
-                                    <i class="fas fa-clipboard-check me-1"></i>
-                                    {% if step.status == 'completed' %}
-                                        설계평가 확인하기
-                                    {% elif step.status == 'in_progress' %}
-                                        설계평가 계속하기
-                                    {% else %}
-                                        설계평가 시작하기
-                                    {% endif %}
-                                </a>
+                                {% if step.status == 'completed' or step.status == 'in-progress' %}
+                                <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                    <input type="hidden" name="rcm_id" value="{{ rcm_info.rcm_id }}">
+                                    <input type="hidden" name="session" value="{{ evaluation_session }}">
+                                    <button type="submit" class="btn btn-sm
+                                       {% if step.status == 'completed' %}btn-outline-success
+                                       {% else %}btn-primary{% endif %}">
+                                        <i class="fas fa-clipboard-check me-1"></i>
+                                        {% if step.status == 'completed' %}
+                                            설계평가 확인하기
+                                        {% else %}
+                                            설계평가 계속하기
+                                        {% endif %}
+                                    </button>
+                                </form>
+                                {% else %}
+                                <div data-bs-toggle="tooltip" data-bs-placement="top"
+                                     title="설계평가 화면에서 '내부평가 시작'을 먼저 진행해주세요">
+                                    <button class="btn btn-sm btn-outline-secondary" disabled style="pointer-events: none;">
+                                        <i class="fas fa-lock me-1"></i>설계평가 (잠김)
+                                    </button>
+                                </div>
+                                {% endif %}
                             {% elif step.step == 2 %}
                                 {% if progress.steps[0].status == 'completed' %}
-                                    <a href="/user/operation-evaluation?rcm_id={{ rcm_info.rcm_id }}&session={{ evaluation_session }}"
-                                       class="btn btn-sm
-                                       {% if step.status == 'completed' %}btn-outline-success
-                                       {% else %}btn-success{% endif %}">
-                                        <i class="fas fa-cogs me-1"></i>
-                                        {% if step.status == 'completed' %}
-                                            운영평가 확인하기
-                                        {% elif step.status == 'in_progress' %}
-                                            운영평가 계속하기
-                                        {% else %}
-                                            운영평가 시작하기
-                                        {% endif %}
-                                    </a>
+                                    {% if step.status == 'completed' or step.status == 'in-progress' %}
+                                    <form action="/user/operation-evaluation" method="POST" style="display: inline;">
+                                        <input type="hidden" name="rcm_id" value="{{ rcm_info.rcm_id }}">
+                                        <input type="hidden" name="session" value="{{ evaluation_session }}">
+                                        <button type="submit" class="btn btn-sm
+                                           {% if step.status == 'completed' %}btn-outline-success
+                                           {% else %}btn-success{% endif %}">
+                                            <i class="fas fa-cogs me-1"></i>
+                                            {% if step.status == 'completed' %}
+                                                운영평가 확인하기
+                                            {% else %}
+                                                운영평가 계속하기
+                                            {% endif %}
+                                        </button>
+                                    </form>
+                                    {% endif %}
                                 {% else %}
-                                    <button class="btn btn-sm btn-outline-secondary" disabled>
-                                        <i class="fas fa-lock me-1"></i>운영평가 (설계평가 완료 후)
-                                    </button>
+                                    <div data-bs-toggle="tooltip" data-bs-placement="top"
+                                         title="설계평가를 먼저 완료해주세요">
+                                        <button class="btn btn-sm btn-outline-secondary" disabled style="pointer-events: none;">
+                                            <i class="fas fa-lock me-1"></i>운영평가 (설계평가 완료 후)
+                                        </button>
+                                    </div>
                                 {% endif %}
                             {% endif %}
                         </div>
@@ -284,5 +300,14 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Bootstrap 툴팁 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
 </body>
 </html>
