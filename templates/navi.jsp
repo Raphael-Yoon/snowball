@@ -47,6 +47,11 @@
                             <i class="fas fa-server me-1"></i>ITGC 평가
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('link9.contact') }}" class="nav-link">
+                            <i class="fas fa-envelope me-1"></i>서비스 문의
+                        </a>
+                    </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="publicMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-globe me-1"></i>Public
@@ -63,9 +68,6 @@
                             </a></li>
                             <li><a class="dropdown-item" href="/link4">
                                 <i class="fas fa-film me-2"></i>영상 가이드
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link9.contact') }}">
-                                <i class="fas fa-envelope me-2"></i>서비스 문의
                             </a></li>
                         </ul>
                     </li>

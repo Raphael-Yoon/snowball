@@ -11,7 +11,16 @@
     <style>
         .category-card {
             border-width: 2px !important;
-            height: 100%;
+        }
+        .category-card .card-body {
+            display: flex;
+            flex-direction: column;
+            /* 카드 높이를 약간 줄여 불필요한 여백 최소화 */
+            min-height: 340px;
+        }
+        .category-card .d-grid {
+            /* 버튼을 카드 맨 아래까지 내리지 않고 인디케이터와 간격을 줄임 */
+            margin-top: 0.75rem;
         }
         .progress-ring {
             width: 50px;
@@ -34,13 +43,14 @@
         .step-indicator {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0 !important;
             position: relative;
         }
         .step-item {
             flex: 1;
             text-align: center;
             position: relative;
+            margin-bottom: 0.5rem;
         }
         .step-number {
             width: 36px;
@@ -49,7 +59,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 0.5rem;
+            margin: 0 auto 0.25rem;
             font-weight: bold;
             position: relative;
             z-index: 2;
@@ -88,7 +98,7 @@
 <body>
     {% include 'navi.jsp' %}
 
-    <div class="container-fluid mt-4 px-4">
+    <div class="container mt-4">
         <div class="row">
             <div class="col-12">
                 <div class="mb-4">
@@ -145,7 +155,7 @@
                                         </div>
                                     </div>
                                     <!-- 단계 인디케이터 -->
-                                    <div class="step-indicator mb-3">
+                                    <div class="step-indicator">
                                         {% for step in item.progress.steps %}
                                         <div class="step-item {{ step.status }}">
                                             <div class="step-number">
@@ -258,7 +268,7 @@
                                         </div>
                                     </div>
                                     <!-- 단계 인디케이터 -->
-                                    <div class="step-indicator mb-3">
+                                    <div class="step-indicator">
                                         {% for step in item.progress.steps %}
                                         <div class="step-item {{ step.status }}">
                                             <div class="step-number">
@@ -343,13 +353,13 @@
                             <div class="card-header bg-info text-white">
                                 <h6 class="mb-0"><i class="fas fa-server me-2"></i>IT 일반 통제 (ITGC)</h6>
                             </div>
-                            <div class="card-body p-3">
+                            <div class="card-body">
                                 {% if company.categories.ITGC %}
                                     {% set item = company.categories.ITGC[0] %}
-                                    <h6 class="mb-1">{{ item.rcm_info.rcm_name }}</h6>
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-2">{{ item.rcm_info.rcm_name }}</h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
                                         <div>
-                                            <small class="text-muted d-block">{{ item.evaluation_session }}</small>
+                                            <small class="text-muted d-block">세션: {{ item.evaluation_session }}</small>
                                             {% if item.evaluation_status == 'COMPLETED' and item.operation_status == 'COMPLETED' %}
                                             <span class="badge bg-success">완료</span>
                                             {% elif item.evaluation_status == 'IN_PROGRESS' or item.operation_status == 'IN_PROGRESS' %}
@@ -364,13 +374,13 @@
                                                 <circle class="progress-ring-fill" cx="50" cy="50" r="42"
                                                         style="stroke-dasharray: {{ (item.progress.overall_progress * 264) / 100 }} 264"></circle>
                                             </svg>
-                                            <div style="font-size: 0.75rem; margin-top: -6px;">
+                                            <div style="font-size: 0.8rem; margin-top: -8px;">
                                                 <strong class="text-primary">{{ item.progress.overall_progress }}%</strong>
                                             </div>
                                         </div>
                                     </div>
                                     <!-- 단계 인디케이터 -->
-                                    <div class="step-indicator mb-3">
+                                    <div class="step-indicator">
                                         {% for step in item.progress.steps %}
                                         <div class="step-item {{ step.status }}">
                                             <div class="step-number">
@@ -385,7 +395,7 @@
                                         {% endfor %}
                                     </div>
                                     <!-- 버튼 -->
-                                    <div class="d-grid gap-1">
+                                    <div class="d-grid gap-2">
                                         {% if item.progress.steps[0].status == 'completed' %}
                                         <form action="/user/design-evaluation" method="POST" style="display: inline;">
                                             <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
@@ -439,9 +449,9 @@
                                         {% endif %}
                                     </div>
                                 {% else %}
-                                    <div class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-2x mb-2"></i>
-                                        <p class="mb-0 small">ITGC RCM이 없습니다</p>
+                                    <div class="text-center text-muted py-5">
+                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                                        <p class="mb-0">ITGC RCM이 없습니다</p>
                                     </div>
                                 {% endif %}
                             </div>
