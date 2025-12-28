@@ -1,0 +1,385 @@
+/* Link10 - 종목 분석 페이지 스타일 (Snowball 테마 통합) */
+
+:root {
+    --primary-color: #2c3e50;
+    --secondary-color: #3498db;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --text-color: #333;
+    --light-bg: #f8f9fa;
+    --border-color: #e0e0e0;
+    --hover-color: #f1f3f4;
+    --shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 컨테이너 스타일 조정 - trade 페이지 전용 */
+.trade-container {
+    max-width: 860px !important;
+    margin: 2rem auto !important;
+    padding: 2rem 3rem !important;
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+}
+
+h1 {
+    color: var(--primary-color);
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.section-label {
+    display: block;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    padding-left: 0.5rem;
+    border-left: 4px solid var(--secondary-color);
+}
+
+/* Field Selector Styles */
+.field-selector {
+    margin-bottom: 2rem;
+}
+
+.select-all-container {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.field-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.field-group {
+    background: white;
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.field-group:hover {
+    border-color: var(--secondary-color);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.field-group h4 {
+    color: var(--secondary-color);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    transition: color 0.2s;
+}
+
+.checkbox-label:hover {
+    color: var(--secondary-color);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 0.75rem;
+    cursor: pointer;
+    accent-color: var(--secondary-color);
+}
+
+/* Stock Count Selector Styles */
+.stock-count-selector {
+    margin-bottom: 2rem;
+}
+
+.count-options {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.count-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    background: white;
+    color: var(--text-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.count-btn:hover {
+    background: var(--hover-color);
+    border-color: var(--secondary-color);
+}
+
+.count-btn.active {
+    background: var(--secondary-color);
+    color: white;
+    border-color: var(--secondary-color);
+}
+
+#stockCount {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1rem;
+    color: var(--text-color);
+    transition: border-color 0.3s;
+}
+
+#stockCount:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Main Button */
+.btn {
+    position: relative;
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: var(--progress, 0%);
+    background: var(--success-color);
+    transition: width 0.4s ease;
+    z-index: 0;
+}
+
+.btn span,
+.btn::after {
+    position: relative;
+    z-index: 1;
+}
+
+.btn:hover:not(:disabled) {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(52, 152, 219, 0.4);
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Results Section */
+.results-section {
+    margin-top: 3rem;
+    border-top: 2px solid var(--border-color);
+    padding-top: 2rem;
+}
+
+.results-section h2 {
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.result-item {
+    background: white;
+    border: 1px solid var(--border-color);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.result-item:hover {
+    background: var(--light-bg);
+    border-color: var(--secondary-color);
+    box-shadow: var(--shadow);
+}
+
+.result-filename {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.25rem;
+}
+
+.result-meta {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.result-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.result-download,
+.result-delete {
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+}
+
+.result-download {
+    background: var(--secondary-color);
+    color: white;
+    border-color: var(--secondary-color);
+}
+
+.result-download:hover {
+    background: #2980b9;
+    transform: translateY(-1px);
+}
+
+.result-delete {
+    background: white;
+    color: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+.result-delete:hover {
+    background: var(--danger-color);
+    color: white;
+}
+
+/* Download Section */
+.download-section {
+    display: none;
+    margin-top: 2rem;
+    text-align: center;
+    padding: 2rem;
+    background: #d1fae5;
+    border: 1px solid #6ee7b7;
+    border-radius: 8px;
+    animation: slideUp 0.5s ease-out;
+}
+
+.download-section.active {
+    display: block;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.success-msg {
+    color: var(--success-color);
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.download-btn {
+    background: var(--success-color);
+    color: white;
+    text-decoration: none;
+    padding: 0.75rem 2rem;
+    border-radius: 6px;
+    display: inline-block;
+    font-weight: 600;
+    transition: all 0.3s;
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.download-btn:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Error Message */
+.error-message {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 1rem 1.5rem;
+    border-radius: 6px;
+    margin-top: 1rem;
+    border: 1px solid #fecaca;
+    font-weight: 500;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .trade-container {
+        padding: 1.5rem !important;
+        margin: 1rem !important;
+    }
+
+    h1 {
+        font-size: 1.75rem;
+    }
+
+    .field-checkboxes {
+        grid-template-columns: 1fr;
+    }
+
+    .count-options {
+        flex-direction: column;
+    }
+
+    .count-btn {
+        min-width: 100%;
+    }
+
+    .result-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .result-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
