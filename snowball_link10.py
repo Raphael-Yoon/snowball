@@ -8,12 +8,25 @@ if os.name == 'nt':
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
 
+# [System Config] 불필요한 프록시 설정 제거 (서버 환경 호환성)
+for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
+    os.environ.pop(key, None)
+
 from flask import Blueprint, render_template, jsonify, send_file, request, session
 import threading
 import uuid
-from datetime import datetime
-import subprocess
+from datetime import datetime, timedelta
 import json
+import warnings
+warnings.filterwarnings('ignore')
+
+# Data collection dependencies
+import OpenDartReader
+import pandas as pd
+import time
+from pykrx import stock
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 
 bp_link10 = Blueprint('link10', __name__)
 
@@ -25,8 +38,262 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), 'trade_results')
 if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
-# data_collect.py 위치 - 원본 trade 폴더 기준
-TRADE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'trade')
+# DART API KEY (환경변수로 관리 권장)
+API_KEY = "08e04530eea4ba322907021334794e4164002525"
+
+# ============================================================================
+# Data Collection Functions (from data_collect.py)
+# ============================================================================
+
+def get_latest_business_day():
+    """가장 최근의 영업일을 반환합니다."""
+    try:
+        end_date = datetime.now().strftime("%Y%m%d")
+        start_date = (datetime.now() - timedelta(days=10)).strftime("%Y%m%d")
+        ohlcv = stock.get_market_ohlcv(start_date, end_date, "005930")
+        if ohlcv.empty:
+            return (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+        return ohlcv.index[-1].strftime("%Y%m%d")
+    except Exception as e:
+        print(f"영업일 조회 오류: {e}. 어제 날짜 사용")
+        return (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+
+def get_sector_from_pykrx(ticker, sector_df):
+    """pykrx 업종 분류 데이터에서 업종 정보를 추출합니다."""
+    try:
+        if ticker in sector_df.index:
+            sector = sector_df.loc[ticker].iloc[1]
+            return sector if pd.notna(sector) else 'N/A'
+        return 'N/A'
+    except:
+        return 'N/A'
+
+def get_dart_financials(dart, ticker, year):
+    """OpenDARTReader를 사용하여 재무 데이터를 추출합니다."""
+    try:
+        df = dart.finstate_all(ticker, year)
+        if df is None or df.empty:
+            return 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+        revenue = op = re = cash = liabilities = equity = ocf = capex = da = 0
+
+        for _, row in df.iterrows():
+            acc_id = str(row.get('account_id', ''))
+            acc_name = str(row['account_nm']).replace(" ", "")
+            val = pd.to_numeric(row['thstrm_amount'], errors='coerce')
+            if pd.isna(val):
+                val = 0
+
+            # 1. 매출액
+            if acc_id == 'ifrs-full_Revenue' or acc_name == '매출액' or acc_name == '수익(매출액)':
+                if revenue == 0 or acc_id == 'ifrs-full_Revenue':
+                    revenue = val
+
+            # 2. 영업이익
+            elif acc_id == 'dart_OperatingIncomeLoss' or acc_name == '영업이익' or acc_name == '영업이익(손실)':
+                if op == 0 or acc_id == 'dart_OperatingIncomeLoss':
+                    op = val
+
+            # 3. 이익잉여금
+            elif acc_id == 'ifrs-full_RetainedEarnings' or (re == 0 and '이익잉여금' in acc_name and '기타' not in acc_name):
+                if re == 0 or acc_id == 'ifrs-full_RetainedEarnings':
+                    re = val
+
+            # 4. 현금및현금성자산
+            elif acc_id == 'ifrs-full_CashAndCashEquivalents' or (cash == 0 and '현금및현금성자산' in acc_name):
+                if cash == 0 or acc_id == 'ifrs-full_CashAndCashEquivalents':
+                    cash = val
+
+            # 5. 부채총계
+            elif acc_id == 'ifrs-full_Liabilities' or acc_name == '부채총계':
+                liabilities = val
+
+            # 6. 자본총계
+            elif acc_id == 'ifrs-full_Equity' or acc_name == '자본총계':
+                if equity == 0 or acc_id == 'ifrs-full_Equity':
+                    equity = val
+
+            # 7. 영업활동현금흐름
+            elif acc_id == 'ifrs-full_CashFlowsFromUsedInOperatingActivities' or acc_name == '영업활동현금흐름':
+                ocf = val
+
+            # 8. 유형/무형자산 취득
+            elif 'PurchaseOfPropertyPlantAndEquipment' in acc_id or 'PurchaseOfIntangibleAssets' in acc_id:
+                capex += val
+            elif acc_name in ['유형자산의취득', '무형자산의취득']:
+                capex += val
+
+            # 9. 감가상각비
+            if 'Depreciation' in acc_id or 'Amortisation' in acc_id or '감가상각' in acc_name:
+                da += val
+
+        return revenue, op, re, cash, liabilities, equity, ocf, capex, da
+    except Exception as e:
+        print(f"[DART] {ticker} 재무제표 조회 실패: {e}")
+        return 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+def collect_stock_data(task_id, stock_count=100, selected_fields=None):
+    """종목 데이터 수집 메인 함수"""
+    try:
+        tasks[task_id]['status'] = 'running'
+        tasks[task_id]['progress'] = 0
+        tasks[task_id]['message'] = '데이터 수집 시작...'
+
+        dart = OpenDartReader.OpenDartReader(API_KEY)
+
+        # 1. 최근 영업일 조회
+        latest_date = get_latest_business_day()
+        tasks[task_id]['message'] = f'최근 영업일: {latest_date}'
+
+        # 2. pykrx로 시가총액 및 기본 데이터 수집
+        tasks[task_id]['message'] = 'pykrx 데이터 수집 중...'
+        df_cap = stock.get_market_cap_by_ticker(latest_date, market="KOSPI")
+        df_fundamental = stock.get_market_fundamental(latest_date, market="KOSPI")
+        df_sector = stock.get_market_sector_classifications(latest_date, market="KOSPI")
+
+        # 상위 N개 종목
+        if stock_count == 0:
+            df_top = df_cap.sort_values(by='시가총액', ascending=False)
+        else:
+            df_top = df_cap.sort_values(by='시가총액', ascending=False).head(stock_count)
+
+        # 3. 업종별 평균 PBR, PER 계산
+        df_merged = pd.concat([df_fundamental, df_sector[['업종명']]], axis=1)
+        df_valid = df_merged[(df_merged['PBR'] > 0) & (df_merged['PER'] > 0)]
+        industry_avg = df_valid.groupby('업종명')[['PBR', 'PER']].mean()
+        industry_avg_dict = industry_avg.to_dict('index')
+
+        # 4. 종목별 상세 데이터 수집
+        current_year = datetime.now().year - 1
+        results = []
+
+        end_date = latest_date
+        start_date = (datetime.strptime(latest_date, "%Y%m%d") - timedelta(days=365)).strftime("%Y%m%d")
+
+        total = len(df_top)
+        for idx, ticker in enumerate(df_top.index, 1):
+            name = stock.get_market_ticker_name(ticker)
+
+            # 진행률 업데이트
+            progress = int((idx / total) * 100)
+            tasks[task_id]['progress'] = progress
+            tasks[task_id]['message'] = f'진행률: [{idx}/{total}] {progress}% 완료'
+
+            # pykrx 데이터
+            pbr = df_fundamental.loc[ticker, 'PBR'] if ticker in df_fundamental.index else 0.0
+            per = df_fundamental.loc[ticker, 'PER'] if ticker in df_fundamental.index else 0.0
+            eps = df_fundamental.loc[ticker, 'EPS'] if ticker in df_fundamental.index else 0.0
+            bps = df_fundamental.loc[ticker, 'BPS'] if ticker in df_fundamental.index else 0.0
+            div_yield = df_fundamental.loc[ticker, 'DIV'] if ticker in df_fundamental.index else 0.0
+            roe = (eps / bps * 100) if bps > 0 else 0.0
+
+            # 52주 최고가/최저가
+            high_52w = low_52w = 0
+            try:
+                df_ohlcv = stock.get_market_ohlcv_by_date(start_date, end_date, ticker)
+                if not df_ohlcv.empty:
+                    high_52w = int(df_ohlcv['고가'].max())
+                    low_52w = int(df_ohlcv['저가'].min())
+            except:
+                pass
+
+            # 업종 정보
+            sector = get_sector_from_pykrx(ticker, df_sector)
+            avg_pbr = avg_per = 0.0
+            if sector in industry_avg_dict:
+                avg_pbr = industry_avg_dict[sector]['PBR']
+                avg_per = industry_avg_dict[sector]['PER']
+
+            # DART 재무 데이터
+            revenue, op, re, cash, liabilities, equity, ocf, capex, da = get_dart_financials(dart, ticker, current_year)
+
+            # 추가 지표 계산
+            debt_ratio = (liabilities / equity * 100) if equity > 0 else 0.0
+            fcf = ocf - capex
+            ebitda = op + da
+
+            results.append({
+                '종목코드': ticker,
+                '종목명': name,
+                '업종': sector,
+                'PBR': round(pbr, 2),
+                '업종평균PBR': round(avg_pbr, 2),
+                'PER': round(per, 2),
+                '업종평균PER': round(avg_per, 2),
+                'ROE': round(roe, 2),
+                'EPS': int(eps),
+                'BPS': int(bps),
+                '배당수익률': round(div_yield, 2),
+                '매출액': int(revenue),
+                '영업이익': int(op),
+                '이익잉여금': int(re),
+                '현금및현금성자산': int(cash),
+                '52주최고가': int(high_52w),
+                '52주최저가': int(low_52w),
+                '부채비율': round(debt_ratio, 2),
+                'FCF': int(fcf),
+                'EBITDA': int(ebitda)
+            })
+
+            time.sleep(0.05)
+
+        df_result = pd.DataFrame(results)
+
+        # 선택된 필드만 필터링
+        if selected_fields:
+            required_fields = ['종목코드', '종목명']
+            fields_to_include = required_fields + [f for f in selected_fields if f not in required_fields]
+
+            if 'PBR' in fields_to_include and '업종평균PBR' not in fields_to_include:
+                idx_pbr = fields_to_include.index('PBR')
+                fields_to_include.insert(idx_pbr + 1, '업종평균PBR')
+            if 'PER' in fields_to_include and '업종평균PER' not in fields_to_include:
+                idx_per = fields_to_include.index('PER')
+                fields_to_include.insert(idx_per + 1, '업종평균PER')
+
+            fields_to_include = [f for f in fields_to_include if f in df_result.columns]
+            df_result = df_result[fields_to_include]
+
+        # 엑셀 저장
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        count_label = 'all' if stock_count == 0 else f'top{stock_count}'
+        result_filename = f'kospi_{count_label}_{timestamp}.xlsx'
+        result_path = os.path.join(RESULTS_DIR, result_filename)
+
+        df_result.to_excel(result_path, index=False, engine='openpyxl')
+
+        # 엑셀 포맷팅
+        wb = load_workbook(result_path)
+        ws = wb.active
+        ws.auto_filter.ref = ws.dimensions
+
+        for col in ws.columns:
+            max_length = 0
+            column = col[0].column_letter
+            for cell in col:
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            ws.column_dimensions[column].width = min(max_length + 2, 50)
+
+        wb.save(result_path)
+
+        tasks[task_id]['status'] = 'completed'
+        tasks[task_id]['progress'] = 100
+        tasks[task_id]['message'] = '데이터 수집 완료!'
+        tasks[task_id]['result_file'] = result_filename
+
+        cleanup_old_results()
+
+    except Exception as e:
+        tasks[task_id]['status'] = 'error'
+        tasks[task_id]['message'] = f'오류 발생: {str(e)}'
+
+# ============================================================================
+# Flask Helper Functions
+# ============================================================================
 
 def is_logged_in():
     """로그인 상태 확인"""
@@ -65,82 +332,9 @@ def cleanup_old_results(max_files=20):
         print(f"파일 정리 중 오류: {e}")
 
 def run_data_collection(task_id, stock_count=100, fields=None):
-    """백그라운드에서 데이터 수집 실행"""
-    try:
-        tasks[task_id]['status'] = 'running'
-        tasks[task_id]['progress'] = 0
-        tasks[task_id]['message'] = '데이터 수집 시작...'
-        tasks[task_id]['stock_count'] = stock_count
-
-        # data_collect.py 실행
-        script_path = os.path.join(TRADE_DIR, 'data_collect.py')
-        # uWSGI 환경 대응: sys.executable이 uwsgi일 경우 python 명령어로 대체
-        python_cmd = sys.executable
-        if 'uwsgi' in python_cmd.lower():
-            python_cmd = 'python'
-
-        cmd = [python_cmd, script_path, '--count', str(stock_count)]
-
-        # 선택된 필드가 있으면 추가
-        if fields:
-            cmd.extend(['--fields', ','.join(fields)])
-
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding='utf-8',
-            cwd=TRADE_DIR  # trade 디렉토리에서 실행
-        )
-
-        # 실시간 출력 읽기
-        for line in process.stdout:
-            line = line.strip()
-            if line:
-                tasks[task_id]['message'] = line
-
-                # 진행률 파싱 (진행률: [10/100] 10% 완료)
-                if '진행률:' in line and '%' in line:
-                    try:
-                        # [10/100] 형태에서 숫자 추출
-                        if '[' in line and ']' in line:
-                            bracket_content = line[line.find('[')+1:line.find(']')]
-                            current, total = map(int, bracket_content.split('/'))
-                            tasks[task_id]['progress'] = int((current / total) * 100)
-                    except:
-                        pass
-
-        process.wait()
-
-        if process.returncode == 0:
-            # 결과 파일 이동
-            source_file = os.path.join(TRADE_DIR, 'result.xlsx')
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            count_label = 'all' if stock_count == 0 else f'top{stock_count}'
-            result_filename = f'kospi_{count_label}_{timestamp}.xlsx'
-            result_path = os.path.join(RESULTS_DIR, result_filename)
-
-            if os.path.exists(source_file):
-                os.rename(source_file, result_path)
-                tasks[task_id]['status'] = 'completed'
-                tasks[task_id]['progress'] = 100
-                tasks[task_id]['message'] = '데이터 수집 완료!'
-                tasks[task_id]['result_file'] = result_filename
-
-                # 오래된 파일 정리
-                cleanup_old_results()
-            else:
-                tasks[task_id]['status'] = 'error'
-                tasks[task_id]['message'] = '결과 파일을 찾을 수 없습니다.'
-        else:
-            error_msg = process.stderr.read()
-            tasks[task_id]['status'] = 'error'
-            tasks[task_id]['message'] = f'오류 발생: {error_msg}'
-
-    except Exception as e:
-        tasks[task_id]['status'] = 'error'
-        tasks[task_id]['message'] = f'오류 발생: {str(e)}'
+    """백그라운드에서 데이터 수집 실행 (내부 함수 호출)"""
+    tasks[task_id]['stock_count'] = stock_count
+    collect_stock_data(task_id, stock_count, fields)
 
 @bp_link10.route('/link10')
 def index():
