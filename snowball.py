@@ -86,6 +86,13 @@ print(f"환경 변수 - PYTHONANYWHERE_AUTH_CODE: {PYTHONANYWHERE_AUTH_CODE}")
 #     import traceback
 #     traceback.print_exc()
 
+@app.context_processor
+def inject_globals():
+    """모든 템플릿에 전역 변수 주입"""
+    return {
+        'is_production': is_production
+    }
+
 @app.before_request
 def before_request():
     """모든 요청 전에 실행되는 함수"""

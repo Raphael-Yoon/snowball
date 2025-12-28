@@ -204,8 +204,15 @@ def collect_stock_data(task_id, stock_count=100, selected_fields=None):
             tasks[task_id]['progress'] = 25
             tasks[task_id]['message'] = f'pykrx 데이터 수집 완료 ({len(df_cap)}개 종목)'
         except Exception as e:
+            error_msg = str(e)
             tasks[task_id]['status'] = 'error'
-            tasks[task_id]['message'] = f'pykrx 데이터 수집 실패: {str(e)[:150]}'
+
+            # 네트워크 오류인 경우 특별 처리
+            if 'Connection' in error_msg or 'Timeout' in error_msg or 'Network' in error_msg:
+                tasks[task_id]['message'] = 'pykrx 데이터 수집 실패: KRX 서버 접속 불가 (PythonAnywhere free tier는 외부 API 접속 제한). 유료 계정으로 업그레이드하거나 로컬 환경에서 사용하세요.'
+            else:
+                tasks[task_id]['message'] = f'pykrx 데이터 수집 실패: {error_msg[:150]}'
+
             print(f"pykrx 오류: {e}")
             import traceback
             traceback.print_exc()
