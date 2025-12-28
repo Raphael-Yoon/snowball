@@ -38,8 +38,8 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), 'trade_results')
 if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
-# DART API KEY (환경변수로 관리 권장)
-API_KEY = "08e04530eea4ba322907021334794e4164002525"
+# DART API KEY (환경변수로 관리)
+API_KEY = os.environ.get('DART_API_KEY', '')
 
 # ============================================================================
 # Data Collection Functions (from data_collect.py)
