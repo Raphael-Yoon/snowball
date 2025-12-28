@@ -215,6 +215,7 @@
                 <div class="col-12">
                     <h2 class="section-title"><i class="fas fa-envelope me-2"></i>Support</h2>
                 </div>
+                {% if not is_production %}
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-success h-100">
                         <img src="{{ url_for('static', filename='img/stock_analysis.jpg')}}" class="feature-img" alt="종목 분석"
@@ -230,6 +231,7 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card h-100">
                         <img src="{{ url_for('static', filename='img/video.jpg')}}" class="feature-img" alt="교육자료">
