@@ -211,11 +211,11 @@
             </div>
 
             <!-- Support 섹션 -->
-            <div class="row g-4 mt-3">
+            <div class="row g-4 mt-3 justify-content-center">
                 <div class="col-12">
                     <h2 class="section-title"><i class="fas fa-envelope me-2"></i>Support</h2>
                 </div>
-                <div class="col-lg-3 col-md-6 offset-lg-2">
+                <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-success h-100">
                         <img src="{{ url_for('static', filename='img/stock_analysis.jpg')}}" class="feature-img" alt="종목 분석"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
