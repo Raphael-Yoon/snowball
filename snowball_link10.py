@@ -20,13 +20,25 @@ import json
 import warnings
 warnings.filterwarnings('ignore')
 
-# Data collection dependencies
-import OpenDartReader
-import pandas as pd
+# Data collection dependencies (optional imports)
+try:
+    import OpenDartReader
+    OPENDART_AVAILABLE = True
+except ImportError:
+    OPENDART_AVAILABLE = False
+    print("Warning: OpenDartReader not installed. DART financial data will not be available.")
+
+try:
+    import pandas as pd
+    from pykrx import stock
+    from openpyxl import load_workbook
+    from openpyxl.utils import get_column_letter
+    PYKRX_AVAILABLE = True
+except ImportError:
+    PYKRX_AVAILABLE = False
+    print("Warning: pykrx or related packages not installed. Stock data collection will not be available.")
+
 import time
-from pykrx import stock
-from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter
 
 bp_link10 = Blueprint('link10', __name__)
 
@@ -35,8 +47,14 @@ tasks = {}
 
 # 결과 파일 저장 디렉토리 - snowball 프로젝트 기준으로 설정
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), 'trade_results')
-if not os.path.exists(RESULTS_DIR):
-    os.makedirs(RESULTS_DIR)
+try:
+    if not os.path.exists(RESULTS_DIR):
+        os.makedirs(RESULTS_DIR, exist_ok=True)
+except Exception as e:
+    print(f"trade_results 디렉토리 생성 실패: {e}")
+    # 임시 디렉토리 사용
+    import tempfile
+    RESULTS_DIR = tempfile.gettempdir()
 
 # DART API KEY (환경변수로 관리)
 API_KEY = os.environ.get('DART_API_KEY', '')
@@ -139,17 +157,59 @@ def collect_stock_data(task_id, stock_count=100, selected_fields=None):
         tasks[task_id]['progress'] = 0
         tasks[task_id]['message'] = '데이터 수집 시작...'
 
-        dart = OpenDartReader(API_KEY)
+        # 필수 라이브러리 확인
+        if not PYKRX_AVAILABLE:
+            tasks[task_id]['status'] = 'error'
+            tasks[task_id]['message'] = '필수 라이브러리(pykrx, pandas, openpyxl)가 설치되지 않았습니다. 서버 관리자에게 문의하세요.'
+            return
+
+        # DART API 초기화 (실패해도 계속 진행)
+        dart = None
+        if OPENDART_AVAILABLE and API_KEY:
+            try:
+                # file_cache 사용 안함으로 초기화
+                dart = OpenDartReader(API_KEY)
+                # 기업 코드 캐시 비활성화
+                dart.corp_codes = None
+                tasks[task_id]['message'] = 'DART API 연결 성공'
+            except Exception as e:
+                tasks[task_id]['message'] = f'DART API 연결 실패 (재무 데이터 제외): {str(e)[:100]}'
+                print(f"DART API 초기화 실패: {e}")
+        else:
+            if not OPENDART_AVAILABLE:
+                tasks[task_id]['message'] = 'OpenDartReader 미설치 (재무 데이터 제외)'
+            else:
+                tasks[task_id]['message'] = 'DART API 키 없음 (재무 데이터 제외)'
 
         # 1. 최근 영업일 조회
-        latest_date = get_latest_business_day()
-        tasks[task_id]['message'] = f'최근 영업일: {latest_date}'
+        try:
+            latest_date = get_latest_business_day()
+            tasks[task_id]['message'] = f'최근 영업일: {latest_date}'
+            tasks[task_id]['progress'] = 5
+        except Exception as e:
+            tasks[task_id]['status'] = 'error'
+            tasks[task_id]['message'] = f'영업일 조회 실패: {str(e)[:100]}'
+            print(f"영업일 조회 오류: {e}")
+            return
 
         # 2. pykrx로 시가총액 및 기본 데이터 수집
-        tasks[task_id]['message'] = 'pykrx 데이터 수집 중...'
-        df_cap = stock.get_market_cap_by_ticker(latest_date, market="KOSPI")
-        df_fundamental = stock.get_market_fundamental(latest_date, market="KOSPI")
-        df_sector = stock.get_market_sector_classifications(latest_date, market="KOSPI")
+        try:
+            tasks[task_id]['message'] = 'pykrx 데이터 수집 중...'
+            tasks[task_id]['progress'] = 10
+            df_cap = stock.get_market_cap_by_ticker(latest_date, market="KOSPI")
+            tasks[task_id]['progress'] = 15
+            df_fundamental = stock.get_market_fundamental(latest_date, market="KOSPI")
+            tasks[task_id]['progress'] = 20
+            df_sector = stock.get_market_sector_classifications(latest_date, market="KOSPI")
+            tasks[task_id]['progress'] = 25
+            tasks[task_id]['message'] = f'pykrx 데이터 수집 완료 ({len(df_cap)}개 종목)'
+        except Exception as e:
+            tasks[task_id]['status'] = 'error'
+            tasks[task_id]['message'] = f'pykrx 데이터 수집 실패: {str(e)[:150]}'
+            print(f"pykrx 오류: {e}")
+            import traceback
+            traceback.print_exc()
+            return
 
         # 상위 N개 종목
         if stock_count == 0:
@@ -204,8 +264,11 @@ def collect_stock_data(task_id, stock_count=100, selected_fields=None):
                 avg_pbr = industry_avg_dict[sector]['PBR']
                 avg_per = industry_avg_dict[sector]['PER']
 
-            # DART 재무 데이터
-            revenue, op, re, cash, liabilities, equity, ocf, capex, da = get_dart_financials(dart, ticker, current_year)
+            # DART 재무 데이터 (API 사용 가능한 경우만)
+            if dart:
+                revenue, op, re, cash, liabilities, equity, ocf, capex, da = get_dart_financials(dart, ticker, current_year)
+            else:
+                revenue = op = re = cash = liabilities = equity = ocf = capex = da = 0
 
             # 추가 지표 계산
             debt_ratio = (liabilities / equity * 100) if equity > 0 else 0.0
@@ -260,25 +323,38 @@ def collect_stock_data(task_id, stock_count=100, selected_fields=None):
         result_filename = f'kospi_{count_label}_{timestamp}.xlsx'
         result_path = os.path.join(RESULTS_DIR, result_filename)
 
-        df_result.to_excel(result_path, index=False, engine='openpyxl')
+        try:
+            # 엑셀 파일 생성 및 저장
+            df_result.to_excel(result_path, index=False, engine='openpyxl')
 
-        # 엑셀 포맷팅
-        wb = load_workbook(result_path)
-        ws = wb.active
-        ws.auto_filter.ref = ws.dimensions
+            # 엑셀 포맷팅
+            wb = load_workbook(result_path)
+            ws = wb.active
+            ws.auto_filter.ref = ws.dimensions
 
-        for col in ws.columns:
-            max_length = 0
-            column = col[0].column_letter
-            for cell in col:
-                try:
-                    if cell.value:
-                        max_length = max(max_length, len(str(cell.value)))
-                except:
-                    pass
-            ws.column_dimensions[column].width = min(max_length + 2, 50)
+            for col in ws.columns:
+                max_length = 0
+                column = col[0].column_letter
+                for cell in col:
+                    try:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    except:
+                        pass
+                ws.column_dimensions[column].width = min(max_length + 2, 50)
 
-        wb.save(result_path)
+            wb.save(result_path)
+
+        except PermissionError as e:
+            tasks[task_id]['status'] = 'error'
+            tasks[task_id]['message'] = f'파일 저장 권한 오류: {RESULTS_DIR} 디렉토리에 쓰기 권한이 없습니다.'
+            print(f"파일 저장 권한 오류: {e}")
+            return
+        except Exception as e:
+            tasks[task_id]['status'] = 'error'
+            tasks[task_id]['message'] = f'엑셀 파일 저장 실패: {str(e)[:100]}'
+            print(f"엑셀 저장 오류: {e}")
+            return
 
         tasks[task_id]['status'] = 'completed'
         tasks[task_id]['progress'] = 100
