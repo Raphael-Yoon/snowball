@@ -215,7 +215,22 @@
                 <div class="col-12">
                     <h2 class="section-title"><i class="fas fa-envelope me-2"></i>Support</h2>
                 </div>
-                <div class="col-lg-3 col-md-6 offset-lg-3">
+                <div class="col-lg-3 col-md-6 offset-lg-2">
+                    <div class="feature-card border-success h-100">
+                        <img src="{{ url_for('static', filename='img/stock_analysis.jpg')}}" class="feature-img" alt="종목 분석"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-chart-line me-2"></i>종목 분석</h5>
+                            <p class="feature-description">KOSPI 종목의 재무 데이터와 투자 지표를 수집하고 분석합니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/link10" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• KOSPI 종목 데이터 자동 수집<br>• PBR, PER, ROE 등 투자지표 분석<br>• 업종별 평균 비교<br>• 엑셀 리포트 자동 생성</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
                     <div class="feature-card h-100">
                         <img src="{{ url_for('static', filename='img/video.jpg')}}" class="feature-img" alt="교육자료">
                         <div class="card-body p-4 d-flex flex-column">

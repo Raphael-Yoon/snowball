@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snowball - 종목 분석</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='trade_css/style.css') }}">
+</head>
+
+<body>
+    {% include 'navi.jsp' %}
+
+    <div class="container trade-container">
+        <h1>📊 종목 분석</h1>
+
+        <div class="field-selector">
+            <span class="section-label">수집할 데이터 선택</span>
+            <div class="select-all-container">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="selectAll" checked onclick="toggleSelectAll()">
+                    <span>전체 선택/해제</span>
+                </label>
+            </div>
+            <div class="field-checkboxes">
+                <div class="field-group">
+                    <h4>기본 정보</h4>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="종목코드" checked disabled>
+                        <span>종목코드 (필수)</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="종목명" checked disabled>
+                        <span>종목명 (필수)</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="업종" checked>
+                        <span>업종</span>
+                    </label>
+                </div>
+                <div class="field-group">
+                    <h4>투자 지표</h4>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="PBR" checked>
+                        <span>PBR</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="PER" checked>
+                        <span>PER</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="ROE" checked>
+                        <span>ROE</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="EPS" checked>
+                        <span>EPS</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="BPS" checked>
+                        <span>BPS</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="배당수익률" checked>
+                        <span>배당수익률</span>
+                    </label>
+                </div>
+                <div class="field-group">
+                    <h4>재무 정보</h4>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="매출액" checked>
+                        <span>매출액</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="영업이익" checked>
+                        <span>영업이익</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="이익잉여금" checked>
+                        <span>이익잉여금</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="현금및현금성자산" checked>
+                        <span>현금및현금성자산</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="52주최고가" checked>
+                        <span>52주 최고가</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="52주최저가" checked>
+                        <span>52주 최저가</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="EBITDA" checked>
+                        <span>EBITDA</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="FCF" checked>
+                        <span>FCF</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="field-checkbox" value="부채비율" checked>
+                        <span>부채비율</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="stock-count-selector">
+            <span class="section-label">수집할 종목 수</span>
+            <div class="count-options">
+                <button class="count-btn" onclick="selectCount(50)">50개</button>
+                <button class="count-btn active" onclick="selectCount(100)">100개</button>
+                <button class="count-btn" onclick="selectCount(200)">200개</button>
+                <button class="count-btn" onclick="selectCount(500)">500개</button>
+                <button class="count-btn" onclick="selectCount(0)">전체</button>
+            </div>
+            <input type="number" id="stockCount" value="100" min="0" max="10000" placeholder="직접 입력 (0=전체, 1~10000)">
+        </div>
+
+        <button id="collectBtn" class="btn" onclick="startCollection()">
+            🚀 데이터 수집 시작
+        </button>
+
+        <div id="downloadSection" class="download-section">
+            <p class="success-msg">✅ 데이터 수집이 완료되었습니다!</p>
+            <a id="downloadLink" href="#" class="download-btn">📥 엑셀 파일 다운로드</a>
+        </div>
+
+        <div id="errorSection" style="display: none;">
+            <div class="error-message" id="errorMessage"></div>
+        </div>
+
+        <div class="results-section">
+            <h2>📁 과거 수집 결과</h2>
+            <div id="resultsList">
+                <p style="text-align: center; color: #999;">불러오는 중...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTaskId = null;
+        let statusCheckInterval = null;
+
+        window.onload = function () {
+            loadResults();
+        };
+
+        function selectCount(count) {
+            document.querySelectorAll('.count-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            document.getElementById('stockCount').value = count;
+        }
+
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.field-checkbox:not(:disabled)');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+        }
+
+        function getSelectedFields() {
+            const checkboxes = document.querySelectorAll('.field-checkbox:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        function startCollection() {
+            const stockCount = parseInt(document.getElementById('stockCount').value);
+            const selectedFields = getSelectedFields();
+
+            if (isNaN(stockCount) || stockCount < 0 || stockCount > 10000) {
+                alert('종목 수는 0(전체) 또는 1~10000 사이의 숫자여야 합니다.');
+                return;
+            }
+
+            if (selectedFields.length < 2) {
+                alert('최소한 종목코드와 종목명 외에 1개 이상의 데이터를 선택해주세요.');
+                return;
+            }
+
+            const btn = document.getElementById('collectBtn');
+            const downloadSection = document.getElementById('downloadSection');
+            const errorSection = document.getElementById('errorSection');
+
+            btn.disabled = true;
+            btn.style.setProperty('--progress', '0%');
+            btn.textContent = '🚀 수집 중... (0%)';
+            downloadSection.classList.remove('active');
+            errorSection.style.display = 'none';
+
+            fetch('/link10/api/collect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    stock_count: stockCount,
+                    fields: selectedFields
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentTaskId = data.task_id;
+                        checkStatus();
+                    } else {
+                        showError('데이터 수집 시작에 실패했습니다.');
+                        resetButton();
+                    }
+                })
+                .catch(error => {
+                    showError('서버 연결에 실패했습니다: ' + error);
+                    resetButton();
+                });
+        }
+
+        function checkStatus() {
+            if (!currentTaskId) return;
+
+            statusCheckInterval = setInterval(() => {
+                fetch(`/link10/api/status/${currentTaskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        updateProgress(data);
+
+                        if (data.status === 'completed') {
+                            clearInterval(statusCheckInterval);
+                            showDownload(data.result_file);
+                            resetButton();
+                            loadResults();
+                        } else if (data.status === 'error') {
+                            clearInterval(statusCheckInterval);
+                            showError(data.message);
+                            resetButton();
+                        }
+                    })
+                    .catch(error => {
+                        clearInterval(statusCheckInterval);
+                        showError('상태 확인 실패: ' + error);
+                        resetButton();
+                    });
+            }, 1000);
+        }
+
+        function updateProgress(data) {
+            const btn = document.getElementById('collectBtn');
+            const progress = data.progress || 0;
+            btn.style.setProperty('--progress', progress + '%');
+            btn.textContent = `🚀 수집 중... (${progress}%)`;
+        }
+
+        function showDownload(filename) {
+            const downloadSection = document.getElementById('downloadSection');
+            const downloadLink = document.getElementById('downloadLink');
+            downloadLink.href = `/link10/api/download/${filename}`;
+            downloadSection.classList.add('active');
+        }
+
+        function showError(message) {
+            const errorSection = document.getElementById('errorSection');
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorSection.style.display = 'block';
+        }
+
+        function resetButton() {
+            const btn = document.getElementById('collectBtn');
+            btn.disabled = false;
+            btn.style.removeProperty('--progress');
+            btn.textContent = '🚀 데이터 수집 시작';
+        }
+
+        function loadResults() {
+            fetch('/link10/api/results')
+                .then(response => response.json())
+                .then(files => {
+                    const resultsList = document.getElementById('resultsList');
+                    if (files.length === 0) {
+                        resultsList.innerHTML = '<p style="text-align: center; color: #999;">저장된 결과가 없습니다.</p>';
+                        return;
+                    }
+                    resultsList.innerHTML = files.map(file => `
+                        <div class="result-item">
+                            <div class="result-info">
+                                <div class="result-filename">${file.filename}</div>
+                                <div class="result-meta">
+                                    생성: ${new Date(file.created_at).toLocaleString('ko-KR')}
+                                    | 크기: ${(file.size / 1024).toFixed(1)} KB
+                                </div>
+                            </div>
+                            <div class="result-actions">
+                                <a href="/link10/api/download/${file.filename}" class="result-download">다운로드</a>
+                                <button onclick="deleteResult('${file.filename}')" class="result-delete">삭제</button>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('결과 목록 로드 실패:', error);
+                });
+        }
+
+        function deleteResult(filename) {
+            if (!confirm(`'${filename}' 파일을 삭제하시겠습니까?`)) {
+                return;
+            }
+
+            fetch(`/link10/api/delete/${filename}`, {
+                method: 'DELETE'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadResults();
+                    } else {
+                        alert('삭제 실패: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('서버 오류: ' + error);
+                });
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
