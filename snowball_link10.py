@@ -139,7 +139,7 @@ def collect_stock_data(task_id, stock_count=100, selected_fields=None):
         tasks[task_id]['progress'] = 0
         tasks[task_id]['message'] = '데이터 수집 시작...'
 
-        dart = OpenDartReader.OpenDartReader(API_KEY)
+        dart = OpenDartReader(API_KEY)
 
         # 1. 최근 영업일 조회
         latest_date = get_latest_business_day()
