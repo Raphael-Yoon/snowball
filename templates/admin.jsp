@@ -63,6 +63,19 @@
                     </div>
                 </div>
             </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clipboard-check fa-3x text-warning mb-3"></i>
+                        <h5 class="card-title">기준통제 관리</h5>
+                        <p class="card-text">ITGC 기준통제 및 Attribute 템플릿을 관리합니다.</p>
+                        <a href="/admin/standard-controls" class="btn btn-warning">
+                            <i class="fas fa-cog me-1"></i>기준통제 관리
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="row mt-4">

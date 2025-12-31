@@ -2074,25 +2074,64 @@ def save_rcm_mapping(rcm_id, detail_id, std_control_id, user_id):
                     WHERE detail_id = %s
                 ''', (user_id, detail_id))
             else:
-                cursor = conn.execute('''
-                    UPDATE sb_rcm_detail
-                    SET mapped_std_control_id = %s,
-                        mapping_status = 'mapped',
-                        mapped_date = CURRENT_TIMESTAMP,
-                        mapped_by = %s
-                    WHERE detail_id = %s
-                ''', (std_control_id, user_id, detail_id))
-            
+                # 기준통제의 Attribute 정보 조회
+                std_control = conn.execute('''
+                    SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
+                           attribute5, attribute6, attribute7, attribute8, attribute9,
+                           population_attribute_count
+                    FROM sb_standard_control
+                    WHERE std_control_id = %s
+                ''', (std_control_id,)).fetchone()
+
+                if std_control:
+                    # 기준통제의 Attribute를 RCM 통제에 복사
+                    cursor = conn.execute('''
+                        UPDATE sb_rcm_detail
+                        SET mapped_std_control_id = %s,
+                            mapping_status = 'mapped',
+                            mapped_date = CURRENT_TIMESTAMP,
+                            mapped_by = %s,
+                            attribute0 = %s,
+                            attribute1 = %s,
+                            attribute2 = %s,
+                            attribute3 = %s,
+                            attribute4 = %s,
+                            attribute5 = %s,
+                            attribute6 = %s,
+                            attribute7 = %s,
+                            attribute8 = %s,
+                            attribute9 = %s,
+                            population_attribute_count = %s
+                        WHERE detail_id = %s
+                    ''', (std_control_id, user_id,
+                          std_control['attribute0'], std_control['attribute1'],
+                          std_control['attribute2'], std_control['attribute3'],
+                          std_control['attribute4'], std_control['attribute5'],
+                          std_control['attribute6'], std_control['attribute7'],
+                          std_control['attribute8'], std_control['attribute9'],
+                          std_control['population_attribute_count'],
+                          detail_id))
+                else:
+                    # 기준통제를 찾을 수 없는 경우 매핑만 저장
+                    cursor = conn.execute('''
+                        UPDATE sb_rcm_detail
+                        SET mapped_std_control_id = %s,
+                            mapping_status = 'mapped',
+                            mapped_date = CURRENT_TIMESTAMP,
+                            mapped_by = %s
+                        WHERE detail_id = %s
+                    ''', (std_control_id, user_id, detail_id))
+
             if cursor.rowcount == 0:
                 raise Exception(f"Detail ID {detail_id}를 찾을 수 없습니다.")
-            
+
             conn.commit()
-            
+
             # 매핑 변경 시 RCM 완료 상태 해제
             clear_rcm_completion(rcm_id)
-            
+
             return True
-            
+
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -2111,20 +2150,31 @@ def delete_rcm_mapping(rcm_id, detail_id, user_id):
                     ai_review_status = NULL,
                     ai_review_recommendation = NULL,
                     ai_reviewed_date = NULL,
-                    ai_reviewed_by = NULL
+                    ai_reviewed_by = NULL,
+                    attribute0 = NULL,
+                    attribute1 = NULL,
+                    attribute2 = NULL,
+                    attribute3 = NULL,
+                    attribute4 = NULL,
+                    attribute5 = NULL,
+                    attribute6 = NULL,
+                    attribute7 = NULL,
+                    attribute8 = NULL,
+                    attribute9 = NULL,
+                    population_attribute_count = NULL
                 WHERE detail_id = %s
             ''', (detail_id,))
-            
+
             if cursor.rowcount == 0:
                 raise Exception(f"Detail ID {detail_id}를 찾을 수 없습니다.")
-            
+
             conn.commit()
-            
+
             # 매핑 삭제 시 RCM 완료 상태 해제
             clear_rcm_completion(rcm_id)
-            
+
             return True
-            
+
     except Exception as e:
         import traceback
         traceback.print_exc()
