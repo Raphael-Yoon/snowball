@@ -8,6 +8,22 @@ import base64
 # Blueprint 생성
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+
+# Helper functions
+def get_user_info():
+    """현재 로그인한 사용자 정보 반환"""
+    if 'user_id' in session and get_current_user() is not None:
+        if 'user_info' in session:
+            return session['user_info']
+        return get_current_user()
+    return None
+
+
+def is_logged_in():
+    """로그인 상태 확인"""
+    return 'user_id' in session and get_current_user() is not None
+
+
 def encode_id(id_value):
     """ID를 Base64로 인코딩"""
     return base64.urlsafe_b64encode(str(id_value).encode()).decode()
@@ -1365,3 +1381,265 @@ def save_rcm_detail_attributes(detail_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'저장 중 오류가 발생했습니다: {str(e)}'}), 500
+
+# ============================================================
+# 기준통제 관리
+# ============================================================
+
+@admin_bp.route('/standard-controls')
+def admin_standard_controls():
+    """기준통제 관리 메인 페이지"""
+    user_info = get_user_info()
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        flash('관리자 권한이 필요합니다.')
+        return redirect(url_for('index'))
+
+    # 기준통제 목록 조회
+    with get_db() as conn:
+        standard_controls = conn.execute('''
+            SELECT
+                std_control_id,
+                control_category,
+                control_code,
+                control_name,
+                control_description,
+                attribute0, attribute1, attribute2, attribute3, attribute4,
+                attribute5, attribute6, attribute7, attribute8, attribute9,
+                population_attribute_count
+            FROM sb_standard_control
+            ORDER BY
+                CASE control_category
+                    WHEN 'APD' THEN 1
+                    WHEN 'PC' THEN 2
+                    WHEN 'CO' THEN 3
+                    WHEN 'PD' THEN 4
+                    ELSE 5
+                END,
+                control_code
+        ''').fetchall()
+
+        controls_list = [dict(sc) for sc in standard_controls]
+
+    return render_template('admin_standard_controls.jsp',
+                         standard_controls=controls_list,
+                         is_logged_in=is_logged_in(),
+                         user_info=user_info,
+                         remote_addr=request.remote_addr)
+
+
+@admin_bp.route('/api/standard-control/<int:std_control_id>/attributes', methods=['GET', 'POST'])
+def manage_standard_control_attributes(std_control_id):
+    """기준통제 Attribute 조회/저장 (관리자 전용)"""
+    user_info = get_user_info()
+
+    # 관리자 권한 확인
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'}), 403
+
+    try:
+        db = get_db()
+
+        if request.method == 'GET':
+            # Attribute 조회
+            with db:
+                std_control = db.execute('''
+                    SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
+                           attribute5, attribute6, attribute7, attribute8, attribute9,
+                           population_attribute_count
+                    FROM sb_standard_control
+                    WHERE std_control_id = %s
+                ''', (std_control_id,)).fetchone()
+
+            if not std_control:
+                return jsonify({'success': False, 'message': '기준통제를 찾을 수 없습니다.'}), 404
+
+            # Row 객체를 딕셔너리로 변환
+            std_control_dict = dict(std_control)
+
+            # attribute 값이 있는 것만 딕셔너리로 변환
+            attributes = {}
+            for i in range(10):
+                attr_key = f'attribute{i}'
+                if std_control_dict.get(attr_key):
+                    attributes[attr_key] = std_control_dict[attr_key]
+
+            return jsonify({
+                'success': True,
+                'attributes': attributes,
+                'population_attribute_count': std_control_dict.get('population_attribute_count') if std_control_dict.get('population_attribute_count') is not None else 2
+            })
+
+        else:  # POST
+            # Attribute 저장
+            data = request.get_json()
+            attributes = data.get('attributes', {})
+            population_attribute_count = data.get('population_attribute_count') if data.get('population_attribute_count') is not None else 2
+
+            print(f'[manage_standard_control_attributes] Received population_attribute_count: {data.get("population_attribute_count")} (type: {type(data.get("population_attribute_count"))})')
+            print(f'[manage_standard_control_attributes] Final population_attribute_count: {population_attribute_count}')
+
+            # attribute 값 준비
+            attr_values = []
+            for i in range(10):
+                attr_key = f'attribute{i}'
+                attr_values.append(attributes.get(attr_key, None))
+
+            # UPDATE 쿼리 실행
+            with db:
+                db.execute('''
+                    UPDATE sb_standard_control
+                    SET attribute0 = %s, attribute1 = %s, attribute2 = %s, attribute3 = %s, attribute4 = %s,
+                        attribute5 = %s, attribute6 = %s, attribute7 = %s, attribute8 = %s, attribute9 = %s,
+                        population_attribute_count = %s
+                    WHERE std_control_id = %s
+                ''', (*attr_values, population_attribute_count, std_control_id))
+                db.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Attribute 설정이 저장되었습니다.'
+            })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'처리 중 오류가 발생했습니다: {str(e)}'}), 500
+
+
+@admin_bp.route('/api/standard-control', methods=['POST'])
+def add_standard_control():
+    """기준통제 추가 (관리자 전용)"""
+    user_info = get_user_info()
+
+    # 관리자 권한 확인
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'}), 403
+
+    try:
+        data = request.get_json()
+        control_code = data.get('control_code')
+        control_name = data.get('control_name')
+        control_category = data.get('control_category')
+        control_description = data.get('control_description', '')
+
+        # 필수 필드 검증
+        if not all([control_code, control_name, control_category]):
+            return jsonify({'success': False, 'message': '필수 필드가 누락되었습니다.'}), 400
+
+        # 카테고리 검증
+        if control_category not in ['APD', 'PC', 'CO', 'PD', 'ITGC', 'ELC', 'TLC']:
+            return jsonify({'success': False, 'message': '유효하지 않은 카테고리입니다.'}), 400
+
+        db = get_db()
+
+        # 중복 확인
+        with db:
+            existing = db.execute('SELECT std_control_id FROM sb_standard_control WHERE control_code = %s',
+                                (control_code,)).fetchone()
+            if existing:
+                return jsonify({'success': False, 'message': '이미 존재하는 통제코드입니다.'}), 400
+
+        # 삽입 실행
+        with db:
+            db.execute('''
+                INSERT INTO sb_standard_control (control_code, control_name, control_category, control_description)
+                VALUES (%s, %s, %s, %s)
+            ''', (control_code, control_name, control_category, control_description))
+            db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': '기준통제가 추가되었습니다.'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'추가 중 오류가 발생했습니다: {str(e)}'}), 500
+
+
+@admin_bp.route('/api/standard-control/<int:std_control_id>', methods=['PUT'])
+def update_standard_control(std_control_id):
+    """기준통제 정보 수정 (관리자 전용)"""
+    user_info = get_user_info()
+
+    # 관리자 권한 확인
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'}), 403
+
+    try:
+        data = request.get_json()
+        control_code = data.get('control_code')
+        control_name = data.get('control_name')
+        control_category = data.get('control_category')
+        control_description = data.get('control_description', '')
+
+        # 필수 필드 검증
+        if not all([control_code, control_name, control_category]):
+            return jsonify({'success': False, 'message': '필수 필드가 누락되었습니다.'}), 400
+
+        # 카테고리 검증
+        if control_category not in ['APD', 'PC', 'CO', 'PD', 'ITGC', 'ELC', 'TLC']:
+            return jsonify({'success': False, 'message': '유효하지 않은 카테고리입니다.'}), 400
+
+        # 기준통제 존재 확인
+        with get_db() as db:
+            existing = db.execute('SELECT std_control_id FROM sb_standard_control WHERE std_control_id = %s',
+                                (std_control_id,)).fetchone()
+            if not existing:
+                return jsonify({'success': False, 'message': '기준통제를 찾을 수 없습니다.'}), 404
+
+        # 업데이트 실행
+        with get_db() as db:
+            db.execute('''
+                UPDATE sb_standard_control
+                SET control_code = %s,
+                    control_name = %s,
+                    control_category = %s,
+                    control_description = %s
+                WHERE std_control_id = %s
+            ''', (control_code, control_name, control_category, control_description, std_control_id))
+            db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': '기준통제가 수정되었습니다.'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'수정 중 오류가 발생했습니다: {str(e)}'}), 500
+
+
+@admin_bp.route('/api/standard-control/<int:std_control_id>', methods=['DELETE'])
+def delete_standard_control(std_control_id):
+    """기준통제 삭제 (관리자 전용)"""
+    user_info = get_user_info()
+
+    # 관리자 권한 확인
+    if not user_info or user_info.get('admin_flag') != 'Y':
+        return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'}), 403
+
+    try:
+        # 기준통제 존재 확인
+        with get_db() as db:
+            existing = db.execute('SELECT std_control_id FROM sb_standard_control WHERE std_control_id = %s',
+                                (std_control_id,)).fetchone()
+            if not existing:
+                return jsonify({'success': False, 'message': '기준통제를 찾을 수 없습니다.'}), 404
+
+        # 삭제 실행
+        with get_db() as db:
+            db.execute('DELETE FROM sb_standard_control WHERE std_control_id = %s', (std_control_id,))
+            db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': '기준통제가 삭제되었습니다.'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'삭제 중 오류가 발생했습니다: {str(e)}'}), 500

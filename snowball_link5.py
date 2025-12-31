@@ -862,7 +862,7 @@ def get_standard_controls_api():
     """기준통제 목록 조회 API"""
     try:
         controls = get_standard_controls()
-        return jsonify({'success': True, 'controls': controls})
+        return jsonify({'success': True, 'standard_controls': controls})
     except Exception as e:
         return jsonify({'success': False, 'message': '기준통제 조회 중 오류가 발생했습니다.'}), 500
 
@@ -2216,3 +2216,120 @@ def update_recommended_sample_size_link5(detail_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'저장 중 오류가 발생했습니다: {str(e)}'}), 500
+# snowball_link5.py 파일 끝에 추가할 코드
+
+@bp_link5.route('/api/rcm-detail/<int:detail_id>/map-standard-control', methods=['POST'])
+@login_required
+def map_standard_control(detail_id):
+    """RCM Detail에 기준통제 매핑"""
+    try:
+        data = request.get_json()
+        std_control_id = data.get('std_control_id')
+
+        if not std_control_id:
+            return jsonify({'success': False, 'message': '기준통제 ID가 필요합니다.'}), 400
+
+        db = get_db()
+        db_type = 'mysql' if hasattr(db, '_is_mysql') and db._is_mysql else 'sqlite'
+
+        with db:
+            # detail_id 존재 확인
+            if db_type == 'mysql':
+                detail = db.execute('''
+                    SELECT detail_id FROM sb_rcm_detail WHERE detail_id = %s
+                ''', (detail_id,)).fetchone()
+            else:
+                detail = db.execute('''
+                    SELECT detail_id FROM sb_rcm_detail WHERE detail_id = ?
+                ''', (detail_id,)).fetchone()
+
+            if not detail:
+                return jsonify({'success': False, 'message': 'RCM 통제 항목을 찾을 수 없습니다.'}), 404
+
+            # std_control_id 존재 확인
+            if db_type == 'mysql':
+                std_control = db.execute('''
+                    SELECT std_control_id FROM sb_standard_control WHERE std_control_id = %s
+                ''', (std_control_id,)).fetchone()
+            else:
+                std_control = db.execute('''
+                    SELECT std_control_id FROM sb_standard_control WHERE std_control_id = ?
+                ''', (std_control_id,)).fetchone()
+
+            if not std_control:
+                return jsonify({'success': False, 'message': '기준통제를 찾을 수 없습니다.'}), 404
+
+            # 매핑 업데이트
+            if db_type == 'mysql':
+                db.execute('''
+                    UPDATE sb_rcm_detail
+                    SET mapped_std_control_id = %s
+                    WHERE detail_id = %s
+                ''', (std_control_id, detail_id))
+            else:
+                db.execute('''
+                    UPDATE sb_rcm_detail
+                    SET mapped_std_control_id = ?
+                    WHERE detail_id = ?
+                ''', (std_control_id, detail_id))
+
+            db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': '기준통제 매핑이 완료되었습니다.'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'매핑 중 오류가 발생했습니다: {str(e)}'}), 500
+
+
+@bp_link5.route('/api/rcm-detail/<int:detail_id>/unmap-standard-control', methods=['POST'])
+@login_required
+def unmap_standard_control(detail_id):
+    """RCM Detail의 기준통제 매핑 해제"""
+    try:
+        db = get_db()
+        db_type = 'mysql' if hasattr(db, '_is_mysql') and db._is_mysql else 'sqlite'
+
+        with db:
+            # detail_id 존재 확인
+            if db_type == 'mysql':
+                detail = db.execute('''
+                    SELECT detail_id FROM sb_rcm_detail WHERE detail_id = %s
+                ''', (detail_id,)).fetchone()
+            else:
+                detail = db.execute('''
+                    SELECT detail_id FROM sb_rcm_detail WHERE detail_id = ?
+                ''', (detail_id,)).fetchone()
+
+            if not detail:
+                return jsonify({'success': False, 'message': 'RCM 통제 항목을 찾을 수 없습니다.'}), 404
+
+            # 매핑 해제 (NULL로 설정)
+            if db_type == 'mysql':
+                db.execute('''
+                    UPDATE sb_rcm_detail
+                    SET mapped_std_control_id = NULL
+                    WHERE detail_id = %s
+                ''', (detail_id,))
+            else:
+                db.execute('''
+                    UPDATE sb_rcm_detail
+                    SET mapped_std_control_id = NULL
+                    WHERE detail_id = ?
+                ''', (detail_id,))
+
+            db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': '기준통제 매핑이 해제되었습니다.'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'매핑 해제 중 오류가 발생했습니다: {str(e)}'}), 500

@@ -24,14 +24,25 @@
             /* 이 클래스는 더 이상 사용되지 않으므로 스타일을 제거하거나 비워둡니다. */
         }
         /* Chrome, Safari, Edge, Opera - 숫자 입력 필드 화살표 제거 */
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button {
+        input[type=number]:not(.population-spinner)::-webkit-inner-spin-button,
+        input[type=number]:not(.population-spinner)::-webkit-outer-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
         /* Firefox - 숫자 입력 필드 화살표 제거 */
-        input[type=number] {
+        input[type=number]:not(.population-spinner) {
             -moz-appearance: textfield;
+        }
+
+        /* 모집단 항목 수 입력 필드에만 스피너 표시 */
+        #population-attr-count::-webkit-inner-spin-button,
+        #population-attr-count::-webkit-outer-spin-button {
+            -webkit-appearance: inner-spin-button !important;
+            display: inline-block !important;
+            opacity: 1 !important;
+        }
+        #population-attr-count {
+            -moz-appearance: number-input !important;
         }
 
         /* 인라인 편집 스타일 */
@@ -49,29 +60,38 @@
         }
 
         /* 컬럼 고정 스타일 */
-        #rcmTable th:nth-child(1),
+        #rcmTable th:nth-child(1) {
+            position: sticky;
+            left: 0;
+        }
+
         #rcmTable td:nth-child(1) {
             position: sticky;
             left: 0;
-            z-index: 2;
-            background-color: inherit;
+            z-index: 3;
         }
 
-        #rcmTable th:nth-child(2),
-        #rcmTable td:nth-child(2) {
+        #rcmTable th:nth-child(2) {
             position: sticky;
             left: 80px; /* 통제코드 컬럼 너비 */
-            z-index: 2;
-            background-color: inherit;
+        }
+
+        #rcmTable td:nth-child(2) {
+            position: sticky;
+            left: 80px;
+            z-index: 3;
         }
 
         /* 통제활동 설명 컬럼도 고정 */
-        #rcmTable th:nth-child(3),
-        #rcmTable td:nth-child(3) {
+        #rcmTable th:nth-child(3) {
             position: sticky;
             left: 230px; /* 통제코드(80px) + 통제명(150px) */
-            z-index: 2;
-            background-color: inherit;
+        }
+
+        #rcmTable td:nth-child(3) {
+            position: sticky;
+            left: 230px;
+            z-index: 3;
         }
 
         /* 고정된 헤더의 배경색을 지정하여 스크롤 시 내용이 비치지 않도록 함 */
@@ -94,24 +114,47 @@
         #rcmTable tbody tr td:nth-child(1),
         #rcmTable tbody tr td:nth-child(2),
         #rcmTable tbody tr td:nth-child(3),
-        #rcmTable tbody tr td:nth-child(9) { background-color: #fff; }
+        #rcmTable tbody tr td:nth-child(9) {
+            background-color: #fff !important;
+        }
+
         #rcmTable tbody tr:nth-of-type(odd) td:nth-child(1),
         #rcmTable tbody tr:nth-of-type(odd) td:nth-child(2),
         #rcmTable tbody tr:nth-of-type(odd) td:nth-child(3),
-        #rcmTable tbody tr:nth-of-type(odd) td:nth-child(9) { background-color: #f9f9f9; }
+        #rcmTable tbody tr:nth-of-type(odd) td:nth-child(9) {
+            background-color: #f9f9f9 !important;
+        }
 
         /* Attribute 설정 컬럼을 오른쪽에 고정 */
         #rcmTable th:nth-child(9),
         #rcmTable td:nth-child(9) {
             position: sticky;
             right: 0;
-            z-index: 2;
             box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        /* Attribute 설정 바디 셀의 z-index */
+        #rcmTable tbody tr td:nth-child(9) {
+            z-index: 3;
         }
 
         .editable-cell.modified {
             background-color: #fff3cd !important;
             border-color: #ffc107 !important;
+        }
+
+        /* 모달 footer 버튼 높이 및 너비 통일 */
+        .modal-footer .btn {
+            height: 38px !important;
+            min-height: 38px !important;
+            max-height: 38px !important;
+            width: auto !important;
+            min-width: 80px !important;
+            padding: 0.375rem 1rem !important;
+            line-height: 1.5 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
     </style>
 </head>
@@ -217,6 +260,7 @@
                                         <th style="min-width: 100px;">통제주기</th>
                                         <th style="min-width: 100px;">통제구분</th>
                                         <th style="min-width: 90px;">핵심통제</th>
+                                        <th style="min-width: 80px;">기준통제</th>
                                         <th style="min-width: 300px; max-width: 400px;">테스트절차</th>
                                         <th style="min-width: 80px;">표본수</th>
                                         <th style="min-width: 120px;">Attribute 설정</th>
@@ -258,6 +302,23 @@
                                                 <span class="badge bg-secondary">비핵심</span>
                                             {% else %}
                                                 <span class="badge bg-warning">미설정</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if detail.mapped_std_control_id %}
+                                                <span class="badge bg-success"
+                                                      style="cursor: pointer;"
+                                                      title="클릭하여 기준통제 변경"
+                                                      onclick="openStdControlModal({{ detail.detail_id }}, '{{ detail.control_code|safe }}', {{ detail.mapped_std_control_id }})">
+                                                    <i class="fas fa-check-circle"></i> 매핑
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary"
+                                                      style="cursor: pointer;"
+                                                      title="클릭하여 기준통제 매핑"
+                                                      onclick="openStdControlModal({{ detail.detail_id }}, '{{ detail.control_code|safe }}', null)">
+                                                    <i class="fas fa-times-circle"></i> 미매핑
+                                                </span>
                                             {% endif %}
                                         </td>
                                         <td>
@@ -376,6 +437,61 @@
         </div>
     </div>
 
+    <!-- 기준통제 선택 모달 -->
+    <div class="modal fade" id="stdControlModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-link me-2"></i>기준통제 매핑
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>통제코드:</strong> <code id="std-modal-control-code"></code>
+                    </div>
+                    <hr>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        매핑할 기준통제를 선택하세요. 선택한 기준통제의 Attribute 템플릿이 자동으로 적용됩니다.
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="std-control-search" placeholder="기준통제 코드 또는 이름으로 검색...">
+                    </div>
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th width="15%">카테고리</th>
+                                    <th width="20%">통제코드</th>
+                                    <th width="65%">통제명</th>
+                                </tr>
+                            </thead>
+                            <tbody id="std-control-list">
+                                <tr>
+                                    <td colspan="3" class="text-center">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">로딩중...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>취소
+                    </button>
+                    <button type="button" class="btn btn-danger" id="btn-unmap-std-control" style="display: none;">
+                        <i class="fas fa-unlink me-1"></i>매핑 해제
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Attribute 설정 모달 -->
     <div class="modal fade" id="attributeModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -402,34 +518,40 @@
                             <small class="text-muted">(attribute0부터 시작, 나머지는 증빙 항목)</small>
                         </label>
                         <input type="number"
-                               class="form-control form-control-sm"
+                               class="form-control form-control-sm population-spinner"
                                id="population-attr-count"
                                min="0"
                                max="10"
                                value="2"
                                style="width: 100px;"
-                               placeholder="예: 2">
+                               placeholder="0-10"
+                               onchange="updateAttributeStyles()"
+                               oninput="validatePopCount()">
                         <small class="text-muted">
-                            예: 2로 설정 시 attribute0~1은 모집단, attribute2~9는 증빙
+                            0=모집단 없음(자동통제), 2=attribute0~1은 모집단, attribute2~9는 증빙
                         </small>
                     </div>
-                    <table class="table table-sm">
+                    <table class="table table-sm table-bordered">
                         <thead>
                             <tr>
                                 <th width="20%">Attribute</th>
-                                <th width="80%">필드명</th>
+                                <th width="10%">구분</th>
+                                <th width="70%">필드명</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="attribute-table-body">
                             {% for i in range(10) %}
-                            <tr>
+                            <tr class="attribute-row" data-index="{{ i }}">
                                 <td><strong>attribute{{ i }}</strong></td>
+                                <td class="text-center">
+                                    <span class="badge attribute-type-badge" data-index="{{ i }}"></span>
+                                </td>
                                 <td>
                                     <input type="text"
                                            class="form-control form-control-sm attribute-input"
                                            id="attr-input-{{ i }}"
                                            data-index="{{ i }}"
-                                           placeholder="예: 완료예정일, 완료여부, 승인자 등"
+                                           placeholder="예: 계정ID, 완료일자, 승인자 등"
                                            maxlength="100">
                                 </td>
                             </tr>
@@ -438,10 +560,10 @@
                     </table>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times me-1"></i>취소
                     </button>
-                    <button type="button" class="btn btn-primary" onclick="saveAttributes()">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="saveAttributes()">
                         <i class="fas fa-save me-1"></i>저장
                     </button>
                 </div>
@@ -452,6 +574,12 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
+        // 기준통제 모달 관련 변수
+        let stdControlModalInstance = null;
+        let currentMappingRcmDetailId = null;
+        let currentMappingControlCode = null;
+        let allStdControls = [];
+
         // 통제주기별 기본 표본수 계산
         function getDefaultSampleSize(frequencyCode) {
             if (!frequencyCode) return 1;
@@ -607,6 +735,26 @@
         // 변경사항 통합 저장 기능
         // 툴팁 초기화
         document.addEventListener('DOMContentLoaded', function() {
+            // 기준통제 모달 초기화
+            const stdModalEl = document.getElementById('stdControlModal');
+            if (stdModalEl) {
+                stdControlModalInstance = new bootstrap.Modal(stdModalEl);
+            }
+
+            // 기준통제 검색 기능
+            const searchInput = document.getElementById('std-control-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    filterStdControls(this.value);
+                });
+            }
+
+            // 매핑 해제 버튼
+            const unmapBtn = document.getElementById('btn-unmap-std-control');
+            if (unmapBtn) {
+                unmapBtn.addEventListener('click', unmapStdControl);
+            }
+
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
             var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
@@ -792,6 +940,43 @@
             attributeModalInstance.show();
         }
 
+        // 모집단 항목 수 유효성 검사
+        function validatePopCount() {
+            const input = document.getElementById('population-attr-count');
+            let value = parseInt(input.value);
+
+            if (isNaN(value) || value < 0) {
+                input.value = 0;
+            } else if (value > 10) {
+                input.value = 10;
+            }
+            updateAttributeStyles();
+        }
+
+        // Attribute 스타일 업데이트 (모집단/증빙 구분)
+        function updateAttributeStyles() {
+            const popCount = parseInt(document.getElementById('population-attr-count').value) || 0;
+
+            for (let i = 0; i < 10; i++) {
+                const row = document.querySelector(`.attribute-row[data-index="${i}"]`);
+                const badge = document.querySelector(`.attribute-type-badge[data-index="${i}"]`);
+
+                if (row && badge) {
+                    if (i < popCount) {
+                        // 모집단 영역
+                        row.style.backgroundColor = '#e7f3ff';
+                        badge.className = 'badge bg-primary attribute-type-badge';
+                        badge.textContent = '모집단';
+                    } else {
+                        // 증빙 영역
+                        row.style.backgroundColor = '#fff9e6';
+                        badge.className = 'badge bg-warning attribute-type-badge';
+                        badge.textContent = '증빙';
+                    }
+                }
+            }
+        }
+
         // 기존 attribute 값 로드
         function loadAttributes(detailId) {
             fetch(`/api/rcm/detail/${detailId}/attributes`)
@@ -814,6 +999,9 @@
                             // 0도 유효한 값이므로 null/undefined만 체크
                             popCountInput.value = data.population_attribute_count !== null && data.population_attribute_count !== undefined ? data.population_attribute_count : 2;
                         }
+
+                        // 스타일 업데이트
+                        updateAttributeStyles();
                     } else {
                         console.error('Failed to load attributes:', data.message);
                     }
@@ -894,6 +1082,151 @@
             } else {
                 summaryEl.innerHTML = '';
             }
+        }
+
+        // 기준통제 선택 모달 열기
+        function openStdControlModal(rcmDetailId, controlCode, currentStdControlId) {
+            currentMappingRcmDetailId = rcmDetailId;
+            currentMappingControlCode = controlCode;
+
+            document.getElementById('std-modal-control-code').textContent = controlCode;
+
+            // 매핑 해제 버튼 표시 여부
+            const unmapBtn = document.getElementById('btn-unmap-std-control');
+            if (currentStdControlId) {
+                unmapBtn.style.display = 'inline-block';
+            } else {
+                unmapBtn.style.display = 'none';
+            }
+
+            // 기준통제 목록 로드
+            loadStdControls(currentStdControlId);
+
+            // 모달 표시
+            stdControlModalInstance.show();
+        }
+
+        // 기준통제 목록 로드
+        function loadStdControls(currentStdControlId) {
+            fetch('/api/standard-controls')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        allStdControls = data.standard_controls;
+                        renderStdControls(allStdControls, currentStdControlId);
+                    } else {
+                        showToast('기준통제 목록 로드 실패', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('기준통제 목록 로드 중 오류 발생', 'error');
+                });
+        }
+
+        // 기준통제 목록 렌더링
+        function renderStdControls(controls, currentStdControlId) {
+            const tbody = document.getElementById('std-control-list');
+            if (!controls || controls.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center">기준통제가 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = controls.map(ctrl => {
+                const isSelected = ctrl.std_control_id == currentStdControlId;
+                const rowClass = isSelected ? 'table-primary' : '';
+                const badge = isSelected ? '<span class="badge bg-primary ms-2">현재 매핑됨</span>' : '';
+
+                return `
+                    <tr class="${rowClass}" style="cursor: pointer;" onclick="selectStdControl(${ctrl.std_control_id})">
+                        <td><span class="badge bg-info">${ctrl.control_category}</span></td>
+                        <td><code>${ctrl.control_code}</code></td>
+                        <td>${ctrl.control_name}${badge}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 기준통제 검색 필터
+        function filterStdControls(searchText) {
+            if (!searchText.trim()) {
+                renderStdControls(allStdControls, null);
+                return;
+            }
+
+            const filtered = allStdControls.filter(ctrl => {
+                const text = searchText.toLowerCase();
+                return ctrl.control_code.toLowerCase().includes(text) ||
+                       ctrl.control_name.toLowerCase().includes(text) ||
+                       ctrl.control_category.toLowerCase().includes(text);
+            });
+
+            renderStdControls(filtered, null);
+        }
+
+        // 기준통제 선택 (매핑)
+        function selectStdControl(stdControlId) {
+            if (!currentMappingRcmDetailId) {
+                showToast('오류: RCM Detail ID가 없습니다.', 'error');
+                return;
+            }
+
+            fetch(`/api/rcm-detail/${currentMappingRcmDetailId}/map-standard-control`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    std_control_id: stdControlId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('기준통제 매핑이 완료되었습니다.', 'success');
+                    stdControlModalInstance.hide();
+                    location.reload(); // 페이지 새로고침하여 변경사항 반영
+                } else {
+                    showToast('매핑 실패: ' + (data.message || '알 수 없는 오류'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('매핑 중 오류가 발생했습니다.', 'error');
+            });
+        }
+
+        // 기준통제 매핑 해제
+        function unmapStdControl() {
+            if (!currentMappingRcmDetailId) {
+                showToast('오류: RCM Detail ID가 없습니다.', 'error');
+                return;
+            }
+
+            if (!confirm('기준통제 매핑을 해제하시겠습니까?')) {
+                return;
+            }
+
+            fetch(`/api/rcm-detail/${currentMappingRcmDetailId}/unmap-standard-control`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('기준통제 매핑이 해제되었습니다.', 'success');
+                    stdControlModalInstance.hide();
+                    location.reload(); // 페이지 새로고침하여 변경사항 반영
+                } else {
+                    showToast('매핑 해제 실패: ' + (data.message || '알 수 없는 오류'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('매핑 해제 중 오류가 발생했습니다.', 'error');
+            });
         }
 
     </script>
