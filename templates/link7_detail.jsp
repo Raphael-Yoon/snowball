@@ -546,32 +546,51 @@
                             id="auto-check-control-name"></span>
                     </div>
                     <div class="alert alert-warning mb-3">
-                        <div class="mb-2">
-                            <i class="fas fa-info-circle me-2"></i><strong>자동통제는 설계평가에서 이미 테스트되었습니다.</strong>
+                        <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#autoControlGuide" aria-expanded="false" aria-controls="autoControlGuide">
+                            <div>
+                                <i class="fas fa-info-circle me-2"></i><strong>자동통제는 설계평가에서 이미 테스트되었습니다.</strong>
+                            </div>
+                            <i class="fas fa-chevron-down" id="autoControlGuideIcon"></i>
                         </div>
-                        <hr class="my-2" style="border-color: rgba(0,0,0,0.1);">
-                        <div class="mt-2" style="font-size: 0.9rem;">
-                            <p class="mb-2"><strong>자동통제란?</strong></p>
-                            <ul class="mb-2 ps-3" style="font-size: 0.85rem;">
-                                <li>시스템이나 프로그램에 의해 자동으로 수행되는 통제</li>
-                                <li>사람의 개입 없이 일관되게 작동하는 통제 활동</li>
-                            </ul>
-                            <p class="mb-2 mt-3"><strong>운영평가가 별도로 필요하지 않은 이유:</strong></p>
-                            <ul class="mb-0 ps-3" style="font-size: 0.85rem;">
-                                <li><strong>일관성:</strong> 설계된 대로 작동하면 운영 기간 내내 동일하게 작동</li>
-                                <li><strong>변동성 없음:</strong> 수동통제와 달리 사람의 실수나 변동성이 없음</li>
-                                <li><strong>설계평가 충분:</strong> 시스템 로직이 적절하게 설계되었는지만 확인하면 됨</li>
-                                <li><strong>효율성:</strong> 매번 샘플을 추출하여 테스트할 필요가 없음</li>
-                            </ul>
-                            <p class="mb-0 mt-3 text-muted" style="font-size: 0.8rem;">
-                                <i class="fas fa-lightbulb me-1"></i>
-                                <em>단, 시스템 변경이나 업그레이드가 있었다면 재평가가 필요할 수 있습니다.</em>
-                            </p>
+                        <div class="collapse" id="autoControlGuide">
+                            <hr class="my-2" style="border-color: rgba(0,0,0,0.1);">
+                            <div class="mt-2" style="font-size: 0.9rem;">
+                                <p class="mb-2"><strong>자동통제란?</strong></p>
+                                <ul class="mb-2 ps-3" style="font-size: 0.85rem;">
+                                    <li>시스템이나 프로그램에 의해 자동으로 수행되는 통제</li>
+                                    <li>사람의 개입 없이 일관되게 작동하는 통제 활동</li>
+                                </ul>
+                                <p class="mb-2 mt-3"><strong>운영평가가 별도로 필요하지 않은 이유:</strong></p>
+                                <ul class="mb-0 ps-3" style="font-size: 0.85rem;">
+                                    <li><strong>일관성:</strong> 설계된 대로 작동하면 운영 기간 내내 동일하게 작동</li>
+                                    <li><strong>변동성 없음:</strong> 수동통제와 달리 사람의 실수나 변동성이 없음</li>
+                                    <li><strong>설계평가 충분:</strong> 시스템 로직이 적절하게 설계되었는지만 확인하면 됨</li>
+                                    <li><strong>효율성:</strong> 매번 샘플을 추출하여 테스트할 필요가 없음</li>
+                                </ul>
+                                <p class="mb-0 mt-3 text-muted" style="font-size: 0.8rem;">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    <em>단, 시스템 변경이나 업그레이드가 있었다면 재평가가 필요할 수 있습니다.</em>
+                                </p>
+                            </div>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">설계평가 결과</label>
-                        <div id="auto-check-design-result" class="p-3 bg-light rounded"></div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                <thead class="table-light" id="auto-check-design-thead">
+                                </thead>
+                                <tbody id="auto-check-design-tbody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- 설계평가 이미지 표시 섹션 -->
+                    <div class="mb-3" id="auto-check-design-images-section" style="display: none;">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-images me-1"></i>평가 증빙 자료 (이미지)
+                        </label>
+                        <div id="auto-check-design-images-preview" class="border rounded p-2 bg-light"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">운영평가 확인</label>
@@ -880,6 +899,19 @@
                 window.scrollTo(0, parseInt(savedScrollPosition));
                 sessionStorage.removeItem('operationEvaluationScrollPosition');
             }
+
+            // 자동통제 안내 토글 아이콘 회전
+            const autoControlGuide = document.getElementById('autoControlGuide');
+            if (autoControlGuide) {
+                autoControlGuide.addEventListener('show.bs.collapse', function () {
+                    const icon = document.getElementById('autoControlGuideIcon');
+                    if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+                });
+                autoControlGuide.addEventListener('hide.bs.collapse', function () {
+                    const icon = document.getElementById('autoControlGuideIcon');
+                    if (icon) icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+                });
+            }
         });
 
         // 스크롤 위치를 저장하고 페이지 새로고침
@@ -933,18 +965,24 @@
 
             const codeEl = document.getElementById('auto-check-control-code');
             const nameEl = document.getElementById('auto-check-control-name');
-            const resultEl = document.getElementById('auto-check-design-result');
+            const thead = document.getElementById('auto-check-design-thead');
+            const tbody = document.getElementById('auto-check-design-tbody');
             const statusEl = document.getElementById('auto-check-status');
             const issueSection = document.getElementById('auto-check-issue-section');
 
             // 필수 요소들이 모두 있는지 확인
-            if (!codeEl || !nameEl || !resultEl || !statusEl || !issueSection) {
+            if (!codeEl || !nameEl || !thead || !tbody || !statusEl || !issueSection) {
                 console.error('Required elements not found');
                 return;
             }
 
             codeEl.textContent = controlCode;
             nameEl.textContent = controlName;
+
+            // RCM attribute 헤더 정보 가져오기
+            const rcmAttrs = (typeof rcmAttributesData !== 'undefined' && rcmAttributesData[controlCode]) || {};
+            const attributeNames = rcmAttrs.attributes || {};
+            console.log('[openAutoControlCheckModal] Attribute names:', attributeNames);
 
             // 저장된 운영평가 결과 로드 및 표시
             if (evaluated_controls[controlCode] && evaluated_controls[controlCode].conclusion) {
@@ -972,103 +1010,125 @@
                 if (issueEl) issueEl.value = '';
             }
 
+            // 이미지 섹션 초기화
+            const imagesSection = document.getElementById('auto-check-design-images-section');
+            const imagesPreview = document.getElementById('auto-check-design-images-preview');
+            if (imagesSection) imagesSection.style.display = 'none';
+            if (imagesPreview) imagesPreview.innerHTML = '';
+
             // 설계평가 데이터 로드
-            resultEl.innerHTML = '<p class="text-muted mb-0"><i class="fas fa-spinner fa-spin me-2"></i>설계평가 결과를 불러오는 중...</p>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted"><i class="fas fa-spinner fa-spin me-2"></i>설계평가 결과를 불러오는 중...</td></tr>';
 
             fetch(`/api/design-evaluation/get?rcm_id=${currentRcmId}&control_code=${controlCode}&design_evaluation_session=${currentEvaluationSession}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.evaluation) {
                         const eval_data = data.evaluation;
-                        let html = '';
 
-                        // 1. 적절성 및 효과성 결과
-                        html += '<div class="mb-3">';
-                        html += '<h6 class="mb-2"><i class="fas fa-clipboard-check me-2"></i>평가 결과</h6>';
-                        html += '<div class="row g-2">';
-
-                        if (eval_data.description_adequacy) {
-                            const adequacyText = eval_data.description_adequacy === 'adequate' ? '적절함' : '부적절함';
-                            const adequacyClass = eval_data.description_adequacy === 'adequate' ? 'success' : 'danger';
-                            html += `<div class="col-6"><span class="badge bg-${adequacyClass}">적절성: ${adequacyText}</span></div>`;
-                        }
-
-                        if (eval_data.overall_effectiveness) {
-                            const effectivenessText = eval_data.overall_effectiveness === 'effective' ? '효과적' :
-                                                      eval_data.overall_effectiveness === 'partially_effective' ? '부분적 효과적' : '비효과적';
-                            const effectivenessClass = eval_data.overall_effectiveness === 'effective' ? 'success' :
-                                                       eval_data.overall_effectiveness === 'partially_effective' ? 'warning' : 'danger';
-                            html += `<div class="col-6"><span class="badge bg-${effectivenessClass}">효과성: ${effectivenessText}</span></div>`;
-                        }
-
-                        html += '</div></div>';
-
-                        // 2. 설계평가 코멘트
-                        if (eval_data.design_comment && eval_data.design_comment.trim()) {
-                            html += '<div class="mb-3">';
-                            html += '<h6 class="mb-2"><i class="fas fa-comment me-2"></i>설계평가 코멘트</h6>';
-                            html += `<div class="p-2 bg-white border rounded" style="white-space: pre-wrap;">${eval_data.design_comment}</div>`;
-                            html += '</div>';
-                        }
-
-                        // 3. 증빙 내용 (evaluation_evidence에서 attribute 값들 표시)
+                        // 증빙 데이터 파싱
+                        let evidenceData = {};
                         if (eval_data.evaluation_evidence) {
                             try {
-                                const evidenceData = typeof eval_data.evaluation_evidence === 'string'
+                                evidenceData = typeof eval_data.evaluation_evidence === 'string'
                                     ? JSON.parse(eval_data.evaluation_evidence)
                                     : eval_data.evaluation_evidence;
-
-                                let hasEvidence = false;
-                                let evidenceHtml = '<div class="mb-3">';
-                                evidenceHtml += '<h6 class="mb-2"><i class="fas fa-file-alt me-2"></i>증빙 내용</h6>';
-                                evidenceHtml += '<div class="p-2 bg-white border rounded">';
-
-                                for (let key in evidenceData) {
-                                    if (evidenceData[key] && evidenceData[key].trim()) {
-                                        hasEvidence = true;
-                                        evidenceHtml += `<div class="mb-1" style="white-space: pre-wrap;">${evidenceData[key]}</div>`;
-                                    }
-                                }
-
-                                evidenceHtml += '</div></div>';
-
-                                if (hasEvidence) {
-                                    html += evidenceHtml;
-                                }
                             } catch (e) {
                                 console.error('증빙 데이터 파싱 오류:', e);
                             }
                         }
 
-                        // 4. 설계평가 이미지
-                        if (data.images && data.images.length > 0) {
-                            html += '<div class="mb-3">';
-                            html += '<h6 class="mb-2"><i class="fas fa-images me-2"></i>평가 증빙 이미지</h6>';
-                            html += '<div class="row g-2">';
+                        // 테이블 헤더 생성 - attribute0부터 attribute9까지 순서대로 확인
+                        let headerHtml = '<tr><th width="10%">표본 #</th>';
+                        let displayedAttributes = [];
 
-                            data.images.forEach(img => {
-                                html += '<div class="col-12 mb-2">';
-                                html += `<a href="/${img.file_path}" target="_blank">`;
-                                html += `<img src="/${img.file_path}" class="img-thumbnail" style="max-width: 100%; height: auto; cursor: pointer;" alt="증빙 이미지">`;
-                                html += '</a>';
-                                html += '</div>';
-                            });
+                        for (let i = 0; i < 10; i++) {
+                            const attrKey = `attribute${i}`;
+                            const attrName = attributeNames[attrKey];
 
-                            html += '</div></div>';
+                            // RCM에 정의되어 있는 attribute만 헤더에 추가
+                            if (attrName) {
+                                headerHtml += `<th>${attrName}</th>`;
+                                displayedAttributes.push(attrKey);
+                            }
                         }
 
-                        if (html) {
-                            resultEl.innerHTML = html;
+                        // attribute가 하나도 없으면 기본 증빙 내용 컬럼
+                        if (displayedAttributes.length === 0) {
+                            headerHtml += '<th width="70%">증빙 내용</th>';
+                        }
+
+                        headerHtml += '<th width="15%">결과</th></tr>';
+                        thead.innerHTML = headerHtml;
+
+                        // 테이블 바디 생성 - 단일 행 (#1 표본)
+                        let rowHtml = '<tr><td class="text-center align-middle">#1</td>';
+
+                        if (displayedAttributes.length > 0) {
+                            // 각 attribute 값 표시
+                            displayedAttributes.forEach(attrKey => {
+                                const value = evidenceData[attrKey] || '-';
+                                rowHtml += `<td class="align-middle">${value}</td>`;
+                            });
                         } else {
-                            resultEl.innerHTML = '<p class="text-muted mb-0">설계평가 데이터가 없습니다.</p>';
+                            // attribute가 없으면 전체 증빙 데이터를 하나의 셀에 표시
+                            const allValues = Object.values(evidenceData).filter(v => v).join(', ') || '-';
+                            rowHtml += `<td class="align-middle">${allValues}</td>`;
+                        }
+
+                        // 결과 컬럼
+                        const effectivenessText = eval_data.overall_effectiveness === 'effective' ? '효과적' :
+                                                  eval_data.overall_effectiveness === 'partially_effective' ? '부분적 효과적' :
+                                                  eval_data.overall_effectiveness === 'ineffective' ? '비효과적' : '효과적';
+                        rowHtml += `<td class="align-middle">
+                            <select class="form-select form-select-sm" disabled style="height: 31px;">
+                                <option value="effective" ${eval_data.overall_effectiveness === 'effective' ? 'selected' : ''}>${effectivenessText}</option>
+                            </select>
+                        </td></tr>`;
+
+                        tbody.innerHTML = rowHtml;
+
+                        // 설계평가 이미지 표시
+                        const imagesSection = document.getElementById('auto-check-design-images-section');
+                        const imagesPreview = document.getElementById('auto-check-design-images-preview');
+
+                        if (data.images && data.images.length > 0) {
+                            let imagesHtml = '<div class="row g-2">';
+                            data.images.forEach((img, index) => {
+                                imagesHtml += `
+                                    <div class="col-md-6 mb-2">
+                                        <a href="/${img.file_path}" target="_blank" class="d-block">
+                                            <img src="/${img.file_path}"
+                                                 class="img-thumbnail w-100"
+                                                 style="max-height: 200px; object-fit: contain; cursor: pointer;"
+                                                 alt="증빙 이미지 ${index + 1}">
+                                        </a>
+                                    </div>`;
+                            });
+                            imagesHtml += '</div>';
+
+                            if (imagesPreview) imagesPreview.innerHTML = imagesHtml;
+                            if (imagesSection) imagesSection.style.display = 'block';
+                        } else {
+                            if (imagesSection) imagesSection.style.display = 'none';
+                            if (imagesPreview) imagesPreview.innerHTML = '';
                         }
                     } else {
-                        resultEl.innerHTML = '<p class="text-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>설계평가 결과를 찾을 수 없습니다.</p>';
+                        thead.innerHTML = '';
+                        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-warning"><i class="fas fa-exclamation-triangle me-2"></i>설계평가 결과를 찾을 수 없습니다.</td></tr>';
+
+                        // 이미지 섹션 숨김
+                        const imagesSection = document.getElementById('auto-check-design-images-section');
+                        if (imagesSection) imagesSection.style.display = 'none';
                     }
                 })
                 .catch(error => {
                     console.error('설계평가 데이터 로드 오류:', error);
-                    resultEl.innerHTML = '<p class="text-danger mb-0"><i class="fas fa-times-circle me-2"></i>설계평가 결과 로드 실패</p>';
+                    thead.innerHTML = '';
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-danger"><i class="fas fa-times-circle me-2"></i>설계평가 결과 로드 실패</td></tr>';
+
+                    // 이미지 섹션 숨김
+                    const imagesSection = document.getElementById('auto-check-design-images-section');
+                    if (imagesSection) imagesSection.style.display = 'none';
                 });
 
             statusEl.onchange = function () {
@@ -1480,6 +1540,7 @@
 
             // 자동통제 판별
             if ((controlNatureCode && (controlNatureCode === 'A' || controlNatureCode === '자동' || controlNatureCode === 'Automated')) ||
+                (controlNature && (controlNature.toUpperCase() === 'AUTO' || controlNature.includes('자동') || controlNature.toLowerCase().includes('auto'))) ||
                 (controlType && (controlType.toUpperCase() === 'AUTO' || controlType.includes('자동') || controlType.toLowerCase().includes('auto')))) {
                 console.log('Auto control detected:', controlCode);
                 openAutoControlCheckModal(controlCode, controlName);
@@ -1575,11 +1636,11 @@
 
             // 자동통제 판별: 다양한 형태 지원 (A, Auto, Automated, 자동 등)
             const isAutomated = (controlNatureCode && (
-                controlNatureCode.toUpperCase() === 'A' ||
-                controlNatureCode.includes('자동') ||
-                controlNatureCode.toLowerCase().includes('auto')
+                controlNatureCode === 'A' ||
+                controlNatureCode === '자동' ||
+                controlNatureCode === 'Automated'
             )) || (controlNature && (
-                controlNature.toUpperCase() === 'A' ||
+                controlNature.toUpperCase() === 'AUTO' ||
                 controlNature.includes('자동') ||
                 controlNature.toLowerCase().includes('auto')
             )) || (controlType && (
@@ -2783,10 +2844,12 @@
                 // 당기 발생사실 없음 체크 확인
                 const noOccurrenceEl = document.getElementById('no_occurrence');
                 const noOccurrence = noOccurrenceEl ? noOccurrenceEl.checked : false;
+                console.log('[DEBUG 저장] noOccurrence =', noOccurrence);
 
                 // 설계평가 대체 체크 확인
                 const useDesignEvaluationEl = document.getElementById('use_design_evaluation');
                 const useDesignEvaluation = useDesignEvaluationEl ? useDesignEvaluationEl.checked : false;
+                console.log('[DEBUG 저장] useDesignEvaluation =', useDesignEvaluation);
 
                 let evaluationData;
 
@@ -2807,7 +2870,12 @@
                 } else {
                     // 일반 평가인 경우
                     // 표본 라인별 데이터 수집
-                    const sampleSize = parseInt(formData.get('sample_size')) || 0;
+                    // sample_size는 formData에 없을 수 있으므로 DOM에서 직접 가져오기
+                    const sampleSizeEl = document.getElementById('sample_size');
+                    const sampleSizeRaw = sampleSizeEl ? sampleSizeEl.value : (formData.get('sample_size') || '0');
+                    console.log('[DEBUG 저장] sampleSizeEl exists:', !!sampleSizeEl, ', value =', sampleSizeRaw, 'type:', typeof sampleSizeRaw);
+                    const sampleSize = parseInt(sampleSizeRaw) || 0;
+                    console.log('[DEBUG 저장] parseInt 후 sampleSize =', sampleSize);
                     const sampleLines = [];
                     let exceptionCount = 0;
                     let exceptionWithoutMitigationCount = 0;

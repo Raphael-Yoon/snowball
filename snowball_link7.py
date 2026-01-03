@@ -817,15 +817,25 @@ def save_operation_evaluation_api():
         # 표본 크기 유효성 검사 (no_occurrence가 아니고, 설계평가 대체가 아닌 경우에만)
         is_no_occurrence = evaluation_data.get('no_occurrence', False)
         use_design_evaluation = evaluation_data.get('use_design_evaluation', False)
+        print(f"[DEBUG 표본수 검증] control_code={control_code}")
+        print(f"[DEBUG 표본수 검증] is_no_occurrence={is_no_occurrence}, use_design_evaluation={use_design_evaluation}, recommended_size={recommended_size}")
         if not is_no_occurrence and not use_design_evaluation and recommended_size > 0:
             submitted_sample_size = evaluation_data.get('sample_size')
+            print(f"[DEBUG 표본수 검증] submitted_sample_size (원본)={submitted_sample_size}, type={type(submitted_sample_size)}")
             if submitted_sample_size is not None:
                 submitted_sample_size = int(submitted_sample_size)
+                print(f"[DEBUG 표본수 검증] submitted_sample_size (int변환)={submitted_sample_size}, recommended_size={recommended_size}")
+                print(f"[DEBUG 표본수 검증] 비교 결과: {submitted_sample_size} < {recommended_size} = {submitted_sample_size < recommended_size}")
                 if submitted_sample_size < recommended_size:
+                    print(f"[DEBUG 표본수 검증] ❌ 검증 실패! 에러 반환")
                     return jsonify({
                         'success': False,
                         'message': f'표본 크기({submitted_sample_size})는 권장 표본수({recommended_size})보다 작을 수 없습니다.'
                     })
+                else:
+                    print(f"[DEBUG 표본수 검증] ✅ 검증 통과")
+        else:
+            print(f"[DEBUG 표본수 검증] 표본수 검증 건너뜀")
 
         print("DB 저장 시작...")
         # 운영평가 결과 저장 (Header-Line 구조)
@@ -2575,10 +2585,13 @@ def download_operation_evaluation():
     # 필수 파라미터 검증
     if not all([rcm_id, evaluation_session, design_evaluation_session, control_code]):
         flash('RCM ID, 운영평가 세션, 설계평가 세션, 통제번호가 필요합니다.', 'error')
-        return redirect(url_for('link7.user_operation_evaluation'))
+        return redirect(url_for('link7.user_operation_evaluation_rcm'))
 
     # 자동통제 여부 확인
     is_auto_control = (evaluation_session == 'AUTO')
+
+    print(f"[DEBUG download_operation_evaluation] rcm_id={rcm_id}, evaluation_session={evaluation_session}, design_evaluation_session={design_evaluation_session}, control_code={control_code}")
+    print(f"[DEBUG download_operation_evaluation] is_auto_control={is_auto_control}")
 
     try:
         # 템플릿 파일 경로
@@ -2586,7 +2599,7 @@ def download_operation_evaluation():
 
         if not os.path.exists(template_path):
             flash('템플릿 파일을 찾을 수 없습니다.', 'error')
-            return redirect(url_for('link7.user_operation_evaluation'))
+            return redirect(url_for('link7.user_operation_evaluation_rcm'))
 
         # 템플릿 로드 (외부 링크 제거)
         wb = load_workbook(template_path, keep_links=False)
@@ -2601,12 +2614,13 @@ def download_operation_evaluation():
 
             if not rcm_info:
                 flash('RCM 정보를 찾을 수 없습니다.', 'error')
-                return redirect(url_for('link7.user_operation_evaluation'))
+                return redirect(url_for('link7.user_operation_evaluation_rcm'))
 
             # 운영평가 결과 조회 (해당 통제 1개만)
             # 자동통제인 경우에도 저장된 운영평가 데이터가 있으면 사용
             if is_auto_control:
                 # 먼저 저장된 운영평가 데이터 찾기 (design_evaluation_session으로 연결)
+                print(f"[DEBUG] 자동통제 조회 - rcm_id={rcm_id}, evaluation_name={design_evaluation_session}, control_code={control_code}")
                 evaluation = conn.execute("""
                     SELECT
                         l.line_id,
@@ -2632,9 +2646,12 @@ def download_operation_evaluation():
                     JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
                     JOIN sb_rcm_detail d ON d.rcm_id = h.rcm_id AND d.control_code = l.control_code
                     WHERE h.rcm_id = %s
-                      AND h.design_evaluation_session = %s
+                      AND h.evaluation_name = %s
+                      AND h.status >= 2
                       AND l.control_code = %s
+                      AND l.conclusion IS NOT NULL
                 """, (rcm_id, design_evaluation_session, control_code)).fetchone()
+                print(f"[DEBUG] 자동통제 조회 결과: {evaluation is not None}")
 
                 # 저장된 데이터가 없으면 RCM 정보만 가져오기
                 if not evaluation:
@@ -2663,6 +2680,7 @@ def download_operation_evaluation():
                         WHERE d.rcm_id = %s AND d.control_code = %s
                     """, (rcm_id, control_code)).fetchone()
             else:
+                print(f"[DEBUG] 수동통제 조회 - rcm_id={rcm_id}, evaluation_name={design_evaluation_session}, control_code={control_code}")
                 evaluation = conn.execute("""
                     SELECT
                         l.line_id,
@@ -2688,10 +2706,12 @@ def download_operation_evaluation():
                     JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
                     JOIN sb_rcm_detail d ON d.rcm_id = h.rcm_id AND d.control_code = l.control_code
                     WHERE h.rcm_id = %s
-                      AND h.evaluation_session = %s
-                      AND h.design_evaluation_session = %s
+                      AND h.evaluation_name = %s
+                      AND h.status >= 2
                       AND l.control_code = %s
-                """, (rcm_id, evaluation_session, design_evaluation_session, control_code)).fetchone()
+                      AND l.conclusion IS NOT NULL
+                """, (rcm_id, design_evaluation_session, control_code)).fetchone()
+                print(f"[DEBUG] 조회 결과: {evaluation is not None}")
 
             # 설계평가 결과 조회 (design_comment, evaluation_evidence 및 line_id 가져오기)
             design_evaluation = conn.execute("""
@@ -2699,7 +2719,7 @@ def download_operation_evaluation():
                 FROM sb_evaluation_line l
                 JOIN sb_evaluation_header h ON l.header_id = h.header_id
                 WHERE h.rcm_id = %s
-                  AND h.evaluation_session = %s
+                  AND h.evaluation_name = %s
                   AND l.control_code = %s
             """, (rcm_id, design_evaluation_session, control_code)).fetchone()
 
@@ -2713,7 +2733,7 @@ def download_operation_evaluation():
                     WHERE header_id = (
                         SELECT header_id
                         FROM sb_evaluation_header
-                        WHERE rcm_id = %s AND evaluation_session = %s
+                        WHERE rcm_id = %s AND evaluation_name = %s
                     ) AND control_code = %s
                 """, (rcm_id, design_evaluation_session, control_code)).fetchone()
 
@@ -2737,9 +2757,9 @@ def download_operation_evaluation():
                     WHERE header_id = (
                         SELECT header_id
                         FROM sb_evaluation_header
-                        WHERE rcm_id = %s AND evaluation_session = %s
+                        WHERE rcm_id = %s AND evaluation_name = %s AND status >= 2
                     ) AND control_code = %s
-                """, (rcm_id, evaluation_session, control_code)).fetchone()
+                """, (rcm_id, design_evaluation_session, control_code)).fetchone()
 
                 if op_line_result:
                     op_images = conn.execute("""
@@ -2754,11 +2774,11 @@ def download_operation_evaluation():
                     for img_file in operation_image_files:
                         print(f"[DEBUG]   - {img_file}")
                 else:
-                    print(f"[DEBUG] 운영평가 line을 찾을 수 없음 (rcm_id={rcm_id}, evaluation_session={evaluation_session}, control_code={control_code})")
+                    print(f"[DEBUG] 운영평가 line을 찾을 수 없음 (rcm_id={rcm_id}, evaluation_name={design_evaluation_session}, control_code={control_code})")
 
         if not evaluation:
             flash('다운로드할 운영평가 결과가 없습니다.', 'warning')
-            return redirect(url_for('link7.user_operation_evaluation'))
+            return redirect(url_for('link7.user_operation_evaluation_rcm'))
 
         eval_dict = dict(evaluation)
         design_eval_dict = dict(design_evaluation) if design_evaluation else {}
@@ -2838,6 +2858,11 @@ def download_operation_evaluation():
         line_id = eval_dict.get('line_id')
         population_count = eval_dict.get('population_attribute_count', 2)
         sample_size = eval_dict.get('sample_size', 0)
+
+        # 자동통제는 표본수가 0이지만 설계평가 데이터 1건을 표시해야 함
+        if is_auto_control and sample_size == 0:
+            sample_size = 1
+            print(f"[DEBUG] 자동통제 - sample_size를 0에서 1로 변경")
 
         # 모집단 attribute 개수와 증빙 attribute 개수 계산
         evidence_attributes = []
@@ -2945,12 +2970,23 @@ def download_operation_evaluation():
                 # 5번 행에 설계평가 증빙 값 표시
                 testing_table.cell(row=5, column=2, value=1)  # No.
 
-                # 증빙 attribute 값들을 해당 컬럼에 표시
+                # 자동통제는 모집단과 증빙을 구분하여 표시 (수동통제와 동일한 구조)
                 col = 3
+
+                # 모집단 데이터 (C열부터, 빈 값으로 두거나 설계평가 데이터에서 가져오기)
+                for i in range(population_count):
+                    attr_key = f'attribute{i}'
+                    # 자동통제의 경우 모집단은 빈 값 또는 설계평가 데이터에서 가져오기
+                    attr_value = evidence_data.get(attr_key, '')
+                    print(f"[DEBUG] 자동통제 모집단 {attr_key} ({eval_dict.get(attr_key)}) = '{attr_value}' -> 컬럼 {col}")
+                    testing_table.cell(row=5, column=col, value=attr_value)
+                    col += 1
+
+                # 증빙 데이터 (모집단 다음 컬럼부터)
                 for i, attr_name in evidence_attributes:
                     attr_key = f'attribute{i}'
                     attr_value = evidence_data.get(attr_key, '')
-                    print(f"[DEBUG] attribute{i} ({attr_name}) = '{attr_value}' -> 컬럼 {col}")
+                    print(f"[DEBUG] 자동통제 증빙 {attr_key} ({attr_name}) = '{attr_value}' -> 컬럼 {col}")
                     testing_table.cell(row=5, column=col, value=attr_value)
                     col += 1
 
@@ -2967,15 +3003,18 @@ def download_operation_evaluation():
         # 샘플 데이터 입력 (5행부터) - 자동통제는 건너뜀
         if line_id and not is_auto_control:
             samples = get_operation_evaluation_samples(line_id)
+            print(f"[DEBUG] Retrieved {len(samples) if samples else 0} samples for line_id={line_id}")
             if samples:
                 for row_idx, sample in enumerate(samples, start=5):
                     sample_attributes = sample.get('attributes', {})
+                    print(f"[DEBUG] Sample #{row_idx-4} attributes: {sample_attributes}")
 
                     # 모집단 데이터 (C열부터)
                     col = 3
                     for i in range(population_count):
                         attr_key = f'attribute{i}'
                         attr_value = sample_attributes.get(attr_key, '')
+                        print(f"[DEBUG] Writing population attr{i}={attr_value} to row={row_idx}, col={col}")
                         testing_table.cell(row=row_idx, column=col, value=attr_value)
                         col += 1
 
@@ -2983,6 +3022,7 @@ def download_operation_evaluation():
                     for i, attr_name in evidence_attributes:
                         attr_key = f'attribute{i}'
                         attr_value = sample_attributes.get(attr_key, '')
+                        print(f"[DEBUG] Writing evidence attr{i}={attr_value} to row={row_idx}, col={col}")
                         testing_table.cell(row=row_idx, column=col, value=attr_value)
                         col += 1
 
@@ -3204,7 +3244,7 @@ def download_operation_evaluation():
         import traceback
         traceback.print_exc()
         flash(f'다운로드 중 오류가 발생했습니다: {str(e)}', 'error')
-        return redirect(url_for('link7.user_operation_evaluation'))
+        return redirect(url_for('link7.user_operation_evaluation_rcm'))
 
 
 @bp_link7.route('/api/operation-evaluation/upload-image', methods=['POST'])
@@ -3716,7 +3756,7 @@ def get_design_data_for_manual_control(control_code):
                 SELECT l.evaluation_evidence, l.evaluation_rationale
                 FROM sb_evaluation_line l
                 JOIN sb_evaluation_header h ON l.header_id = h.header_id
-                WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_session = %s AND l.control_code = %s
+                WHERE h.rcm_id = %s AND h.user_id = %s AND h.evaluation_name = %s AND l.control_code = %s
             ''', (rcm_id, user_info['user_id'], design_evaluation_session, control_code)).fetchone()
 
             if design_eval:
