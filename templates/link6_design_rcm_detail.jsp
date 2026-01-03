@@ -171,11 +171,11 @@
                                         {% if evaluation_type == 'ITGC' %}
                                         <td>
                                             {% if mapping_info %}
-                                                <a href="/rcm/{{ rcm_id }}/mapping" class="badge bg-success text-white text-decoration-none" title="{{ mapping_info.std_control_name or mapping_info.std_control_code or '기준통제 매핑됨' }}" data-bs-toggle="tooltip">
+                                                <a href="javascript:void(0)" onclick="openStdControlModal({{ detail.detail_id }}, '{{ detail.control_code }}', {{ mapping_info.std_control_id or 'null' }})" class="badge bg-success text-white text-decoration-none" title="{{ mapping_info.std_control_name or mapping_info.std_control_code or '기준통제 매핑됨' }}" data-bs-toggle="tooltip">
                                                     <i class="fas fa-link me-1"></i>매핑
                                                 </a>
                                             {% else %}
-                                                <a href="/rcm/{{ rcm_id }}/mapping" class="badge bg-warning text-dark fw-bold text-decoration-none" style="border: 2px solid #fd7e14;" title="클릭하여 기준통제 매핑하기" data-bs-toggle="tooltip">
+                                                <a href="javascript:void(0)" onclick="openStdControlModal({{ detail.detail_id }}, '{{ detail.control_code }}', null)" class="badge bg-warning text-dark fw-bold text-decoration-none" style="border: 2px solid #fd7e14;" title="클릭하여 기준통제 매핑하기" data-bs-toggle="tooltip">
                                                     <i class="fas fa-exclamation-triangle me-1"></i>매핑안됨
                                                 </a>
                                             {% endif %}
@@ -366,7 +366,7 @@
                                            accept="image/*" multiple>
                                     <div class="form-text">현장 사진, 스크린샷, 문서 스캔본 등 평가 근거가 되는 이미지 파일을 첨부하세요. (다중 선택 가능)</div>
                                 </div>
-                                <div id="imagePreview" class="mt-2"></div>
+                                <div id="imagePreview" class="mt-2" style="width: 100%;"></div>
                             </div>
 
                             <div class="mb-3" id="design-comment-section">
@@ -474,8 +474,63 @@
         </div>
     </div>
 
+    <!-- 기준통제 선택 모달 -->
+    <div class="modal fade" id="stdControlModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-link me-2"></i>기준통제 매핑
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>통제코드:</strong> <code id="std-modal-control-code"></code>
+                    </div>
+                    <hr>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        매핑할 기준통제를 선택하세요. 선택한 기준통제의 Attribute 템플릿이 자동으로 적용됩니다.
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="std-control-search" placeholder="기준통제 코드 또는 이름으로 검색...">
+                    </div>
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th width="15%">카테고리</th>
+                                    <th width="20%">통제코드</th>
+                                    <th width="65%">통제명</th>
+                                </tr>
+                            </thead>
+                            <tbody id="std-control-list">
+                                <tr>
+                                    <td colspan="3" class="text-center">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">로딩중...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>취소
+                    </button>
+                    <button type="button" class="btn btn-danger" id="btn-unmap-std-control" style="display: none;">
+                        <i class="fas fa-unlink me-1"></i>매핑 해제
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <!-- 설계평가 JavaScript -->
     <script>
         let currentEvaluationIndex = null;
@@ -753,9 +808,10 @@
         function createImagePreview(src, fileName, index) {
             const div = document.createElement('div');
             div.className = 'image-preview-item d-block mb-3 position-relative';
+            div.style.cssText = 'width: 100% !important; max-width: 600px !important;';
 
             div.innerHTML = `
-                <img src="${src}" class="img-thumbnail" style="max-width: 100%; height: auto; display: block;" alt="${fileName}">
+                <img src="${src}" class="img-thumbnail" style="width: 100% !important; max-width: 600px !important; height: auto !important; display: block !important;" alt="${fileName}">
                 <div class="small text-muted mt-1">${fileName}</div>
                 <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 rounded-circle"
                         style="width: 20px; height: 20px; padding: 0; margin: 2px;"
@@ -799,25 +855,89 @@
         function displayExistingImages(images) {
             const previewContainer = document.getElementById('imagePreview');
             if (!previewContainer) return;
-            
+
             // 기존 미리보기 초기화
             previewContainer.innerHTML = '';
-            
+
+            // 디버깅: 이미지 데이터 확인
+            console.log('[displayExistingImages] Images data:', images);
+
             // 기존 이미지들을 미리보기에 표시
             if (images && images.length > 0) {
                 images.forEach((imageInfo, index) => {
+                    console.log(`[displayExistingImages] Image ${index}:`, imageInfo);
+
                     const div = document.createElement('div');
                     div.className = 'image-preview-item d-block mb-3 position-relative';
+                    div.style.cssText = 'width: 100% !important; max-width: 600px !important;';
+
+                    // image_id가 있는지 확인
+                    if (!imageInfo.image_id) {
+                        console.warn(`[displayExistingImages] Image ${index} has no image_id:`, imageInfo);
+                    }
 
                     div.innerHTML = `
-                        <img src="${imageInfo.url}" class="img-thumbnail" style="max-width: 100%; height: auto; display: block;" alt="${imageInfo.filename}">
+                        <img src="${imageInfo.url}" class="img-thumbnail" style="width: 100% !important; max-width: 600px !important; height: auto !important; display: block !important;" alt="${imageInfo.filename}">
                         <div class="small text-muted mt-1">${imageInfo.filename}</div>
                         <div class="small text-success">저장됨</div>
+                        <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 rounded-circle"
+                                style="width: 20px; height: 20px; padding: 0; margin: 2px;"
+                                onclick="deleteExistingImage(${imageInfo.image_id}, this.parentElement)">×</button>
                     `;
 
                     previewContainer.appendChild(div);
                 });
             }
+        }
+
+        // 저장된 이미지 삭제
+        function deleteExistingImage(imageId, element) {
+            if (!confirm('이 이미지를 삭제하시겠습니까?')) {
+                return;
+            }
+
+            // 버튼 비활성화
+            const button = element.querySelector('button');
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            }
+
+            fetch(`/api/design-evaluation/delete-image/${imageId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 화면에서 이미지 제거
+                    element.remove();
+
+                    // evaluationResults에서도 해당 이미지 제거
+                    if (currentEvaluationIndex !== null && evaluationResults[currentEvaluationIndex]) {
+                        const images = evaluationResults[currentEvaluationIndex].images || [];
+                        evaluationResults[currentEvaluationIndex].images = images.filter(img => img.image_id !== imageId);
+                    }
+
+                    showToast('이미지가 삭제되었습니다.', 'success');
+                } else {
+                    showToast('삭제 실패: ' + (data.message || '알 수 없는 오류'), 'error');
+                    if (button) {
+                        button.disabled = false;
+                        button.innerHTML = '×';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('이미지 삭제 중 오류가 발생했습니다.', 'error');
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = '×';
+                }
+            });
         }
         
         // 평가 이미지 보기 모달
@@ -1116,29 +1236,63 @@
         // 성공 메시지 표시 함수
         function showSuccessMessage(message) {
             const alertHtml = `
-                <div class="alert alert-success alert-dismissible fade show position-fixed" 
-                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;" 
+                <div class="alert alert-success alert-dismissible fade show position-fixed"
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;"
                      role="alert" id="successAlert">
                     <i class="fas fa-check-circle me-2"></i>
                     <strong>${message}</strong>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             `;
-            
+
             // 기존 성공 알림 제거
             const existingAlert = document.getElementById('successAlert');
             if (existingAlert) {
                 existingAlert.remove();
             }
-            
+
             // 새 알림 추가
             document.body.insertAdjacentHTML('beforeend', alertHtml);
-            
+
             // 3초 후 자동으로 알림 제거
             setTimeout(() => {
                 const alert = document.getElementById('successAlert');
                 if (alert) {
                     alert.remove();
+                }
+            }, 3000);
+        }
+
+        // Toast 알림 함수 (success, error, warning, info 타입 지원)
+        function showToast(message, type = 'success') {
+            const typeConfig = {
+                success: { class: 'alert-success', icon: 'fa-check-circle' },
+                error: { class: 'alert-danger', icon: 'fa-exclamation-circle' },
+                warning: { class: 'alert-warning', icon: 'fa-exclamation-triangle' },
+                info: { class: 'alert-info', icon: 'fa-info-circle' }
+            };
+
+            const config = typeConfig[type] || typeConfig.success;
+            const toastId = 'toast-' + Date.now();
+
+            const alertHtml = `
+                <div class="alert ${config.class} alert-dismissible fade show position-fixed"
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;"
+                     role="alert" id="${toastId}">
+                    <i class="fas ${config.icon} me-2"></i>
+                    <strong>${message}</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+
+            // 새 알림 추가
+            document.body.insertAdjacentHTML('beforeend', alertHtml);
+
+            // 3초 후 자동으로 알림 제거
+            setTimeout(() => {
+                const toast = document.getElementById(toastId);
+                if (toast) {
+                    toast.remove();
                 }
             }, 3000);
         }
@@ -2927,6 +3081,170 @@
             form.appendChild(actionInput);
             document.body.appendChild(form);
             form.submit();
+        }
+
+        // ==================== 기준통제 매핑 관련 기능 ====================
+        let stdControlModalInstance = null;
+        let currentMappingRcmDetailId = null;
+        let currentMappingControlCode = null;
+        let allStdControls = [];
+
+        // 페이지 로드 시 모달 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            stdControlModalInstance = new bootstrap.Modal(document.getElementById('stdControlModal'));
+
+            // 검색 입력 이벤트
+            document.getElementById('std-control-search').addEventListener('input', function(e) {
+                filterStdControls(e.target.value);
+            });
+
+            // 매핑 해제 버튼 이벤트
+            document.getElementById('btn-unmap-std-control').addEventListener('click', unmapStdControl);
+        });
+
+        // 기준통제 매핑 모달 열기
+        function openStdControlModal(rcmDetailId, controlCode, currentStdControlId) {
+            currentMappingRcmDetailId = rcmDetailId;
+            currentMappingControlCode = controlCode;
+
+            document.getElementById('std-modal-control-code').textContent = controlCode;
+
+            // 매핑 해제 버튼 표시 여부
+            const unmapBtn = document.getElementById('btn-unmap-std-control');
+            if (currentStdControlId) {
+                unmapBtn.style.display = 'inline-block';
+            } else {
+                unmapBtn.style.display = 'none';
+            }
+
+            // 기준통제 목록 로드
+            loadStdControls(currentStdControlId);
+
+            // 모달 표시
+            stdControlModalInstance.show();
+        }
+
+        // 기준통제 목록 로드
+        function loadStdControls(currentStdControlId) {
+            fetch('/api/standard-controls')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        allStdControls = data.standard_controls;
+                        renderStdControls(allStdControls, currentStdControlId);
+                    } else {
+                        showToast('기준통제 목록 로드 실패', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('기준통제 목록 로드 중 오류 발생', 'error');
+                });
+        }
+
+        // 기준통제 목록 렌더링
+        function renderStdControls(controls, currentStdControlId) {
+            const tbody = document.getElementById('std-control-list');
+            if (!controls || controls.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center">기준통제가 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = controls.map(ctrl => {
+                const isSelected = ctrl.std_control_id == currentStdControlId;
+                const rowClass = isSelected ? 'table-primary' : '';
+                const badge = isSelected ? '<span class="badge bg-primary ms-2">현재 매핑됨</span>' : '';
+
+                return `
+                    <tr class="${rowClass}" style="cursor: pointer;" onclick="selectStdControl(${ctrl.std_control_id})">
+                        <td><span class="badge bg-info">${ctrl.control_category}</span></td>
+                        <td><code>${ctrl.control_code}</code></td>
+                        <td>${ctrl.control_name}${badge}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 기준통제 검색 필터
+        function filterStdControls(searchText) {
+            if (!searchText.trim()) {
+                renderStdControls(allStdControls, null);
+                return;
+            }
+
+            const filtered = allStdControls.filter(ctrl => {
+                const text = searchText.toLowerCase();
+                return ctrl.control_code.toLowerCase().includes(text) ||
+                       ctrl.control_name.toLowerCase().includes(text) ||
+                       ctrl.control_category.toLowerCase().includes(text);
+            });
+
+            renderStdControls(filtered, null);
+        }
+
+        // 기준통제 선택 (매핑)
+        function selectStdControl(stdControlId) {
+            if (!currentMappingRcmDetailId) {
+                showToast('오류: RCM Detail ID가 없습니다.', 'error');
+                return;
+            }
+
+            fetch(`/api/rcm-detail/${currentMappingRcmDetailId}/map-standard-control`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    std_control_id: stdControlId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('기준통제 매핑이 완료되었습니다.', 'success');
+                    stdControlModalInstance.hide();
+                    location.reload(); // 페이지 새로고침하여 변경사항 반영
+                } else {
+                    showToast('매핑 실패: ' + (data.message || '알 수 없는 오류'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('매핑 중 오류가 발생했습니다.', 'error');
+            });
+        }
+
+        // 기준통제 매핑 해제
+        function unmapStdControl() {
+            if (!currentMappingRcmDetailId) {
+                showToast('오류: RCM Detail ID가 없습니다.', 'error');
+                return;
+            }
+
+            if (!confirm('기준통제 매핑을 해제하시겠습니까?')) {
+                return;
+            }
+
+            fetch(`/api/rcm-detail/${currentMappingRcmDetailId}/unmap-standard-control`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('기준통제 매핑이 해제되었습니다.', 'success');
+                    stdControlModalInstance.hide();
+                    location.reload(); // 페이지 새로고침하여 변경사항 반영
+                } else {
+                    showToast('매핑 해제 실패: ' + (data.message || '알 수 없는 오류'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('매핑 해제 중 오류가 발생했습니다.', 'error');
+            });
         }
     </script>
 </body>

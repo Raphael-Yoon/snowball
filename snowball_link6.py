@@ -659,32 +659,36 @@ def load_evaluation_data_api(rcm_id):
                 # DB에서 이미지 정보 조회
                 images_found = False
                 try:
-                    # line_id 조회
-                    line_result = conn.execute('''
-                        SELECT line_id FROM sb_evaluation_line
-                        WHERE header_id = %s AND control_code = %s
-                    ''', (current_header_id, control_code)).fetchone()
+                    with get_db() as conn:
+                        # line_id 조회
+                        line_result = conn.execute('''
+                            SELECT line_id FROM sb_evaluation_line
+                            WHERE header_id = %s AND control_code = %s
+                        ''', (current_header_id, control_code)).fetchone()
 
-                    if line_result:
-                        images = conn.execute('''
-                            SELECT file_path, file_name
-                            FROM sb_evaluation_image
-                            WHERE evaluation_type = %s AND line_id = %s
-                            ORDER BY uploaded_at
-                        ''', ('design', line_result['line_id'])).fetchall()
+                        if line_result:
+                            images = conn.execute('''
+                                SELECT image_id, file_path, file_name
+                                FROM sb_evaluation_image
+                                WHERE evaluation_type = %s AND line_id = %s
+                                ORDER BY uploaded_at
+                            ''', ('design', line_result['line_id'])).fetchall()
 
-                        for img in images:
-                            # file_path는 이미 "static/uploads/..."로 시작
-                            # static/ 제거하여 상대 경로로 변환
-                            relative_path = img['file_path'].replace('static/', '', 1) if img['file_path'].startswith('static/') else img['file_path']
-                            saved_images.append({
-                                'filename': img['file_name'],
-                                'path': relative_path,
-                                'url': f"/static/{relative_path}"
-                            })
-                            images_found = True
+                            for img in images:
+                                # file_path는 이미 "static/uploads/..."로 시작
+                                # static/ 제거하여 상대 경로로 변환
+                                relative_path = img['file_path'].replace('static/', '', 1) if img['file_path'].startswith('static/') else img['file_path']
+                                saved_images.append({
+                                    'image_id': img['image_id'],
+                                    'filename': img['file_name'],
+                                    'path': relative_path,
+                                    'url': f"/static/{relative_path}"
+                                })
+                                images_found = True
                 except Exception as e:
-                    pass
+                    print(f"[DEBUG] DB 이미지 조회 실패 - control_code: {control_code}, header_id: {current_header_id}, error: {e}")
+                    import traceback
+                    traceback.print_exc()
 
                 # DB에 이미지가 없으면 파일 시스템에서 폴백 검색
                 if not images_found:
@@ -2754,3 +2758,72 @@ def client_log():
     except Exception as e:
         print(f'[CLIENT LOG ERROR] {e}')
         return jsonify({'success': False})
+
+
+@bp_link6.route('/api/design-evaluation/delete-image/<int:image_id>', methods=['POST'])
+@login_required
+def delete_design_evaluation_image(image_id):
+    """설계평가 이미지 삭제 API"""
+    import os
+
+    try:
+        user_info = get_user_info()
+        print(f"[DELETE IMAGE] User info: user_id={user_info.get('user_id')}, admin_flag={user_info.get('admin_flag')}")
+
+        with get_db() as conn:
+            # 이미지 정보 조회 (권한 확인용)
+            image_info = conn.execute('''
+                SELECT ei.file_path, ei.line_id, h.rcm_id
+                FROM sb_evaluation_image ei
+                JOIN sb_evaluation_line l ON ei.line_id = l.line_id
+                JOIN sb_evaluation_header h ON l.header_id = h.header_id
+                WHERE ei.image_id = %s AND ei.evaluation_type = 'design'
+            ''', (image_id,)).fetchone()
+
+            if not image_info:
+                print(f"[DELETE IMAGE] Image not found: image_id={image_id}")
+                return jsonify({'success': False, 'message': '이미지를 찾을 수 없습니다.'})
+
+            print(f"[DELETE IMAGE] Image found: rcm_id={image_info['rcm_id']}, file_path={image_info['file_path']}")
+
+            # 권한 확인 (관리자이거나 해당 RCM에 접근 권한이 있는지)
+            if user_info.get('admin_flag') != 'Y':
+                print(f"[DELETE IMAGE] Not admin, checking RCM access...")
+                access_check = conn.execute('''
+                    SELECT permission_type FROM sb_user_rcm
+                    WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
+                ''', (user_info['user_id'], image_info['rcm_id'])).fetchone()
+
+                if not access_check:
+                    print(f"[DELETE IMAGE] No access: user_id={user_info['user_id']}, rcm_id={image_info['rcm_id']}")
+                    return jsonify({'success': False, 'message': '삭제 권한이 없습니다.'})
+                else:
+                    print(f"[DELETE IMAGE] Access granted via sb_user_rcm")
+            else:
+                print(f"[DELETE IMAGE] Admin access granted")
+
+            # 파일 삭제
+            file_path = image_info['file_path']
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    print(f"[DELETE IMAGE] File deleted: {file_path}")
+                except Exception as e:
+                    print(f"[DELETE IMAGE] File deletion failed: {e}")
+                    # 파일 삭제 실패해도 DB 레코드는 삭제 진행
+
+            # DB 레코드 삭제
+            conn.execute('''
+                DELETE FROM sb_evaluation_image
+                WHERE image_id = %s
+            ''', (image_id,))
+            conn.commit()
+
+            print(f"[DELETE IMAGE] Image deleted - image_id: {image_id}, user: {user_info['user_name']}")
+
+            return jsonify({'success': True, 'message': '이미지가 삭제되었습니다.'})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'이미지 삭제 중 오류가 발생했습니다: {str(e)}'})

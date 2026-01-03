@@ -2953,19 +2953,20 @@ def download_operation_evaluation():
                     design_line_id = design_eval_dict['line_id']
                     print(f"[DEBUG] 설계평가 line_id: {design_line_id}")
 
-                    design_sample = conn.execute("""
-                        SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
-                               attribute5, attribute6, attribute7, attribute8, attribute9
-                        FROM sb_evaluation_sample
-                        WHERE line_id = %s AND evaluation_type = 'design'
-                        LIMIT 1
-                    """, (design_line_id,)).fetchone()
+                    with get_db() as conn:
+                        design_sample = conn.execute("""
+                            SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
+                                   attribute5, attribute6, attribute7, attribute8, attribute9
+                            FROM sb_evaluation_sample
+                            WHERE line_id = %s AND evaluation_type = 'design'
+                            LIMIT 1
+                        """, (design_line_id,)).fetchone()
 
-                    if design_sample:
-                        evidence_data = dict(design_sample)
-                        print(f"[DEBUG] 조회된 설계평가 샘플 데이터: {evidence_data}")
-                    else:
-                        print(f"[DEBUG] 설계평가 샘플 데이터 없음")
+                        if design_sample:
+                            evidence_data = dict(design_sample)
+                            print(f"[DEBUG] 조회된 설계평가 샘플 데이터: {evidence_data}")
+                        else:
+                            print(f"[DEBUG] 설계평가 샘플 데이터 없음")
 
                 # 5번 행에 설계평가 증빙 값 표시
                 testing_table.cell(row=5, column=2, value=1)  # No.

@@ -469,7 +469,7 @@ def link2():
                              answer=session['answer'],
                              textarea_answer=session['textarea_answer'])
 
-    question_index = session['question_index']
+    question_index = session.get('question_index', 0)
 
     if request.method == 'POST':
         form_data = request.form
