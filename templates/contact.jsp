@@ -46,6 +46,7 @@
                     <div class="alert alert-danger text-center">문의 접수에 실패했습니다.<br>{{ error }}</div>
                 {% endif %}
                 <form method="post" action="/contact" class="mx-auto" style="width: 80%;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-3">
                         <label for="company_name" class="form-label">회사명 *</label>
                         {% if is_logged_in %}

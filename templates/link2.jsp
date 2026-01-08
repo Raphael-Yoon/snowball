@@ -62,6 +62,7 @@
 
         <!-- 질문 폼 -->
         <form action="/link2" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">

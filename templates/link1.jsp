@@ -22,6 +22,7 @@
 			<div class="card">
 				<div class="card-body">
 					<form action="/rcm_generate" method="POST">
+						<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 						<div class="mb-4">
 							<label class="form-label">e-Mail 주소</label>
 							<input type="email" class="form-control{% if is_logged_in %} bg-light{% endif %}" id="param1" name="param1" required placeholder="e-Mail 주소를 입력하세요" value="{{ user_email }}" {% if is_logged_in %}readonly{% endif %}>

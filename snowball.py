@@ -70,7 +70,7 @@ logger.info(f"Flask 앱 시작 - Environment: {'Production' if is_production els
 csrf = CSRFProtect(app)
 
 # CSRF 제외할 엔드포인트 (임시 - 향후 템플릿에 CSRF 토큰 추가 후 제거)
-csrf.exempt(bp_link1)
+# csrf.exempt(bp_link1)  # CSRF 보호 적용 완료
 csrf.exempt(bp_link3)
 csrf.exempt(bp_link4)
 csrf.exempt(bp_link5)

@@ -556,10 +556,16 @@
             readonlyInput.name = 'readonly';
             readonlyInput.value = 'true';
 
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = '{{ csrf_token() }}';
+
             form.appendChild(rcmInput);
             form.appendChild(sessionInput);
             form.appendChild(typeInput);
             form.appendChild(readonlyInput);
+            form.appendChild(csrfInput);
             document.body.appendChild(form);
             form.submit();
         }
@@ -587,9 +593,15 @@
             typeInput.name = 'evaluation_type';
             typeInput.value = 'ITGC';
 
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = '{{ csrf_token() }}';
+
             form.appendChild(rcmInput);
             form.appendChild(sessionInput);
             form.appendChild(typeInput);
+            form.appendChild(csrfInput);
             document.body.appendChild(form);
             form.submit();
         }

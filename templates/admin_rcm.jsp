@@ -113,6 +113,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="editRcmForm" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">RCM명 <span class="text-danger">*</span></label>
