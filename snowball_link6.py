@@ -1211,50 +1211,55 @@ def download_evaluation_excel(rcm_id):
             evaluation_data = {}
             if evaluation_session:
                 try:
-                    # 해당 세션의 설계평가 결과 조회 (overall_effectiveness 포함)
+                    # 해당 세션의 설계평가 결과 조회 (N+1 문제 해결: line_id 포함)
                     eval_results = conn.execute('''
-                        SELECT l.control_code, l.evaluation_evidence, l.evaluation_rationale, l.overall_effectiveness, h.header_id
+                        SELECT l.control_code, l.evaluation_evidence, l.evaluation_rationale,
+                               l.overall_effectiveness, l.line_id, h.header_id
                         FROM sb_evaluation_line l
                         JOIN sb_evaluation_header h ON l.header_id = h.header_id
                         WHERE h.rcm_id = %s AND h.evaluation_name = %s
                         ORDER BY l.control_sequence, l.control_code
                     ''', (rcm_id, evaluation_session)).fetchall()
 
-                    for eval_result in eval_results:
-                        control_code = eval_result['control_code']
-                        evidence = eval_result['evaluation_evidence'] or ''
-                        rationale = eval_result['evaluation_rationale'] or ''
-                        effectiveness = eval_result['overall_effectiveness'] or ''
-                        header_id = eval_result['header_id']
-                        
-                        # DB에서 이미지 경로 찾기
-                        images_info = ''
-                        try:
-                            # line_id 조회
-                            line_result = conn.execute('''
-                                SELECT line_id FROM sb_evaluation_line
-                                WHERE header_id = %s AND control_code = %s
-                            ''', (header_id, control_code)).fetchone()
+                    if eval_results:
+                        # 모든 line_id 수집
+                        line_ids = [eval['line_id'] for eval in eval_results]
 
-                            if line_result:
-                                images = conn.execute('''
-                                    SELECT file_path, file_name
-                                    FROM sb_evaluation_image
-                                    WHERE evaluation_type = %s AND line_id = %s
-                                    ORDER BY uploaded_at
-                                ''', ('design', line_result['line_id'])).fetchall()
+                        # 한 번의 쿼리로 모든 이미지 조회
+                        placeholders = ','.join(['%s'] * len(line_ids))
+                        all_images = conn.execute(f'''
+                            SELECT line_id, file_path, file_name
+                            FROM sb_evaluation_image
+                            WHERE evaluation_type = %s AND line_id IN ({placeholders})
+                            ORDER BY line_id, uploaded_at
+                        ''', ['design'] + line_ids).fetchall()
 
-                                if images:
-                                    images_info = json.dumps([{'file': img['file_name'], 'path': img['file_path']} for img in images])
-                        except Exception as e:
-                            pass
-                        
-                        evaluation_data[control_code] = {
-                            'evidence': evidence,
-                            'rationale': rationale,
-                            'effectiveness': effectiveness,
-                            'images': images_info
-                        }
+                        # line_id별로 이미지 그룹화
+                        images_by_line = {}
+                        for img in all_images:
+                            line_id = img['line_id']
+                            if line_id not in images_by_line:
+                                images_by_line[line_id] = []
+                            images_by_line[line_id].append({'file': img['file_name'], 'path': img['file_path']})
+
+                        # 각 평가 결과에 이미지 매핑
+                        for eval_result in eval_results:
+                            control_code = eval_result['control_code']
+                            evidence = eval_result['evaluation_evidence'] or ''
+                            rationale = eval_result['evaluation_rationale'] or ''
+                            effectiveness = eval_result['overall_effectiveness'] or ''
+                            line_id = eval_result['line_id']
+
+                            # 해당 line_id의 이미지 가져오기
+                            images = images_by_line.get(line_id, [])
+                            images_info = json.dumps(images) if images else ''
+
+                            evaluation_data[control_code] = {
+                                'evidence': evidence,
+                                'rationale': rationale,
+                                'effectiveness': effectiveness,
+                                'images': images_info
+                            }
                 except Exception as e:
                     pass
 

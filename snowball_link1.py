@@ -4,7 +4,7 @@ import os
 from io import BytesIO
 from openpyxl import load_workbook
 from snowball_mail import send_gmail_with_attachment
-from auth import log_user_activity
+from auth import log_user_activity, login_required
 
 # Blueprint 생성
 bp_link1 = Blueprint('link1', __name__)
@@ -189,8 +189,9 @@ def link1():
 
 
 @bp_link1.route('/rcm_generate', methods=['POST'])
+@login_required
 def rcm_generate():
-    """RCM 엑셀 생성 및 전송"""
+    """RCM 엑셀 생성 및 전송 (인증 필요)"""
     form_data = request.form.to_dict()
     success, user_email, error = generate_and_send_rcm_excel(form_data)
     if success:

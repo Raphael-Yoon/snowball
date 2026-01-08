@@ -297,10 +297,10 @@
                         <span id="existingSessionText"></span>
                     </div>
                     <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-primary" id="continueExistingBtn" style="display:none;" onclick="continueExisting()">
+                        <button type="button" class="btn btn-primary w-100" id="continueExistingBtn" style="display:none;" onclick="continueExisting()">
                             <i class="fas fa-play-circle me-2"></i>기존 데이터로 계속하기
                         </button>
-                        <button type="button" class="btn btn-success" onclick="startNew()">
+                        <button type="button" class="btn btn-success w-100" onclick="startNew()">
                             <i class="fas fa-plus-circle me-2"></i>신규로 시작하기
                         </button>
                     </div>

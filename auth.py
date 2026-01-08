@@ -363,6 +363,22 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def admin_required(f):
+    """관리자 권한 필수 데코레이터"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # 로그인 확인
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+
+        # 관리자 권한 확인
+        user = get_current_user()
+        if not user or user.get('admin_flag') != 'Y':
+            return "접근 권한이 없습니다. 관리자만 접근 가능합니다.", 403
+
+        return f(*args, **kwargs)
+    return decorated_function
+
 def get_current_user():
     """현재 로그인한 사용자 정보"""
     if 'user_id' not in session:
@@ -642,20 +658,36 @@ def get_user_rcms(user_id, control_category=None):
                              r.upload_date DESC
                 ''', (user_id,)).fetchall()
 
-        # 각 RCM의 평가 상태 정보 추가
+        # 각 RCM의 평가 상태 정보 추가 (N+1 문제 해결: 한 번에 조회)
         rcm_list = [dict(rcm) for rcm in rcms]
+
+        if not rcm_list:
+            return rcm_list
+
+        # 모든 RCM ID 수집
+        rcm_ids = [rcm['rcm_id'] for rcm in rcm_list]
+
+        # 한 번의 쿼리로 모든 RCM의 최신 평가 상태 조회
+        # 서브쿼리로 각 RCM의 최신 레코드만 선택
+        placeholders = ','.join(['%s'] * len(rcm_ids))
+        latest_evals = conn.execute(f'''
+            SELECT eh1.rcm_id, eh1.evaluation_name, eh1.status, eh1.progress
+            FROM sb_evaluation_header eh1
+            INNER JOIN (
+                SELECT rcm_id, MAX(last_updated) as max_updated
+                FROM sb_evaluation_header
+                WHERE rcm_id IN ({placeholders})
+                GROUP BY rcm_id
+            ) eh2 ON eh1.rcm_id = eh2.rcm_id AND eh1.last_updated = eh2.max_updated
+        ''', rcm_ids).fetchall()
+
+        # RCM ID를 키로 하는 딕셔너리 생성 (빠른 조회)
+        eval_map = {eval_row['rcm_id']: eval_row for eval_row in latest_evals}
+
+        # 각 RCM에 평가 상태 매핑
         for rcm in rcm_list:
             rcm_id = rcm['rcm_id']
-
-            # 최신 평가 상태 조회 (status 값으로 설계/운영 구분)
-            # status: 0~1 (설계), 2~3 (운영), 4 (완료)
-            latest_eval = conn.execute('''
-                SELECT evaluation_name, status, progress
-                FROM sb_evaluation_header
-                WHERE rcm_id = %s
-                ORDER BY last_updated DESC
-                LIMIT 1
-            ''', (rcm_id,)).fetchone()
+            latest_eval = eval_map.get(rcm_id)
 
             if latest_eval:
                 rcm['evaluation_status'] = latest_eval['status']
@@ -1407,38 +1439,51 @@ def get_design_evaluations(rcm_id, user_id, evaluation_session=None):
                 params = (rcm_id, rcm_id)
                 evaluations = conn.execute(query, params).fetchall()
 
-            # Sample 데이터를 evaluation_evidence 필드에 JSON으로 재구성
+            # Sample 데이터를 evaluation_evidence 필드에 JSON으로 재구성 (N+1 문제 해결)
             result = []
-            for eval_record in evaluations:
-                eval_dict = dict(eval_record)
 
-                # Sample 데이터 조회 (evaluation_type='design')
-                sample = conn.execute('''
-                    SELECT attribute0, attribute1, attribute2, attribute3, attribute4,
+            if evaluations:
+                # 모든 line_id 수집
+                line_ids = [dict(eval)['line_id'] for eval in evaluations]
+
+                # 한 번의 쿼리로 모든 샘플 데이터 조회
+                placeholders = ','.join(['?'] * len(line_ids))
+                samples = conn.execute(f'''
+                    SELECT line_id, attribute0, attribute1, attribute2, attribute3, attribute4,
                            attribute5, attribute6, attribute7, attribute8, attribute9
                     FROM sb_evaluation_sample
-                    WHERE line_id = ? AND evaluation_type = 'design' AND sample_number = 1
-                ''', (eval_dict['line_id'],)).fetchone()
+                    WHERE line_id IN ({placeholders})
+                          AND evaluation_type = 'design'
+                          AND sample_number = 1
+                ''', line_ids).fetchall()
 
-                if sample:
-                    # Sample 데이터를 JSON으로 변환하여 evaluation_evidence에 저장
-                    attr_data = {
-                        'attribute0': sample['attribute0'] or '',
-                        'attribute1': sample['attribute1'] or '',
-                        'attribute2': sample['attribute2'] or '',
-                        'attribute3': sample['attribute3'] or '',
-                        'attribute4': sample['attribute4'] or '',
-                        'attribute5': sample['attribute5'] or '',
-                        'attribute6': sample['attribute6'] or '',
-                        'attribute7': sample['attribute7'] or '',
-                        'attribute8': sample['attribute8'] or '',
-                        'attribute9': sample['attribute9'] or ''
-                    }
-                    eval_dict['evaluation_evidence'] = json.dumps(attr_data)
-                else:
-                    eval_dict['evaluation_evidence'] = ''
+                # line_id를 키로 하는 딕셔너리 생성 (빠른 조회)
+                sample_map = {sample['line_id']: sample for sample in samples}
 
-                result.append(eval_dict)
+                # 각 평가 레코드에 샘플 데이터 매핑
+                for eval_record in evaluations:
+                    eval_dict = dict(eval_record)
+                    sample = sample_map.get(eval_dict['line_id'])
+
+                    if sample:
+                        # Sample 데이터를 JSON으로 변환하여 evaluation_evidence에 저장
+                        attr_data = {
+                            'attribute0': sample['attribute0'] or '',
+                            'attribute1': sample['attribute1'] or '',
+                            'attribute2': sample['attribute2'] or '',
+                            'attribute3': sample['attribute3'] or '',
+                            'attribute4': sample['attribute4'] or '',
+                            'attribute5': sample['attribute5'] or '',
+                            'attribute6': sample['attribute6'] or '',
+                            'attribute7': sample['attribute7'] or '',
+                            'attribute8': sample['attribute8'] or '',
+                            'attribute9': sample['attribute9'] or ''
+                        }
+                        eval_dict['evaluation_evidence'] = json.dumps(attr_data)
+                    else:
+                        eval_dict['evaluation_evidence'] = ''
+
+                    result.append(eval_dict)
 
         return result
 

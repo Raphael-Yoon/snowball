@@ -1,5 +1,6 @@
 python-dotenv
 flask
+flask-wtf
 google-api-python-client
 google-auth-oauthlib
 google-auth
