@@ -152,6 +152,7 @@
                         </div>
                     {% endif %}
                     <form method="POST" action="/service_inquiry" id="serviceInquiryForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="form-group">
                             <label for="company_name">회사명</label>
                             <input type="text" id="company_name" name="company_name" required placeholder="회사명을 입력하세요">

@@ -105,6 +105,7 @@
                         
                         <div class="mt-4">
                             <form id="aiReviewForm" method="POST" action="/process_with_ai_option">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <input type="hidden" name="enable_ai_review" id="enableAiReview" value="">
                                 <button type="submit" id="proceedBtn" class="btn btn-primary btn-lg disabled" disabled>
                                     <i class="fas fa-arrow-right"></i> 진행

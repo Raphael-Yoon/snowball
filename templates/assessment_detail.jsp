@@ -236,6 +236,7 @@
                                 {% if progress.steps[0].status == 'completed' %}
                                     {% if step.status == 'completed' or step.status == 'in-progress' %}
                                     <form action="/user/operation-evaluation" method="POST" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="rcm_id" value="{{ rcm_info.rcm_id }}">
                                         <input type="hidden" name="session" value="{{ evaluation_session }}">
                                         <button type="submit" class="btn btn-sm
