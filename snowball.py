@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
+from flask_wtf.csrf import CSRFProtect
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from logger_config import setup_logging, get_logger
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -21,7 +23,7 @@ from snowball_link8 import bp_link8
 from snowball_link9 import bp_link9
 from snowball_link10 import bp_link10
 from snowball_admin import admin_bp
-from auth import send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations, find_user_by_email
+from auth import send_otp, verify_otp, login_required, admin_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations, find_user_by_email
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
 from snowball_drive import append_to_work_log, get_work_log
 import base64
@@ -32,7 +34,17 @@ import json
 import re
 
 app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', '150606')
+
+# 로깅 초기화
+setup_logging()
+logger = get_logger('main')
+
+# SECRET_KEY는 .env 파일에서 반드시 설정되어야 함 (보안 강화)
+app.secret_key = os.getenv('FLASK_SECRET_KEY')
+if not app.secret_key:
+    logger.critical("FLASK_SECRET_KEY environment variable not set")
+    raise ValueError("FLASK_SECRET_KEY environment variable must be set in .env file")
+
 # 세션 만료 시간 설정 (24시간으로 연장)
 # 브라우저 종료시에만 세션 만료 (permanent session 사용하지 않음)
 
@@ -51,11 +63,24 @@ app.config.update(
 # Jinja2 템플릿 자동 리로드 강제 설정
 app.jinja_env.auto_reload = True
 
-print(f"세션 설정 - Production: {is_production}, Secure: {app.config['SESSION_COOKIE_SECURE']}")
+logger.info(f"세션 설정 - Production: {is_production}, Secure: {app.config['SESSION_COOKIE_SECURE']}")
+logger.info(f"Flask 앱 시작 - Environment: {'Production' if is_production else 'Development'}")
 
-# 앱 시작 시 기본 정보 출력
-print(f"Flask 앱 시작 - Secret Key: {app.secret_key[:10]}...")
-print(f"환경 변수(초기 로드 전) - PYTHONANYWHERE_AUTH_CODE: {os.getenv('PYTHONANYWHERE_AUTH_CODE', 'undefined')}")
+# CSRF 보호 활성화 (단계적 적용을 위해 일부 엔드포인트 제외)
+csrf = CSRFProtect(app)
+
+# CSRF 제외할 엔드포인트 (임시 - 향후 템플릿에 CSRF 토큰 추가 후 제거)
+csrf.exempt(bp_link1)
+csrf.exempt(bp_link3)
+csrf.exempt(bp_link4)
+csrf.exempt(bp_link5)
+csrf.exempt(bp_link6)
+csrf.exempt(bp_link7)
+csrf.exempt(bp_link8)
+csrf.exempt(bp_link9)
+csrf.exempt(bp_link10)
+
+logger.warning("CSRF Protection enabled with exemptions for API endpoints")
 
 # --- File-based Progress Tracking ---
 # 진행률 관련 기능은 snowball_link2.py로 이동됨
@@ -68,9 +93,11 @@ else:
 
 load_dotenv()
 
-# 보안 관련 상수 (환경변수에서 로드)
-PYTHONANYWHERE_AUTH_CODE = os.getenv('PYTHONANYWHERE_AUTH_CODE', '150606')
-print(f"환경 변수 - PYTHONANYWHERE_AUTH_CODE: {PYTHONANYWHERE_AUTH_CODE}")
+# 보안 관련 상수 (환경변수에서 로드) - 운영 환경에서만 필수
+is_production_env = os.getenv('PYTHONANYWHERE_DOMAIN') is not None
+PYTHONANYWHERE_AUTH_CODE = os.getenv('PYTHONANYWHERE_AUTH_CODE')
+if is_production_env and not PYTHONANYWHERE_AUTH_CODE:
+    raise ValueError("PYTHONANYWHERE_AUTH_CODE must be set in production environment")
 
 # 데이터베이스 초기화
 # 데이터베이스 초기화는 더 이상 서버 시작 시 자동 실행되지 않습니다.
@@ -175,6 +202,7 @@ def index():
                          card_order=card_order)
 
 @app.route('/login', methods=['GET', 'POST'])
+@csrf.exempt
 def login():
     try:
         from datetime import datetime  # datetime import 추가
@@ -263,15 +291,15 @@ def login():
             otp_code = request.form.get('otp_code')
             host = request.headers.get('Host', '')
             
-            print(f"OTP 검증 시도 - Host: {host}, Session Email: {email}, Input OTP: {otp_code}")
-            
+            print(f"OTP 검증 시도 - Host: {host}, Session Email: {email}")
+
             if not email or not otp_code:
-                print(f"필수 정보 누락 - Email: {email}, OTP: {otp_code}")
+                print(f"필수 정보 누락 - Email: {email}")
                 return render_template('login.jsp', error="인증 코드를 입력해주세요.", remote_addr=request.remote_addr)
-            
+
             # snowball.pythonanywhere.com에서는 고정 코드 확인
             if host.startswith('snowball.pythonanywhere.com'):
-                print(f"운영서버 로그인 시도 - Host: {host}, Email: {email}, OTP: {otp_code}, Expected: {PYTHONANYWHERE_AUTH_CODE}")
+                print(f"운영서버 로그인 시도 - Host: {host}, Email: {email}")
                 
                 if otp_code == PYTHONANYWHERE_AUTH_CODE:
                     # 사용자 정보 조회
@@ -313,7 +341,7 @@ def login():
                         print(f"사용자를 찾을 수 없음: {email}")
                         return render_template('login.jsp', step='verify', email=email, error="사용자 정보를 찾을 수 없습니다.", remote_addr=request.remote_addr, show_direct_login=True)
                 else:
-                    print(f"잘못된 인증 코드: 입력값={otp_code}, 기대값={PYTHONANYWHERE_AUTH_CODE}")
+                    print(f"잘못된 인증 코드 - Email: {email}")
                     return render_template('login.jsp', step='verify', email=email, error="잘못된 인증 코드입니다.", remote_addr=request.remote_addr, show_direct_login=True)
             else:
                 # 일반적인 OTP 검증
@@ -617,8 +645,9 @@ def paper_request():
 # get_content_link4 라우트는 bp_link4 Blueprint로 이동됨
 
 @app.route('/ai_review_selection')
+@login_required
 def ai_review_selection():
-    """AI 검토 옵션 선택 화면"""
+    """AI 검토 옵션 선택 화면 (인증 필요)"""
     user_email = session.get('answer', [''])[0] if session.get('answer') else ''
     if not user_email:
         return redirect(url_for('link2', reset=1))  # 세션이 없으면 인터뷰 처음으로
@@ -632,8 +661,9 @@ def ai_review_selection():
                          remote_addr=request.remote_addr)
 
 @app.route('/update_session_email', methods=['POST'])
+@login_required
 def update_session_email():
-    """세션의 이메일 주소 업데이트"""
+    """세션의 이메일 주소 업데이트 (인증 필요)"""
     try:
         data = request.get_json()
         new_email = data.get('email', '').strip()
@@ -662,8 +692,9 @@ def update_session_email():
         return jsonify({'success': False, 'message': '서버 오류가 발생했습니다.'})
 
 @app.route('/process_with_ai_option', methods=['POST'])
+@login_required
 def process_with_ai_option():
-    """AI 검토 옵션에 따라 처리 페이지로 이동"""
+    """AI 검토 옵션에 따라 처리 페이지로 이동 (인증 필요)"""
     enable_ai_review = request.form.get('enable_ai_review', 'false').lower() == 'true'
     user_email = session.get('answer', [''])[0] if session.get('answer') else ''
     
@@ -714,8 +745,9 @@ def get_progress():
     return jsonify(status)
 
 @app.route('/process_interview', methods=['POST'])
+@login_required
 def process_interview():
-    """실제 인터뷰 처리 및 메일 발송"""
+    """실제 인터뷰 처리 및 메일 발송 (인증 필요)"""
     data = request.get_json() or {}
     task_id = data.get('task_id')
 
@@ -806,6 +838,7 @@ def user_rcm_view():
 
 @app.route('/user/design-evaluation', methods=['GET', 'POST'])
 @login_required
+@csrf.exempt
 def user_design_evaluation():
     """설계평가 페이지 - 세션에 데이터 저장 후 설계평가 작업 페이지로 리디렉트"""
     if request.method == 'POST':

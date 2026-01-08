@@ -257,14 +257,14 @@
                                                         <td>{{ session.last_updated[:10] if session.last_updated else '-' }}</td>
                                                         <td>
                                                             {% if session.status == 2 %}
-                                                            <button class="btn btn-sm btn-success me-1" onclick="continueOperationEvaluation({{ rcm.rcm_id }}, '{{ session.design_evaluation_name }}')">
+                                                            <button class="btn btn-sm btn-success me-1" style="min-width: 90px;" onclick="continueOperationEvaluation({{ rcm.rcm_id }}, '{{ session.design_evaluation_name }}')">
                                                                 <i class="fas fa-play-circle me-1"></i>시작하기
                                                             </button>
                                                             <button class="btn btn-sm btn-danger" onclick="deleteEvaluation({{ session.header_id }}, '{{ session.evaluation_session }}')">
                                                                 <i class="fas fa-trash me-1"></i>삭제
                                                             </button>
                                                             {% elif session.status == 3 %}
-                                                            <button class="btn btn-sm btn-warning me-1" onclick="continueOperationEvaluation({{ rcm.rcm_id }}, '{{ session.design_evaluation_name }}')">
+                                                            <button class="btn btn-sm btn-warning me-1" style="min-width: 90px;" onclick="continueOperationEvaluation({{ rcm.rcm_id }}, '{{ session.design_evaluation_name }}')">
                                                                 <i class="fas fa-play me-1"></i>계속하기
                                                             </button>
                                                             <button class="btn btn-sm btn-danger" onclick="deleteEvaluation({{ session.header_id }}, '{{ session.evaluation_session }}')">

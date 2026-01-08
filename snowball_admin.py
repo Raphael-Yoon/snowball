@@ -1,9 +1,13 @@
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, session
-from auth import get_db, get_current_user, login_required, get_user_activity_logs, get_activity_log_count, get_all_rcms, create_rcm, get_rcm_details, save_rcm_details, grant_rcm_access
+from auth import get_db, get_current_user, login_required, admin_required, get_user_activity_logs, get_activity_log_count, get_all_rcms, create_rcm, get_rcm_details, save_rcm_details, grant_rcm_access
+from logger_config import get_logger
 import tempfile
 import os
 from datetime import date, timedelta
 import base64
+
+# 로거 초기화
+logger = get_logger('admin')
 
 # Blueprint 생성
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -136,12 +140,9 @@ def perform_auto_mapping(headers):
 
 # 관리자 메인 페이지
 @admin_bp.route('/')
+@admin_required
 def admin():
     """관리자 메인 페이지"""
-    admin_check = require_admin()
-    if admin_check:
-        return admin_check
-    
     return render_template('admin.jsp',
                          is_logged_in=is_logged_in(),
                          user_info=get_user_info(),
@@ -149,36 +150,46 @@ def admin():
 
 # 사용자 관리
 @admin_bp.route('/users')
+@admin_required
 def admin_users():
     """사용자 관리 페이지"""
-    admin_check = require_admin()
-    if admin_check:
-        return admin_check
-    
+    # 페이지네이션 설정
+    page = int(request.args.get('page', 1))
+    per_page = 20  # 20개씩 표시
+    offset = (page - 1) * per_page
+
     with get_db() as conn:
+        # 전체 사용자 개수
+        total_count = conn.execute('SELECT COUNT(*) as count FROM sb_user').fetchone()['count']
+
+        # 페이지에 해당하는 사용자만 조회
         users = conn.execute('''
-            SELECT user_id, company_name, user_name, user_email, phone_number, 
-                   admin_flag, effective_start_date, effective_end_date, 
+            SELECT user_id, company_name, user_name, user_email, phone_number,
+                   admin_flag, effective_start_date, effective_end_date,
                    creation_date, last_login_date
-            FROM sb_user 
+            FROM sb_user
             ORDER BY creation_date DESC
-        ''').fetchall()
-        
+            LIMIT %s OFFSET %s
+        ''', (per_page, offset)).fetchall()
+
         users_list = [dict(user) for user in users]
-    
+
+    # 페이지네이션 계산
+    total_pages = (total_count + per_page - 1) // per_page
+
     return render_template('admin_users.jsp',
                          users=users_list,
+                         current_page=page,
+                         total_pages=total_pages,
+                         total_count=total_count,
                          is_logged_in=is_logged_in(),
                          user_info=get_user_info(),
                          remote_addr=request.remote_addr)
 
 @admin_bp.route('/users/add', methods=['POST'])
+@admin_required
 def admin_add_user():
     """사용자 추가"""
-    admin_check = require_admin()
-    if admin_check:
-        return admin_check
-    
     try:
         company_name = request.form.get('company_name')
         user_name = request.form.get('user_name')
@@ -208,12 +219,9 @@ def admin_add_user():
     return redirect(url_for('admin.admin_users'))
 
 @admin_bp.route('/users/edit/<int:user_id>', methods=['POST'])
+@admin_required
 def admin_edit_user(user_id):
     """사용자 정보 수정"""
-    admin_check = require_admin()
-    if admin_check:
-        return admin_check
-    
     try:
         company_name = request.form.get('company_name')
         user_name = request.form.get('user_name')
@@ -244,12 +252,9 @@ def admin_edit_user(user_id):
     return redirect(url_for('admin.admin_users'))
 
 @admin_bp.route('/users/delete/<int:user_id>', methods=['POST'])
+@admin_required
 def admin_delete_user(user_id):
     """사용자 삭제"""
-    admin_check = require_admin()
-    if admin_check:
-        return admin_check
-    
     try:
         with get_db() as conn:
             conn.execute('DELETE FROM sb_user WHERE user_id = %s', (user_id,))
@@ -262,12 +267,9 @@ def admin_delete_user(user_id):
     return redirect(url_for('admin.admin_users'))
 
 @admin_bp.route('/users/extend/<int:user_id>', methods=['POST'])
+@admin_required
 def admin_extend_user(user_id):
     """사용자 1년 연장"""
-    admin_check = require_admin()
-    if admin_check:
-        return admin_check
-    
     try:
         today = date.today().strftime('%Y-%m-%d')
         next_year = (date.today() + timedelta(days=365)).strftime('%Y-%m-%d')
@@ -288,12 +290,9 @@ def admin_extend_user(user_id):
 
 # 로그 관리
 @admin_bp.route('/logs')
+@admin_required
 def admin_logs():
     """사용자 활동 로그 조회 페이지"""
-    admin_check = require_admin()
-    if admin_check:
-        return admin_check
-    
     user_info = get_user_info()
     # 로그 조회 페이지는 로그 기록하지 않음 (무한 루프 방지)
     
@@ -335,6 +334,7 @@ def admin_logs():
 
 # RCM 관리
 @admin_bp.route('/rcm')
+@admin_required
 def admin_rcm():
     """RCM 관리 메인 페이지"""
     user_info = get_user_info()
@@ -342,12 +342,34 @@ def admin_rcm():
         flash('관리자 권한이 필요합니다.')
         return redirect(url_for('index'))
 
-    # 모든 RCM 목록 조회
-    rcms = get_all_rcms()
+    # 페이지네이션 설정
+    page = int(request.args.get('page', 1))
+    per_page = 20  # 20개씩 표시
+    offset = (page - 1) * per_page
+
+    # RCM 목록 조회 (페이지네이션)
+    with get_db() as conn:
+        # 전체 RCM 개수
+        total_count = conn.execute('SELECT COUNT(*) as count FROM sb_rcm WHERE is_active = %s', ('Y',)).fetchone()['count']
+
+        # 페이지에 해당하는 RCM만 조회
+        rcms = conn.execute('''
+            SELECT rcm_id, rcm_name, description, upload_date, user_id,
+                   is_active, completion_date, original_filename, control_category
+            FROM sb_rcm
+            WHERE is_active = %s
+            ORDER BY upload_date DESC
+            LIMIT %s OFFSET %s
+        ''', ('Y', per_page, offset)).fetchall()
+
+        rcms_list = [dict(rcm) for rcm in rcms]
 
     # RCM ID를 토큰으로 인코딩
-    for rcm in rcms:
+    for rcm in rcms_list:
         rcm['token'] = encode_id(rcm['rcm_id'])
+
+    # 페이지네이션 계산
+    total_pages = (total_count + per_page - 1) // per_page
 
     # 활성 사용자 목록 조회 (RCM 수정 시 사용)
     with get_db() as conn:
@@ -360,13 +382,17 @@ def admin_rcm():
         users_list = [dict(user) for user in users]
 
     return render_template('admin_rcm.jsp',
-                         rcms=rcms,
+                         rcms=rcms_list,
                          users=users_list,
+                         current_page=page,
+                         total_pages=total_pages,
+                         total_count=total_count,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          remote_addr=request.remote_addr)
 
 @admin_bp.route('/rcm/upload')
+@admin_required
 def admin_rcm_upload():
     """RCM 업로드 페이지"""
     user_info = get_user_info()
@@ -391,6 +417,7 @@ def admin_rcm_upload():
                          remote_addr=request.remote_addr)
 
 @admin_bp.route('/rcm/process_upload', methods=['POST'])
+@admin_required
 def admin_rcm_process_upload():
     """Excel 파일 업로드 처리"""
     user_info = get_user_info()
@@ -484,6 +511,7 @@ def admin_rcm_process_upload():
         return jsonify({'success': False, 'message': f'업로드 처리 중 오류가 발생했습니다: {str(e)}'})
 
 @admin_bp.route('/rcm/mapping/<int:rcm_id>')
+@admin_required
 def admin_rcm_mapping(rcm_id):
     """컬럼 매핑 페이지"""
     user_info = get_user_info()
@@ -536,6 +564,7 @@ def admin_rcm_mapping(rcm_id):
                          remote_addr=request.remote_addr)
 
 @admin_bp.route('/rcm/save_mapping', methods=['POST'])
+@admin_required
 def admin_rcm_save_mapping():
     """매핑된 RCM 데이터 저장"""
     user_info = get_user_info()
@@ -666,6 +695,7 @@ def admin_rcm_save_mapping():
         return jsonify({'success': False, 'message': f'데이터 저장 중 오류가 발생했습니다: {str(e)}'})
 
 @admin_bp.route('/rcm/<int:rcm_id>/view')
+@admin_required
 def admin_rcm_view(rcm_id):
     """RCM 상세 보기"""
     user_info = get_user_info()
@@ -701,6 +731,7 @@ def admin_rcm_view(rcm_id):
                          remote_addr=request.remote_addr)
 
 @admin_bp.route('/rcm/<string:token>/users')
+@admin_required
 def admin_rcm_users(token):
     """RCM 사용자 관리"""
     # 토큰 디코딩
@@ -795,6 +826,7 @@ def admin_rcm_users(token):
                          remote_addr=request.remote_addr)
 
 @admin_bp.route('/rcm/grant_access', methods=['POST'])
+@admin_required
 def admin_rcm_grant_access():
     """사용자에게 RCM 접근 권한 부여 (시스템 관리자 또는 RCM admin)"""
     user_info = get_user_info()
@@ -853,6 +885,7 @@ def admin_rcm_grant_access():
         return jsonify({'success': False, 'message': f'권한 부여 중 오류가 발생했습니다: {str(e)}'})
 
 @admin_bp.route('/rcm/change_permission', methods=['POST'])
+@admin_required
 def admin_rcm_change_permission():
     """사용자의 RCM 접근 권한 변경 (시스템 관리자 또는 RCM admin)"""
     user_info = get_user_info()
@@ -906,6 +939,7 @@ def admin_rcm_change_permission():
         return jsonify({'success': False, 'message': f'권한 변경 중 오류가 발생했습니다: {str(e)}'})
 
 @admin_bp.route('/rcm/revoke_access', methods=['POST'])
+@admin_required
 def admin_rcm_revoke_access():
     """사용자의 RCM 접근 권한 제거 (시스템 관리자 또는 RCM admin)"""
     user_info = get_user_info()
@@ -956,21 +990,18 @@ def admin_rcm_revoke_access():
         return jsonify({'success': False, 'message': f'권한 제거 중 오류가 발생했습니다: {str(e)}'})
 
 @admin_bp.route('/rcm/edit/<int:rcm_id>', methods=['POST'])
+@admin_required
 def admin_edit_rcm(rcm_id):
     """RCM 정보 수정"""
-    admin_check = require_admin()
-    if admin_check:
-        return admin_check
-
     try:
         rcm_name = request.form.get('rcm_name')
         target_user_id = request.form.get('target_user_id')
         description = request.form.get('description')
 
-        print(f"[DEBUG] RCM 수정 요청 - rcm_id: {rcm_id}")
-        print(f"[DEBUG] rcm_name: '{rcm_name}'")
-        print(f"[DEBUG] target_user_id: '{target_user_id}'")
-        print(f"[DEBUG] description: '{description}'")
+        logger.debug(f"RCM 수정 요청 - rcm_id: {rcm_id}")
+        logger.debug(f"rcm_name: '{rcm_name}'")
+        logger.debug(f"target_user_id: '{target_user_id}'")
+        logger.debug(f"description: '{description}'")
 
         # 필수값 체크
         if not rcm_name or not target_user_id:
@@ -991,7 +1022,7 @@ def admin_edit_rcm(rcm_id):
                 flash('선택한 사용자를 찾을 수 없습니다.')
                 return redirect(url_for('admin.admin_rcm'))
 
-            print(f"[DEBUG] 선택한 사용자: {user['user_name']} ({user['company_name']})")
+            logger.debug(f"선택한 사용자: {user['user_name']} ({user['company_name']})")
 
             # RCM 정보 업데이트 (user_id 변경)
             result = conn.execute('''
@@ -1000,18 +1031,17 @@ def admin_edit_rcm(rcm_id):
                 WHERE rcm_id = %s
             ''', (rcm_name, int(target_user_id), description, rcm_id))
             conn.commit()
-            print(f"[DEBUG] UPDATE 결과: {result.rowcount} rows affected")
+            logger.debug(f"UPDATE 결과: {result.rowcount} rows affected")
 
         flash('RCM 정보가 성공적으로 수정되었습니다.')
     except Exception as e:
-        print(f"[ERROR] RCM 수정 중 오류: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"RCM 수정 중 오류: {str(e)}", exc_info=True)
         flash(f'RCM 수정 중 오류가 발생했습니다: {str(e)}')
 
     return redirect(url_for('admin.admin_rcm'))
 
 @admin_bp.route('/rcm/delete', methods=['POST'])
+@admin_required
 def admin_rcm_delete():
     """RCM 삭제 (소프트 삭제)"""
     user_info = get_user_info()
@@ -1048,6 +1078,7 @@ def admin_rcm_delete():
 
 # 사용자 전환 기능
 @admin_bp.route('/switch_user', methods=['POST'])
+@admin_required
 def admin_switch_user():
     """관리자가 다른 사용자로 스위치"""
     user_info = get_user_info()
@@ -1076,6 +1107,7 @@ def admin_switch_user():
         return jsonify({'success': False, 'message': f'사용자 전환 중 오류가 발생했습니다: {str(e)}'})
 
 @admin_bp.route('/switch_back')
+@admin_required
 def admin_switch_back():
     """관리자 계정으로 돌아가기"""
     if 'original_admin_id' in session:
@@ -1098,21 +1130,22 @@ def admin_switch_back():
 # ============================================================================
 
 @admin_bp.route('/api/admin/users', methods=['GET'])
+@admin_required
 @login_required
 def api_get_users():
     """모든 사용자 목록 조회 API (관리자 전용)"""
-    print("\n========== [API] /api/admin/users 호출 ==========")
+    logger.debug("API /api/admin/users 호출")
     user_info = get_user_info()
-    print(f"[API] user_info: {user_info}")
+    logger.debug(f"user_info: {user_info}")
 
     # 관리자 권한 확인
     if user_info.get('admin_flag') != 'Y':
-        print(f"[API] ❌ 관리자 권한 없음 - admin_flag: {user_info.get('admin_flag')}")
+        logger.warning(f"관리자 권한 없음 - admin_flag: {user_info.get('admin_flag')}")
         return jsonify({'success': False, 'message': '관리자 권한이 필요합니다.'})
 
-    print("[API] ✅ 관리자 권한 확인 완료")
+    logger.debug("관리자 권한 확인 완료")
     try:
-        print("[API] DB 조회 시작...")
+        logger.debug("DB 조회 시작")
         with get_db() as conn:
             rows = conn.execute('''
                 SELECT user_id, user_email, company_name, admin_flag
@@ -1121,7 +1154,7 @@ def api_get_users():
                 ORDER BY company_name
             ''').fetchall()
 
-            print(f"[API] 조회된 사용자 수: {len(rows)}")
+            logger.debug(f"조회된 사용자 수: {len(rows)}")
 
             users = []
             for row in rows:
@@ -1132,19 +1165,16 @@ def api_get_users():
                     'admin_flag': row[3]
                 }
                 users.append(user_data)
-                print(f"[API]  - {user_data}")
+                logger.debug(f"사용자: {user_data}")
 
-            print(f"[API] ✅ 성공: {len(users)}명의 사용자 반환")
-            print("=" * 50)
+            logger.info(f"사용자 목록 조회 성공: {len(users)}명")
             return jsonify({'success': True, 'users': users})
     except Exception as e:
-        print(f"[API] ❌ 오류 발생: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        print("=" * 50)
+        logger.error(f"사용자 목록 조회 중 오류: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'message': f'사용자 목록 조회 중 오류: {str(e)}'})
 
 @admin_bp.route('/api/admin/switch-user', methods=['POST'])
+@admin_required
 @login_required
 def api_switch_user():
     """사용자 전환 API (관리자 전용)"""
@@ -1191,6 +1221,7 @@ def api_switch_user():
         return jsonify({'success': False, 'message': f'사용자 전환 중 오류: {str(e)}'})
 
 @admin_bp.route('/rcm/detail/<int:detail_id>/sample-size', methods=['POST'])
+@admin_required
 def update_recommended_sample_size(detail_id):
     """통제 항목별 권장 표본수 저장"""
     user_info = get_user_info()
@@ -1278,6 +1309,7 @@ def update_recommended_sample_size(detail_id):
 
 # Attribute 조회 API
 @admin_bp.route('/rcm/detail/<int:detail_id>/attributes', methods=['GET'])
+@admin_required
 @login_required
 def get_rcm_detail_attributes(detail_id):
     """RCM 통제의 attribute 설정 조회"""
@@ -1333,6 +1365,7 @@ def get_rcm_detail_attributes(detail_id):
 
 # Attribute 저장 API
 @admin_bp.route('/rcm/detail/<int:detail_id>/attributes', methods=['POST'])
+@admin_required
 @login_required
 def save_rcm_detail_attributes(detail_id):
     """RCM 통제의 attribute 설정 저장"""
@@ -1370,7 +1403,7 @@ def save_rcm_detail_attributes(detail_id):
                 ''', (*attr_values, population_attribute_count, detail_id))
             db.commit()
 
-        print(f'[admin] Attribute 저장 완료 - detail_id: {detail_id}, attributes: {attributes}, population_attribute_count: {population_attribute_count}')
+        logger.info(f'Attribute 저장 완료 - detail_id: {detail_id}, attributes: {attributes}, population_attribute_count: {population_attribute_count}')
 
         return jsonify({
             'success': True,
@@ -1387,6 +1420,7 @@ def save_rcm_detail_attributes(detail_id):
 # ============================================================
 
 @admin_bp.route('/standard-controls')
+@admin_required
 def admin_standard_controls():
     """기준통제 관리 메인 페이지"""
     user_info = get_user_info()
@@ -1428,6 +1462,7 @@ def admin_standard_controls():
 
 
 @admin_bp.route('/api/standard-control/<int:std_control_id>/attributes', methods=['GET', 'POST'])
+@admin_required
 def manage_standard_control_attributes(std_control_id):
     """기준통제 Attribute 조회/저장 (관리자 전용)"""
     user_info = get_user_info()
@@ -1475,8 +1510,8 @@ def manage_standard_control_attributes(std_control_id):
             attributes = data.get('attributes', {})
             population_attribute_count = data.get('population_attribute_count') if data.get('population_attribute_count') is not None else 2
 
-            print(f'[manage_standard_control_attributes] Received population_attribute_count: {data.get("population_attribute_count")} (type: {type(data.get("population_attribute_count"))})')
-            print(f'[manage_standard_control_attributes] Final population_attribute_count: {population_attribute_count}')
+            logger.debug(f'Received population_attribute_count: {data.get("population_attribute_count")} (type: {type(data.get("population_attribute_count"))})')
+            logger.debug(f'Final population_attribute_count: {population_attribute_count}')
 
             # attribute 값 준비
             attr_values = []
@@ -1507,6 +1542,7 @@ def manage_standard_control_attributes(std_control_id):
 
 
 @admin_bp.route('/api/standard-control', methods=['POST'])
+@admin_required
 def add_standard_control():
     """기준통제 추가 (관리자 전용)"""
     user_info = get_user_info()
@@ -1559,6 +1595,7 @@ def add_standard_control():
 
 
 @admin_bp.route('/api/standard-control/<int:std_control_id>', methods=['PUT'])
+@admin_required
 def update_standard_control(std_control_id):
     """기준통제 정보 수정 (관리자 전용)"""
     user_info = get_user_info()
@@ -1613,6 +1650,7 @@ def update_standard_control(std_control_id):
 
 
 @admin_bp.route('/api/standard-control/<int:std_control_id>', methods=['DELETE'])
+@admin_required
 def delete_standard_control(std_control_id):
     """기준통제 삭제 (관리자 전용)"""
     user_info = get_user_info()

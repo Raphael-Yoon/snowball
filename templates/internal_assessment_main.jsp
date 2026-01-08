@@ -173,6 +173,7 @@
                                     <div class="d-grid gap-2">
                                         {% if item.progress.steps[0].status == 'completed' %}
                                         <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
                                             <input type="hidden" name="session" value="{{ item.evaluation_session }}">
                                             <button type="submit" class="btn btn-sm btn-outline-success w-100">
@@ -181,6 +182,7 @@
                                         </form>
                                         {% elif item.progress.steps[0].status == 'in-progress' %}
                                         <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
                                             <input type="hidden" name="session" value="{{ item.evaluation_session }}">
                                             <button type="submit" class="btn btn-sm btn-primary w-100">
@@ -286,6 +288,7 @@
                                     <div class="d-grid gap-2">
                                         {% if item.progress.steps[0].status == 'completed' %}
                                         <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
                                             <input type="hidden" name="session" value="{{ item.evaluation_session }}">
                                             <button type="submit" class="btn btn-sm btn-outline-success w-100">
@@ -294,6 +297,7 @@
                                         </form>
                                         {% elif item.progress.steps[0].status == 'in-progress' %}
                                         <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
                                             <input type="hidden" name="session" value="{{ item.evaluation_session }}">
                                             <button type="submit" class="btn btn-sm btn-primary w-100">
@@ -398,6 +402,7 @@
                                     <div class="d-grid gap-2">
                                         {% if item.progress.steps[0].status == 'completed' %}
                                         <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
                                             <input type="hidden" name="session" value="{{ item.evaluation_session }}">
                                             <button type="submit" class="btn btn-sm btn-outline-success w-100">
@@ -406,6 +411,7 @@
                                         </form>
                                         {% elif item.progress.steps[0].status == 'in-progress' %}
                                         <form action="/user/design-evaluation" method="POST" style="display: inline;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="rcm_id" value="{{ item.rcm_info.rcm_id }}">
                                             <input type="hidden" name="session" value="{{ item.evaluation_session }}">
                                             <button type="submit" class="btn btn-sm btn-primary w-100">
