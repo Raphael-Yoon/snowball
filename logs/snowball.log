@@ -524,3 +524,171 @@ ValueError: 테스트 예외 발생
 2026-01-08 15:27:39 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 15:27:39] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
 2026-01-08 15:27:39 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 15:27:39] "[36mGET /static/img/logo.jpg HTTP/1.1[0m" 304 -
 2026-01-08 15:27:39 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 15:27:39] "GET /api/design-evaluation/load/16?session=쿠쿠홈시스_FY25_내부평가_ITGC HTTP/1.1" 200 -
+2026-01-08 17:26:21 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-08 17:26:21 [CRITICAL] snowball.main:<module>:45 - FLASK_SECRET_KEY environment variable not set
+2026-01-08 17:30:39 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-08 17:30:39 [INFO] snowball.main:<module>:66 - 세션 설정 - Production: False, Secure: False
+2026-01-08 17:30:39 [INFO] snowball.main:<module>:67 - Flask 앱 시작 - Environment: Development
+2026-01-08 17:30:39 [WARNING] snowball.main:<module>:83 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-08 17:30:54 [INFO] werkzeug:_log:96 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.45.83:5001
+2026-01-08 17:30:54 [INFO] werkzeug:_log:96 - [33mPress CTRL+C to quit[0m
+2026-01-08 17:32:00 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:00] "GET / HTTP/1.1" 200 -
+2026-01-08 17:32:00 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:00] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:00 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:00] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:00 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:00] "[36mGET /static/img/snowball.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:00 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:00] "[36mGET /static/img/rcm.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:00 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:00] "[36mGET /static/img/interview.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:00 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:00] "[36mGET /static/img/testing.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:01 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:01] "[33mGET /static/img/stock_analysis.jpg HTTP/1.1[0m" 404 -
+2026-01-08 17:32:01 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:01] "[36mGET /static/img/video.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:01 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:01] "[36mGET /static/img/contact_us.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:01 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:01] "[36mGET /static/img/dashboard.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:01 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:01] "[36mGET /static/img/elc.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:01 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:01] "[36mGET /static/img/rcm_inquiry.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:01 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:01] "[36mGET /static/img/tlc.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:01 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:01] "[36mGET /static/img/itgc.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:01 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:01] "[33mGET /static/img/pattern.png HTTP/1.1[0m" 404 -
+2026-01-08 17:32:01 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:01] "[36mGET /static/img/favicon.ico HTTP/1.1[0m" 304 -
+2026-01-08 17:32:05 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:05] "GET /login HTTP/1.1" 200 -
+2026-01-08 17:32:05 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:05] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:05 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:05] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[32mPOST /login HTTP/1.1[0m" 302 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "GET / HTTP/1.1" 200 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/snowball.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/dashboard.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/rcm_inquiry.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/elc.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/tlc.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/itgc.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/rcm.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[33mGET /static/img/pattern.png HTTP/1.1[0m" 404 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/testing.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/interview.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[33mGET /static/img/stock_analysis.jpg HTTP/1.1[0m" 404 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/video.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:07 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:07] "[36mGET /static/img/contact_us.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:10 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:10] "[32mGET /user/internal-assessment HTTP/1.1[0m" 302 -
+2026-01-08 17:32:10 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-08 17:32:10 [INFO] snowball.main:<module>:66 - 세션 설정 - Production: False, Secure: False
+2026-01-08 17:32:10 [INFO] snowball.main:<module>:67 - Flask 앱 시작 - Environment: Development
+2026-01-08 17:32:10 [WARNING] snowball.main:<module>:83 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-08 17:32:10 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:10] "GET /internal-assessment HTTP/1.1" 200 -
+2026-01-08 17:32:10 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:10] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:10 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:10] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:10 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:10] "[36mGET /static/img/logo.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:12 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:12] "GET /itgc-evaluation HTTP/1.1" 200 -
+2026-01-08 17:32:13 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:13] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:13 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:13] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:13 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:13] "[36mGET /static/img/logo.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:13 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:13] "[36mGET /static/img/itgc.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:16 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:16] "POST /design-evaluation/rcm HTTP/1.1" 200 -
+2026-01-08 17:32:16 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:16] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:16 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:16] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-08 17:32:16 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:16] "[36mGET /static/img/logo.jpg HTTP/1.1[0m" 304 -
+2026-01-08 17:32:16 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [08/Jan/2026 17:32:16] "GET /api/design-evaluation/load/16?session=쿠쿠홈시스_FY25_내부평가_ITGC HTTP/1.1" 200 -
+2026-01-11 13:14:17 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-11 13:14:17 [INFO] snowball.main:<module>:66 - 세션 설정 - Production: False, Secure: False
+2026-01-11 13:14:17 [INFO] snowball.main:<module>:67 - Flask 앱 시작 - Environment: Development
+2026-01-11 13:14:17 [WARNING] snowball.main:<module>:83 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-11 13:14:17 [INFO] werkzeug:_log:96 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.45.198:5001
+2026-01-11 13:14:17 [INFO] werkzeug:_log:96 - [33mPress CTRL+C to quit[0m
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "GET / HTTP/1.1" 200 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/snowball.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/rcm_inquiry.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/dashboard.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/elc.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/tlc.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/rcm.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/itgc.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/interview.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/testing.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[33mGET /static/img/stock_analysis.jpg HTTP/1.1[0m" 404 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/video.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:33 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:33] "[36mGET /static/img/contact_us.jpg HTTP/1.1[0m" 304 -
+2026-01-11 13:14:37 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:37] "[32mGET /user/internal-assessment HTTP/1.1[0m" 302 -
+2026-01-11 13:14:37 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-11 13:14:37 [INFO] snowball.main:<module>:66 - 세션 설정 - Production: False, Secure: False
+2026-01-11 13:14:37 [INFO] snowball.main:<module>:67 - Flask 앱 시작 - Environment: Development
+2026-01-11 13:14:37 [WARNING] snowball.main:<module>:83 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-11 13:14:37 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:37] "GET /internal-assessment HTTP/1.1" 200 -
+2026-01-11 13:14:37 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:37] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-11 13:14:37 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:37] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-11 13:14:37 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [11/Jan/2026 13:14:37] "[36mGET /static/img/logo.jpg HTTP/1.1[0m" 304 -
+2026-01-12 17:19:43 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-12 17:19:43 [INFO] snowball.main:<module>:66 - 세션 설정 - Production: False, Secure: False
+2026-01-12 17:19:43 [INFO] snowball.main:<module>:67 - Flask 앱 시작 - Environment: Development
+2026-01-12 17:19:43 [WARNING] snowball.main:<module>:83 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-12 17:19:43 [INFO] werkzeug:_log:96 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.45.198:5001
+2026-01-12 17:19:43 [INFO] werkzeug:_log:96 - [33mPress CTRL+C to quit[0m
+2026-01-12 18:28:04 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-12 18:28:04 [INFO] snowball.main:<module>:66 - 세션 설정 - Production: False, Secure: False
+2026-01-12 18:28:04 [INFO] snowball.main:<module>:67 - Flask 앱 시작 - Environment: Development
+2026-01-12 18:28:04 [WARNING] snowball.main:<module>:83 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-12 18:28:04 [INFO] werkzeug:_log:96 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.45.198:5001
+2026-01-12 18:28:04 [INFO] werkzeug:_log:96 - [33mPress CTRL+C to quit[0m
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "GET / HTTP/1.1" 200 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/snowball.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/dashboard.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/rcm_inquiry.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/elc.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/tlc.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/itgc.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/interview.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/rcm.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/testing.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[33mGET /static/img/stock_analysis.jpg HTTP/1.1[0m" 404 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[33mGET /static/img/pattern.png HTTP/1.1[0m" 404 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/video.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:28:22 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:28:22] "[36mGET /static/img/contact_us.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:29:29 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:29:29] "[32mGET /user/internal-assessment HTTP/1.1[0m" 302 -
+2026-01-12 18:29:29 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-12 18:29:29 [INFO] snowball.main:<module>:66 - 세션 설정 - Production: False, Secure: False
+2026-01-12 18:29:29 [INFO] snowball.main:<module>:67 - Flask 앱 시작 - Environment: Development
+2026-01-12 18:29:29 [WARNING] snowball.main:<module>:83 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-12 18:29:29 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:29:29] "GET /internal-assessment HTTP/1.1" 200 -
+2026-01-12 18:29:29 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:29:29] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-12 18:29:29 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:29:29] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-12 18:29:29 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:29:29] "[36mGET /static/img/logo.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:09 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-12 18:31:09 [INFO] snowball.main:<module>:66 - 세션 설정 - Production: False, Secure: False
+2026-01-12 18:31:09 [INFO] snowball.main:<module>:67 - Flask 앱 시작 - Environment: Development
+2026-01-12 18:31:09 [WARNING] snowball.main:<module>:83 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-12 18:31:09 [INFO] werkzeug:_log:96 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.45.198:5001
+2026-01-12 18:31:09 [INFO] werkzeug:_log:96 - [33mPress CTRL+C to quit[0m
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "GET / HTTP/1.1" 200 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/snowball.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/dashboard.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/rcm_inquiry.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/elc.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/tlc.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/itgc.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/interview.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/rcm.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/testing.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[33mGET /static/img/stock_analysis.jpg HTTP/1.1[0m" 404 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/video.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/contact_us.jpg HTTP/1.1[0m" 304 -
+2026-01-12 18:31:19 [INFO] werkzeug:_log:96 - 127.0.0.1 - - [12/Jan/2026 18:31:19] "[36mGET /static/img/favicon.ico HTTP/1.1[0m" 304 -
