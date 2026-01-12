@@ -13,6 +13,12 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
+    <style>
+        /* index 페이지에는 navbar가 없으므로 padding-top 제거 */
+        body {
+            padding-top: 0 !important;
+        }
+    </style>
 </head>
 <body>
     <!-- 히어로 섹션 -->
