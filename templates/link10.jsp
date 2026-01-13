@@ -4,334 +4,609 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snowball - 종목 분석</title>
+    <title>Snowball - AI 분석 결과 조회</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap"
-        rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='trade_css/style.css') }}">
+    <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* Link10 페이지 전용 스타일 */
+        .link10-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .page-header {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .page-description {
+            color: #6c757d;
+            font-size: 1.1rem;
+        }
+
+        .section-header {
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 0;
+        }
+
+        /* 결과 카드 그리드 */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 25px;
+        }
+
+        .result-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+            border-color: var(--secondary-color);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .result-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .result-filename {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-color);
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+
+        .result-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .result-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .result-badges {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge-tag {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .badge-market {
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .badge-market.kospi {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-market.kosdaq {
+            background-color: #fce7f3;
+            color: #be185d;
+        }
+
+        .badge-market.all {
+            background-color: #f3e8ff;
+            color: #7c3aed;
+        }
+
+        .badge-count {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .result-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .result-btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            border: 2px solid transparent;
+            display: inline-block;
+        }
+
+        .result-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-download {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .btn-download:hover {
+            background-color: #059669;
+            color: white;
+        }
+
+        .btn-ai {
+            background-color: #8b5cf6;
+            color: white;
+        }
+
+        .btn-ai:hover {
+            background-color: #7c3aed;
+            color: white;
+        }
+
+        .btn-ai:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-drive {
+            background-color: #4285f4;
+            color: white;
+        }
+
+        .btn-drive:hover {
+            background-color: #3367d6;
+            color: white;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 1000px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            padding: 25px 30px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .modal-body {
+            padding: 30px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background: var(--light-bg);
+            border-radius: 0 0 16px 16px;
+        }
+
+        .close-modal {
+            font-size: 28px;
+            cursor: pointer;
+            color: white;
+            line-height: 1;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .close-modal:hover {
+            opacity: 1;
+        }
+
+        .ai-markdown-body {
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .ai-markdown-body h1,
+        .ai-markdown-body h2,
+        .ai-markdown-body h3 {
+            color: var(--primary-color);
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .ai-markdown-body h1 {
+            font-size: 2rem;
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        .ai-markdown-body h2 {
+            font-size: 1.5rem;
+        }
+
+        .ai-markdown-body h3 {
+            font-size: 1.25rem;
+        }
+
+        .ai-markdown-body p {
+            margin-bottom: 16px;
+        }
+
+        .ai-markdown-body ul,
+        .ai-markdown-body ol {
+            margin-bottom: 16px;
+            padding-left: 30px;
+        }
+
+        .ai-markdown-body li {
+            margin-bottom: 8px;
+        }
+
+        .ai-markdown-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .ai-markdown-body th,
+        .ai-markdown-body td {
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        .ai-markdown-body th {
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .ai-markdown-body tr:hover {
+            background-color: var(--hover-color);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        @media (max-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .result-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 
 <body>
     {% include 'navi.jsp' %}
 
-    <div class="container trade-container">
-        <h1>📊 종목 분석</h1>
-
-        <div class="field-selector">
-            <span class="section-label">수집할 데이터 선택</span>
-            <div class="select-all-container">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="selectAll" checked onclick="toggleSelectAll()">
-                    <span>전체 선택/해제</span>
-                </label>
+    <!-- AI Analysis Modal -->
+    <div id="aiModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-robot"></i> AI 투자 리포트</h2>
+                <span class="close-modal" onclick="closeAiModal()">&times;</span>
             </div>
-            <div class="field-checkboxes">
-                <div class="field-group">
-                    <h4>기본 정보</h4>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="종목코드" checked disabled>
-                        <span>종목코드 (필수)</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="종목명" checked disabled>
-                        <span>종목명 (필수)</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="업종" checked>
-                        <span>업종</span>
-                    </label>
-                </div>
-                <div class="field-group">
-                    <h4>투자 지표</h4>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="PBR" checked>
-                        <span>PBR</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="PER" checked>
-                        <span>PER</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="ROE" checked>
-                        <span>ROE</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="EPS" checked>
-                        <span>EPS</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="BPS" checked>
-                        <span>BPS</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="배당수익률" checked>
-                        <span>배당수익률</span>
-                    </label>
-                </div>
-                <div class="field-group">
-                    <h4>재무 정보</h4>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="매출액" checked>
-                        <span>매출액</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="영업이익" checked>
-                        <span>영업이익</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="이익잉여금" checked>
-                        <span>이익잉여금</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="현금및현금성자산" checked>
-                        <span>현금및현금성자산</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="52주최고가" checked>
-                        <span>52주 최고가</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="52주최저가" checked>
-                        <span>52주 최저가</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="EBITDA" checked>
-                        <span>EBITDA</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="FCF" checked>
-                        <span>FCF</span>
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="field-checkbox" value="부채비율" checked>
-                        <span>부채비율</span>
-                    </label>
+            <div id="aiResultContent" class="modal-body">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">불러오는 중...</span>
+                    </div>
+                    <p class="mt-3 text-muted">리포트를 불러오는 중...</p>
                 </div>
             </div>
-        </div>
-
-        <div class="stock-count-selector">
-            <span class="section-label">수집할 종목 수</span>
-            <div class="count-options">
-                <button class="count-btn" onclick="selectCount(50)">50개</button>
-                <button class="count-btn active" onclick="selectCount(100)">100개</button>
-                <button class="count-btn" onclick="selectCount(200)">200개</button>
-                <button class="count-btn" onclick="selectCount(500)">500개</button>
-                <button class="count-btn" onclick="selectCount(0)">전체</button>
+            <div class="modal-footer">
+                <a id="aiDriveLink" href="#" target="_blank" class="btn btn-primary" style="display:none;">
+                    <i class="fas fa-external-link-alt"></i> 구글 드라이브에서 보기
+                </a>
+                <button class="btn btn-secondary" onclick="closeAiModal()">닫기</button>
             </div>
-            <input type="number" id="stockCount" value="100" min="0" max="10000" placeholder="직접 입력 (0=전체, 1~10000)">
+        </div>
+    </div>
+
+    <div class="link10-container">
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-chart-line"></i> AI 분석 결과 조회
+            </h1>
         </div>
 
-        <button id="collectBtn" class="btn" onclick="startCollection()">
-            🚀 데이터 수집 시작
-        </button>
-
-        <div id="downloadSection" class="download-section">
-            <p class="success-msg">✅ 데이터 수집이 완료되었습니다!</p>
-            <a id="downloadLink" href="#" class="download-btn">📥 엑셀 파일 다운로드</a>
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="fas fa-folder-open"></i> 분석 결과 목록
+            </h2>
         </div>
 
-        <div id="errorSection" style="display: none;">
-            <div class="error-message" id="errorMessage"></div>
-        </div>
-
-        <div class="results-section">
-            <h2>📁 과거 수집 결과</h2>
-            <div id="resultsList">
-                <p style="text-align: center; color: #999;">불러오는 중...</p>
+        <div id="resultsList" class="results-grid">
+            <div class="empty-state" style="grid-column: 1/-1;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">불러오는 중...</span>
+                </div>
+                <p class="mt-3">목록을 불러오는 중...</p>
             </div>
         </div>
     </div>
 
     <script>
-        let currentTaskId = null;
-        let statusCheckInterval = null;
-
         window.onload = function () {
             loadResults();
         };
 
-        function selectCount(count) {
-            document.querySelectorAll('.count-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            document.getElementById('stockCount').value = count;
-        }
-
-        function toggleSelectAll() {
-            const selectAll = document.getElementById('selectAll');
-            const checkboxes = document.querySelectorAll('.field-checkbox:not(:disabled)');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = selectAll.checked;
-            });
-        }
-
-        function getSelectedFields() {
-            const checkboxes = document.querySelectorAll('.field-checkbox:checked');
-            return Array.from(checkboxes).map(cb => cb.value);
-        }
-
-        function startCollection() {
-            const stockCount = parseInt(document.getElementById('stockCount').value);
-            const selectedFields = getSelectedFields();
-
-            if (isNaN(stockCount) || stockCount < 0 || stockCount > 10000) {
-                alert('종목 수는 0(전체) 또는 1~10000 사이의 숫자여야 합니다.');
-                return;
-            }
-
-            if (selectedFields.length < 2) {
-                alert('최소한 종목코드와 종목명 외에 1개 이상의 데이터를 선택해주세요.');
-                return;
-            }
-
-            const btn = document.getElementById('collectBtn');
-            const downloadSection = document.getElementById('downloadSection');
-            const errorSection = document.getElementById('errorSection');
-
-            btn.disabled = true;
-            btn.style.setProperty('--progress', '0%');
-            btn.textContent = '🚀 수집 중... (0%)';
-            downloadSection.classList.remove('active');
-            errorSection.style.display = 'none';
-
-            fetch('/link10/api/collect', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    stock_count: stockCount,
-                    fields: selectedFields
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        currentTaskId = data.task_id;
-                        checkStatus();
-                    } else {
-                        showError('데이터 수집 시작에 실패했습니다.');
-                        resetButton();
-                    }
-                })
-                .catch(error => {
-                    showError('서버 연결에 실패했습니다: ' + error);
-                    resetButton();
-                });
-        }
-
-        function checkStatus() {
-            if (!currentTaskId) return;
-
-            statusCheckInterval = setInterval(() => {
-                fetch(`/link10/api/status/${currentTaskId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        updateProgress(data);
-
-                        if (data.status === 'completed') {
-                            clearInterval(statusCheckInterval);
-                            showDownload(data.result_file);
-                            resetButton();
-                            loadResults();
-                        } else if (data.status === 'error') {
-                            clearInterval(statusCheckInterval);
-                            showError(data.message);
-                            resetButton();
-                        }
-                    })
-                    .catch(error => {
-                        clearInterval(statusCheckInterval);
-                        showError('상태 확인 실패: ' + error);
-                        resetButton();
-                    });
-            }, 1000);
-        }
-
-        function updateProgress(data) {
-            const btn = document.getElementById('collectBtn');
-            const progress = data.progress || 0;
-            btn.style.setProperty('--progress', progress + '%');
-            btn.textContent = `🚀 수집 중... (${progress}%)`;
-        }
-
-        function showDownload(filename) {
-            const downloadSection = document.getElementById('downloadSection');
-            const downloadLink = document.getElementById('downloadLink');
-            downloadLink.href = `/link10/api/download/${filename}`;
-            downloadSection.classList.add('active');
-        }
-
-        function showError(message) {
-            const errorSection = document.getElementById('errorSection');
-            const errorMessage = document.getElementById('errorMessage');
-            errorMessage.textContent = message;
-            errorSection.style.display = 'block';
-        }
-
-        function resetButton() {
-            const btn = document.getElementById('collectBtn');
-            btn.disabled = false;
-            btn.style.removeProperty('--progress');
-            btn.textContent = '🚀 데이터 수집 시작';
-        }
-
         function loadResults() {
+            const resultsList = document.getElementById('resultsList');
+            resultsList.innerHTML = `
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">불러오는 중...</span>
+                    </div>
+                    <p class="mt-3">목록을 불러오는 중...</p>
+                </div>
+            `;
+
             fetch('/link10/api/results')
                 .then(response => response.json())
                 .then(files => {
-                    const resultsList = document.getElementById('resultsList');
                     if (files.length === 0) {
-                        resultsList.innerHTML = '<p style="text-align: center; color: #999;">저장된 결과가 없습니다.</p>';
+                        resultsList.innerHTML = `
+                            <div class="empty-state" style="grid-column: 1/-1;">
+                                <i class="fas fa-inbox"></i>
+                                <h3>저장된 결과가 없습니다</h3>
+                                <p>Trade 프로젝트에서 데이터를 수집하면 여기에 표시됩니다.</p>
+                            </div>
+                        `;
                         return;
                     }
-                    resultsList.innerHTML = files.map(file => `
-                        <div class="result-item">
-                            <div class="result-info">
-                                <div class="result-filename">${file.filename}</div>
-                                <div class="result-meta">
-                                    생성: ${new Date(file.created_at).toLocaleString('ko-KR')}
-                                    | 크기: ${(file.size / 1024).toFixed(1)} KB
+                    resultsList.innerHTML = files.map(file => {
+                        const date = new Date(file.created_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                        const size = (file.size / 1024).toFixed(1);
+                        const aiButton = file.has_ai
+                            ? `<button onclick="viewAiReport('${file.filename}')" class="result-btn btn-ai">
+                                   <i class="fas fa-robot"></i> AI 리포트 보기
+                               </button>`
+                            : `<button disabled class="result-btn btn-ai">
+                                   <i class="fas fa-ban"></i> AI 분석 없음
+                               </button>`;
+
+                        // 파일명 파싱: {market}_{count}_{timestamp}.xlsx
+                        const fileNameParts = file.filename.replace('.xlsx', '').split('_');
+                        let marketLabel = '';
+                        let marketClass = '';
+                        let countLabel = '';
+                        let displayTitle = file.filename; // 기본값
+
+                        if (fileNameParts.length >= 2) {
+                            const market = fileNameParts[0].toUpperCase();
+                            const count = fileNameParts[1];
+
+                            // 시장 라벨
+                            if (market === 'KOSPI') {
+                                marketLabel = 'KOSPI';
+                                marketClass = 'kospi';
+                            } else if (market === 'KOSDAQ') {
+                                marketLabel = 'KOSDAQ';
+                                marketClass = 'kosdaq';
+                            } else if (market === 'ALL') {
+                                marketLabel = '전체시장';
+                                marketClass = 'all';
+                            }
+
+                            // 종목 개수 라벨
+                            if (count === 'all') {
+                                countLabel = '전체 종목';
+                            } else if (count.startsWith('top')) {
+                                const num = count.replace('top', '');
+                                countLabel = `상위 ${num}개`;
+                            }
+
+                            // 제목 생성
+                            if (marketLabel && countLabel) {
+                                displayTitle = `${marketLabel} ${countLabel} 분석`;
+                            }
+                        }
+
+                        return `
+                        <div class="result-card">
+                            <div class="result-header">
+                                <div class="result-icon">
+                                    <i class="fas fa-file-excel" style="color: white;"></i>
+                                </div>
+                                <div class="result-info">
+                                    <div class="result-filename">${displayTitle}</div>
+                                    <div class="result-meta">
+                                        <span><i class="far fa-calendar-alt"></i> ${date}</span>
+                                        <span><i class="far fa-hdd"></i> ${size} KB</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="result-actions">
-                                <a href="/link10/api/download/${file.filename}" class="result-download">다운로드</a>
-                                <button onclick="deleteResult('${file.filename}')" class="result-delete">삭제</button>
+                                ${aiButton}
+                                <a href="/link10/api/download/${file.filename}" class="result-btn btn-download">
+                                    <i class="fas fa-download"></i> 다운로드
+                                </a>
                             </div>
                         </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 })
                 .catch(error => {
                     console.error('결과 목록 로드 실패:', error);
+                    resultsList.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1/-1;">
+                            <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+                            <h3>목록을 불러오는데 실패했습니다</h3>
+                            <p style="color: #dc3545;">${error.message || '서버 오류가 발생했습니다.'}</p>
+                            <button class="btn btn-primary mt-3" onclick="loadResults()">
+                                <i class="fas fa-redo"></i> 다시 시도
+                            </button>
+                        </div>
+                    `;
                 });
         }
 
-        function deleteResult(filename) {
-            if (!confirm(`'${filename}' 파일을 삭제하시겠습니까?`)) {
-                return;
-            }
+        function viewAiReport(filename) {
+            const modal = document.getElementById('aiModal');
+            const content = document.getElementById('aiResultContent');
+            const driveLink = document.getElementById('aiDriveLink');
 
-            fetch(`/link10/api/delete/${filename}`, {
-                method: 'DELETE'
-            })
+            content.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">불러오는 중...</span>
+                    </div>
+                    <p class="mt-3 text-muted">리포트를 불러오는 중...</p>
+                </div>
+            `;
+            driveLink.style.display = 'none';
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            fetch(`/link10/api/ai_result/${filename}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        loadResults();
+                        content.innerHTML = `<div class="ai-markdown-body">${marked.parse(data.result)}</div>`;
+                        if (data.drive_link) {
+                            driveLink.href = data.drive_link;
+                            driveLink.style.display = 'inline-block';
+                        }
                     } else {
-                        alert('삭제 실패: ' + data.message);
+                        content.innerHTML = `
+                            <div class="alert alert-warning" role="alert">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <strong>알림:</strong> ${data.message}
+                            </div>
+                        `;
                     }
                 })
                 .catch(error => {
-                    alert('서버 오류: ' + error);
+                    content.innerHTML = `
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-times-circle"></i>
+                            <strong>오류:</strong> ${error.message || '리포트를 불러오는 중 오류가 발생했습니다.'}
+                        </div>
+                    `;
                 });
+        }
+
+        function closeAiModal() {
+            document.getElementById('aiModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        window.onclick = function (event) {
+            const modal = document.getElementById('aiModal');
+            if (event.target == modal) {
+                closeAiModal();
+            }
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
