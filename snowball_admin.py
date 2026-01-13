@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, session
 from auth import get_db, get_current_user, login_required, admin_required, get_user_activity_logs, get_activity_log_count, get_all_rcms, create_rcm, get_rcm_details, save_rcm_details, grant_rcm_access
+from snowball_drive import append_to_work_log, get_work_log, append_to_work_log_docs, get_work_log_docs
 from logger_config import get_logger
 import tempfile
 import os
@@ -331,6 +332,63 @@ def admin_logs():
                          is_logged_in=is_logged_in(),
                          user_info=get_user_info(),
                          remote_addr=request.remote_addr)
+
+# 작업 로그 관리 (Google Drive)
+@admin_bp.route('/work-log')
+@admin_required
+def admin_work_log():
+    """작업 로그 관리 페이지 (Google Docs 연동)"""
+    result = get_work_log_docs()
+    
+    # Docs의 경우 전체 내용을 파싱하기보다 링크 위주로 제공
+    # (필요하다면 Docs API로 내용을 가져와서 일부 보여줄 수 있음)
+    
+    return render_template('admin_work_log.jsp',
+                         logs=[], # Docs는 직접 링크로 확인하는 것이 더 정확함
+                         doc_url=result.get('url'),
+                         is_logged_in=is_logged_in(),
+                         user_info=get_user_info(),
+                         remote_addr=request.remote_addr)
+
+@admin_bp.route('/work-log/migrate', methods=['POST'])
+@admin_required
+def admin_work_log_migrate():
+    """WORK_LOG.md 파일을 Google Docs로 마이그레이션"""
+    try:
+        import re
+        work_log_path = 'WORK_LOG.md'
+        if not os.path.exists(work_log_path):
+            return jsonify({'success': False, 'message': 'WORK_LOG.md 파일을 찾을 수 없습니다.'})
+
+        with open(work_log_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # 정규표현식으로 날짜와 내용 추출
+        pattern = r'## (\d{4}-\d{2}-\d{2}): (.*?)(?=\n## \d{4}-\d{2}-\d{2}|$)'
+        matches = re.findall(pattern, content, re.DOTALL)
+
+        if not matches:
+            return jsonify({'success': False, 'message': '마이그레이션할 데이터가 없습니다.'})
+
+        # 날짜순 정렬 (오래된 순서대로 추가하면 index 1에 추가 시 최신이 위로 감)
+        matches.sort(key=lambda x: x[0])
+
+        success_count = 0
+        for date_str, body in matches:
+            res = append_to_work_log_docs(
+                log_entry=body.strip(),
+                log_date=date_str
+            )
+            if res['success']:
+                success_count += 1
+
+        return jsonify({
+            'success': True, 
+            'message': f'{success_count}개의 로그가 성공적으로 Google Docs로 마이그레이션되었습니다.'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'마이그레이션 중 오류 발생: {str(e)}'})
 
 # RCM 관리
 @admin_bp.route('/rcm')

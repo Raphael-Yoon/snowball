@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>Snowball - 관리자</title>
@@ -11,6 +12,7 @@
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
+
 <body>
     {% include 'navi.jsp' %}
 
@@ -78,6 +80,21 @@
             </div>
         </div>
 
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-book fa-3x text-secondary mb-3"></i>
+                        <h5 class="card-title">작업 로그 관리</h5>
+                        <p class="card-text">Google Sheets와 연동된 작업 로그를 관리합니다.</p>
+                        <a href="/admin/work-log" class="btn btn-secondary">
+                            <i class="fas fa-book me-1"></i>작업 로그
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row mt-4">
             <div class="col-12">
                 <div class="alert alert-info">
@@ -90,4 +107,5 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
