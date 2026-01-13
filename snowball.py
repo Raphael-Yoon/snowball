@@ -25,7 +25,8 @@ from snowball_link10 import bp_link10
 from snowball_admin import admin_bp
 from auth import send_otp, verify_otp, login_required, admin_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations, find_user_by_email
 from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
-from snowball_drive import append_to_work_log, get_work_log
+from snowball_drive import append_to_work_log, get_work_log, append_to_work_log_docs, get_work_log_docs
+
 import base64
 import pickle
 import os
@@ -1233,11 +1234,11 @@ def work_log_api():
             })
 
         # 사용자 정보와 함께 로그 작성
-        result = append_to_work_log(
+        result = append_to_work_log_docs(
             log_entry=log_entry,
-            user_name=user_info.get('user_name', ''),
-            user_email=user_info.get('user_email', '')
+            log_date=datetime.now().strftime('%Y-%m-%d')
         )
+
 
         # 활동 로그 기록
         if result['success']:

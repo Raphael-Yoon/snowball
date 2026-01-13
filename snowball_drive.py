@@ -13,7 +13,7 @@ from googleapiclient.http import MediaIoBaseUpload
 def get_drive_credentials():
     """Google Drive & Sheets API 인증 토큰 획득"""
     SCOPES = [
-        'https://www.googleapis.com/auth/drive.file',  # 앱이 생성한 파일만 접근
+        'https://www.googleapis.com/auth/drive',  # 드라이브 전체 접근 권한 (기존 폴더 인식용)
         'https://www.googleapis.com/auth/spreadsheets'  # Google Sheets 편집
     ]
     creds = None
@@ -73,7 +73,7 @@ def create_or_get_folder(service, folder_name, parent_id=None):
         return folder.get('id')
 
 
-def append_to_work_log(log_entry, user_name='', user_email=''):
+def append_to_work_log(log_entry, user_name='', user_email='', log_date=None):
     """
     Google Sheets의 work_log 스프레드시트에 작업 내용 추가
 
@@ -81,6 +81,7 @@ def append_to_work_log(log_entry, user_name='', user_email=''):
         log_entry (str): 추가할 작업 로그 내용
         user_name (str): 사용 안 함 (하위 호환성 유지)
         user_email (str): 사용 안 함 (하위 호환성 유지)
+        log_date (str, optional): 작업 날짜 (YYYY-MM-DD). None이면 현재 날짜 사용.
 
     Returns:
         dict: 성공 여부와 메시지
@@ -106,8 +107,11 @@ def append_to_work_log(log_entry, user_name='', user_email=''):
 
         items = results.get('files', [])
 
-        # 현재 날짜
-        date_only = datetime.now().strftime('%Y-%m-%d')
+        # 날짜 설정
+        if log_date:
+            date_only = log_date
+        else:
+            date_only = datetime.now().strftime('%Y-%m-%d')
 
         # 새 행 데이터 (날짜, 작업 내용만)
         new_row = [date_only, log_entry]
@@ -154,10 +158,12 @@ def append_to_work_log(log_entry, user_name='', user_email=''):
                 }]
             }
 
-            spreadsheet = sheets_service.spreadsheets().create(
+            spreadsheet_response = sheets_service.spreadsheets().create(
                 body=spreadsheet
             ).execute()
-            spreadsheet_id = spreadsheet.get('spreadsheetId')
+            spreadsheet_id = spreadsheet_response.get('spreadsheetId')
+            # 첫 번째 시트의 ID 가져오기
+            sheet_id = spreadsheet_response['sheets'][0]['properties']['sheetId']
 
             # 생성된 스프레드시트를 폴더로 이동
             drive_service.files().update(
@@ -180,7 +186,7 @@ def append_to_work_log(log_entry, user_name='', user_email=''):
                 {
                     'repeatCell': {
                         'range': {
-                            'sheetId': 0,
+                            'sheetId': sheet_id,
                             'startRowIndex': 0,
                             'endRowIndex': 1
                         },
@@ -203,7 +209,7 @@ def append_to_work_log(log_entry, user_name='', user_email=''):
                 {
                     'autoResizeDimensions': {
                         'dimensions': {
-                            'sheetId': 0,
+                            'sheetId': sheet_id,
                             'dimension': 'COLUMNS',
                             'startIndex': 0,
                             'endIndex': 2
@@ -245,6 +251,93 @@ def append_to_work_log(log_entry, user_name='', user_email=''):
         return {
             'success': False,
             'message': f'작업 로그 저장 중 오류가 발생했습니다: {str(e)}'
+        }
+
+
+def append_to_work_log_docs(log_entry, log_date=None):
+    """
+    Google Docs의 work_log 문서에 작업 내용 추가
+
+    Args:
+        log_entry (str): 추가할 작업 로그 내용
+        log_date (str, optional): 작업 날짜 (YYYY-MM-DD). None이면 현재 날짜 사용.
+
+    Returns:
+        dict: 성공 여부와 메시지
+    """
+    try:
+        creds = get_drive_credentials()
+        drive_service = build('drive', 'v3', credentials=creds)
+        docs_service = build('docs', 'v1', credentials=creds)
+
+        # Pythons > Snowball 폴더 찾기
+        pythons_folder_id = create_or_get_folder(drive_service, 'Pythons')
+        folder_id = create_or_get_folder(drive_service, 'Snowball', pythons_folder_id)
+
+        # work_log Google Docs 문서 찾기
+        query = f"name='work_log' and mimeType='application/vnd.google-apps.document' and '{folder_id}' in parents and trashed=false"
+        results = drive_service.files().list(
+            q=query,
+            spaces='drive',
+            fields='files(id, name)'
+        ).execute()
+
+        items = results.get('files', [])
+        
+        if items:
+            document_id = items[0]['id']
+        else:
+            # 문서가 없으면 새로 생성
+            doc = docs_service.documents().create(body={'title': 'work_log'}).execute()
+            document_id = doc.get('documentId')
+            
+            # 생성된 문서를 폴더로 이동
+            drive_service.files().update(
+                fileId=document_id,
+                addParents=folder_id,
+                fields='id, parents'
+            ).execute()
+
+        # 날짜 설정
+        if log_date:
+            date_str = f"\n\n## {log_date}\n"
+        else:
+            date_str = f"\n\n## {datetime.now().strftime('%Y-%m-%d')}\n"
+
+        # 문서의 끝 위치 확인을 위해 문서 가져오기
+        doc = docs_service.documents().get(documentId=document_id).execute()
+        # 문서를 맨 위에 추가할지 맨 아래에 추가할지 결정 (여기서는 맨 위에 추가)
+        # 실제로는 맨 앞에 추가하는 것이 최신 로그를 보기 편함
+        
+        requests = [
+            {
+                'insertText': {
+                    'location': {'index': 1},
+                    'text': f"{date_str}{log_entry}\n"
+                }
+            }
+        ]
+
+        docs_service.documents().batchUpdate(
+            documentId=document_id,
+            body={'requests': requests}
+        ).execute()
+
+        doc_url = f'https://docs.google.com/document/d/{document_id}/edit'
+
+        return {
+            'success': True,
+            'message': '작업 로그가 Google Docs에 추가되었습니다.',
+            'document_id': document_id,
+            'url': doc_url
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            'success': False,
+            'message': f'작업 로그(Docs) 저장 중 오류가 발생했습니다: {str(e)}'
         }
 
 
@@ -339,3 +432,51 @@ if __name__ == '__main__':
         print(f"총 {len(log_result['data'])}개 행")
         for i, row in enumerate(log_result['data'][:5]):  # 최근 5개만 표시
             print(f"{i}: {row}")
+def get_work_log_docs():
+    """
+    Google Docs의 work_log 문서 정보 가져오기
+
+    Returns:
+        dict: 성공 여부, 메시지, 문서 URL
+    """
+    try:
+        creds = get_drive_credentials()
+        drive_service = build('drive', 'v3', credentials=creds)
+
+        # Pythons > Snowball 폴더 찾기
+        pythons_folder_id = create_or_get_folder(drive_service, 'Pythons')
+        folder_id = create_or_get_folder(drive_service, 'Snowball', pythons_folder_id)
+
+        # work_log Google Docs 문서 찾기
+        query = f"name='work_log' and mimeType='application/vnd.google-apps.document' and '{folder_id}' in parents and trashed=false"
+        results = drive_service.files().list(
+            q=query,
+            spaces='drive',
+            fields='files(id, name)'
+        ).execute()
+
+        items = results.get('files', [])
+        
+        if not items:
+            return {
+                'success': False,
+                'message': '작업 로그 문서를 찾을 수 없습니다.',
+                'url': None
+            }
+
+        document_id = items[0]['id']
+        doc_url = f'https://docs.google.com/document/d/{document_id}/edit'
+
+        return {
+            'success': True,
+            'message': '작업 로그 문서를 찾았습니다.',
+            'url': doc_url,
+            'document_id': document_id
+        }
+
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f'작업 로그(Docs) 조회 중 오류가 발생했습니다: {str(e)}',
+            'url': None
+        }
