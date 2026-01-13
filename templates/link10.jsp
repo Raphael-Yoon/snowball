@@ -356,6 +356,35 @@
             background-color: var(--hover-color);
         }
 
+        /* 첫 번째 테이블 (종합 추천 의견) - 순위 컬럼 넓게 */
+        .ai-markdown-body table:first-of-type th:first-child,
+        .ai-markdown-body table:first-of-type td:first-child {
+            width: 80px;
+            min-width: 80px;
+        }
+
+        /* 첫 번째 테이블 (종합 추천 의견) - 종목명 컬럼 넓게 */
+        .ai-markdown-body table:first-of-type th:nth-child(2),
+        .ai-markdown-body table:first-of-type td:nth-child(2) {
+            width: 180px;
+            min-width: 180px;
+        }
+
+        /* 두 번째 테이블 (리스크 요인) - 리스크 유형 컬럼 */
+        .ai-markdown-body table:nth-of-type(2) th:first-child,
+        .ai-markdown-body table:nth-of-type(2) td:first-child {
+            width: 150px;
+            min-width: 150px;
+        }
+
+        /* 두 번째 테이블 (리스크 요인) - 상세 내용과 투자 조언 컬럼을 반반으로 */
+        .ai-markdown-body table:nth-of-type(2) th:nth-child(2),
+        .ai-markdown-body table:nth-of-type(2) td:nth-child(2),
+        .ai-markdown-body table:nth-of-type(2) th:nth-child(3),
+        .ai-markdown-body table:nth-of-type(2) td:nth-child(3) {
+            width: 45%;
+        }
+
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -399,9 +428,6 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <a id="aiDriveLink" href="#" target="_blank" class="btn btn-primary" style="display:none;">
-                    <i class="fas fa-external-link-alt"></i> 구글 드라이브에서 보기
-                </a>
                 <button class="btn btn-secondary" onclick="closeAiModal()">닫기</button>
             </div>
         </div>
@@ -555,7 +581,6 @@
         function viewAiReport(filename) {
             const modal = document.getElementById('aiModal');
             const content = document.getElementById('aiResultContent');
-            const driveLink = document.getElementById('aiDriveLink');
 
             content.innerHTML = `
                 <div class="text-center">
@@ -565,7 +590,6 @@
                     <p class="mt-3 text-muted">리포트를 불러오는 중...</p>
                 </div>
             `;
-            driveLink.style.display = 'none';
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
 
@@ -574,10 +598,6 @@
                 .then(data => {
                     if (data.success) {
                         content.innerHTML = `<div class="ai-markdown-body">${marked.parse(data.result)}</div>`;
-                        if (data.drive_link) {
-                            driveLink.href = data.drive_link;
-                            driveLink.style.display = 'inline-block';
-                        }
                     } else {
                         content.innerHTML = `
                             <div class="alert alert-warning" role="alert">
