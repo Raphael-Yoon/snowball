@@ -628,6 +628,16 @@
                 closeAiModal();
             }
         }
+
+        // ESC 키로 모달 닫기
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('aiModal');
+                if (modal.style.display === 'flex') {
+                    closeAiModal();
+                }
+            }
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
