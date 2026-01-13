@@ -1017,3 +1017,115 @@ sqlite3.OperationalError: no such table: sb_user
 2026-01-13 20:53:13 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 20:53:13] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
 2026-01-13 20:53:14 [INFO] googleapiclient.discovery_cache:autodetect:49 - file_cache is only supported with oauth2client<4.0.0
 2026-01-13 20:53:16 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 20:53:16] "GET /link10/api/results HTTP/1.1" 200 -
+2026-01-13 21:57:26 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-13 21:57:26 [INFO] snowball.main:<module>:67 - 세션 설정 - Production: False, Secure: False
+2026-01-13 21:57:26 [INFO] snowball.main:<module>:68 - Flask 앱 시작 - Environment: Development
+2026-01-13 21:57:26 [WARNING] snowball.main:<module>:84 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-13 21:57:26 [INFO] werkzeug:_log:97 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5001
+2026-01-13 21:57:26 [INFO] werkzeug:_log:97 - [33mPress CTRL+C to quit[0m
+2026-01-13 21:57:26 [INFO] werkzeug:_log:97 -  * Restarting with stat
+2026-01-13 21:57:31 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-13 21:57:31 [INFO] snowball.main:<module>:67 - 세션 설정 - Production: False, Secure: False
+2026-01-13 21:57:31 [INFO] snowball.main:<module>:68 - Flask 앱 시작 - Environment: Development
+2026-01-13 21:57:31 [WARNING] snowball.main:<module>:84 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-13 21:57:31 [WARNING] werkzeug:_log:97 -  * Debugger is active!
+2026-01-13 21:57:31 [INFO] werkzeug:_log:97 -  * Debugger PIN: 928-618-468
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "GET / HTTP/1.1" 200 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/snowball.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/rcm.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/testing.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/interview.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/video.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[33mGET /static/img/stock_analysis.jpg HTTP/1.1[0m" 404 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/contact_us.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/dashboard.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/rcm_inquiry.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/elc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/tlc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[36mGET /static/img/itgc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:36 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:36] "[33mGET /static/img/pattern.png HTTP/1.1[0m" 404 -
+2026-01-13 21:57:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:41] "GET /login HTTP/1.1" 200 -
+2026-01-13 21:57:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:41] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-13 21:57:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:41] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-13 21:57:42 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:42] "[32mPOST /login HTTP/1.1[0m" 302 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "GET / HTTP/1.1" 200 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/snowball.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/dashboard.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/rcm_inquiry.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/tlc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/elc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/itgc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/rcm.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/video.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/testing.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/interview.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[36mGET /static/img/contact_us.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:57:43 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:43] "[33mGET /static/img/stock_analysis.jpg HTTP/1.1[0m" 404 -
+2026-01-13 21:57:46 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:46] "GET /link10 HTTP/1.1" 200 -
+2026-01-13 21:57:46 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:46] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-13 21:57:46 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:46] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-13 21:57:46 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:57:46] "[36mGET /static/img/logo.jpg HTTP/1.1[0m" 304 -
+2026-01-13 21:58:01 [INFO] google_auth_oauthlib.flow:log_message:476 - "GET /?state=dbdKF3pZaXtq6SXEqXABqpJSVTxlIp&code=4/0ASc3gC14CAeQIf2Zld7xgQowUUlUmeMSkk4x0V6phP9Fnlmr8gu2q3pf7zDeFpmY1lvLfw&scope=https://www.googleapis.com/auth/drive.readonly HTTP/1.1" 200 65
+2026-01-13 21:58:02 [INFO] googleapiclient.discovery_cache:autodetect:49 - file_cache is only supported with oauth2client<4.0.0
+2026-01-13 21:58:04 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 21:58:04] "GET /link10/api/results HTTP/1.1" 200 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "GET / HTTP/1.1" 200 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/snowball.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/dashboard.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/rcm_inquiry.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/elc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/tlc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/itgc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/rcm.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/video.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/contact_us.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/testing.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[33mGET /static/img/stock_analysis.jpg HTTP/1.1[0m" 404 -
+2026-01-13 22:04:06 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:06] "[36mGET /static/img/interview.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:10 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:10] "GET /link10 HTTP/1.1" 200 -
+2026-01-13 22:04:10 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:10] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-13 22:04:10 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:10] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-13 22:04:10 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:10] "[36mGET /static/img/logo.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:04:10 [INFO] googleapiclient.discovery_cache:autodetect:49 - file_cache is only supported with oauth2client<4.0.0
+2026-01-13 22:04:12 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:04:12] "GET /link10/api/results HTTP/1.1" 200 -
+2026-01-13 22:06:33 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-13 22:06:33 [INFO] snowball.main:<module>:67 - 세션 설정 - Production: False, Secure: False
+2026-01-13 22:06:33 [INFO] snowball.main:<module>:68 - Flask 앱 시작 - Environment: Development
+2026-01-13 22:06:33 [WARNING] snowball.main:<module>:84 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-13 22:06:33 [INFO] werkzeug:_log:97 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5001
+2026-01-13 22:06:33 [INFO] werkzeug:_log:97 - [33mPress CTRL+C to quit[0m
+2026-01-13 22:06:33 [INFO] werkzeug:_log:97 -  * Restarting with stat
+2026-01-13 22:06:38 [INFO] snowball:setup_logging:61 - 로깅 시스템 초기화 완료 - 레벨: INFO
+2026-01-13 22:06:38 [INFO] snowball.main:<module>:67 - 세션 설정 - Production: False, Secure: False
+2026-01-13 22:06:38 [INFO] snowball.main:<module>:68 - Flask 앱 시작 - Environment: Development
+2026-01-13 22:06:38 [WARNING] snowball.main:<module>:84 - CSRF Protection enabled with exemptions for API endpoints
+2026-01-13 22:06:38 [WARNING] werkzeug:_log:97 -  * Debugger is active!
+2026-01-13 22:06:38 [INFO] werkzeug:_log:97 -  * Debugger PIN: 928-618-468
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "GET / HTTP/1.1" 200 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/rcm_inquiry.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/dashboard.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/snowball.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/elc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/tlc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/itgc.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/rcm.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/video.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/contact_us.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/testing.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[36mGET /static/img/interview.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:41 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:41] "[33mGET /static/img/stock_analysis.jpg HTTP/1.1[0m" 404 -
+2026-01-13 22:06:45 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:45] "GET /link10 HTTP/1.1" 200 -
+2026-01-13 22:06:45 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:45] "[36mGET /static/css/common.css HTTP/1.1[0m" 304 -
+2026-01-13 22:06:45 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:45] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2026-01-13 22:06:45 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:45] "[36mGET /static/img/logo.jpg HTTP/1.1[0m" 304 -
+2026-01-13 22:06:45 [INFO] googleapiclient.discovery_cache:autodetect:49 - file_cache is only supported with oauth2client<4.0.0
+2026-01-13 22:06:47 [INFO] werkzeug:_log:97 - 127.0.0.1 - - [13/Jan/2026 22:06:47] "GET /link10/api/results HTTP/1.1" 200 -
