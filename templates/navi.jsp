@@ -69,12 +69,10 @@
                             <li><a class="dropdown-item" href="/link4">
                                 <i class="fas fa-film me-2"></i>영상 가이드
                             </a></li>
-                            {% if not is_production %}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/link10">
                                 <i class="fas fa-chart-line me-2"></i>종목 분석
                             </a></li>
-                            {% endif %}
                         </ul>
                     </li>
                     {% if user_info and user_info.get('admin_flag') == 'Y' %}
@@ -106,13 +104,11 @@
                             <i class="fas fa-film me-1"></i>영상 가이드
                         </a>
                     </li>
-                    {% if not is_production %}
                     <li class="nav-item">
                         <a href="/link10" class="nav-link">
                             <i class="fas fa-chart-line me-1"></i>종목 분석
                         </a>
                     </li>
-                    {% endif %}
                     <li class="nav-item">
                         <a href="{{ url_for('link9.contact') }}" class="nav-link">
                             <i class="fas fa-envelope me-1"></i>서비스 문의

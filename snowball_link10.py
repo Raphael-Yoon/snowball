@@ -14,30 +14,31 @@ if os.name == 'nt':
 
 bp_link10 = Blueprint('link10', __name__)
 
-# 결과 파일 저장 디렉토리 - trade 프로젝트의 results 폴더 사용
-RESULTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'trade', 'results')
-if not os.path.exists(RESULTS_DIR):
-    os.makedirs(RESULTS_DIR, exist_ok=True)
+# 결과 파일 저장 디렉토리 (사용 안함 - 데이터베이스 저장)
+# RESULTS_DIR = os.path.join(os.path.dirname(__file__), 'results')
+# if not os.path.exists(RESULTS_DIR):
+#     os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # ============================================================================
 # Google Drive Integration Functions
 # ============================================================================
 
 def get_drive_service():
-    """구글 드라이브 서비스 객체 생성 (trade 프로젝트의 credentials 사용)"""
+    """구글 드라이브 서비스 객체 생성 (읽기 전용)"""
     try:
         import pickle
         from googleapiclient.discovery import build
         from google_auth_oauthlib.flow import InstalledAppFlow
         from google.auth.transport.requests import Request
 
-        SCOPES = ['https://www.googleapis.com/auth/drive.file']
+        # 읽기 전용 권한
+        SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
         creds = None
 
-        # trade 프로젝트의 token.pickle 사용
-        trade_dir = os.path.join(os.path.dirname(__file__), '..', 'trade')
-        token_path = os.path.join(trade_dir, 'token.pickle')
-        credentials_path = os.path.join(trade_dir, 'credentials.json')
+        # snowball 프로젝트의 token_link10.pickle 사용 (Gmail 토큰과 분리)
+        snowball_dir = os.path.dirname(__file__)
+        token_path = os.path.join(snowball_dir, 'token_link10.pickle')
+        credentials_path = os.path.join(snowball_dir, 'credentials.json')
 
         if os.path.exists(token_path):
             with open(token_path, 'rb') as token:
