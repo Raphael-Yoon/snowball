@@ -254,40 +254,270 @@ def get_ai_result(filename):
 
 @bp_link10.route('/link10/api/download/<filename>', methods=['GET'])
 def download_file(filename):
-    """구글 드라이브에서 파일 다운로드"""
+    """엑셀 파일 다운로드 기능 비활성화 (AI 리포트 다운로드로 대체됨)"""
+    return jsonify({
+        'success': False,
+        'message': '엑셀 파일 다운로드 기능은 더 이상 지원되지 않습니다. AI 분석 리포트를 다운로드하시려면 "리포트 다운로드" 버튼을 이용해주세요.'
+    }), 410  # 410 Gone - 리소스가 영구적으로 제거됨
+
+@bp_link10.route('/link10/api/download_report/<filename>', methods=['GET'])
+def download_report(filename):
+    """구글 드라이브에서 AI 분석 리포트 다운로드 (PDF, DOCX, TXT 형식 지원)"""
     try:
+        # filename에서 .xlsx 제거하여 스프레드시트 이름 추출
+        sheet_name = filename.replace('.xlsx', '')
+
+        # 다운로드 형식 가져오기 (기본값: pdf)
+        format_type = request.args.get('format', 'pdf').lower()
+
+        # 지원하는 형식 확인
+        supported_formats = {
+            'pdf': {
+                'mimetype': 'application/pdf',
+                'export_type': 'application/pdf',
+                'extension': '.pdf'
+            },
+            'docx': {
+                'mimetype': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'export_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'extension': '.docx'
+            },
+            'txt': {
+                'mimetype': 'text/plain',
+                'export_type': 'text/plain',
+                'extension': '.txt'
+            }
+        }
+
+        if format_type not in supported_formats:
+            return jsonify({'error': f'지원하지 않는 형식입니다. (지원 형식: pdf, docx, txt)'}), 400
+
+        # 구글 드라이브에서 파일 목록 가져오기
+        drive_files = list_drive_files()
+
+        # AI 분석 리포트 문서 찾기
+        doc_name = f"AI 분석 리포트 - {sheet_name}"
+        doc_id = None
+
+        for file in drive_files:
+            if file['name'] == doc_name and file['mimeType'] == 'application/vnd.google-apps.document':
+                doc_id = file['id']
+                break
+
+        if not doc_id:
+            return jsonify({'error': 'AI 분석 리포트를 찾을 수 없습니다.'}), 404
+
+        # 구글 문서를 지정된 형식으로 다운로드
+        service = get_drive_service()
+        if not service:
+            return jsonify({'error': '구글 드라이브 인증에 실패했습니다.'}), 500
+
+        format_info = supported_formats[format_type]
+        request_export = service.files().export_media(
+            fileId=doc_id,
+            mimeType=format_info['export_type']
+        )
+        file_content = request_export.execute()
+
+        if file_content:
+            # 작성일 추출 (파일명에서 타임스탬프 부분 파싱)
+            # 형식: kospi_top100_20251228_162053 -> 2025-12-28
+            import re
+            date_match = re.search(r'_(\d{8})_\d{6}$', sheet_name)
+            if date_match:
+                date_str = date_match.group(1)
+                formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+            else:
+                # 타임스탬프가 없으면 현재 날짜 사용
+                from datetime import datetime
+                formatted_date = datetime.now().strftime('%Y-%m-%d')
+
+            # 사용자 친화적인 파일명 생성 (영문)
+            # 파일명 파싱: kospi_top100_20251228_162053
+            file_parts = sheet_name.split('_')
+            if len(file_parts) >= 2:
+                market = file_parts[0].upper()
+                count = file_parts[1]
+
+                # 종목 개수 라벨 (영문)
+                count_label = ''
+                if count == 'all':
+                    count_label = 'All'
+                elif count.startswith('top'):
+                    num = count.replace('top', '')
+                    count_label = f'Top{num}'
+
+                # 파일명 생성: "KOSPI_Top100_2025-12-28.pdf"
+                if market and count_label:
+                    download_filename = f"{market}_{count_label}_{formatted_date}{format_info['extension']}"
+                else:
+                    download_filename = f"AI_Report_{formatted_date}{format_info['extension']}"
+            else:
+                download_filename = f"AI_Report_{formatted_date}{format_info['extension']}"
+
+            return send_file(
+                io.BytesIO(file_content),
+                as_attachment=True,
+                download_name=download_filename,
+                mimetype=format_info['mimetype']
+            )
+        else:
+            return jsonify({'error': '리포트 다운로드에 실패했습니다.'}), 500
+
+    except Exception as e:
+        print(f"리포트 다운로드 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'다운로드 중 오류: {str(e)}'}), 500
+
+@bp_link10.route('/link10/api/send_report', methods=['POST'])
+def send_report():
+    """AI 분석 리포트를 이메일로 전송"""
+    try:
+        data = request.get_json()
+        filename = data.get('filename')
+        recipient_email = data.get('email')
+
+        if not filename or not recipient_email:
+            return jsonify({'success': False, 'message': '필수 정보가 누락되었습니다.'}), 400
+
+        # 이메일 유효성 검사
+        import re
+        email_pattern = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+        if not re.match(email_pattern, recipient_email):
+            return jsonify({'success': False, 'message': '올바른 이메일 주소가 아닙니다.'}), 400
+
         # filename에서 .xlsx 제거하여 스프레드시트 이름 추출
         sheet_name = filename.replace('.xlsx', '')
 
         # 구글 드라이브에서 파일 목록 가져오기
         drive_files = list_drive_files()
 
-        # 스프레드시트 찾기
-        spreadsheet_id = None
+        # AI 분석 리포트 문서 찾기
+        doc_name = f"AI 분석 리포트 - {sheet_name}"
+        doc_id = None
+
         for file in drive_files:
-            if file['name'] == sheet_name and file['mimeType'] == 'application/vnd.google-apps.spreadsheet':
-                spreadsheet_id = file['id']
+            if file['name'] == doc_name and file['mimeType'] == 'application/vnd.google-apps.document':
+                doc_id = file['id']
                 break
 
-        if not spreadsheet_id:
-            return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
+        if not doc_id:
+            return jsonify({'success': False, 'message': 'AI 분석 리포트를 찾을 수 없습니다.'}), 404
 
-        # 구글 시트를 엑셀로 다운로드
-        file_content = download_from_drive(spreadsheet_id)
+        # 구글 문서를 PDF로 다운로드
+        service = get_drive_service()
+        if not service:
+            return jsonify({'success': False, 'message': '구글 드라이브 인증에 실패했습니다.'}), 500
 
-        if file_content:
-            return send_file(
-                io.BytesIO(file_content),
-                as_attachment=True,
-                download_name=filename,
-                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
+        request_export = service.files().export_media(
+            fileId=doc_id,
+            mimeType='application/pdf'
+        )
+        file_content = request_export.execute()
+
+        if not file_content:
+            return jsonify({'success': False, 'message': 'PDF 생성에 실패했습니다.'}), 500
+
+        # 작성일 추출
+        date_match = re.search(r'_(\d{8})_\d{6}$', sheet_name)
+        if date_match:
+            date_str = date_match.group(1)
+            formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
         else:
-            return jsonify({'error': '파일 다운로드에 실패했습니다.'}), 500
+            from datetime import datetime
+            formatted_date = datetime.now().strftime('%Y-%m-%d')
+
+        # 사용자 친화적인 파일명 생성 (영문)
+        file_parts = sheet_name.split('_')
+        if len(file_parts) >= 2:
+            market = file_parts[0].upper()
+            count = file_parts[1]
+
+            # 시장명 (한글, 이메일 본문용)
+            market_label_ko = ''
+            if market == 'KOSPI':
+                market_label_ko = 'KOSPI'
+            elif market == 'KOSDAQ':
+                market_label_ko = 'KOSDAQ'
+            elif market == 'ALL':
+                market_label_ko = '전체시장'
+
+            # 종목 개수 (한글, 이메일 본문용)
+            count_label_ko = ''
+            if count == 'all':
+                count_label_ko = '전체 종목'
+            elif count.startswith('top'):
+                num = count.replace('top', '')
+                count_label_ko = f'상위 {num}개'
+
+            # 종목 개수 (영문, 파일명용)
+            count_label_en = ''
+            if count == 'all':
+                count_label_en = 'All'
+            elif count.startswith('top'):
+                num = count.replace('top', '')
+                count_label_en = f'Top{num}'
+
+            # 파일명 생성 (영문): "KOSPI_Top100_2025-12-28.pdf"
+            if market and count_label_en:
+                pdf_filename = f"{market}_{count_label_en}_{formatted_date}.pdf"
+                display_name = f"{market_label_ko} {count_label_ko} 분석"
+            else:
+                pdf_filename = f"AI_Report_{formatted_date}.pdf"
+                display_name = "AI 분석 리포트"
+        else:
+            pdf_filename = f"AI_Report_{formatted_date}.pdf"
+            display_name = "AI 분석 리포트"
+
+        # 이메일 전송
+        from snowball_mail import send_gmail_with_attachment
+
+        subject = f"[Snowball] {display_name} - {formatted_date}"
+        body = f"""
+안녕하세요,
+
+요청하신 Snowball AI 주식 시장 분석 리포트를 전송드립니다.
+
+분석 일자: {formatted_date}
+분석 내용: {display_name}
+
+첨부된 PDF 파일을 확인해주세요.
+
+감사합니다.
+
+---
+Snowball AI Analysis Team
+        """
+
+        # BytesIO 객체 생성
+        file_stream = io.BytesIO(file_content)
+
+        try:
+            send_gmail_with_attachment(
+                to=recipient_email,
+                subject=subject,
+                body=body,
+                file_stream=file_stream,
+                file_name=pdf_filename
+            )
+            success = True
+        except Exception as email_error:
+            print(f"Gmail 전송 오류: {email_error}")
+            success = False
+
+        if success:
+            print(f"리포트 이메일 전송 성공: {recipient_email}")
+            return jsonify({'success': True, 'message': '이메일이 성공적으로 전송되었습니다.'})
+        else:
+            print(f"리포트 이메일 전송 실패: {recipient_email}")
+            return jsonify({'success': False, 'message': '이메일 전송에 실패했습니다.'}), 500
 
     except Exception as e:
-        print(f"파일 다운로드 오류: {e}")
-        return jsonify({'error': f'다운로드 중 오류: {str(e)}'}), 500
+        print(f"리포트 이메일 전송 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'오류 발생: {str(e)}'}), 500
 
 @bp_link10.route('/link10/api/delete/<filename>', methods=['DELETE'])
 def delete_file(filename):
