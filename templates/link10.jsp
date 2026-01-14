@@ -433,17 +433,43 @@
         </div>
     </div>
 
+    <!-- Email Input Modal -->
+    <div id="emailModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-envelope"></i> 이메일로 리포트 전송</h2>
+                <span class="close-modal" onclick="closeEmailModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">AI 분석 리포트를 받으실 이메일 주소를 입력해주세요.</p>
+                <div class="mb-3">
+                    <label for="recipientEmail" class="form-label">이메일 주소</label>
+                    <input type="email" class="form-control" id="recipientEmail" placeholder="example@email.com" required>
+                    <div class="invalid-feedback" id="emailError" style="display: none;">
+                        올바른 이메일 주소를 입력해주세요.
+                    </div>
+                </div>
+                <div id="sendingStatus" style="display: none;" class="alert alert-info">
+                    <div class="spinner-border spinner-border-sm me-2" role="status">
+                        <span class="visually-hidden">전송 중...</span>
+                    </div>
+                    이메일을 전송하는 중입니다...
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEmailModal()">취소</button>
+                <button class="btn btn-primary" onclick="sendReportByEmail()">
+                    <i class="fas fa-paper-plane"></i> 전송
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="link10-container">
         <div class="page-header">
             <h1 class="page-title">
                 <i class="fas fa-chart-line"></i> AI 분석 결과 조회
             </h1>
-        </div>
-
-        <div class="section-header">
-            <h2 class="section-title">
-                <i class="fas fa-folder-open"></i> 분석 결과 목록
-            </h2>
         </div>
 
         <div id="resultsList" class="results-grid">
@@ -457,6 +483,9 @@
     </div>
 
     <script>
+        let currentFilename = null; // 현재 열려있는 리포트의 파일명
+        const isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
+
         window.onload = function () {
             loadResults();
         };
@@ -475,43 +504,33 @@
             fetch('/link10/api/results')
                 .then(response => response.json())
                 .then(files => {
-                    if (files.length === 0) {
+                    // AI 분석이 있는 파일만 필터링
+                    const filesWithAi = files.filter(file => file.has_ai);
+
+                    if (filesWithAi.length === 0) {
                         resultsList.innerHTML = `
                             <div class="empty-state" style="grid-column: 1/-1;">
                                 <i class="fas fa-inbox"></i>
-                                <h3>저장된 결과가 없습니다</h3>
-                                <p>Trade 프로젝트에서 데이터를 수집하면 여기에 표시됩니다.</p>
+                                <h3>AI 분석 결과가 없습니다</h3>
+                                <p>Trade 프로젝트에서 AI 분석을 실행하면 여기에 표시됩니다.</p>
                             </div>
                         `;
                         return;
                     }
-                    resultsList.innerHTML = files.map(file => {
-                        const date = new Date(file.created_at).toLocaleString('ko-KR', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        });
-                        const size = (file.size / 1024).toFixed(1);
-                        const aiButton = file.has_ai
-                            ? `<button onclick="viewAiReport('${file.filename}')" class="result-btn btn-ai">
-                                   <i class="fas fa-robot"></i> AI 리포트 보기
-                               </button>`
-                            : `<button disabled class="result-btn btn-ai">
-                                   <i class="fas fa-ban"></i> AI 분석 없음
-                               </button>`;
-
+                    resultsList.innerHTML = filesWithAi.map(file => {
                         // 파일명 파싱: {market}_{count}_{timestamp}.xlsx
                         const fileNameParts = file.filename.replace('.xlsx', '').split('_');
                         let marketLabel = '';
                         let marketClass = '';
                         let countLabel = '';
                         let displayTitle = file.filename; // 기본값
+                        let collectionDate = '';
 
-                        if (fileNameParts.length >= 2) {
+                        if (fileNameParts.length >= 4) {
                             const market = fileNameParts[0].toUpperCase();
                             const count = fileNameParts[1];
+                            const dateStr = fileNameParts[2]; // YYYYMMDD
+                            const timeStr = fileNameParts[3]; // HHMMSS
 
                             // 시장 라벨
                             if (market === 'KOSPI') {
@@ -537,27 +556,36 @@
                             if (marketLabel && countLabel) {
                                 displayTitle = `${marketLabel} ${countLabel} 분석`;
                             }
+
+                            // 수집 일자 포맷팅: 20251228 -> 2025-12-28
+                            if (dateStr && dateStr.length === 8) {
+                                const year = dateStr.substring(0, 4);
+                                const month = dateStr.substring(4, 6);
+                                const day = dateStr.substring(6, 8);
+                                collectionDate = `${year}-${month}-${day}`;
+                            }
                         }
 
                         return `
                         <div class="result-card">
                             <div class="result-header">
                                 <div class="result-icon">
-                                    <i class="fas fa-file-excel" style="color: white;"></i>
+                                    <i class="fas fa-chart-line" style="color: white;"></i>
                                 </div>
                                 <div class="result-info">
                                     <div class="result-filename">${displayTitle}</div>
                                     <div class="result-meta">
-                                        <span><i class="far fa-calendar-alt"></i> ${date}</span>
-                                        <span><i class="far fa-hdd"></i> ${size} KB</span>
+                                        ${collectionDate ? `<span><i class="far fa-calendar-alt"></i> 데이터 수집: ${collectionDate}</span>` : ''}
                                     </div>
                                 </div>
                             </div>
                             <div class="result-actions">
-                                ${aiButton}
-                                <a href="/link10/api/download/${file.filename}" class="result-btn btn-download">
-                                    <i class="fas fa-download"></i> 다운로드
-                                </a>
+                                <button onclick="viewAiReport('${file.filename}')" class="result-btn btn-ai">
+                                    <i class="fas fa-robot"></i> AI 리포트 보기
+                                </button>
+                                <button onclick="handleReportSend('${file.filename}')" class="result-btn btn-download">
+                                    <i class="fas fa-paper-plane"></i> AI 리포트 전송
+                                </button>
                             </div>
                         </div>
                         `;
@@ -617,15 +645,171 @@
                 });
         }
 
+        function downloadReport(format) {
+            if (!currentFilename) {
+                alert('다운로드할 리포트가 선택되지 않았습니다.');
+                return;
+            }
+
+            // 다운로드 URL 생성 (PDF 형식 고정)
+            const downloadUrl = `/link10/api/download_report/${currentFilename}?format=pdf`;
+
+            // 다운로드 시작
+            window.location.href = downloadUrl;
+
+            // Toast 메시지 표시 (Bootstrap Toast 사용)
+            const toastHtml = `
+                <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                    <div class="toast show" role="alert">
+                        <div class="toast-header">
+                            <i class="fas fa-download text-success me-2"></i>
+                            <strong class="me-auto">다운로드 시작</strong>
+                            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                        </div>
+                        <div class="toast-body">
+                            PDF 형식으로 다운로드를 시작합니다.
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Toast를 body에 추가
+            const toastContainer = document.createElement('div');
+            toastContainer.innerHTML = toastHtml;
+            document.body.appendChild(toastContainer);
+
+            // 3초 후 Toast 제거
+            setTimeout(() => {
+                toastContainer.remove();
+            }, 3000);
+        }
+
         function closeAiModal() {
             document.getElementById('aiModal').style.display = 'none';
             document.body.style.overflow = 'auto';
         }
 
+        function closeEmailModal() {
+            document.getElementById('emailModal').style.display = 'none';
+            document.getElementById('recipientEmail').value = '';
+            document.getElementById('emailError').style.display = 'none';
+            document.getElementById('sendingStatus').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        function showToast(type, title, message) {
+            // type: 'success', 'danger', 'warning', 'info'
+            const iconMap = {
+                'success': 'fa-check-circle',
+                'danger': 'fa-times-circle',
+                'warning': 'fa-exclamation-triangle',
+                'info': 'fa-info-circle'
+            };
+
+            const icon = iconMap[type] || 'fa-info-circle';
+
+            const toastHtml = `
+                <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                    <div class="toast show" role="alert">
+                        <div class="toast-header">
+                            <i class="fas ${icon} text-${type} me-2"></i>
+                            <strong class="me-auto">${title}</strong>
+                            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                        </div>
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const toastContainer = document.createElement('div');
+            toastContainer.innerHTML = toastHtml;
+            document.body.appendChild(toastContainer);
+
+            // 3초 후 Toast 제거
+            setTimeout(() => {
+                toastContainer.remove();
+            }, 3000);
+        }
+
+        function handleReportSend(filename) {
+            currentFilename = filename;
+
+            if (isLoggedIn) {
+                // 로그인한 경우: 바로 다운로드
+                window.location.href = `/link10/api/download_report/${filename}?format=pdf`;
+            } else {
+                // 로그인하지 않은 경우: 이메일 입력 모달 표시
+                document.getElementById('emailModal').style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function sendReportByEmail() {
+            const emailInput = document.getElementById('recipientEmail');
+            const email = emailInput.value.trim();
+            const emailError = document.getElementById('emailError');
+            const sendingStatus = document.getElementById('sendingStatus');
+
+            // 이메일 유효성 검사
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                emailError.style.display = 'block';
+                emailInput.classList.add('is-invalid');
+                return;
+            }
+
+            emailError.style.display = 'none';
+            emailInput.classList.remove('is-invalid');
+            sendingStatus.style.display = 'block';
+
+            // 버튼 비활성화
+            const sendButton = event.target;
+            sendButton.disabled = true;
+
+            // 이메일 전송 API 호출
+            fetch('/link10/api/send_report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: currentFilename,
+                    email: email
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                sendingStatus.style.display = 'none';
+                sendButton.disabled = false;
+
+                if (data.success) {
+                    // 성공 토스트 메시지
+                    showToast('success', '전송 완료', '이메일이 성공적으로 전송되었습니다!');
+                    closeEmailModal();
+                } else {
+                    // 실패 토스트 메시지
+                    showToast('danger', '전송 실패', data.message || '알 수 없는 오류가 발생했습니다.');
+                }
+            })
+            .catch(error => {
+                sendingStatus.style.display = 'none';
+                sendButton.disabled = false;
+                // 오류 토스트 메시지
+                showToast('danger', '오류 발생', '이메일 전송 중 오류가 발생했습니다.');
+            });
+        }
+
         window.onclick = function (event) {
-            const modal = document.getElementById('aiModal');
-            if (event.target == modal) {
+            const aiModal = document.getElementById('aiModal');
+            const emailModal = document.getElementById('emailModal');
+
+            if (event.target == aiModal) {
                 closeAiModal();
+            }
+            if (event.target == emailModal) {
+                closeEmailModal();
             }
         }
 
