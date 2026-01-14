@@ -122,22 +122,37 @@ def download_from_drive(file_id):
         return None
 
 def get_google_doc_content(doc_id):
-    """구글 문서의 텍스트 내용 가져오기"""
+    """구글 문서의 HTML 내용 가져오기"""
     try:
         from googleapiclient.discovery import build
         service = get_drive_service()
         if not service:
             return None
 
-        # 구글 문서를 텍스트로 내보내기
+        # 구글 문서를 HTML로 내보내기
         request = service.files().export_media(
             fileId=doc_id,
-            mimeType='text/plain'
+            mimeType='text/html'
         )
         content = request.execute()
-        return content.decode('utf-8')
+
+        # 바이트 데이터인 경우 디코딩
+        if isinstance(content, bytes):
+            # UTF-8로 시도, 실패하면 다른 인코딩 시도
+            try:
+                return content.decode('utf-8')
+            except UnicodeDecodeError:
+                try:
+                    return content.decode('utf-8-sig')  # BOM 포함 UTF-8
+                except UnicodeDecodeError:
+                    return content.decode('latin-1')  # 최후의 수단
+        else:
+            # 이미 문자열인 경우 그대로 반환
+            return content
     except Exception as e:
         print(f"구글 문서 조회 오류: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 # ============================================================================

@@ -217,7 +217,7 @@
             color: white;
         }
 
-        /* 모달 스타일 */
+        /* AI Modal - 라이트 테마 스타일 */
         .modal {
             display: none;
             position: fixed;
@@ -225,12 +225,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(5px);
             z-index: 2000;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 40px;
         }
 
         .modal-content {
@@ -238,151 +238,248 @@
             border-radius: 16px;
             width: 100%;
             max-width: 1000px;
-            max-height: 85vh;
+            max-height: 90vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
         }
 
         .modal-header {
-            padding: 25px 30px;
-            border-bottom: 1px solid var(--border-color);
+            padding: 24px 32px;
+            border-bottom: 1px solid #e5e7eb;
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
             border-radius: 16px 16px 0 0;
         }
 
         .modal-header h2 {
             margin: 0;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
+            color: white;
         }
 
         .modal-body {
-            padding: 30px;
+            padding: 32px;
             overflow-y: auto;
             flex: 1;
+            background: white;
         }
 
         .modal-footer {
-            padding: 20px 30px;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-            background: var(--light-bg);
-            border-radius: 0 0 16px 16px;
+            padding: 16px 32px !important;
+            border-top: 1px solid #e5e7eb !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 12px !important;
+            background: #f9fafb !important;
+            border-radius: 0 0 16px 16px !important;
+        }
+
+        .modal-footer button,
+        .modal-footer .btn,
+        .modal-footer .btn-secondary {
+            padding: 10px 24px !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            background: #6366f1 !important;
+            border: none !important;
+            color: white !important;
+            cursor: pointer !important;
+            transition: background 0.2s !important;
+        }
+
+        .modal-footer button:hover,
+        .modal-footer .btn:hover,
+        .modal-footer .btn-secondary:hover {
+            background: #4f46e5 !important;
         }
 
         .close-modal {
             font-size: 28px;
             cursor: pointer;
-            color: white;
+            color: rgba(255, 255, 255, 0.8);
             line-height: 1;
-            opacity: 0.8;
-            transition: opacity 0.3s;
+            transition: color 0.2s;
         }
 
         .close-modal:hover {
-            opacity: 1;
+            color: white;
         }
 
+        /* 로딩 스피너 */
+        .loading-ai {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+        }
+
+        .ai-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-ai p {
+            margin-top: 20px;
+            color: #6b7280;
+            font-size: 15px;
+        }
+
+        /* AI 마크다운 본문 - 라이트테마 */
         .ai-markdown-body {
             line-height: 1.8;
-            color: var(--text-color);
+            color: #1f2937;
+            font-size: 15px;
         }
 
+        /* 구글 문서 HTML 스타일 초기화 */
+        .ai-markdown-body * {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif !important;
+        }
+
+        /* 제목 스타일 */
         .ai-markdown-body h1,
         .ai-markdown-body h2,
-        .ai-markdown-body h3 {
-            color: var(--primary-color);
+        .ai-markdown-body h3,
+        .ai-markdown-body h4,
+        .ai-markdown-body p.title,
+        .ai-markdown-body p.subtitle {
+            color: #1e293b;
             margin-top: 24px;
             margin-bottom: 16px;
             font-weight: 700;
+            line-height: 1.4;
         }
 
-        .ai-markdown-body h1 {
-            font-size: 2rem;
-            border-bottom: 3px solid var(--primary-color);
-            padding-bottom: 10px;
+        .ai-markdown-body h1,
+        .ai-markdown-body p.title {
+            font-size: 1.75rem;
+            margin-top: 0;
+            color: #4338ca;
         }
 
-        .ai-markdown-body h2 {
-            font-size: 1.5rem;
+        .ai-markdown-body h2,
+        .ai-markdown-body p.subtitle {
+            font-size: 1.4rem;
+            margin-top: 32px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+            color: #4338ca;
         }
 
         .ai-markdown-body h3 {
-            font-size: 1.25rem;
+            font-size: 1.2rem;
+            color: #6366f1;
         }
 
+        .ai-markdown-body h4 {
+            font-size: 1.05rem;
+        }
+
+        /* 단락 */
         .ai-markdown-body p {
             margin-bottom: 16px;
+            line-height: 1.8;
         }
 
+        /* 리스트 */
         .ai-markdown-body ul,
         .ai-markdown-body ol {
             margin-bottom: 16px;
-            padding-left: 30px;
+            padding-left: 24px;
+            line-height: 1.8;
         }
 
         .ai-markdown-body li {
             margin-bottom: 8px;
         }
 
+        /* 테이블 스타일 - 라이트테마 */
         .ai-markdown-body table {
-            width: 100%;
+            width: 100% !important;
             border-collapse: collapse;
             margin-bottom: 24px;
-            border: 1px solid var(--border-color);
+            font-size: 14px;
+            table-layout: fixed !important;
         }
 
         .ai-markdown-body th,
         .ai-markdown-body td {
-            padding: 12px 15px;
-            border: 1px solid var(--border-color);
+            padding: 12px 14px;
+            border: 1px solid #e5e7eb;
             text-align: left;
+            vertical-align: top;
+            word-wrap: break-word;
         }
 
         .ai-markdown-body th {
-            background-color: var(--light-bg);
-            color: var(--primary-color);
+            background: #f8fafc !important;
+            color: #1e293b !important;
             font-weight: 700;
         }
 
-        .ai-markdown-body tr:hover {
-            background-color: var(--hover-color);
+        .ai-markdown-body tbody tr:hover {
+            background: #f9fafb;
         }
 
-        /* 첫 번째 테이블 (종합 추천 의견) - 순위 컬럼 넓게 */
-        .ai-markdown-body table:first-of-type th:first-child,
-        .ai-markdown-body table:first-of-type td:first-child {
-            width: 80px;
-            min-width: 80px;
+        /* 강조 텍스트 */
+        .ai-markdown-body strong,
+        .ai-markdown-body b {
+            color: #1e293b;
+            font-weight: 700;
         }
 
-        /* 첫 번째 테이블 (종합 추천 의견) - 종목명 컬럼 넓게 */
-        .ai-markdown-body table:first-of-type th:nth-child(2),
-        .ai-markdown-body table:first-of-type td:nth-child(2) {
-            width: 180px;
-            min-width: 180px;
+        /* 테이블 인라인 스타일 강제 덮어쓰기 */
+        .ai-markdown-body table,
+        .ai-markdown-body table[style] {
+            width: 100% !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
         }
 
-        /* 두 번째 테이블 (리스크 요인) - 리스크 유형 컬럼 */
-        .ai-markdown-body table:nth-of-type(2) th:first-child,
-        .ai-markdown-body table:nth-of-type(2) td:first-child {
-            width: 150px;
-            min-width: 150px;
+        /* 컬럼 너비 설정 */
+        .ai-markdown-body th:first-child,
+        .ai-markdown-body td:first-child {
+            width: 60px !important;
+            text-align: center;
         }
 
-        /* 두 번째 테이블 (리스크 요인) - 상세 내용과 투자 조언 컬럼을 반반으로 */
-        .ai-markdown-body table:nth-of-type(2) th:nth-child(2),
-        .ai-markdown-body table:nth-of-type(2) td:nth-child(2),
-        .ai-markdown-body table:nth-of-type(2) th:nth-child(3),
-        .ai-markdown-body table:nth-of-type(2) td:nth-child(3) {
-            width: 45%;
+        .ai-markdown-body th:nth-child(2),
+        .ai-markdown-body td:nth-child(2) {
+            width: 120px !important;
+        }
+
+        .ai-markdown-body th:nth-child(3),
+        .ai-markdown-body td:nth-child(3) {
+            width: 150px !important;
+        }
+
+        .ai-markdown-body th:nth-child(4),
+        .ai-markdown-body td:nth-child(4) {
+            width: auto !important;
+        }
+
+        /* 여백 조정 */
+        .ai-markdown-body > *:first-child {
+            margin-top: 0;
+        }
+
+        .ai-markdown-body > *:last-child {
+            margin-bottom: 0;
         }
 
         .empty-state {
@@ -416,19 +513,17 @@
     <div id="aiModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-robot"></i> AI 투자 리포트</h2>
+                <h2>🤖 AI 투자 리포트</h2>
                 <span class="close-modal" onclick="closeAiModal()">&times;</span>
             </div>
             <div id="aiResultContent" class="modal-body">
-                <div class="text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">불러오는 중...</span>
-                    </div>
-                    <p class="mt-3 text-muted">리포트를 불러오는 중...</p>
+                <div class="loading-ai">
+                    <div class="ai-spinner"></div>
+                    <p>AI가 분석 중입니다...</p>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeAiModal()">닫기</button>
+                <button onclick="closeAiModal()">닫기</button>
             </div>
         </div>
     </div>
@@ -437,30 +532,27 @@
     <div id="emailModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
-                <h2><i class="fas fa-envelope"></i> 이메일로 리포트 전송</h2>
+                <h2>📧 이메일로 리포트 전송</h2>
                 <span class="close-modal" onclick="closeEmailModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <p class="mb-3">AI 분석 리포트를 받으실 이메일 주소를 입력해주세요.</p>
-                <div class="mb-3">
-                    <label for="recipientEmail" class="form-label">이메일 주소</label>
-                    <input type="email" class="form-control" id="recipientEmail" placeholder="example@email.com" required>
-                    <div class="invalid-feedback" id="emailError" style="display: none;">
+                <p style="color: #6b7280; margin-bottom: 20px;">AI 분석 리포트를 받으실 이메일 주소를 입력해주세요.</p>
+                <div style="margin-bottom: 20px;">
+                    <label for="recipientEmail" style="display: block; margin-bottom: 8px; color: #374151; font-weight: 600;">이메일 주소</label>
+                    <input type="email" id="recipientEmail" placeholder="example@email.com" required
+                           style="width: 100%; padding: 12px 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px; color: #1f2937; font-size: 15px;">
+                    <div id="emailError" style="display: none; color: #ef4444; font-size: 13px; margin-top: 8px;">
                         올바른 이메일 주소를 입력해주세요.
                     </div>
                 </div>
-                <div id="sendingStatus" style="display: none;" class="alert alert-info">
-                    <div class="spinner-border spinner-border-sm me-2" role="status">
-                        <span class="visually-hidden">전송 중...</span>
-                    </div>
+                <div id="sendingStatus" style="display: none; padding: 12px 16px; background: #eff6ff; border-radius: 8px; color: #3b82f6;">
+                    <div class="ai-spinner" style="width: 20px; height: 20px; border-width: 2px; display: inline-block; vertical-align: middle; margin-right: 10px;"></div>
                     이메일을 전송하는 중입니다...
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeEmailModal()">취소</button>
-                <button class="btn btn-primary" onclick="sendReportByEmail()">
-                    <i class="fas fa-paper-plane"></i> 전송
-                </button>
+                <button onclick="closeEmailModal()" style="background: #e5e7eb !important; color: #374151 !important;">취소</button>
+                <button onclick="sendReportByEmail()">📤 전송</button>
             </div>
         </div>
     </div>
@@ -625,7 +717,8 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        content.innerHTML = `<div class="ai-markdown-body">${marked.parse(data.result)}</div>`;
+                        // HTML을 직접 렌더링 (구글 문서에서 HTML로 export)
+                        content.innerHTML = `<div class="ai-markdown-body">${data.result}</div>`;
                     } else {
                         content.innerHTML = `
                             <div class="alert alert-warning" role="alert">
