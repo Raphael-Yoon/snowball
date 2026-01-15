@@ -36,6 +36,7 @@ import re
 
 app = Flask(__name__)
 
+
 # 로깅 초기화
 setup_logging()
 logger = get_logger('main')
