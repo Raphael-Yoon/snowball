@@ -419,17 +419,72 @@
 
         .ai-markdown-body th,
         .ai-markdown-body td {
-            padding: 12px 14px;
+            padding: 6px 10px !important;
             border: 1px solid #e5e7eb;
             text-align: left;
             vertical-align: top;
-            word-wrap: break-word;
+            word-wrap: break-word !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            white-space: normal !important;
+            line-height: 1.4 !important;
         }
 
         .ai-markdown-body th {
             background: #f8fafc !important;
             color: #1e293b !important;
             font-weight: 700;
+            padding: 8px 10px !important;
+            line-height: 1.3 !important;
+        }
+
+        /* 구글 문서 HTML의 인라인 스타일 강제 덮어쓰기 */
+        .ai-markdown-body th[style],
+        .ai-markdown-body td[style] {
+            padding: 6px 10px !important;
+            line-height: 1.4 !important;
+        }
+
+        .ai-markdown-body th[style] {
+            padding: 8px 10px !important;
+            line-height: 1.3 !important;
+        }
+
+        /* 테이블 셀 내부의 모든 요소 여백 초기화 */
+        .ai-markdown-body th *,
+        .ai-markdown-body td * {
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.4 !important;
+        }
+
+        .ai-markdown-body th p,
+        .ai-markdown-body td p,
+        .ai-markdown-body th span,
+        .ai-markdown-body td span {
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.4 !important;
+            display: inline !important;
+        }
+
+        .ai-markdown-body th div,
+        .ai-markdown-body td div {
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.4 !important;
+        }
+
+        /* 테이블 셀 내부의 br 태그 숨기기 */
+        .ai-markdown-body th br,
+        .ai-markdown-body td br {
+            display: none !important;
+        }
+
+        /* 빈 p 태그 숨기기 */
+        .ai-markdown-body th p:empty,
+        .ai-markdown-body td p:empty {
+            display: none !important;
         }
 
         .ai-markdown-body tbody tr:hover {
@@ -451,26 +506,26 @@
             table-layout: fixed !important;
         }
 
-        /* 컬럼 너비 설정 */
+        /* 컬럼 너비 설정 - 비율로 지정 */
         .ai-markdown-body th:first-child,
         .ai-markdown-body td:first-child {
-            width: 60px !important;
+            width: 12% !important;
             text-align: center;
         }
 
         .ai-markdown-body th:nth-child(2),
         .ai-markdown-body td:nth-child(2) {
-            width: 120px !important;
+            width: 15% !important;
         }
 
         .ai-markdown-body th:nth-child(3),
         .ai-markdown-body td:nth-child(3) {
-            width: 150px !important;
+            width: 25% !important;
         }
 
         .ai-markdown-body th:nth-child(4),
         .ai-markdown-body td:nth-child(4) {
-            width: auto !important;
+            width: 48% !important;
         }
 
         /* 여백 조정 */
