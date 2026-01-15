@@ -29,6 +29,7 @@
             font-weight: 700;
             color: var(--primary-color);
             margin-bottom: 10px;
+            letter-spacing: -0.03em;
         }
 
         .page-description {
@@ -44,9 +45,67 @@
 
         .section-title {
             font-size: 1.5rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--primary-color);
             margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        /* 시장별 섹션 컨테이너 */
+        .market-section {
+            margin-bottom: 50px;
+        }
+
+        .market-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .market-section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 25px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid var(--border-color);
+        }
+
+        .market-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .market-icon.kospi {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        }
+
+        .market-icon.kosdaq {
+            background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+        }
+
+        .market-icon.all {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+        }
+
+        .market-section-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text-color);
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        .market-count {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 500;
+            margin-left: auto;
         }
 
         /* 결과 카드 그리드 */
@@ -96,11 +155,12 @@
         }
 
         .result-filename {
-            font-weight: 600;
+            font-weight: 700;
             font-size: 1.1rem;
             color: var(--text-color);
             margin-bottom: 8px;
             word-break: break-word;
+            letter-spacing: -0.02em;
         }
 
         .result-meta {
@@ -175,6 +235,7 @@
             text-decoration: none;
             border: 2px solid transparent;
             display: inline-block;
+            letter-spacing: -0.01em;
         }
 
         .result-btn:hover {
@@ -259,6 +320,7 @@
             font-size: 1.4rem;
             font-weight: 700;
             color: white;
+            letter-spacing: -0.02em;
         }
 
         .modal-body {
@@ -370,6 +432,7 @@
             font-size: 1.75rem;
             margin-top: 0;
             color: #4338ca;
+            letter-spacing: -0.03em;
         }
 
         .ai-markdown-body h2,
@@ -379,15 +442,18 @@
             padding-bottom: 8px;
             border-bottom: 2px solid #e5e7eb;
             color: #4338ca;
+            letter-spacing: -0.02em;
         }
 
         .ai-markdown-body h3 {
             font-size: 1.2rem;
             color: #6366f1;
+            letter-spacing: -0.02em;
         }
 
         .ai-markdown-body h4 {
             font-size: 1.05rem;
+            letter-spacing: -0.01em;
         }
 
         /* 단락 */
@@ -619,8 +685,8 @@
             </h1>
         </div>
 
-        <div id="resultsList" class="results-grid">
-            <div class="empty-state" style="grid-column: 1/-1;">
+        <div id="resultsList">
+            <div class="empty-state">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">불러오는 중...</span>
                 </div>
@@ -640,7 +706,7 @@
         function loadResults() {
             const resultsList = document.getElementById('resultsList');
             resultsList.innerHTML = `
-                <div class="empty-state" style="grid-column: 1/-1;">
+                <div class="empty-state">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">불러오는 중...</span>
                     </div>
@@ -656,7 +722,7 @@
 
                     if (filesWithAi.length === 0) {
                         resultsList.innerHTML = `
-                            <div class="empty-state" style="grid-column: 1/-1;">
+                            <div class="empty-state">
                                 <i class="fas fa-inbox"></i>
                                 <h3>AI 분석 결과가 없습니다</h3>
                                 <p>Trade 프로젝트에서 AI 분석을 실행하면 여기에 표시됩니다.</p>
@@ -664,20 +730,22 @@
                         `;
                         return;
                     }
-                    resultsList.innerHTML = filesWithAi.map(file => {
-                        // 파일명 파싱: {market}_{count}_{timestamp}.xlsx
+
+                    // 파일 정보 파싱 및 그룹화
+                    const parsedFiles = filesWithAi.map(file => {
                         const fileNameParts = file.filename.replace('.xlsx', '').split('_');
-                        let marketLabel = '';
+                        let market = 'UNKNOWN';
+                        let marketLabel = file.filename;
                         let marketClass = '';
                         let countLabel = '';
-                        let displayTitle = file.filename; // 기본값
+                        let displayTitle = file.filename;
                         let collectionDate = '';
 
                         if (fileNameParts.length >= 4) {
-                            const market = fileNameParts[0].toUpperCase();
+                            market = fileNameParts[0].toUpperCase();
                             const count = fileNameParts[1];
-                            const dateStr = fileNameParts[2]; // YYYYMMDD
-                            const timeStr = fileNameParts[3]; // HHMMSS
+                            const dateStr = fileNameParts[2];
+                            const timeStr = fileNameParts[3];
 
                             // 시장 라벨
                             if (market === 'KOSPI') {
@@ -704,7 +772,7 @@
                                 displayTitle = `${marketLabel} ${countLabel} 분석`;
                             }
 
-                            // 수집 일자 포맷팅: 20251228 -> 2025-12-28
+                            // 수집 일자 포맷팅
                             if (dateStr && dateStr.length === 8) {
                                 const year = dateStr.substring(0, 4);
                                 const month = dateStr.substring(4, 6);
@@ -713,35 +781,141 @@
                             }
                         }
 
-                        return `
-                        <div class="result-card">
-                            <div class="result-header">
-                                <div class="result-icon">
-                                    <i class="fas fa-chart-line" style="color: white;"></i>
-                                </div>
-                                <div class="result-info">
-                                    <div class="result-filename">${displayTitle}</div>
-                                    <div class="result-meta">
-                                        ${collectionDate ? `<span><i class="far fa-calendar-alt"></i> 데이터 수집: ${collectionDate}</span>` : ''}
+                        return {
+                            ...file,
+                            market,
+                            marketLabel,
+                            marketClass,
+                            countLabel,
+                            displayTitle,
+                            collectionDate
+                        };
+                    });
+
+                    // 시장별로 그룹화
+                    const groupedByMarket = {
+                        'KOSPI': [],
+                        'KOSDAQ': [],
+                        'ALL': [],
+                        'UNKNOWN': []
+                    };
+
+                    parsedFiles.forEach(file => {
+                        if (groupedByMarket[file.market]) {
+                            groupedByMarket[file.market].push(file);
+                        } else {
+                            groupedByMarket['UNKNOWN'].push(file);
+                        }
+                    });
+
+                    // 각 시장 내에서 최신순으로 정렬
+                    Object.keys(groupedByMarket).forEach(market => {
+                        groupedByMarket[market].sort((a, b) => {
+                            return (b.created_at || '').localeCompare(a.created_at || '');
+                        });
+                    });
+
+                    // HTML 생성
+                    let html = '';
+                    const marketOrder = ['ALL', 'KOSPI', 'KOSDAQ']; // 전체 -> KOSPI -> KOSDAQ 순서
+                    const marketIcons = {
+                        'KOSPI': '📈',
+                        'KOSDAQ': '📊',
+                        'ALL': '🌐'
+                    };
+
+                    marketOrder.forEach(marketKey => {
+                        const marketFiles = groupedByMarket[marketKey];
+                        if (marketFiles.length === 0) return;
+
+                        const firstFile = marketFiles[0];
+                        const marketLabel = firstFile.marketLabel;
+                        const marketClass = firstFile.marketClass;
+
+                        html += `
+                            <div class="market-section">
+                                <div class="market-section-header">
+                                    <div class="market-icon ${marketClass}">
+                                        ${marketIcons[marketKey] || '📄'}
                                     </div>
+                                    <h2 class="market-section-title">${marketLabel}</h2>
+                                    <span class="market-count">${marketFiles.length}개 분석</span>
+                                </div>
+                                <div class="results-grid">
+                                    ${marketFiles.map(file => `
+                                        <div class="result-card">
+                                            <div class="result-header">
+                                                <div class="result-icon">
+                                                    <i class="fas fa-chart-line" style="color: white;"></i>
+                                                </div>
+                                                <div class="result-info">
+                                                    <div class="result-filename">${file.displayTitle}</div>
+                                                    <div class="result-meta">
+                                                        ${file.collectionDate ? `<span><i class="far fa-calendar-alt"></i> 데이터 수집: ${file.collectionDate}</span>` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="result-actions">
+                                                <button onclick="viewAiReport('${file.filename}')" class="result-btn btn-ai">
+                                                    <i class="fas fa-robot"></i> AI 리포트 보기
+                                                </button>
+                                                <button onclick="handleReportSend('${file.filename}')" class="result-btn btn-download">
+                                                    <i class="fas fa-paper-plane"></i> AI 리포트 전송
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
                                 </div>
                             </div>
-                            <div class="result-actions">
-                                <button onclick="viewAiReport('${file.filename}')" class="result-btn btn-ai">
-                                    <i class="fas fa-robot"></i> AI 리포트 보기
-                                </button>
-                                <button onclick="handleReportSend('${file.filename}')" class="result-btn btn-download">
-                                    <i class="fas fa-paper-plane"></i> AI 리포트 전송
-                                </button>
-                            </div>
-                        </div>
                         `;
-                    }).join('');
+                    });
+
+                    // UNKNOWN 시장 처리 (있는 경우)
+                    if (groupedByMarket['UNKNOWN'].length > 0) {
+                        html += `
+                            <div class="market-section">
+                                <div class="market-section-header">
+                                    <div class="market-icon" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);">
+                                        📄
+                                    </div>
+                                    <h2 class="market-section-title">기타</h2>
+                                    <span class="market-count">${groupedByMarket['UNKNOWN'].length}개 분석</span>
+                                </div>
+                                <div class="results-grid">
+                                    ${groupedByMarket['UNKNOWN'].map(file => `
+                                        <div class="result-card">
+                                            <div class="result-header">
+                                                <div class="result-icon">
+                                                    <i class="fas fa-chart-line" style="color: white;"></i>
+                                                </div>
+                                                <div class="result-info">
+                                                    <div class="result-filename">${file.displayTitle}</div>
+                                                    <div class="result-meta">
+                                                        ${file.collectionDate ? `<span><i class="far fa-calendar-alt"></i> 데이터 수집: ${file.collectionDate}</span>` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="result-actions">
+                                                <button onclick="viewAiReport('${file.filename}')" class="result-btn btn-ai">
+                                                    <i class="fas fa-robot"></i> AI 리포트 보기
+                                                </button>
+                                                <button onclick="handleReportSend('${file.filename}')" class="result-btn btn-download">
+                                                    <i class="fas fa-paper-plane"></i> AI 리포트 전송
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    resultsList.innerHTML = html;
                 })
                 .catch(error => {
                     console.error('결과 목록 로드 실패:', error);
                     resultsList.innerHTML = `
-                        <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="empty-state">
                             <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
                             <h3>목록을 불러오는데 실패했습니다</h3>
                             <p style="color: #dc3545;">${error.message || '서버 오류가 발생했습니다.'}</p>
