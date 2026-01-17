@@ -93,8 +93,8 @@
                                             {% endif %}
                                         </td>
                                         <td id="rcm-name-{{ rcm.rcm_id }}">
-                                            <strong class="rcm-name-display" ondblclick="editRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
-                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" onblur="cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" onkeypress="if(event.key==='Enter') saveRcmName({{ rcm.rcm_id }}); else if(event.key==='Escape') cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}');">
+                                            <strong class="rcm-name-display" data-rcm-id="{{ rcm.rcm_id }}" data-original-name="{{ rcm.rcm_name }}" ondblclick="editRcmName(this)" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
+                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" data-rcm-id="{{ rcm.rcm_id }}" onblur="cancelEditRcmName(this)" onkeypress="if(event.key==='Enter') saveRcmName(this); else if(event.key==='Escape') cancelEditRcmName(this);">
                                         </td>
                                         <td>{{ rcm.company_name }}</td>
                                         <td>{{ rcm.description or '-' }}</td>
@@ -155,8 +155,8 @@
                                     {% for rcm in rcms_by_category.ELC %}
                                     <tr>
                                         <td id="rcm-name-{{ rcm.rcm_id }}">
-                                            <strong class="rcm-name-display" ondblclick="editRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
-                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" onblur="cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" onkeypress="if(event.key==='Enter') saveRcmName({{ rcm.rcm_id }}); else if(event.key==='Escape') cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}');">
+                                            <strong class="rcm-name-display" data-rcm-id="{{ rcm.rcm_id }}" data-original-name="{{ rcm.rcm_name }}" ondblclick="editRcmName(this)" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
+                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" data-rcm-id="{{ rcm.rcm_id }}" onblur="cancelEditRcmName(this)" onkeypress="if(event.key==='Enter') saveRcmName(this); else if(event.key==='Escape') cancelEditRcmName(this);">
                                         </td>
                                         <td>{{ rcm.company_name }}</td>
                                         <td>{{ rcm.description or '-' }}</td>
@@ -222,8 +222,8 @@
                                     {% for rcm in rcms_by_category.TLC %}
                                     <tr>
                                         <td id="rcm-name-{{ rcm.rcm_id }}">
-                                            <strong class="rcm-name-display" ondblclick="editRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
-                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" onblur="cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" onkeypress="if(event.key==='Enter') saveRcmName({{ rcm.rcm_id }}); else if(event.key==='Escape') cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}');">
+                                            <strong class="rcm-name-display" data-rcm-id="{{ rcm.rcm_id }}" data-original-name="{{ rcm.rcm_name }}" ondblclick="editRcmName(this)" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
+                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" data-rcm-id="{{ rcm.rcm_id }}" onblur="cancelEditRcmName(this)" onkeypress="if(event.key==='Enter') saveRcmName(this); else if(event.key==='Escape') cancelEditRcmName(this);">
                                         </td>
                                         <td>{{ rcm.company_name }}</td>
                                         <td>{{ rcm.description or '-' }}</td>
@@ -289,8 +289,8 @@
                                     {% for rcm in rcms_by_category.ITGC %}
                                     <tr>
                                         <td id="rcm-name-{{ rcm.rcm_id }}">
-                                            <strong class="rcm-name-display" ondblclick="editRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
-                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" onblur="cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}')" onkeypress="if(event.key==='Enter') saveRcmName({{ rcm.rcm_id }}); else if(event.key==='Escape') cancelEditRcmName({{ rcm.rcm_id }}, '{{ rcm.rcm_name }}');">
+                                            <strong class="rcm-name-display" data-rcm-id="{{ rcm.rcm_id }}" data-original-name="{{ rcm.rcm_name }}" ondblclick="editRcmName(this)" style="cursor: pointer;" title="더블클릭하여 수정">{{ rcm.rcm_name }}</strong>
+                                            <input type="text" class="form-control form-control-sm rcm-name-edit d-none" value="{{ rcm.rcm_name }}" data-rcm-id="{{ rcm.rcm_id }}" onblur="cancelEditRcmName(this)" onkeypress="if(event.key==='Enter') saveRcmName(this); else if(event.key==='Escape') cancelEditRcmName(this);">
                                         </td>
                                         <td>{{ rcm.company_name }}</td>
                                         <td>{{ rcm.description or '-' }}</td>
@@ -417,7 +417,9 @@
         }
 
         // RCM 이름 수정 모드
-        function editRcmName(rcmId, originalName) {
+        function editRcmName(element) {
+            const rcmId = element.dataset.rcmId;
+            const originalName = element.dataset.originalName;
             const cell = document.getElementById(`rcm-name-${rcmId}`);
             const display = cell.querySelector('.rcm-name-display');
             const input = cell.querySelector('.rcm-name-edit');
@@ -430,7 +432,8 @@
         }
 
         // RCM 이름 수정 취소
-        function cancelEditRcmName(rcmId, originalName) {
+        function cancelEditRcmName(element) {
+            const rcmId = element.dataset.rcmId;
             const cell = document.getElementById(`rcm-name-${rcmId}`);
             const display = cell.querySelector('.rcm-name-display');
             const input = cell.querySelector('.rcm-name-edit');
@@ -442,7 +445,8 @@
         }
 
         // RCM 이름 저장
-        function saveRcmName(rcmId) {
+        function saveRcmName(element) {
+            const rcmId = element.dataset.rcmId;
             const cell = document.getElementById(`rcm-name-${rcmId}`);
             const input = cell.querySelector('.rcm-name-edit');
             const newName = input.value.trim();
@@ -467,12 +471,10 @@
                     // 성공 시 화면 업데이트
                     const display = cell.querySelector('.rcm-name-display');
                     display.textContent = newName;
-                    display.setAttribute('ondblclick', `editRcmName(${rcmId}, '${newName}')`);
+                    display.dataset.originalName = newName;
 
                     input.classList.add('d-none');
                     display.classList.remove('d-none');
-                    input.setAttribute('onblur', `cancelEditRcmName(${rcmId}, '${newName}')`);
-                    input.setAttribute('onkeypress', `if(event.key==='Enter') saveRcmName(${rcmId}); else if(event.key==='Escape') cancelEditRcmName(${rcmId}, '${newName}');`);
                 } else {
                     alert('저장 실패: ' + data.message);
                 }
