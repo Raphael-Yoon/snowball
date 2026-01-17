@@ -110,6 +110,15 @@ class Link3TestSuite:
         for status in [TestStatus.PASSED, TestStatus.FAILED, TestStatus.WARNING, TestStatus.SKIPPED]:
             print(f"{status.value} {status.name}: {status_counts[status]}개")
 
+        import json
+        report_path = project_root / 'test' / f'link3_test_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+        with open(report_path, 'w', encoding='utf-8') as f:
+            json.dump({'timestamp': datetime.now().isoformat(), 'total_tests': total,
+                      'summary': {k.name.lower(): v for k, v in status_counts.items()},
+                      'tests': [{'name': r.test_name, 'category': r.category, 'status': r.status.name,
+                                'message': r.message, 'duration': r.get_duration(), 'details': r.details}
+                               for r in self.results]}, f, ensure_ascii=False, indent=2)
+
 def main():
     Link3TestSuite().run_all_tests()
 

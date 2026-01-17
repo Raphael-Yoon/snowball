@@ -36,6 +36,8 @@ class TestReportGenerator:
                 cwd=project_root,
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
+                errors='replace',
                 timeout=60
             )
 
@@ -282,6 +284,25 @@ def main():
     print("=" * 100)
 
     checklist_path = generator.generate_checklist_report()
+
+    # JSON 파일 삭제
+    print("\n" + "=" * 100)
+    print("JSON 임시 파일 정리 중...")
+    print("=" * 100)
+
+    test_dir = project_root / 'test'
+    json_files = list(test_dir.glob('*_test_report_*.json'))
+
+    if json_files:
+        for json_file in json_files:
+            try:
+                json_file.unlink()
+                print(f"✓ 삭제: {json_file.name}")
+            except Exception as e:
+                print(f"⚠️  삭제 실패: {json_file.name} - {str(e)}")
+        print(f"\n총 {len(json_files)}개 JSON 파일 삭제 완료")
+    else:
+        print("삭제할 JSON 파일이 없습니다.")
 
     # 최종 요약
     print("\n\n" + "=" * 100)
