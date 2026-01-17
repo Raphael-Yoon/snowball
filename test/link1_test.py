@@ -156,6 +156,15 @@ class Link1TestSuite:
             count = status_counts[status]
             print(f"{status.value} {status.name}: {count}개 ({count/total*100:.1f}%)")
 
+        import json
+        report_path = project_root / 'test' / f'link1_test_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+        with open(report_path, 'w', encoding='utf-8') as f:
+            json.dump({'timestamp': datetime.now().isoformat(), 'total_tests': total,
+                      'summary': {k.name.lower(): v for k, v in status_counts.items()},
+                      'tests': [{'name': r.test_name, 'category': r.category, 'status': r.status.name,
+                                'message': r.message, 'duration': r.get_duration(), 'details': r.details}
+                               for r in self.results]}, f, ensure_ascii=False, indent=2)
+
 def main():
     suite = Link1TestSuite()
     suite.run_all_tests()

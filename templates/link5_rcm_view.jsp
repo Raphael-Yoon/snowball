@@ -309,14 +309,19 @@
                                                 <span class="badge bg-success"
                                                       style="cursor: pointer;"
                                                       title="클릭하여 기준통제 변경"
-                                                      onclick="openStdControlModal({{ detail.detail_id }}, '{{ detail.control_code|safe }}', {{ detail.mapped_std_control_id }})">
+                                                      data-detail-id="{{ detail.detail_id }}"
+                                                      data-control-code="{{ detail.control_code }}"
+                                                      data-mapped-id="{{ detail.mapped_std_control_id }}"
+                                                      onclick="openStdControlModal(this.dataset.detailId, this.dataset.controlCode, this.dataset.mappedId)">
                                                     <i class="fas fa-check-circle"></i> 매핑
                                                 </span>
                                             {% else %}
                                                 <span class="badge bg-secondary"
                                                       style="cursor: pointer;"
                                                       title="클릭하여 기준통제 매핑"
-                                                      onclick="openStdControlModal({{ detail.detail_id }}, '{{ detail.control_code|safe }}', null)">
+                                                      data-detail-id="{{ detail.detail_id }}"
+                                                      data-control-code="{{ detail.control_code }}"
+                                                      onclick="openStdControlModal(this.dataset.detailId, this.dataset.controlCode, null)">
                                                     <i class="fas fa-times-circle"></i> 미매핑
                                                 </span>
                                             {% endif %}
