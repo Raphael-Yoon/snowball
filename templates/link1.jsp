@@ -310,37 +310,6 @@
 					});
 				});
 
-				// ===== System 동적 선택 =====
-				const systemOptions = document.querySelectorAll('.system-main-option');
-				const sapDetail = document.getElementById('sap-detail');
-				const oracleDetail = document.getElementById('oracle-detail');
-				const douzoneDetail = document.getElementById('douzone-detail');
-
-				// 초기 상태: SAP가 기본 선택이므로 SAP 세부 선택 표시
-				sapDetail.style.display = 'block';
-				document.getElementById('sap_ecc').checked = true;
-
-				systemOptions.forEach(option => {
-					option.addEventListener('change', function() {
-						// 모든 세부 선택 숨김
-						sapDetail.style.display = 'none';
-						oracleDetail.style.display = 'none';
-						douzoneDetail.style.display = 'none';
-
-						const selectedValue = this.value;
-						if (selectedValue === 'SAP') {
-							sapDetail.style.display = 'block';
-							document.getElementById('sap_ecc').checked = true;
-						} else if (selectedValue === 'ORACLE') {
-							oracleDetail.style.display = 'block';
-							document.getElementById('oracle_ebs').checked = true;
-						} else if (selectedValue === 'DOUZONE') {
-							douzoneDetail.style.display = 'block';
-							document.getElementById('douzone_icube').checked = true;
-						}
-					});
-				});
-
 				// ===== OS 동적 선택 =====
 				const osOptions = document.querySelectorAll('.os-main-option');
 				const linuxDetail = document.getElementById('linux-detail');
@@ -398,17 +367,6 @@
 
 				// ===== 폼 제출 시 세부 선택 값 병합 =====
 				document.querySelector('form').addEventListener('submit', function(e) {
-					// System 세부 선택 처리
-					const detailSystem = document.querySelector('input[name="param3_detail"]:checked');
-					if (detailSystem && detailSystem.value) {
-						const hiddenInput = document.createElement('input');
-						hiddenInput.type = 'hidden';
-						hiddenInput.name = 'param3';
-						hiddenInput.value = detailSystem.value;
-						this.appendChild(hiddenInput);
-						document.querySelector('input[name="param3"]:checked').disabled = true;
-					}
-
 					// OS 세부 선택 처리
 					const detailOs = document.querySelector('input[name="param4_detail"]:checked');
 					if (detailOs && detailOs.value) {

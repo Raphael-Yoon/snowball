@@ -5,6 +5,7 @@ import json
 from openai import OpenAI
 import pandas as pd
 import re
+import magic
 
 
 # =============================================================================
@@ -191,6 +192,40 @@ def normalize_column_name(col_name):
     return col_name
 
 
+def validate_excel_file_type(file):
+    """
+    파일의 실제 MIME 타입을 검증하여 Excel 파일인지 확인
+    확장자 변조 공격을 방지
+    """
+    allowed_mime_types = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',  # .xlsx
+        'application/vnd.ms-excel',  # .xls
+        'application/zip',  # .xlsx는 zip 파일로도 인식될 수 있음
+    ]
+
+    try:
+        # 파일 내용의 첫 부분을 읽어서 MIME 타입 확인
+        file.seek(0)
+        file_header = file.read(2048)
+        file.seek(0)  # 다시 처음으로
+
+        mime = magic.from_buffer(file_header, mime=True)
+
+        if mime not in allowed_mime_types:
+            return False, f'허용되지 않은 파일 형식입니다. (감지된 타입: {mime})'
+
+        # Excel 파일의 매직 넘버 검증
+        # .xlsx: PK (ZIP) 시그니처
+        # .xls: D0 CF 11 E0 A1 B1 1A E1 (OLE2)
+        if file_header[:2] == b'PK' or file_header[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1':
+            return True, None
+
+        return False, '유효한 Excel 파일이 아닙니다.'
+
+    except Exception as e:
+        return False, f'파일 타입 검증 중 오류가 발생했습니다: {str(e)}'
+
+
 def map_columns(df):
     """데이터프레임의 컬럼명을 표준 컬럼명으로 매핑"""
     # 컬럼명 정규화
@@ -218,8 +253,12 @@ def map_columns(df):
 
 def parse_excel_file(file, header_row=0, column_mapping=None):
     """엑셀 파일 파싱 및 컬럼 매핑"""
-    # 엑셀 파일 읽기
-    df = pd.read_excel(file, header=header_row)
+    # 엑셀 파일 읽기 (최대 5000행으로 제한)
+    MAX_ROWS = 5000
+    try:
+        df = pd.read_excel(file, header=header_row, nrows=MAX_ROWS)
+    except Exception as e:
+        raise ValueError(f'Excel 파일을 읽을 수 없습니다: {str(e)}')
 
     # 빈 행 제거
     df = df.dropna(how='all')
@@ -255,16 +294,76 @@ def parse_excel_file(file, header_row=0, column_mapping=None):
 
 
 def apply_user_mapping(df, column_mapping):
-    """사용자 지정 컬럼 매핑 적용"""
+    """
+    사용자 지정 컬럼 매핑 적용 (강화된 검증)
+
+    Args:
+        df: pandas DataFrame
+        column_mapping: dict, 표준 컬럼명 -> 원본 컬럼 인덱스 매핑
+
+    Returns:
+        tuple: (매핑된 DataFrame, 매핑 정보 dict)
+
+    Raises:
+        ValueError: 잘못된 매핑 정보가 있을 경우
+    """
+    if not isinstance(column_mapping, dict):
+        raise ValueError('컬럼 매핑 정보는 딕셔너리 형식이어야 합니다.')
+
+    if not column_mapping:
+        raise ValueError('컬럼 매핑 정보가 비어있습니다.')
+
     # 새로운 데이터프레임 생성
     mapped_data = {}
     mapping_info = {}
+    invalid_mappings = []
+    duplicate_indices = {}
 
     for std_col, col_index in column_mapping.items():
-        if col_index < len(df.columns):
-            original_col_name = df.columns[col_index]
-            mapped_data[std_col] = df.iloc[:, col_index]
-            mapping_info[original_col_name] = std_col
+        # 표준 컬럼명 검증
+        if not isinstance(std_col, str) or not std_col.strip():
+            invalid_mappings.append(f'잘못된 표준 컬럼명: {std_col}')
+            continue
+
+        # 타입 검증: col_index를 정수로 변환
+        try:
+            col_index = int(col_index)
+        except (ValueError, TypeError):
+            invalid_mappings.append(f'{std_col}: 잘못된 컬럼 인덱스 타입 ({col_index})')
+            continue
+
+        # 범위 검증: 0 이상, 컬럼 수 미만
+        if col_index < 0:
+            invalid_mappings.append(f'{std_col}: 음수 인덱스 ({col_index})')
+            continue
+
+        if col_index >= len(df.columns):
+            invalid_mappings.append(f'{std_col}: 범위 초과 인덱스 ({col_index}, 최대: {len(df.columns)-1})')
+            continue
+
+        # 중복 매핑 검증
+        if col_index in duplicate_indices:
+            duplicate_indices[col_index].append(std_col)
+        else:
+            duplicate_indices[col_index] = [std_col]
+
+        original_col_name = df.columns[col_index]
+        mapped_data[std_col] = df.iloc[:, col_index]
+        mapping_info[original_col_name] = std_col
+
+    # 중복 매핑 경고
+    duplicates = {idx: cols for idx, cols in duplicate_indices.items() if len(cols) > 1}
+    if duplicates:
+        dup_warnings = [f'컬럼 인덱스 {idx}가 {", ".join(cols)}에 중복 매핑됨' for idx, cols in duplicates.items()]
+        invalid_mappings.extend(dup_warnings)
+
+    # 오류가 있으면 예외 발생
+    if invalid_mappings:
+        error_msg = '컬럼 매핑 검증 실패:\n- ' + '\n- '.join(invalid_mappings)
+        raise ValueError(error_msg)
+
+    if not mapped_data:
+        raise ValueError('유효한 컬럼 매핑이 하나도 없습니다.')
 
     df_mapped = pd.DataFrame(mapped_data)
     return df_mapped, mapping_info
@@ -298,6 +397,20 @@ def get_mapping_summary(mapping_info):
         lines.append(f"'{original}' → '{mapped}'")
 
     return ", ".join(lines)
+
+
+def rollback_rcm(rcm_id):
+    """RCM 생성 실패 시 롤백 (연관 데이터 포함)"""
+    try:
+        with get_db() as conn:
+            # 연관 데이터 삭제 (외래키 순서 고려)
+            conn.execute('DELETE FROM sb_rcm_detail WHERE rcm_id = %s', (rcm_id,))
+            conn.execute('DELETE FROM sb_rcm_access WHERE rcm_id = %s', (rcm_id,))
+            conn.execute('DELETE FROM sb_rcm WHERE rcm_id = %s', (rcm_id,))
+            conn.commit()
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to rollback RCM {rcm_id}: {e}")
 
 
 # =============================================================================
@@ -591,13 +704,29 @@ def rcm_process_upload():
         control_category = request.form.get('control_category', 'ITGC').strip()
         description = request.form.get('description', '').strip()
         access_users = request.form.getlist('access_users')
-        header_row = int(request.form.get('header_row', 0))
+
+        # header_row 안전하게 변환
+        header_row_value = request.form.get('header_row', '0').strip()
+        try:
+            header_row = int(header_row_value) if header_row_value else 0
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'message': '유효한 헤더 행 번호를 입력해주세요. (0-20 사이의 숫자)'
+            })
 
         # 컬럼 매핑 정보 받기
         column_mapping_str = request.form.get('column_mapping', '{}')
         try:
             column_mapping = json.loads(column_mapping_str) if column_mapping_str else None
-        except:
+        except json.JSONDecodeError as e:
+            return jsonify({
+                'success': False,
+                'message': f'컬럼 매핑 정보 형식이 잘못되었습니다: {str(e)}'
+            })
+        except Exception as e:
+            import logging
+            logging.error(f"Unexpected error parsing column_mapping: {e}")
             column_mapping = None
 
         # 유효성 검사
@@ -617,24 +746,59 @@ def rcm_process_upload():
         if not file.filename.lower().endswith(('.xlsx', '.xls')):
             return jsonify({'success': False, 'message': 'Excel 파일(.xlsx, .xls)만 업로드 가능합니다.'})
 
+        # 파일 타입 검증 (확장자 변조 방지)
+        is_valid_type, type_error_msg = validate_excel_file_type(file)
+        if not is_valid_type:
+            return jsonify({'success': False, 'message': type_error_msg})
+
         if header_row < 0 or header_row > 20:
             return jsonify({'success': False, 'message': '데이터 시작 행은 0~20 사이의 값이어야 합니다.'})
+
+        # 파일 크기 제한 (10MB)
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        file.seek(0, 2)  # 파일 끝으로 이동
+        file_size = file.tell()
+        file.seek(0)  # 처음으로 돌아감
+
+        if file_size > MAX_FILE_SIZE:
+            return jsonify({
+                'success': False,
+                'message': f'파일 크기는 10MB를 초과할 수 없습니다. (현재: {file_size/1024/1024:.2f}MB)'
+            })
+
+        if file_size == 0:
+            return jsonify({
+                'success': False,
+                'message': '빈 파일은 업로드할 수 없습니다.'
+            })
 
         # 일반 사용자는 선택된 사용자들이 모두 본인 회사 소속인지 확인
         if not is_admin and access_users:
             user_company = user_info.get('company_name', '')
             with get_db() as conn:
                 for user_id in access_users:
-                    if user_id:
-                        check_user = conn.execute(
-                            'SELECT company_name FROM sb_user WHERE user_id = %s',
-                            (int(user_id),)
-                        ).fetchone()
-                        if check_user and check_user[0] != user_company:
-                            return jsonify({
-                                'success': False,
-                                'message': '본인 회사 사용자에게만 권한을 부여할 수 있습니다.'
-                            })
+                    if not user_id:
+                        continue
+
+                    # user_id 타입 검증
+                    try:
+                        user_id_int = int(user_id)
+                    except (ValueError, TypeError):
+                        return jsonify({
+                            'success': False,
+                            'message': '유효하지 않은 사용자 ID가 포함되어 있습니다.'
+                        })
+
+                    check_user = conn.execute(
+                        'SELECT company_name FROM sb_user WHERE user_id = %s',
+                        (user_id_int,)
+                    ).fetchone()
+
+                    if check_user and check_user[0] != user_company:
+                        return jsonify({
+                            'success': False,
+                            'message': '본인 회사 사용자에게만 권한을 부여할 수 있습니다.'
+                        })
 
         # RCM 생성
         from auth import create_rcm, grant_rcm_access
@@ -647,15 +811,25 @@ def rcm_process_upload():
         )
 
         # Excel 파일 파싱 (개선된 방식 + 사용자 매핑)
-        rcm_details, mapping_info = parse_excel_file(file, header_row, column_mapping)
+        try:
+            rcm_details, mapping_info = parse_excel_file(file, header_row, column_mapping)
+        except ValueError as e:
+            # 파싱 실패 시 RCM 롤백
+            rollback_rcm(rcm_id)
+            return jsonify({'success': False, 'message': str(e)})
+        except Exception as e:
+            # 예상치 못한 오류
+            rollback_rcm(rcm_id)
+            return jsonify({
+                'success': False,
+                'message': f'파일 처리 중 오류가 발생했습니다: {str(e)}'
+            })
 
         # 데이터 유효성 검증
         is_valid, error_message = validate_rcm_data(rcm_details)
         if not is_valid:
             # RCM 생성 롤백 (실패 시 삭제)
-            with get_db() as conn:
-                conn.execute('DELETE FROM sb_rcm WHERE rcm_id = %s', (rcm_id,))
-                conn.commit()
+            rollback_rcm(rcm_id)
             return jsonify({'success': False, 'message': error_message})
 
         # RCM 상세 데이터 저장

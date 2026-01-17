@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, session
+from flask import Blueprint, request, render_template, session, url_for
 from datetime import datetime
 import os
 from io import BytesIO
@@ -194,10 +194,17 @@ def rcm_generate():
     """RCM 엑셀 생성 및 전송 (인증 필요)"""
     form_data = request.form.to_dict()
     success, user_email, error = generate_and_send_rcm_excel(form_data)
+
     if success:
         return render_template('mail_sent.jsp', user_email=user_email)
     else:
-        if user_email:
-            return f'<h3>메일 전송에 실패했습니다: {error}</h3>'
+        # 에러 메시지 설정
+        if not user_email:
+            error_message = '이메일 주소가 입력되지 않았습니다. 담당자 정보를 확인해 주세요.'
         else:
-            return '<h3>메일 주소가 없습니다. 담당자 정보를 확인해 주세요.</h3>'
+            error_message = f'메일 전송에 실패했습니다: {error}'
+
+        return render_template('error.jsp',
+                             error_title='RCM 생성 실패',
+                             error_message=error_message,
+                             return_url=url_for('link1.link1'))
