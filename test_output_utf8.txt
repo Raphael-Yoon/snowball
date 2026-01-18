@@ -1,0 +1,367 @@
+﻿python : 2026-01-18 00:07:29 [INFO] snowball:setup_logging
+:61 - 濡쒓퉭 ?쒖뒪??珥덇린???꾨즺 - ?덈꺼: INFO
+위치 줄:1 문자:1
++ python test/link1_test.py > test_output.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-01-18 0 
+   0:0...?꾨즺 - ?덈꺼: INFO:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-01-18 00:07:29 [INFO] snowball.main:<module>:68 - ?몄뀡
+ ?ㅼ젙 - Production: False, Secure: False
+2026-01-18 00:07:29 [INFO] snowball.main:<module>:69 - Fla
+sk ???쒖옉 - Environment: Development
+2026-01-18 00:07:29 [WARNING] snowball.main:<module>:85 - 
+CSRF Protection enabled with exemptions for API endpoints
+================================================================================
+Link1 RCM ?먮룞?앹꽦 ?듯빀 ?뚯뒪???쒖옉 (媛뺥솕 踰꾩쟾)
+================================================================================
+?쒖옉 ?쒓컙: 2026-01-18 00:07:29
+
+
+================================================================================
+1. ?섍꼍 諛??ㅼ젙 寃利?
+================================================================================
+
+?띰툘  ?ㅽ뻾以?test_environment_setup... 
+???듦낵 test_environment_setup (0.00s)
+
+?띰툘  ?ㅽ뻾以?test_file_structure... 
+???듦낵 test_file_structure (0.00s)
+    ?뱄툘  ??snowball_link1.py
+    ?뱄툘  ??static/RCM_Generate.xlsx
+
+================================================================================
+2. ?쇱슦??寃利?
+================================================================================
+
+?띰툘  ?ㅽ뻾以?test_all_routes_defined... 
+???ㅽ뙣 test_all_routes_defined (0.00s)
+
+================================================================================
+3. RCM ?앹꽦 湲곕뒫 寃利?(?ㅽ뻾 湲곕컲)
+================================================================================
+
+?띰툘  ?ㅽ뻾以?test_rcm_generation_logic... === RCM Generate ?뚮씪誘명꽣 ===
+param1 (email): test@example.com
+param2 (system_name): TestSystem
+param_cloud (cloud_type): AWS
+param3 (system_type): Web
+param4 (os_type): Linux
+param5 (db_type): MySQL
+use_os_tool: Y
+use_db_tool: N
+=============================
+Row 9: section='APP', value='SAP', param3='Web'
+Row 9: APP + SAP != Web ????젣
+Row 10: section='APP', value='ORACLE', param3='Web'
+Row 10: APP + ORACLE != Web ????젣
+Row 11: section='APP', value='DOUZON', param3='Web'
+Row 11: APP + DOUZON != Web ????젣
+Row 12: section='APP', value='YOUNG', param3='Web'
+Row 12: APP + YOUNG != Web ????젣
+Row 13: section='APP', value='ETC', param3='Web'
+Row 13: APP + ETC != Web ????젣
+Row 14: section='APP', value='怨듯넻', param3='Web'
+Row 14: APP + 怨듯넻 ???좎?
+Row 15: section='APP', value='怨듯넻', param3='Web'
+Row 15: APP + 怨듯넻 ???좎?
+Row 16: section='APP', value='怨듯넻', param3='Web'
+Row 16: APP + 怨듯넻 ???좎?
+Row 17: section='APP', value='SAP', param3='Web'
+Row 17: APP + SAP != Web ????젣
+Row 18: section='APP', value='ORACLE', param3='Web'
+Row 18: APP + ORACLE != Web ????젣
+Row 19: section='APP', value='DOUZON', param3='Web'
+Row 19: APP + DOUZON != Web ????젣
+Row 20: section='APP', value='YOUNG', param3='Web'
+Row 20: APP + YOUNG != Web ????젣
+Row 21: section='APP', value='ETC', param3='Web'
+Row 21: APP + ETC != Web ????젣
+Row 22: section='APP', value='SAP', param3='Web'
+Row 22: APP + SAP != Web ????젣
+Row 23: section='APP', value='ORACLE', param3='Web'
+Row 23: APP + ORACLE != Web ????젣
+Row 24: section='APP', value='DOUZON', param3='Web'
+Row 24: APP + DOUZON != Web ????젣
+Row 25: section='APP', value='YOUNG', param3='Web'
+Row 25: APP + YOUNG != Web ????젣
+Row 26: section='APP', value='ETC', param3='Web'
+Row 26: APP + ETC != Web ????젣
+Row 27: section='APP', value='SAP', param3='Web'
+Row 27: APP + SAP != Web ????젣
+Row 28: section='APP', value='ORACLE', param3='Web'
+Row 28: APP + ORACLE != Web ????젣
+Row 29: section='APP', value='DOUZON', param3='Web'
+Row 29: APP + DOUZON != Web ????젣
+Row 30: section='APP', value='YOUNG', param3='Web'
+Row 30: APP + YOUNG != Web ????젣
+Row 31: section='APP', value='ETC', param3='Web'
+Row 31: APP + ETC != Web ????젣
+Row 32: section='APP', value='SAP', param3='Web'
+Row 32: APP + SAP != Web ????젣
+Row 33: section='APP', value='ORACLE', param3='Web'
+Row 33: APP + ORACLE != Web ????젣
+Row 34: section='APP', value='DOUZON', param3='Web'
+Row 34: APP + DOUZON != Web ????젣
+Row 35: section='APP', value='YOUNG', param3='Web'
+Row 35: APP + YOUNG != Web ????젣
+Row 36: section='APP', value='ETC', param3='Web'
+Row 36: APP + ETC != Web ????젣
+Row 37: OS_Tool ??OS Tool ?ъ슜?쇰줈 ?좎?
+Row 42: OS_Tool ??OS Tool ?ъ슜?쇰줈 ?좎?
+Row 47: OS_Tool ??OS Tool ?ъ슜?쇰줈 ?좎?
+Row 64: section='APP', value='SAP', param3='Web'
+Row 64: APP + SAP != Web ????젣
+Row 65: section='APP', value='ORACLE', param3='Web'
+Row 65: APP + ORACLE != Web ????젣
+Row 66: section='APP', value='DOUZON', param3='Web'
+Row 66: APP + DOUZON != Web ????젣
+Row 67: section='APP', value='YOUNG', param3='Web'
+Row 67: APP + YOUNG != Web ????젣
+Row 68: section='APP', value='ETC', param3='Web'
+Row 68: APP + ETC != Web ????젣
+Row 69: section='APP', value='SAP', param3='Web'
+Row 69: APP + SAP != Web ????젣
+Row 70: section='APP', value='ORACLE', param3='Web'
+Row 70: APP + ORACLE != Web ????젣
+Row 71: section='APP', value='DOUZON', param3='Web'
+Row 71: APP + DOUZON != Web ????젣
+Row 72: section='APP', value='YOUNG', param3='Web'
+Row 72: APP + YOUNG != Web ????젣
+Row 73: section='APP', value='ETC', param3='Web'
+Row 73: APP + ETC != Web ????젣
+Row 74: section='APP', value='SAP', param3='Web'
+Row 74: APP + SAP != Web ????젣
+Row 75: section='APP', value='ORACLE', param3='Web'
+Row 75: APP + ORACLE != Web ????젣
+Row 76: section='APP', value='DOUZON', param3='Web'
+Row 76: APP + DOUZON != Web ????젣
+Row 77: section='APP', value='YOUNG', param3='Web'
+Row 77: APP + YOUNG != Web ????젣
+Row 78: section='APP', value='ETC', param3='Web'
+Row 78: APP + ETC != Web ????젣
+Row 79: section='APP', value='SAP', param3='Web'
+Row 79: APP + SAP != Web ????젣
+Row 80: section='APP', value='ORACLE', param3='Web'
+Row 80: APP + ORACLE != Web ????젣
+Row 81: section='APP', value='DOUZON', param3='Web'
+Row 81: APP + DOUZON != Web ????젣
+Row 82: section='APP', value='YOUNG', param3='Web'
+Row 82: APP + YOUNG != Web ????젣
+Row 83: section='APP', value='ETC', param3='Web'
+Row 83: APP + ETC != Web ????젣
+Row 84: section='APP', value='SAP', param3='Web'
+Row 84: APP + SAP != Web ????젣
+Row 85: section='APP', value='ORACLE', param3='Web'
+Row 85: APP + ORACLE != Web ????젣
+Row 86: section='APP', value='DOUZON', param3='Web'
+Row 86: APP + DOUZON != Web ????젣
+Row 87: section='APP', value='YOUNG', param3='Web'
+Row 87: APP + YOUNG != Web ????젣
+Row 88: section='APP', value='ETC', param3='Web'
+Row 88: APP + ETC != Web ????젣
+Row 97: section='APP', value='SAP', param3='Web'
+Row 97: APP + SAP != Web ????젣
+Row 98: section='APP', value='ORACLE', param3='Web'
+Row 98: APP + ORACLE != Web ????젣
+Row 99: section='APP', value='DOUZON', param3='Web'
+Row 99: APP + DOUZON != Web ????젣
+Row 100: section='APP', value='YOUNG', param3='Web'
+Row 100: APP + YOUNG != Web ????젣
+Row 101: section='APP', value='ETC', param3='Web'
+Row 101: APP + ETC != Web ????젣
+Row 102: section='APP', value='SAP', param3='Web'
+Row 102: APP + SAP != Web ????젣
+Row 103: section='APP', value='ORACLE', param3='Web'
+Row 103: APP + ORACLE != Web ????젣
+Row 104: section='APP', value='DOUZON', param3='Web'
+Row 104: APP + DOUZON != Web ????젣
+Row 105: section='APP', value='YOUNG', param3='Web'
+Row 105: APP + YOUNG != Web ????젣
+Row 106: section='APP', value='ETC', param3='Web'
+Row 106: APP + ETC != Web ????젣
+Row 107: section='APP', value='SAP', param3='Web'
+Row 107: APP + SAP != Web ????젣
+Row 108: section='APP', value='ORACLE', param3='Web'
+Row 108: APP + ORACLE != Web ????젣
+Row 109: section='APP', value='DOUZON', param3='Web'
+Row 109: APP + DOUZON != Web ????젣
+Row 110: section='APP', value='YOUNG', param3='Web'
+Row 110: APP + YOUNG != Web ????젣
+Row 111: section='APP', value='ETC', param3='Web'
+Row 111: APP + ETC != Web ????젣
+?꾪꽣留??꾨즺: 97媛?????젣??
+
+???ㅽ뙣 test_rcm_generation_logic (0.85s)
+    ???덉쇅 諛쒖깮: 'TestResult' object has no attribute 'called'
+
+?띰툘  ?ㅽ뻾以?test_rcm_generation_with_invalid_data... === RCM Generate ?뚮씪誘명꽣 ===
+param1 (email): 
+param2 (system_name): Test
+param_cloud (cloud_type): N/A
+param3 (system_type): N/A
+param4 (os_type): N/A
+param5 (db_type): N/A
+use_os_tool: N
+use_db_tool: N
+=============================
+Row 9: section='APP', value='SAP', param3='None'
+Row 9: APP + SAP != None ????젣
+Row 10: section='APP', value='ORACLE', param3='None'
+Row 10: APP + ORACLE != None ????젣
+Row 11: section='APP', value='DOUZON', param3='None'
+Row 11: APP + DOUZON != None ????젣
+Row 12: section='APP', value='YOUNG', param3='None'
+Row 12: APP + YOUNG != None ????젣
+Row 13: section='APP', value='ETC', param3='None'
+Row 13: APP + ETC != None ????젣
+Row 14: section='APP', value='怨듯넻', param3='None'
+Row 14: APP + 怨듯넻 ???좎?
+Row 15: section='APP', value='怨듯넻', param3='None'
+Row 15: APP + 怨듯넻 ???좎?
+Row 16: section='APP', value='怨듯넻', param3='None'
+Row 16: APP + 怨듯넻 ???좎?
+Row 17: section='APP', value='SAP', param3='None'
+Row 17: APP + SAP != None ????젣
+Row 18: section='APP', value='ORACLE', param3='None'
+Row 18: APP + ORACLE != None ????젣
+Row 19: section='APP', value='DOUZON', param3='None'
+Row 19: APP + DOUZON != None ????젣
+Row 20: section='APP', value='YOUNG', param3='None'
+Row 20: APP + YOUNG != None ????젣
+Row 21: section='APP', value='ETC', param3='None'
+Row 21: APP + ETC != None ????젣
+Row 22: section='APP', value='SAP', param3='None'
+Row 22: APP + SAP != None ????젣
+Row 23: section='APP', value='ORACLE', param3='None'
+Row 23: APP + ORACLE != None ????젣
+Row 24: section='APP', value='DOUZON', param3='None'
+Row 24: APP + DOUZON != None ????젣
+Row 25: section='APP', value='YOUNG', param3='None'
+Row 25: APP + YOUNG != None ????젣
+Row 26: section='APP', value='ETC', param3='None'
+Row 26: APP + ETC != None ????젣
+Row 27: section='APP', value='SAP', param3='None'
+Row 27: APP + SAP != None ????젣
+Row 28: section='APP', value='ORACLE', param3='None'
+Row 28: APP + ORACLE != None ????젣
+Row 29: section='APP', value='DOUZON', param3='None'
+Row 29: APP + DOUZON != None ????젣
+Row 30: section='APP', value='YOUNG', param3='None'
+Row 30: APP + YOUNG != None ????젣
+Row 31: section='APP', value='ETC', param3='None'
+Row 31: APP + ETC != None ????젣
+Row 32: section='APP', value='SAP', param3='None'
+Row 32: APP + SAP != None ????젣
+Row 33: section='APP', value='ORACLE', param3='None'
+Row 33: APP + ORACLE != None ????젣
+Row 34: section='APP', value='DOUZON', param3='None'
+Row 34: APP + DOUZON != None ????젣
+Row 35: section='APP', value='YOUNG', param3='None'
+Row 35: APP + YOUNG != None ????젣
+Row 36: section='APP', value='ETC', param3='None'
+Row 36: APP + ETC != None ????젣
+Row 37: OS_Tool ??OS Tool 誘몄궗?⑹쑝濡???젣
+Row 42: OS_Tool ??OS Tool 誘몄궗?⑹쑝濡???젣
+Row 47: OS_Tool ??OS Tool 誘몄궗?⑹쑝濡???젣
+Row 64: section='APP', value='SAP', param3='None'
+Row 64: APP + SAP != None ????젣
+Row 65: section='APP', value='ORACLE', param3='None'
+Row 65: APP + ORACLE != None ????젣
+Row 66: section='APP', value='DOUZON', param3='None'
+Row 66: APP + DOUZON != None ????젣
+Row 67: section='APP', value='YOUNG', param3='None'
+Row 67: APP + YOUNG != None ????젣
+Row 68: section='APP', value='ETC', param3='None'
+Row 68: APP + ETC != None ????젣
+Row 69: section='APP', value='SAP', param3='None'
+Row 69: APP + SAP != None ????젣
+Row 70: section='APP', value='ORACLE', param3='None'
+Row 70: APP + ORACLE != None ????젣
+Row 71: section='APP', value='DOUZON', param3='None'
+Row 71: APP + DOUZON != None ????젣
+Row 72: section='APP', value='YOUNG', param3='None'
+Row 72: APP + YOUNG != None ????젣
+Row 73: section='APP', value='ETC', param3='None'
+Row 73: APP + ETC != None ????젣
+Row 74: section='APP', value='SAP', param3='None'
+Row 74: APP + SAP != None ????젣
+Row 75: section='APP', value='ORACLE', param3='None'
+Row 75: APP + ORACLE != None ????젣
+Row 76: section='APP', value='DOUZON', param3='None'
+Row 76: APP + DOUZON != None ????젣
+Row 77: section='APP', value='YOUNG', param3='None'
+Row 77: APP + YOUNG != None ????젣
+Row 78: section='APP', value='ETC', param3='None'
+Row 78: APP + ETC != None ????젣
+Row 79: section='APP', value='SAP', param3='None'
+Row 79: APP + SAP != None ????젣
+Row 80: section='APP', value='ORACLE', param3='None'
+Row 80: APP + ORACLE != None ????젣
+Row 81: section='APP', value='DOUZON', param3='None'
+Row 81: APP + DOUZON != None ????젣
+Row 82: section='APP', value='YOUNG', param3='None'
+Row 82: APP + YOUNG != None ????젣
+Row 83: section='APP', value='ETC', param3='None'
+Row 83: APP + ETC != None ????젣
+Row 84: section='APP', value='SAP', param3='None'
+Row 84: APP + SAP != None ????젣
+Row 85: section='APP', value='ORACLE', param3='None'
+Row 85: APP + ORACLE != None ????젣
+Row 86: section='APP', value='DOUZON', param3='None'
+Row 86: APP + DOUZON != None ????젣
+Row 87: section='APP', value='YOUNG', param3='None'
+Row 87: APP + YOUNG != None ????젣
+Row 88: section='APP', value='ETC', param3='None'
+Row 88: APP + ETC != None ????젣
+Row 97: section='APP', value='SAP', param3='None'
+Row 97: APP + SAP != None ????젣
+Row 98: section='APP', value='ORACLE', param3='None'
+Row 98: APP + ORACLE != None ????젣
+Row 99: section='APP', value='DOUZON', param3='None'
+Row 99: APP + DOUZON != None ????젣
+Row 100: section='APP', value='YOUNG', param3='None'
+Row 100: APP + YOUNG != None ????젣
+Row 101: section='APP', value='ETC', param3='None'
+Row 101: APP + ETC != None ????젣
+Row 102: section='APP', value='SAP', param3='None'
+Row 102: APP + SAP != None ????젣
+Row 103: section='APP', value='ORACLE', param3='None'
+Row 103: APP + ORACLE != None ????젣
+Row 104: section='APP', value='DOUZON', param3='None'
+Row 104: APP + DOUZON != None ????젣
+Row 105: section='APP', value='YOUNG', param3='None'
+Row 105: APP + YOUNG != None ????젣
+Row 106: section='APP', value='ETC', param3='None'
+Row 106: APP + ETC != None ????젣
+Row 107: section='APP', value='SAP', param3='None'
+Row 107: APP + SAP != None ????젣
+Row 108: section='APP', value='ORACLE', param3='None'
+Row 108: APP + ORACLE != None ????젣
+Row 109: section='APP', value='DOUZON', param3='None'
+Row 109: APP + DOUZON != None ????젣
+Row 110: section='APP', value='YOUNG', param3='None'
+Row 110: APP + YOUNG != None ????젣
+Row 111: section='APP', value='ETC', param3='None'
+Row 111: APP + ETC != None ????젣
+?꾪꽣留??꾨즺: 100媛?????젣??
+
+???듦낵 test_rcm_generation_with_invalid_data (0.71s)
+
+================================================================================
+4. 蹂댁븞 諛??좏슚??寃利?
+================================================================================
+
+?띰툘  ?ㅽ뻾以?test_email_validation_logic... 
+???듦낵 test_email_validation_logic (0.00s)
+
+================================================================================
+?뚯뒪??寃곌낵 ?붿빟
+================================================================================
+
+珥??뚯뒪?? 6媛?
+???듦낵 PASSED: 4媛?(66.7%)
+???ㅽ뙣 FAILED: 2媛?(33.3%)
+?좑툘  寃쎄퀬 WARNING: 0媛?(0.0%)
+??嫄대꼫? SKIPPED: 0媛?(0.0%)

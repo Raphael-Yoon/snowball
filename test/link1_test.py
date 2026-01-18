@@ -1,5 +1,5 @@
 """
-Link1 RCM 자동생성 통합 테스트 스크립트
+Link1 RCM 자동생성 통합 테스트 스크립트 (강화 버전)
 
 Link1은 ITGC RCM 자동 생성 기능을 담당합니다.
 - 클라우드/시스템/OS/DB 유형 선택
@@ -8,21 +8,25 @@ Link1은 ITGC RCM 자동 생성 기능을 담당합니다.
 """
 
 import sys
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import List
+import io
+from unittest.mock import patch, MagicMock
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 try:
     from snowball import app
+    from snowball_link1 import generate_and_send_rcm_excel
+    import openpyxl
 except ImportError as e:
     print(f"❌ Import 오류: {e}")
     sys.exit(1)
 
 from test.link5_test import TestStatus, TestResult
-
 
 class Link1TestSuite:
     """Link1 RCM 자동생성 통합 테스트 스위트"""
@@ -34,7 +38,7 @@ class Link1TestSuite:
 
     def run_all_tests(self):
         print("=" * 80)
-        print("Link1 RCM 자동생성 통합 테스트 시작")
+        print("Link1 RCM 자동생성 통합 테스트 시작 (강화 버전)")
         print("=" * 80)
         print(f"시작 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
@@ -47,15 +51,13 @@ class Link1TestSuite:
             self.test_all_routes_defined,
         ])
 
-        self._run_category("3. RCM 생성 기능 검증", [
-            self.test_rcm_generate_endpoint,
-            self.test_excel_generation_function,
-            self.test_email_sending_function,
+        self._run_category("3. RCM 생성 기능 검증 (실행 기반)", [
+            self.test_rcm_generation_logic,
+            self.test_rcm_generation_with_invalid_data,
         ])
 
-        self._run_category("4. 보안 검증", [
-            self.test_email_validation,
-            self.test_file_generation_security,
+        self._run_category("4. 보안 및 유효성 검증", [
+            self.test_email_validation_logic,
         ])
 
         self._print_final_report()
@@ -86,69 +88,91 @@ class Link1TestSuite:
             result.pass_test("환경 설정이 올바릅니다.")
 
     def test_file_structure(self, result: TestResult):
-        required_files = ['snowball_link1.py']
-        missing = [f for f in required_files if not (project_root / f).exists()]
-        if missing:
-            result.warn_test(f"일부 파일 누락: {', '.join(missing)}")
-        else:
-            result.add_detail("✓ snowball_link1.py")
-            result.pass_test("필수 파일이 존재합니다.")
+        required_files = ['snowball_link1.py', 'static/RCM_Generate.xlsx']
+        for f in required_files:
+            if (project_root / f).exists():
+                result.add_detail(f"✓ {f}")
+            else:
+                result.fail_test(f"{f} 파일이 없습니다.")
+                return
+        result.pass_test("필수 파일이 존재합니다.")
 
     def test_all_routes_defined(self, result: TestResult):
-        expected_routes = ['/link1/link1', '/link1/rcm_generate']
-        app_routes = [rule.rule for rule in self.app.url_map.iter_rules() if rule.endpoint.startswith('link1.')]
-        result.add_detail(f"정의된 라우트: {len(app_routes)}개")
-        result.pass_test("주요 라우트가 정의되어 있습니다.")
-
-    def test_rcm_generate_endpoint(self, result: TestResult):
-        response = self.client.post('/link1/rcm_generate')
-        if response.status_code in [302, 401, 404, 500]:
-            result.skip_test("인증이 필요한 API입니다.")
+        routes = [rule.rule for rule in self.app.url_map.iter_rules()]
+        # snowball.py에서 url_prefix 없이 등록됨
+        if '/link1' in routes and '/rcm_generate' in routes:
+            result.pass_test("주요 라우트가 등록되어 있습니다.")
         else:
-            result.pass_test("RCM 생성 엔드포인트가 응답합니다.")
+            result.fail_test(f"일부 라우트가 누락되었습니다. (발견된 라우트: {routes})")
 
-    def test_excel_generation_function(self, result: TestResult):
+    @patch('snowball_link1.send_gmail_with_attachment')
+    def test_rcm_generation_logic(self, result: TestResult, mock_send):
+        """실제 RCM 생성 로직 테스트 (Mock 사용)"""
+        # patch 데코레이터는 mock을 인자의 마지막(또는 지정된 위치)에 추가함. 
+        # _run_category에서 test_func(result)로 호출하므로 (self, result, mock_send) 순서가 맞음.
+
+        form_data = {
+            'param1': 'test@example.com',
+            'param2': 'TestSystem',
+            'param_cloud': 'AWS',
+            'param3': 'Web',
+            'param4': 'Linux',
+            'param5': 'MySQL',
+            'use_os_tool': 'Y',
+            'use_db_tool': 'N'
+        }
+        
+        success, email, error = generate_and_send_rcm_excel(form_data)
+        
+        if success:
+            result.add_detail("✓ 함수 실행 성공")
+            if mock_send.called:
+                result.add_detail("✓ 이메일 발송 함수 호출 확인")
+                # 첨부파일 확인
+                args, kwargs = mock_send.call_args
+                file_stream = kwargs.get('file_stream')
+                file_name = kwargs.get('file_name')
+                
+                if file_stream and file_name.startswith('TestSystem_ITGC_RCM_'):
+                    result.add_detail(f"✓ 파일명 확인: {file_name}")
+                    # 엑셀 내용 살짝 확인
+                    wb = openpyxl.load_workbook(file_stream)
+                    if 'RCM' in wb.sheetnames:
+                        result.add_detail("✓ 엑셀 시트(RCM) 존재 확인")
+                    else:
+                        result.warn_test("RCM 시트를 찾을 수 없습니다.")
+                else:
+                    result.fail_test("생성된 파일 정보가 올바르지 않습니다.")
+            else:
+                result.fail_test("이메일 발송 함수가 호출되지 않았습니다.")
+        else:
+            result.fail_test(f"RCM 생성 실패: {error}")
+
+    def test_rcm_generation_with_invalid_data(self, result: TestResult):
+        """잘못된 데이터 입력 시 처리 테스트"""
+        form_data = {
+            'param1': '', # 이메일 누락
+            'param2': 'Test'
+        }
+        success, email, error = generate_and_send_rcm_excel(form_data)
+        if not success and "이메일 주소" in error:
+            result.pass_test("이메일 누락 시 에러 처리가 정상입니다.")
+        else:
+            result.fail_test("이메일 누락 에러 처리가 미흡합니다.")
+
+    def test_email_validation_logic(self, result: TestResult):
+        """이메일 형식 검증 로직 확인 (코드 내 존재 여부)"""
         link1_path = project_root / 'snowball_link1.py'
         with open(link1_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        if 'openpyxl' in content and 'load_workbook' in content:
-            result.add_detail("✓ openpyxl 사용 확인")
-            result.pass_test("Excel 생성 기능이 구현되어 있습니다.")
+        
+        if 'param1' in content and 'if not user_email' in content:
+            result.pass_test("이메일 필수값 체크 로직이 확인되었습니다.")
         else:
-            result.warn_test("Excel 생성 코드를 확인할 수 없습니다.")
-
-    def test_email_sending_function(self, result: TestResult):
-        link1_path = project_root / 'snowball_link1.py'
-        with open(link1_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        if 'send_gmail' in content or 'send_email' in content:
-            result.add_detail("✓ 이메일 발송 함수 존재")
-            result.pass_test("이메일 발송 기능이 구현되어 있습니다.")
-        else:
-            result.warn_test("이메일 발송 코드를 확인할 수 없습니다.")
-
-    def test_email_validation(self, result: TestResult):
-        link1_path = project_root / 'snowball_link1.py'
-        with open(link1_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        if 'param1' in content and 'email' in content.lower():
-            result.add_detail("✓ 이메일 파라미터 처리")
-            result.pass_test("이메일 검증 로직이 있습니다.")
-        else:
-            result.warn_test("이메일 검증을 확인할 수 없습니다.")
-
-    def test_file_generation_security(self, result: TestResult):
-        link1_path = project_root / 'snowball_link1.py'
-        with open(link1_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        checks = {'파일명 생성': 'file_name' in content, '날짜 포맷': 'strftime' in content}
-        found = [k for k, v in checks.items() if v]
-        result.add_detail(f"확인된 보안 기능: {', '.join(found)}")
-        result.pass_test(f"파일 생성 보안이 구현되어 있습니다.")
+            result.warn_test("이메일 검증 로직을 찾을 수 없습니다.")
 
     def _print_final_report(self):
         print("\n" + "=" * 80 + "\n테스트 결과 요약\n" + "=" * 80)
-        from test.link5_test import TestStatus
         status_counts = {status: sum(1 for r in self.results if r.status == status) for status in TestStatus}
         total = len(self.results)
         print(f"\n총 테스트: {total}개")
@@ -164,6 +188,15 @@ class Link1TestSuite:
                       'tests': [{'name': r.test_name, 'category': r.category, 'status': r.status.name,
                                 'message': r.message, 'duration': r.get_duration(), 'details': r.details}
                                for r in self.results]}, f, ensure_ascii=False, indent=2)
+        
+        # 사용자가 JSON 파일은 바로 삭제하길 원하므로, 리포트 생성 후 즉시 삭제
+        # 단, 전체 테스트 실행 중(SNOWBALL_KEEP_REPORT=1)에는 삭제하지 않음
+        if os.environ.get('SNOWBALL_KEEP_REPORT') != '1':
+            try:
+                os.remove(report_path)
+                print(f"\nℹ️  임시 JSON 리포트가 삭제되었습니다: {report_path.name}")
+            except Exception as e:
+                print(f"\n⚠️  JSON 리포트 삭제 실패: {e}")
 
 def main():
     suite = Link1TestSuite()
@@ -171,3 +204,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

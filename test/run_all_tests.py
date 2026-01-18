@@ -30,7 +30,10 @@ class TestReportGenerator:
         print(f"{'=' * 80}")
 
         try:
-            # 테스트 실행
+            # 테스트 실행 (전체 테스트 시에는 JSON 파일을 삭제하지 않도록 환경변수 설정)
+            env = os.environ.copy()
+            env['SNOWBALL_KEEP_REPORT'] = '1'
+            
             result = subprocess.run(
                 [sys.executable, f"test/{test_file}"],
                 cwd=project_root,
@@ -38,7 +41,8 @@ class TestReportGenerator:
                 text=True,
                 encoding='utf-8',
                 errors='replace',
-                timeout=60
+                timeout=60,
+                env=env
             )
 
             # 출력 표시
@@ -262,7 +266,10 @@ def main():
 
     # 각 테스트 실행
     tests = [
+        ("Auth (인증 및 권한)", "auth_test.py"),
+        ("Admin (관리자 기능)", "admin_test.py"),
         ("Link1 (RCM 자동생성)", "link1_test.py"),
+        ("Link2 (ITGC 인터뷰)", "link2_test.py"),
         ("Link3 (운영평가 템플릿)", "link3_test.py"),
         ("Link4 (교육자료/동영상)", "link4_test.py"),
         ("Link5 (RCM 관리)", "link5_test.py"),
