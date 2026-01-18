@@ -5,7 +5,10 @@ import json
 from openai import OpenAI
 import pandas as pd
 import re
-import magic
+try:
+    import magic
+except ImportError:
+    magic = None
 
 
 # =============================================================================

@@ -1,5 +1,5 @@
 """
-Link4 교육자료/동영상 통합 테스트 스크립트
+Link4 교육자료/동영상 통합 테스트 스크립트 (강화 버전)
 
 Link4는 통제별 교육 동영상 및 자료 제공 기능을 담당합니다.
 - APD01-12, PC01-03, CM01-03 등 통제별 동영상
@@ -7,9 +7,11 @@ Link4는 통제별 교육 동영상 및 자료 제공 기능을 담당합니다.
 """
 
 import sys
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import List
+from unittest.mock import patch, MagicMock
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -29,7 +31,7 @@ class Link4TestSuite:
         self.results: List[TestResult] = []
 
     def run_all_tests(self):
-        print("=" * 80 + "\nLink4 교육자료/동영상 통합 테스트 시작\n" + "=" * 80)
+        print("=" * 80 + "\nLink4 교육자료/동영상 통합 테스트 시작 (강화 버전)\n" + "=" * 80)
         print(f"시작 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
         self._run_category("1. 환경 및 설정 검증", [self.test_environment_setup, self.test_file_structure])
@@ -69,9 +71,11 @@ class Link4TestSuite:
             result.fail_test("snowball_link4.py 파일이 없습니다.")
 
     def test_all_routes_defined(self, result: TestResult):
-        app_routes = [r.rule for r in self.app.url_map.iter_rules() if r.endpoint.startswith('link4.')]
-        result.add_detail(f"정의된 라우트: {len(app_routes)}개")
-        result.pass_test("주요 라우트가 정의되어 있습니다.")
+        routes = [r.rule for r in self.app.url_map.iter_rules()]
+        if '/link4' in routes:
+            result.pass_test("주요 라우트(/link4)가 등록되어 있습니다.")
+        else:
+            result.fail_test("주요 라우트가 누락되었습니다.")
 
     def test_video_map_exists(self, result: TestResult):
         link4_path = project_root / 'snowball_link4.py'
@@ -79,9 +83,8 @@ class Link4TestSuite:
             content = f.read()
         if 'video_map' in content:
             result.add_detail("✓ video_map 데이터 구조 존재")
-            controls = [c for c in ['APD01', 'APD07', 'PC01', 'CM01'] if c in content]
-            result.add_detail(f"확인된 통제: {', '.join(controls)}")
-            result.pass_test(f"동영상 데이터가 구현되어 있습니다. ({len(controls)}개 확인)")
+            # 실제 데이터 로드 시도 (필요 시)
+            result.pass_test("동영상 데이터 구조가 확인되었습니다.")
         else:
             result.fail_test("video_map을 찾을 수 없습니다.")
 
@@ -89,8 +92,8 @@ class Link4TestSuite:
         link4_path = project_root / 'snowball_link4.py'
         with open(link4_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        if 'youtube.com/embed' in content or 'youtube_url' in content:
-            result.add_detail("✓ 유튜브 URL 형식 확인")
+        if 'youtube.com/embed' in content:
+            result.add_detail("✓ 유튜브 임베드 URL 형식 확인")
             result.pass_test("동영상 URL 형식이 올바릅니다.")
         else:
             result.warn_test("동영상 URL 형식을 확인할 수 없습니다.")
@@ -100,7 +103,7 @@ class Link4TestSuite:
         with open(link4_path, 'r', encoding='utf-8') as f:
             content = f.read()
         if 'embed' in content:
-            result.add_detail("✓ embed 방식 사용 (안전)")
+            result.add_detail("✓ embed 방식 사용 (보안 권장)")
             result.pass_test("외부 URL 처리가 안전합니다.")
         else:
             result.warn_test("외부 URL 처리 방식을 확인할 수 없습니다.")
@@ -121,9 +124,19 @@ class Link4TestSuite:
                       'tests': [{'name': r.test_name, 'category': r.category, 'status': r.status.name,
                                 'message': r.message, 'duration': r.get_duration(), 'details': r.details}
                                for r in self.results]}, f, ensure_ascii=False, indent=2)
+        
+        # JSON 파일 즉시 삭제
+        # 단, 전체 테스트 실행 중(SNOWBALL_KEEP_REPORT=1)에는 삭제하지 않음
+        if os.environ.get('SNOWBALL_KEEP_REPORT') != '1':
+            try:
+                os.remove(report_path)
+                print(f"\nℹ️  임시 JSON 리포트가 삭제되었습니다: {report_path.name}")
+            except Exception as e:
+                print(f"\n⚠️  JSON 리포트 삭제 실패: {e}")
 
 def main():
     Link4TestSuite().run_all_tests()
 
 if __name__ == '__main__':
     main()
+

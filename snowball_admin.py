@@ -15,20 +15,6 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 
 # Helper functions
-def get_user_info():
-    """현재 로그인한 사용자 정보 반환"""
-    if 'user_id' in session and get_current_user() is not None:
-        if 'user_info' in session:
-            return session['user_info']
-        return get_current_user()
-    return None
-
-
-def is_logged_in():
-    """로그인 상태 확인"""
-    return 'user_id' in session and get_current_user() is not None
-
-
 def encode_id(id_value):
     """ID를 Base64로 인코딩"""
     return base64.urlsafe_b64encode(str(id_value).encode()).decode()
@@ -57,17 +43,12 @@ def is_logged_in():
     return 'user_id' in session
 
 def require_admin():
-    """관리자 권한 확인 함수"""
+    """관리자 권한 확인 함수 (필요 시 명시적 호출용)"""
     if not is_logged_in():
-        flash('로그인이 필요합니다.')
-        return redirect(url_for('login'))
+        return False
     
     user_info = get_user_info()
-    if not user_info or user_info.get('admin_flag') != 'Y':
-        flash('관리자 권한이 필요합니다.')
-        return redirect(url_for('index'))
-    
-    return None
+    return user_info and user_info.get('admin_flag') == 'Y'
 
 def perform_auto_mapping(headers):
     """컬럼명 기반 자동 매핑"""
@@ -390,15 +371,11 @@ def admin_work_log_migrate():
     except Exception as e:
         return jsonify({'success': False, 'message': f'마이그레이션 중 오류 발생: {str(e)}'})
 
-# RCM 관리
 @admin_bp.route('/rcm')
 @admin_required
 def admin_rcm():
     """RCM 관리 메인 페이지"""
     user_info = get_user_info()
-    if not user_info or user_info.get('admin_flag') != 'Y':
-        flash('관리자 권한이 필요합니다.')
-        return redirect(url_for('index'))
 
     # 페이지네이션 설정
     page = int(request.args.get('page', 1))

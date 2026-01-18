@@ -15,6 +15,7 @@ from datetime import datetime
 import json
 from typing import Dict, List, Any
 import io
+from unittest.mock import patch, MagicMock
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -228,157 +229,255 @@ class Link7TestSuite:
     # 3. UI 화면 구성 검증
     # =========================================================================
 
-    def test_operation_evaluation_page(self, result: TestResult):
+    def _setup_mock_session(self):
+        """테스트용 세션 설정"""
+        with self.client.session_transaction() as sess:
+            sess['user_id'] = 'test_user'
+            sess['user_info'] = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_operation_evaluation_page(self, mock_user, mock_db, result: TestResult):
         """운영평가 메인 페이지 확인"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
         response = self.client.get('/link7/operation-evaluation')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 페이지입니다.")
-        else:
+        if response.status_code in [200, 302]:
             result.pass_test("운영평가 페이지가 응답합니다.")
+        else:
+            result.fail_test(f"페이지 접근 실패: {response.status_code}")
 
-    def test_apd01_page(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_apd01_page(self, mock_user, mock_db, result: TestResult):
         """APD01 페이지 확인"""
-        result.skip_test("인증 및 RCM ID가 필요합니다.")
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        response = self.client.get('/link7/operation-evaluation/apd01?rcm_id=1')
+        if response.status_code in [200, 302]:
+            result.pass_test("APD01 페이지가 응답합니다.")
+        else:
+            result.fail_test(f"페이지 접근 실패: {response.status_code}")
 
-    def test_apd07_page(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_apd07_page(self, mock_user, mock_db, result: TestResult):
         """APD07 페이지 확인"""
-        response = self.client.get('/link7/operation-evaluation/apd07')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 페이지입니다.")
-        else:
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        response = self.client.get('/link7/operation-evaluation/apd07?rcm_id=1')
+        if response.status_code in [200, 302]:
             result.pass_test("APD07 페이지가 응답합니다.")
+        else:
+            result.fail_test(f"페이지 접근 실패: {response.status_code}")
 
-    def test_apd09_page(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_apd09_page(self, mock_user, mock_db, result: TestResult):
         """APD09 페이지 확인"""
-        response = self.client.get('/link7/operation-evaluation/apd09')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 페이지입니다.")
-        else:
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        response = self.client.get('/link7/operation-evaluation/apd09?rcm_id=1')
+        if response.status_code in [200, 302]:
             result.pass_test("APD09 페이지가 응답합니다.")
+        else:
+            result.fail_test(f"페이지 접근 실패: {response.status_code}")
 
-    def test_apd12_page(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_apd12_page(self, mock_user, mock_db, result: TestResult):
         """APD12 페이지 확인"""
-        response = self.client.get('/link7/operation-evaluation/apd12')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 페이지입니다.")
-        else:
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        response = self.client.get('/link7/operation-evaluation/apd12?rcm_id=1')
+        if response.status_code in [200, 302]:
             result.pass_test("APD12 페이지가 응답합니다.")
+        else:
+            result.fail_test(f"페이지 접근 실패: {response.status_code}")
 
-    def test_elc_operation_page(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_elc_operation_page(self, mock_user, mock_db, result: TestResult):
         """ELC 운영평가 페이지 확인"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
         response = self.client.get('/link7/elc/operation-evaluation')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 페이지입니다.")
-        else:
+        if response.status_code in [200, 302]:
             result.pass_test("ELC 운영평가 페이지가 응답합니다.")
-
-    def test_tlc_operation_page(self, result: TestResult):
-        """TLC 운영평가 페이지 확인"""
-        response = self.client.get('/link7/tlc/operation-evaluation')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 페이지입니다.")
         else:
+            result.fail_test(f"페이지 접근 실패: {response.status_code}")
+
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_tlc_operation_page(self, mock_user, mock_db, result: TestResult):
+        """TLC 운영평가 페이지 확인"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        response = self.client.get('/link7/tlc/operation-evaluation')
+        if response.status_code in [200, 302]:
             result.pass_test("TLC 운영평가 페이지가 응답합니다.")
+        else:
+            result.fail_test(f"페이지 접근 실패: {response.status_code}")
 
     # =========================================================================
     # 4. 운영평가 기본 기능 검증
     # =========================================================================
 
-    def test_operation_evaluation_save(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_operation_evaluation_save(self, mock_user, mock_db, result: TestResult):
         """운영평가 저장 API 테스트"""
-        response = self.client.post('/link7/api/operation-evaluation/save')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 API입니다.")
-        else:
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        data = {'rcm_id': 1, 'control_code': 'C1', 'evaluation_data': {}}
+        response = self.client.post('/link7/api/operation-evaluation/save', 
+                                  json=data, content_type='application/json')
+        if response.status_code in [200, 404]:
             result.pass_test("운영평가 저장 API가 응답합니다.")
-
-    def test_operation_evaluation_load(self, result: TestResult):
-        """운영평가 로드 API 테스트"""
-        result.skip_test("인증 및 RCM ID가 필요합니다.")
-
-    def test_operation_evaluation_reset(self, result: TestResult):
-        """운영평가 초기화 API 테스트"""
-        response = self.client.post('/link7/api/operation-evaluation/reset')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 API입니다.")
         else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
+
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_operation_evaluation_load(self, mock_user, mock_db, result: TestResult):
+        """운영평가 로드 API 테스트"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        response = self.client.get('/link7/api/operation-evaluation/load?rcm_id=1&control_code=C1')
+        if response.status_code in [200, 404]:
+            result.pass_test("운영평가 로드 API가 응답합니다.")
+        else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
+
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_operation_evaluation_reset(self, mock_user, mock_db, result: TestResult):
+        """운영평가 초기화 API 테스트"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        data = {'rcm_id': 1}
+        response = self.client.post('/link7/api/operation-evaluation/reset', 
+                                  json=data, content_type='application/json')
+        if response.status_code in [200, 404]:
             result.pass_test("운영평가 초기화 API가 응답합니다.")
+        else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
     # =========================================================================
     # 5. 모집단 업로드 기능 검증
     # =========================================================================
 
-    def test_population_upload_apd01(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_population_upload_apd01(self, mock_user, mock_db, result: TestResult):
         """APD01 모집단 업로드 테스트"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
         response = self.client.post('/link7/api/operation-evaluation/apd01/upload-population')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 API입니다.")
-        else:
+        if response.status_code in [200, 400, 404]:
             result.pass_test("APD01 모집단 업로드 API가 응답합니다.")
+        else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
-    def test_population_upload_apd07(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_population_upload_apd07(self, mock_user, mock_db, result: TestResult):
         """APD07 모집단 업로드 테스트"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
         response = self.client.post('/link7/api/operation-evaluation/apd07/upload-population')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 API입니다.")
-        else:
+        if response.status_code in [200, 400, 404]:
             result.pass_test("APD07 모집단 업로드 API가 응답합니다.")
+        else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
-    def test_population_upload_apd09(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_population_upload_apd09(self, mock_user, mock_db, result: TestResult):
         """APD09 모집단 업로드 테스트"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
         response = self.client.post('/link7/api/operation-evaluation/apd09/upload-population')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 API입니다.")
-        else:
+        if response.status_code in [200, 400, 404]:
             result.pass_test("APD09 모집단 업로드 API가 응답합니다.")
+        else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
-    def test_population_upload_apd12(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_population_upload_apd12(self, mock_user, mock_db, result: TestResult):
         """APD12 모집단 업로드 테스트"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
         response = self.client.post('/link7/api/operation-evaluation/apd12/upload-population')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 API입니다.")
-        else:
+        if response.status_code in [200, 400, 404]:
             result.pass_test("APD12 모집단 업로드 API가 응답합니다.")
-
-    def test_population_upload_generic(self, result: TestResult):
-        """범용 모집단 업로드 테스트"""
-        response = self.client.post('/link7/api/operation-evaluation/upload-population')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 API입니다.")
         else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
+
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_population_upload_generic(self, mock_user, mock_db, result: TestResult):
+        """범용 모집단 업로드 테스트"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        response = self.client.post('/link7/api/operation-evaluation/upload-population')
+        if response.status_code in [200, 400, 404]:
             result.pass_test("범용 모집단 업로드 API가 응답합니다.")
+        else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
     # =========================================================================
     # 6. 표본 테스트 기능 검증
     # =========================================================================
 
-    def test_sample_load(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_sample_load(self, mock_user, mock_db, result: TestResult):
         """표본 데이터 로드 테스트"""
-        result.skip_test("인증 및 line_id가 필요합니다.")
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        response = self.client.get('/link7/api/operation-evaluation/load-samples?rcm_id=1&line_id=1')
+        if response.status_code in [200, 404]:
+            result.pass_test("표본 데이터 로드 API가 응답합니다.")
+        else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
-    def test_test_results_save_apd07(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_test_results_save_apd07(self, mock_user, mock_db, result: TestResult):
         """APD07 테스트 결과 저장"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
         response = self.client.post('/link7/api/operation-evaluation/apd07/save-test-results')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 API입니다.")
-        else:
+        if response.status_code in [200, 400, 404]:
             result.pass_test("APD07 테스트 결과 저장 API가 응답합니다.")
+        else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
-    def test_test_results_save_apd09(self, result: TestResult):
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_test_results_save_apd09(self, mock_user, mock_db, result: TestResult):
         """APD09 테스트 결과 저장"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
         response = self.client.post('/link7/api/operation-evaluation/apd09/save-test-results')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 API입니다.")
-        else:
+        if response.status_code in [200, 400, 404]:
             result.pass_test("APD09 테스트 결과 저장 API가 응답합니다.")
-
-    def test_test_results_save_apd12(self, result: TestResult):
-        """APD12 테스트 결과 저장"""
-        response = self.client.post('/link7/api/operation-evaluation/apd12/save-test-results')
-        if response.status_code in [401, 302, 404]:
-            result.skip_test("인증이 필요한 API입니다.")
         else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
+
+    @patch('snowball_link7.get_db')
+    @patch('snowball_link7.get_user_info')
+    def test_test_results_save_apd12(self, mock_user, mock_db, result: TestResult):
+        """APD12 테스트 결과 저장"""
+        self._setup_mock_session()
+        mock_user.return_value = {'user_id': 'test_user', 'user_name': '테스터', 'admin_flag': 'Y'}
+        response = self.client.post('/link7/api/operation-evaluation/apd12/save-test-results')
+        if response.status_code in [200, 400, 404]:
             result.pass_test("APD12 테스트 결과 저장 API가 응답합니다.")
+        else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
     # =========================================================================
     # 7. 보안 검증
@@ -521,6 +620,15 @@ class Link7TestSuite:
         report_path = project_root / 'test' / f'link7_test_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
         with open(report_path, 'w', encoding='utf-8') as f:
             json.dump(report_data, f, ensure_ascii=False, indent=2)
+            
+        # JSON 파일 즉시 삭제
+        # 단, 전체 테스트 실행 중(SNOWBALL_KEEP_REPORT=1)에는 삭제하지 않음
+        if os.environ.get('SNOWBALL_KEEP_REPORT') != '1':
+            try:
+                os.remove(report_path)
+                print(f"\nℹ️  임시 JSON 리포트가 삭제되었습니다: {report_path.name}")
+            except Exception as e:
+                print(f"\n⚠️  JSON 리포트 삭제 실패: {e}")
 
 
 

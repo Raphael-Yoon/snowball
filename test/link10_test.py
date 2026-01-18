@@ -9,9 +9,11 @@ Link10은 구글 드라이브 연동 AI 문서 분석 기능을 담당합니다.
 """
 
 import sys
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import List
+from unittest.mock import patch
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -104,23 +106,42 @@ class Link10TestSuite:
         else:
             result.warn_test("인증 파일 경로를 확인할 수 없습니다.")
 
-    def test_ai_result_api(self, result: TestResult):
-        response = self.client.get('/link10/api/ai_result/test.pdf')
-        if response.status_code in [404, 500]:
-            result.skip_test("테스트 파일이 필요합니다.")
-        else:
-            result.add_detail(f"응답 코드: {response.status_code}")
-            result.pass_test("AI 결과 API가 응답합니다.")
-
-    def test_results_list_api(self, result: TestResult):
-        response = self.client.get('/link10/api/results')
+    @patch('snowball_link10.list_drive_files')
+    @patch('snowball_link10.get_google_doc_content')
+    def test_ai_result_api(self, mock_content, mock_list, result: TestResult):
+        # Mock 데이터 설정
+        mock_list.return_value = [
+            {'name': 'AI 분석 리포트 - test', 'id': 'doc123', 'mimeType': 'application/vnd.google-apps.document'}
+        ]
+        mock_content.return_value = "<h1>테스트 분석 결과</h1><p>이것은 모의 데이터입니다.</p>"
+        
+        response = self.client.get('/link10/api/ai_result/test.xlsx')
+        
         if response.status_code == 200:
-            result.add_detail("응답 성공")
-            result.pass_test("결과 목록 API가 정상 응답합니다.")
-        elif response.status_code in [302, 401]:
-            result.skip_test("인증이 필요한 API입니다.")
+            result.add_detail("✓ Google Drive Mock을 통한 결과 조회 성공")
+            result.pass_test("AI 결과 API가 정상 작동합니다.")
         else:
-            result.warn_test(f"예상치 못한 응답: {response.status_code}")
+            result.fail_test(f"API 호출 실패: {response.status_code}")
+
+    @patch('snowball_link10.list_drive_files')
+    def test_results_list_api(self, mock_list, result: TestResult):
+        # Mock 데이터 설정
+        mock_list.return_value = [
+            {'name': 'test', 'id': 'sheet123', 'mimeType': 'application/vnd.google-apps.spreadsheet', 'size': '1024', 'createdTime': '2026-01-01T00:00:00Z', 'webViewLink': 'http://example.com'},
+            {'name': 'AI 분석 리포트 - test', 'id': 'doc123', 'mimeType': 'application/vnd.google-apps.document'}
+        ]
+        
+        response = self.client.get('/link10/api/results')
+        
+        if response.status_code == 200:
+            data = response.get_json()
+            if len(data) > 0 and data[0]['has_ai'] is True:
+                result.add_detail(f"✓ 결과 목록 조회 성공 (항목 수: {len(data)})")
+                result.pass_test("결과 목록 API가 정상 작동합니다.")
+            else:
+                result.warn_test("결과 목록 형식이 예상과 다릅니다.")
+        else:
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
     def test_download_endpoints(self, result: TestResult):
         link10_path = project_root / 'snowball_link10.py'
@@ -181,6 +202,15 @@ class Link10TestSuite:
                       'tests': [{'name': r.test_name, 'category': r.category, 'status': r.status.name,
                                 'message': r.message, 'duration': r.get_duration(), 'details': r.details}
                                for r in self.results]}, f, ensure_ascii=False, indent=2)
+        
+        # JSON 파일 즉시 삭제
+        # 단, 전체 테스트 실행 중(SNOWBALL_KEEP_REPORT=1)에는 삭제하지 않음
+        if os.environ.get('SNOWBALL_KEEP_REPORT') != '1':
+            try:
+                os.remove(report_path)
+                print(f"\nℹ️  임시 JSON 리포트가 삭제되었습니다: {report_path.name}")
+            except Exception as e:
+                print(f"\n⚠️  JSON 리포트 삭제 실패: {e}")
 
 
 def main():

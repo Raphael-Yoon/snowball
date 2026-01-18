@@ -9,9 +9,11 @@ Link9는 사용자 문의 및 피드백 기능을 담당합니다.
 """
 
 import sys
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import List
+from unittest.mock import patch
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -88,37 +90,68 @@ class Link9TestSuite:
         else:
             result.warn_test(f"라우트 수가 예상보다 적습니다: {len(app_routes)}개")
 
-    def test_contact_page(self, result: TestResult):
+    @patch('snowball_link9.send_gmail')
+    def test_contact_page(self, mock_send, result: TestResult):
         response = self.client.get('/link9/contact')
         if response.status_code == 200:
             result.add_detail(f"응답 코드: {response.status_code}")
             result.pass_test("Contact 페이지가 정상 응답합니다.")
-        elif response.status_code in [302, 404]:
-            result.skip_test("페이지 접근 불가 (정상)")
         else:
-            result.warn_test(f"예상치 못한 응답: {response.status_code}")
+            result.fail_test(f"페이지 접근 실패: {response.status_code}")
 
-    def test_contact_send_api(self, result: TestResult):
-        response = self.client.post('/link9/api/contact/send')
-        if response.status_code in [400, 422, 404]:
-            result.skip_test("파라미터가 필요한 API입니다.")
+    @patch('snowball_link9.send_gmail')
+    def test_contact_send_api(self, mock_send, result: TestResult):
+        # 유효한 JSON 데이터 전송
+        data = {
+            'name': '테스터',
+            'email': 'test@example.com',
+            'subject': '테스트 문의',
+            'message': '이것은 테스트 메시지입니다.'
+        }
+        response = self.client.post('/link9/api/contact/send', 
+                                  json=data,
+                                  content_type='application/json')
+        
+        if response.status_code == 200:
+            result.add_detail("✓ 유효한 데이터로 API 호출 성공")
+            result.pass_test("Contact 발송 API가 정상 작동합니다.")
         else:
-            result.add_detail(f"응답 코드: {response.status_code}")
-            result.pass_test("Contact 발송 API가 응답합니다.")
+            result.fail_test(f"API 호출 실패: {response.status_code}, {response.get_data(as_text=True)}")
 
-    def test_service_inquiry_api(self, result: TestResult):
-        response = self.client.post('/link9/service_inquiry')
-        if response.status_code in [400, 422, 404, 302]:
-            result.skip_test("파라미터가 필요한 API입니다.")
+    @patch('snowball_link9.send_gmail')
+    def test_service_inquiry_api(self, mock_send, result: TestResult):
+        # 유효한 폼 데이터 전송
+        data = {
+            'company_name': '테스트 회사',
+            'contact_name': '테스터',
+            'contact_email': 'test@example.com'
+        }
+        response = self.client.post('/link9/service_inquiry', data=data)
+        
+        if response.status_code == 200:
+            result.add_detail("✓ 서비스 문의 폼 제출 성공")
+            result.pass_test("서비스 문의 API가 정상 작동합니다.")
         else:
-            result.pass_test("서비스 문의 API가 응답합니다.")
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
-    def test_feedback_api(self, result: TestResult):
-        response = self.client.post('/link9/api/feedback')
-        if response.status_code in [400, 422, 404]:
-            result.skip_test("파라미터가 필요한 API입니다.")
+    @patch('snowball_link9.send_gmail')
+    def test_feedback_api(self, mock_send, result: TestResult):
+        # 유효한 JSON 데이터 전송
+        data = {
+            'type': '기능 제안',
+            'content': '좋은 서비스입니다.',
+            'rating': 5,
+            'email': 'test@example.com'
+        }
+        response = self.client.post('/link9/api/feedback', 
+                                  json=data,
+                                  content_type='application/json')
+        
+        if response.status_code == 200:
+            result.add_detail("✓ 피드백 제출 성공")
+            result.pass_test("피드백 API가 정상 작동합니다.")
         else:
-            result.pass_test("피드백 API가 응답합니다.")
+            result.fail_test(f"API 호출 실패: {response.status_code}")
 
     def test_email_integration(self, result: TestResult):
         link9_path = project_root / 'snowball_link9.py'
@@ -180,6 +213,15 @@ class Link9TestSuite:
                       'tests': [{'name': r.test_name, 'category': r.category, 'status': r.status.name,
                                 'message': r.message, 'duration': r.get_duration(), 'details': r.details}
                                for r in self.results]}, f, ensure_ascii=False, indent=2)
+        
+        # JSON 파일 즉시 삭제
+        # 단, 전체 테스트 실행 중(SNOWBALL_KEEP_REPORT=1)에는 삭제하지 않음
+        if os.environ.get('SNOWBALL_KEEP_REPORT') != '1':
+            try:
+                os.remove(report_path)
+                print(f"\nℹ️  임시 JSON 리포트가 삭제되었습니다: {report_path.name}")
+            except Exception as e:
+                print(f"\n⚠️  JSON 리포트 삭제 실패: {e}")
 
 def main():
     Link9TestSuite().run_all_tests()
