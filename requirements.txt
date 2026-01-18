@@ -10,6 +10,8 @@ pandas
 pymysql
 pytest
 pytest-mock
+pytest-playwright
+playwright
 selenium
 OpenDartReader
 pykrx
