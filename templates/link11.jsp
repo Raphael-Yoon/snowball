@@ -656,7 +656,7 @@
                 <button class="btn-secondary-custom" onclick="location.href='/link11/evidence'">
                     <i class="fas fa-file-alt"></i> 증빙자료 관리
                 </button>
-                <button class="btn-primary-custom" onclick="generateReport()" id="generate-report-btn" disabled>
+                <button class="btn-secondary-custom" onclick="generateReport()" id="generate-report-btn" disabled>
                     <i class="fas fa-file-pdf"></i> 공시자료 생성
                 </button>
             </div>
