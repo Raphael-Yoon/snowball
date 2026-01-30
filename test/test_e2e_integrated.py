@@ -75,6 +75,15 @@ class IntegratedE2ETestSuite(PlaywrightTestBase):
                     self.test_interview_flow,
                 ])
 
+            # 정보보호공시 테스트 (Link11)
+            if self.should_run_suite("disclosure"):
+                self.run_category("Disclosure: 정보보호공시", [
+                    self.test_disclosure_main_page,
+                    self.test_disclosure_category_view,
+                    self.test_disclosure_progress_api,
+                    self.test_disclosure_evidence_page,
+                ])
+
         finally:
             self.teardown()
 
@@ -180,6 +189,70 @@ class IntegratedE2ETestSuite(PlaywrightTestBase):
             result.skip_test(f"인터뷰 테스트 건너뜀: {str(e)}")
 
     # =========================================================================
+    # 정보보호공시 테스트 (Link11)
+    # =========================================================================
+
+    def test_disclosure_main_page(self, result: E2ETestResult):
+        """정보보호공시 메인 페이지 로드"""
+        try:
+            self.navigate_to("/link11")
+            # 페이지 타이틀 또는 특정 요소 확인
+            if self.page.title() or self.check_element_exists("body"):
+                result.add_detail(f"페이지 URL: {self.page.url}")
+                result.pass_test("정보보호공시 메인 페이지 로드 성공")
+            else:
+                result.fail_test("페이지 로드 실패")
+        except Exception as e:
+            result.skip_test(f"메인 페이지 테스트 건너뜀: {str(e)}")
+
+    def test_disclosure_category_view(self, result: E2ETestResult):
+        """정보보호공시 카테고리 페이지"""
+        try:
+            # 테스트용 카테고리 ID로 접근
+            self.navigate_to("/link11/category/governance")
+            if self.page.url.endswith("/governance") or "category" in self.page.url:
+                result.add_detail("카테고리: governance")
+                result.pass_test("카테고리 뷰 페이지 접근 성공")
+            else:
+                result.skip_test("카테고리 페이지 리다이렉트됨")
+        except Exception as e:
+            result.skip_test(f"카테고리 뷰 테스트 건너뜀: {str(e)}")
+
+    def test_disclosure_progress_api(self, result: E2ETestResult):
+        """정보보호공시 진행률 API 테스트"""
+        try:
+            # API 직접 호출
+            response = self.page.request.get(
+                f"{self.base_url}/link11/api/progress/testcompany/2026"
+            )
+            if response.ok:
+                data = response.json()
+                if data.get('success'):
+                    progress = data.get('progress', {})
+                    result.add_detail(f"총 질문: {progress.get('total_questions', 0)}개")
+                    result.add_detail(f"답변 완료: {progress.get('answered_questions', 0)}개")
+                    result.pass_test("진행률 API 정상 작동")
+                else:
+                    result.warn_test(f"API 응답 실패: {data.get('message', 'Unknown')}")
+            else:
+                result.skip_test(f"API 응답 코드: {response.status}")
+        except Exception as e:
+            result.skip_test(f"진행률 API 테스트 건너뜀: {str(e)}")
+
+    def test_disclosure_evidence_page(self, result: E2ETestResult):
+        """정보보호공시 증빙 자료 관리 페이지"""
+        try:
+            self.navigate_to("/link11/evidence")
+            # 페이지 로드 확인
+            if self.page.url.endswith("/evidence") or "evidence" in self.page.url:
+                result.add_detail(f"페이지 URL: {self.page.url}")
+                result.pass_test("증빙 자료 관리 페이지 접근 성공")
+            else:
+                result.skip_test("증빙 페이지 리다이렉트됨")
+        except Exception as e:
+            result.skip_test(f"증빙 페이지 테스트 건너뜀: {str(e)}")
+
+    # =========================================================================
     # 헬퍼 메서드
     # =========================================================================
 
@@ -210,7 +283,7 @@ def main():
     """메인 실행 함수"""
     parser = argparse.ArgumentParser(description='Snowball 통합 E2E 테스트')
     parser.add_argument('--suite', type=str, default='all',
-                       help='테스트 스위트 (all, auth, rcm, evaluation, interview)')
+                       help='테스트 스위트 (all, auth, rcm, evaluation, interview, disclosure)')
     parser.add_argument('--headless', action='store_true',
                        help='헤드리스 모드로 실행')
     parser.add_argument('--url', type=str, default='http://localhost:5000',

@@ -132,6 +132,9 @@ class IntegratedUnitTestSuite:
         if self.should_run_module("link7"):
             self._test_link7_module()
 
+        if self.should_run_module("link11"):
+            self._test_link11_module()
+
         # 기타 모듈들 (필요시 추가)
 
         return self._print_final_report()
@@ -245,6 +248,85 @@ class IntegratedUnitTestSuite:
             result.fail_test("Link7 Blueprint 미등록")
 
     # =========================================================================
+    # Link11 모듈 테스트 (정보보호공시)
+    # =========================================================================
+
+    def _test_link11_module(self):
+        """Link11 정보보호공시 모듈 테스트"""
+        self._run_category("Link11: 정보보호공시", "link11", [
+            ("test_link11_route", self._link11_test_route),
+            ("test_link11_helper_functions", self._link11_test_helper_functions),
+            ("test_link11_file_allowed", self._link11_test_file_allowed),
+            ("test_link11_uuid_generation", self._link11_test_uuid_generation),
+        ])
+
+    def _link11_test_route(self, result: TestResult):
+        """Link11 라우트 확인"""
+        if 'link11' in self.app.blueprints:
+            result.add_detail("Blueprint 이름: link11")
+            result.pass_test("Link11 Blueprint 등록 확인")
+        else:
+            result.fail_test("Link11 Blueprint 미등록")
+
+    def _link11_test_helper_functions(self, result: TestResult):
+        """Link11 헬퍼 함수 확인"""
+        try:
+            from snowball_link11 import is_logged_in, get_user_info, get_db, allowed_file, generate_uuid
+            result.add_detail("is_logged_in, get_user_info, get_db, allowed_file, generate_uuid 함수 존재")
+            result.pass_test("헬퍼 함수 import 성공")
+        except ImportError as e:
+            result.fail_test(f"헬퍼 함수 import 실패: {e}")
+
+    def _link11_test_file_allowed(self, result: TestResult):
+        """파일 확장자 검증 테스트"""
+        from snowball_link11 import allowed_file, ALLOWED_EXTENSIONS
+
+        # 허용된 확장자 테스트
+        test_cases = [
+            ("document.pdf", True),
+            ("report.xlsx", True),
+            ("image.jpg", True),
+            ("file.hwp", True),
+            ("script.exe", False),
+            ("hack.bat", False),
+            ("noextension", False),
+        ]
+
+        all_passed = True
+        for filename, expected in test_cases:
+            actual = allowed_file(filename)
+            if actual != expected:
+                result.add_detail(f"❌ {filename}: 예상={expected}, 실제={actual}")
+                all_passed = False
+
+        result.add_detail(f"허용 확장자: {', '.join(ALLOWED_EXTENSIONS)}")
+
+        if all_passed:
+            result.pass_test("파일 확장자 검증 로직 정상 작동")
+        else:
+            result.fail_test("일부 파일 확장자 검증 실패")
+
+    def _link11_test_uuid_generation(self, result: TestResult):
+        """UUID 생성 테스트"""
+        from snowball_link11 import generate_uuid
+
+        uuid1 = generate_uuid()
+        uuid2 = generate_uuid()
+
+        # UUID 형식 확인 (8-4-4-4-12 형식)
+        import re
+        uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+
+        if re.match(uuid_pattern, uuid1) and re.match(uuid_pattern, uuid2):
+            if uuid1 != uuid2:
+                result.add_detail(f"생성된 UUID 예시: {uuid1}")
+                result.pass_test("UUID 생성 및 유일성 확인")
+            else:
+                result.fail_test("UUID 유일성 실패: 동일한 UUID 생성됨")
+        else:
+            result.fail_test(f"잘못된 UUID 형식: {uuid1}")
+
+    # =========================================================================
     # 헬퍼 메서드
     # =========================================================================
 
@@ -347,7 +429,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='Snowball 통합 단위 테스트')
     parser.add_argument('--module', type=str, default='all',
-                       help='테스트할 모듈 (all, auth, link1, link5, link6, link7)')
+                       help='테스트할 모듈 (all, auth, link1, link5, link6, link7, link11)')
 
     args = parser.parse_args()
 

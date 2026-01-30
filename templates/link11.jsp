@@ -653,11 +653,19 @@
 
             <!-- 액션 버튼 -->
             <div class="action-buttons">
+                {% if is_logged_in %}
+                <button class="btn-secondary-custom" onclick="showLoadFromYearModal()">
+                    <i class="fas fa-history"></i> 이전 자료 불러오기
+                </button>
+                <button class="btn-secondary-custom" onclick="confirmReset()" style="color: #dc3545;">
+                    <i class="fas fa-redo"></i> 새로하기
+                </button>
+                {% endif %}
                 <button class="btn-secondary-custom" onclick="location.href='/link11/evidence'">
                     <i class="fas fa-file-alt"></i> 증빙자료 관리
                 </button>
-                <button class="btn-secondary-custom" onclick="generateReport()" id="generate-report-btn" disabled>
-                    <i class="fas fa-file-pdf"></i> 공시자료 생성
+                <button class="btn-secondary-custom" onclick="location.href='/link11/report'">
+                    <i class="fas fa-file-export"></i> 공시자료 생성
                 </button>
             </div>
         </div>
@@ -715,6 +723,34 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                     <button type="button" class="btn btn-primary" onclick="uploadFile()">업로드</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 이전 자료 불러오기 모달 -->
+    <div class="modal fade" id="loadFromYearModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-history"></i> 이전 자료 불러오기</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">이전 연도의 답변을 현재 연도로 복사합니다. 현재 작성 중인 내용은 덮어씌워집니다.</p>
+                    <div class="mb-3">
+                        <label class="form-label">불러올 연도 선택</label>
+                        <select class="form-select" id="source-year-select">
+                            <option value="">연도를 선택하세요</option>
+                        </select>
+                        <div id="no-previous-data" class="text-muted mt-2" style="display: none;">
+                            <i class="fas fa-info-circle"></i> 이전 연도 자료가 없습니다.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="loadFromYear()" id="load-from-year-btn">불러오기</button>
                 </div>
             </div>
         </div>
@@ -1302,6 +1338,113 @@
             } catch (error) {
                 console.error('보고서 생성 오류:', error);
                 showToast('보고서 생성 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 새로하기 확인
+        function confirmReset() {
+            if (confirm(`${currentYear}년 데이터를 모두 삭제하고 새로 시작하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+                resetDisclosure();
+            }
+        }
+
+        // 데이터 초기화
+        async function resetDisclosure() {
+            try {
+                const response = await fetch('/link11/api/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        company_id: companyId,
+                        year: currentYear
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    // 페이지 새로고침
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast('초기화 실패: ' + data.message, 'error');
+                }
+            } catch (error) {
+                console.error('초기화 오류:', error);
+                showToast('초기화 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 이전 자료 불러오기 모달 표시
+        async function showLoadFromYearModal() {
+            const select = document.getElementById('source-year-select');
+            const noDataMsg = document.getElementById('no-previous-data');
+            const loadBtn = document.getElementById('load-from-year-btn');
+
+            // 초기화
+            select.innerHTML = '<option value="">연도를 선택하세요</option>';
+            noDataMsg.style.display = 'none';
+            loadBtn.disabled = false;
+
+            try {
+                const response = await fetch(`/link11/api/available-years/${encodeURIComponent(companyId)}`);
+                const data = await response.json();
+
+                if (data.success && data.years.length > 0) {
+                    data.years.forEach(y => {
+                        const option = document.createElement('option');
+                        option.value = y.year;
+                        option.textContent = `${y.year}년 (${y.answer_count}개 답변)`;
+                        select.appendChild(option);
+                    });
+                } else {
+                    noDataMsg.style.display = 'block';
+                    loadBtn.disabled = true;
+                }
+
+                const modal = new bootstrap.Modal(document.getElementById('loadFromYearModal'));
+                modal.show();
+            } catch (error) {
+                console.error('연도 목록 조회 오류:', error);
+                showToast('연도 목록을 불러오는 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 이전 자료 불러오기 실행
+        async function loadFromYear() {
+            const sourceYear = document.getElementById('source-year-select').value;
+
+            if (!sourceYear) {
+                showToast('연도를 선택해주세요.', 'warning');
+                return;
+            }
+
+            if (!confirm(`${sourceYear}년 자료를 ${currentYear}년으로 복사하시겠습니까?\n\n현재 ${currentYear}년에 작성된 내용은 모두 덮어씌워집니다.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/link11/api/copy-from-year', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        company_id: companyId,
+                        source_year: parseInt(sourceYear),
+                        target_year: currentYear
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('loadFromYearModal')).hide();
+                    // 페이지 새로고침
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast('복사 실패: ' + data.message, 'error');
+                }
+            } catch (error) {
+                console.error('자료 복사 오류:', error);
+                showToast('자료 복사 중 오류가 발생했습니다.', 'error');
             }
         }
     </script>

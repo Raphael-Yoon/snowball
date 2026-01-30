@@ -71,13 +71,13 @@
         <div class="container">
             {% if is_logged_in %}
             <!-- 로그인 상태: Private 섹션 먼저 표시 -->
-            <div class="row g-4" id="private-services">
+            <div class="row g-4 justify-content-center" id="private-services">
                 <div class="col-12">
                     <h2 class="section-title"><i class="fas fa-lock me-2"></i>Private</h2>
                 </div>
 
-                <!-- 위 2개: Dashboard, RCM (순서 변경) -->
-                <div class="col-lg-3 col-md-6 offset-lg-3">
+                <!-- 위 3개: Dashboard, RCM, 정보보호공시 -->
+                <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-info h-100">
                         <img src="{{ url_for('static', filename='img/dashboard.jpg')}}" class="feature-img" alt="Dashboard"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
@@ -104,6 +104,22 @@
                                 <a href="/user/rcm" class="feature-link"
                                    data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
                                    title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• 통제항목별 상세 정보 확인<br>• 카테고리별 RCM 관리 (ELC/TLC/ITGC)<br>• 엑셀 업로드 및 다운로드 지원</div>">자세히 보기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <div class="feature-card border-secondary h-100">
+                        <img src="{{ url_for('static', filename='img/security.jpg')}}" class="feature-img" alt="정보보호공시"
+                             onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="feature-title text-center"><i class="fas fa-shield-alt me-2"></i>정보보호공시</h5>
+                            <p class="feature-description">정보보호 투자·인력·인증·활동 현황을 관리하고 KISA 공시자료를 생성합니다.</p>
+                            <div class="text-center mt-auto">
+                                <a href="/link11" class="feature-link"
+                                   data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                   title="<div>• 투자/인력/인증/활동 현황 관리<br>• KISA 제출용 공시자료 생성</div>">자세히 보기</a>
                             </div>
                         </div>
                     </div>
@@ -223,7 +239,7 @@
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-success h-100">
-                        <img src="{{ url_for('static', filename='img/stock_analysis.jpg')}}" class="feature-img" alt="종목 분석"
+                        <img src="{{ url_for('static', filename='img/stock.jpg')}}" class="feature-img" alt="종목 분석"
                              onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-chart-line me-2"></i>종목 분석</h5>

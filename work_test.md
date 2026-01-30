@@ -90,6 +90,9 @@ python test/test_units_integrated.py --module=link6
 
 # Link7 (운영평가) 모듈만
 python test/test_units_integrated.py --module=link7
+
+# Link11 (정보보호공시) 모듈만
+python test/test_units_integrated.py --module=link11
 ```
 
 ### 📊 모듈 목록
@@ -101,7 +104,8 @@ python test/test_units_integrated.py --module=link7
 | `link5` | RCM 업로드, 파일 검증 | 2개 |
 | `link6` | 설계평가 | 1개 |
 | `link7` | 운영평가 | 1개 |
-| `all` (기본값) | 위 모든 모듈 | 7개 |
+| `link11` | 정보보호공시 | 4개 |
+| `all` (기본값) | 위 모든 모듈 | 11개 |
 
 ### 📄 결과 저장
 
@@ -193,6 +197,9 @@ python test/test_e2e_integrated.py --suite=evaluation
 
 # Interview (ITGC 인터뷰) 스위트만
 python test/test_e2e_integrated.py --suite=interview
+
+# Disclosure (정보보호공시) 스위트만
+python test/test_e2e_integrated.py --suite=disclosure
 ```
 
 #### 헤드리스 모드 (브라우저 UI 숨김 - 추천!)
@@ -218,7 +225,8 @@ python test/test_e2e_integrated.py --url=http://localhost:8000
 | `rcm` | RCM 생성 + 업로드 | 3~5분 | 2개 |
 | `evaluation` | 설계평가 + 운영평가 | 4~6분 | 2개 |
 | `interview` | ITGC 인터뷰 | 2~3분 | 1개 |
-| `all` (기본값) | 위 모든 스위트 | 10~15분 | 7개 |
+| `disclosure` | 정보보호공시 | 2~3분 | 4개 |
+| `all` (기본값) | 위 모든 스위트 | 12~18분 | 11개 |
 
 ### 📄 결과 저장 및 정리
 
