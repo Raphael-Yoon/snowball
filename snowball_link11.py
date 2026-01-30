@@ -117,10 +117,9 @@ def evidence_view():
     """증빙 자료 관리 페이지"""
     user_logged_in = is_logged_in()
     user_info = get_user_info()
-    return render_template('link11.jsp',
+    return render_template('link11_evidence.jsp',
                            is_logged_in=user_logged_in,
-                           user_info=user_info,
-                           view='evidence')
+                           user_info=user_info)
 
 
 @bp_link11.route('/link11/report')
@@ -128,10 +127,9 @@ def report_view():
     """공시 자료 생성/검토 페이지"""
     user_logged_in = is_logged_in()
     user_info = get_user_info()
-    return render_template('link11.jsp',
+    return render_template('link11_report.jsp',
                            is_logged_in=user_logged_in,
-                           user_info=user_info,
-                           view='report')
+                           user_info=user_info)
 
 
 # ============================================================================
@@ -567,6 +565,55 @@ def download_evidence(evidence_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@bp_link11.route('/link11/api/evidence/stats/<company_id>/<int:year>', methods=['GET'])
+def get_evidence_stats(company_id, year):
+    """증빙 자료 통계 조회"""
+    try:
+        with get_db() as conn:
+            # 전체 파일 수
+            cursor = conn.execute('''
+                SELECT COUNT(*) as total FROM disclosure_evidence
+                WHERE company_id = ? AND year = ?
+            ''', (company_id, year))
+            total = cursor.fetchone()['total']
+
+            # 연결된 질문 수
+            cursor = conn.execute('''
+                SELECT COUNT(DISTINCT question_id) as questions FROM disclosure_evidence
+                WHERE company_id = ? AND year = ? AND question_id IS NOT NULL
+            ''', (company_id, year))
+            questions = cursor.fetchone()['questions']
+
+            # 총 용량
+            cursor = conn.execute('''
+                SELECT COALESCE(SUM(file_size), 0) as total_size FROM disclosure_evidence
+                WHERE company_id = ? AND year = ?
+            ''', (company_id, year))
+            total_size = cursor.fetchone()['total_size']
+
+            # 최근 7일 업로드
+            cursor = conn.execute('''
+                SELECT COUNT(*) as recent FROM disclosure_evidence
+                WHERE company_id = ? AND year = ?
+                AND uploaded_at >= datetime('now', '-7 days')
+            ''', (company_id, year))
+            recent = cursor.fetchone()['recent']
+
+            return jsonify({
+                'success': True,
+                'stats': {
+                    'total': total,
+                    'questions': questions,
+                    'total_size': total_size,
+                    'recent': recent
+                }
+            })
+
+    except Exception as e:
+        print(f"증빙 통계 조회 오류: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 # ============================================================================
 # API Endpoints - 진행 상황
 # ============================================================================
@@ -753,7 +800,7 @@ def _mark_dependent_questions_na(conn, parent_question_id, company_id, year, use
 def _update_session_progress(conn, company_id, year, user_id=None):
     """세션 진행률 자동 업데이트 (내부 함수)"""
     try:
-        # 답변 완료된 질문 수 계산
+        # 답변 완료된 질문 수 계산 (N/A 포함)
         cursor = conn.execute('''
             SELECT COUNT(DISTINCT question_id) as answered
             FROM disclosure_answers
@@ -769,6 +816,8 @@ def _update_session_progress(conn, company_id, year, user_id=None):
 
         # 진행률 계산
         completion_rate = round((answered / total) * 100) if total > 0 else 0
+
+        print(f"[DEBUG] 진행률 계산: answered={answered}, total={total}, rate={completion_rate}%")
 
         # 세션 존재 여부 확인
         cursor = conn.execute('''
@@ -887,6 +936,219 @@ def generate_report():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@bp_link11.route('/link11/api/report/download', methods=['POST'])
+def download_report():
+    """공시 자료 Excel 다운로드"""
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+        from io import BytesIO
+
+        data = request.get_json()
+        company_id = data.get('company_id')
+        year = data.get('year', datetime.now().year)
+        format_type = data.get('format', 'excel')
+
+        if not company_id:
+            return jsonify({'success': False, 'message': '회사 ID가 필요합니다.'}), 400
+
+        with get_db() as conn:
+            # 모든 답변 조회
+            cursor = conn.execute('''
+                SELECT q.id, q.category, q.subcategory, q.text, q.type, q.level,
+                       a.value, a.status
+                FROM disclosure_questions q
+                LEFT JOIN disclosure_answers a ON q.id = a.question_id
+                    AND a.company_id = ? AND a.year = ?
+                ORDER BY q.sort_order
+            ''', (company_id, year))
+
+            questions = [dict(row) for row in cursor.fetchall()]
+
+        # Excel 생성
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "정보보호공시"
+
+        # 스타일 정의
+        header_font = Font(bold=True, size=12, color="FFFFFF")
+        header_fill = PatternFill(start_color="1e3a5f", end_color="1e3a5f", fill_type="solid")
+        category_font = Font(bold=True, size=11)
+        category_fill = PatternFill(start_color="e0f2fe", end_color="e0f2fe", fill_type="solid")
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
+        # 제목
+        ws.merge_cells('A1:D1')
+        ws['A1'] = f"정보보호공시 - {company_id} ({year}년)"
+        ws['A1'].font = Font(bold=True, size=16)
+        ws['A1'].alignment = Alignment(horizontal='center')
+
+        ws.merge_cells('A2:D2')
+        ws['A2'] = f"생성일: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        ws['A2'].alignment = Alignment(horizontal='center')
+
+        # 헤더
+        headers = ['질문ID', '질문', '답변', '상태']
+        ws.append([])  # 빈 줄
+        ws.append(headers)
+
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=4, column=col)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = thin_border
+
+        # 데이터
+        current_category = None
+        row_num = 5
+
+        for q in questions:
+            # 카테고리 헤더
+            if q['category'] != current_category:
+                current_category = q['category']
+                ws.merge_cells(f'A{row_num}:D{row_num}')
+                ws[f'A{row_num}'] = current_category
+                ws[f'A{row_num}'].font = category_font
+                ws[f'A{row_num}'].fill = category_fill
+                ws[f'A{row_num}'].border = thin_border
+                row_num += 1
+
+            # 질문 데이터
+            value = q['value'] or ''
+            if value.startswith('[') and value.endswith(']'):
+                try:
+                    value = ', '.join(json.loads(value))
+                except:
+                    pass
+
+            status = '완료' if q['status'] == 'completed' else ('N/A' if q['value'] == 'N/A' else '미완료')
+
+            ws.append([q['id'], q['text'], value, status])
+
+            for col in range(1, 5):
+                cell = ws.cell(row=row_num, column=col)
+                cell.border = thin_border
+                cell.alignment = Alignment(vertical='center', wrap_text=True)
+
+            row_num += 1
+
+        # 열 너비 조정
+        ws.column_dimensions['A'].width = 12
+        ws.column_dimensions['B'].width = 60
+        ws.column_dimensions['C'].width = 30
+        ws.column_dimensions['D'].width = 10
+
+        # ============================================
+        # 증빙자료 시트 추가 (내부 관리용)
+        # ============================================
+        with get_db() as conn:
+            cursor = conn.execute('''
+                SELECT e.id, e.question_id, e.file_name, e.file_size, e.file_type,
+                       e.evidence_type, e.uploaded_at, e.uploaded_by,
+                       q.category, q.text as question_text
+                FROM disclosure_evidence e
+                LEFT JOIN disclosure_questions q ON e.question_id = q.id
+                WHERE e.company_id = ? AND e.year = ?
+                ORDER BY q.category, e.uploaded_at
+            ''', (company_id, year))
+            evidence_list = [dict(row) for row in cursor.fetchall()]
+
+        if evidence_list:
+            ws_evidence = wb.create_sheet(title="증빙자료")
+
+            # 제목
+            ws_evidence.merge_cells('A1:F1')
+            ws_evidence['A1'] = f"증빙자료 목록 - {company_id} ({year}년)"
+            ws_evidence['A1'].font = Font(bold=True, size=16)
+            ws_evidence['A1'].alignment = Alignment(horizontal='center')
+
+            ws_evidence.merge_cells('A2:F2')
+            ws_evidence['A2'] = f"총 {len(evidence_list)}개 파일"
+            ws_evidence['A2'].alignment = Alignment(horizontal='center')
+
+            # 헤더
+            evidence_headers = ['카테고리', '관련 질문', '파일명', '파일크기', '유형', '업로드일']
+            ws_evidence.append([])  # 빈 줄
+            ws_evidence.append(evidence_headers)
+
+            for col, header in enumerate(evidence_headers, 1):
+                cell = ws_evidence.cell(row=4, column=col)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = Alignment(horizontal='center')
+                cell.border = thin_border
+
+            # 데이터
+            row_num = 5
+            for ev in evidence_list:
+                # 파일 크기 포맷
+                size = ev['file_size'] or 0
+                if size < 1024:
+                    size_str = f"{size} B"
+                elif size < 1024 * 1024:
+                    size_str = f"{size / 1024:.1f} KB"
+                else:
+                    size_str = f"{size / (1024 * 1024):.1f} MB"
+
+                # 업로드일 포맷
+                uploaded_at = ev['uploaded_at'] or ''
+                if uploaded_at and len(uploaded_at) >= 10:
+                    uploaded_at = uploaded_at[:10]  # YYYY-MM-DD만
+
+                ws_evidence.append([
+                    ev['category'] or '',
+                    ev['question_text'] or '',
+                    ev['file_name'] or '',
+                    size_str,
+                    ev['evidence_type'] or '',
+                    uploaded_at
+                ])
+
+                for col in range(1, 7):
+                    cell = ws_evidence.cell(row=row_num, column=col)
+                    cell.border = thin_border
+                    cell.alignment = Alignment(vertical='center', wrap_text=True)
+
+                row_num += 1
+
+            # 열 너비 조정
+            ws_evidence.column_dimensions['A'].width = 20
+            ws_evidence.column_dimensions['B'].width = 50
+            ws_evidence.column_dimensions['C'].width = 35
+            ws_evidence.column_dimensions['D'].width = 12
+            ws_evidence.column_dimensions['E'].width = 15
+            ws_evidence.column_dimensions['F'].width = 12
+
+        # 파일 저장
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'정보보호공시_{company_id}_{year}.xlsx'
+        )
+
+    except ImportError:
+        return jsonify({'success': False, 'message': 'openpyxl 라이브러리가 필요합니다.'}), 500
+    except Exception as e:
+        print(f"보고서 다운로드 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 # ============================================================================
 # API Endpoints - 공시 제출
 # ============================================================================
@@ -983,4 +1245,153 @@ def get_submissions(company_id):
 
     except Exception as e:
         print(f"제출 이력 조회 오류: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================================
+# API Endpoints - 데이터 관리 (새로하기, 이전 자료 불러오기)
+# ============================================================================
+
+@bp_link11.route('/link11/api/reset', methods=['POST'])
+def reset_disclosure():
+    """새로하기 - 현재 연도 데이터 초기화"""
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+
+    try:
+        data = request.get_json()
+        user_info = get_user_info()
+
+        company_id = data.get('company_id', user_info.get('company_name', 'default'))
+        year = data.get('year', datetime.now().year)
+
+        with get_db() as conn:
+            # 답변 삭제
+            conn.execute('''
+                DELETE FROM disclosure_answers
+                WHERE company_id = ? AND year = ?
+            ''', (company_id, year))
+
+            # 세션 삭제
+            conn.execute('''
+                DELETE FROM disclosure_sessions
+                WHERE company_id = ? AND year = ?
+            ''', (company_id, year))
+
+            # 증빙자료는 유지 (필요시 별도 삭제)
+
+            conn.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'{year}년 데이터가 초기화되었습니다.'
+            })
+
+    except Exception as e:
+        print(f"데이터 초기화 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp_link11.route('/link11/api/available-years/<company_id>', methods=['GET'])
+def get_available_years(company_id):
+    """이전 자료가 있는 연도 목록 조회"""
+    try:
+        current_year = datetime.now().year
+
+        with get_db() as conn:
+            cursor = conn.execute('''
+                SELECT DISTINCT year, COUNT(*) as answer_count
+                FROM disclosure_answers
+                WHERE company_id = ? AND year < ?
+                GROUP BY year
+                ORDER BY year DESC
+            ''', (company_id, current_year))
+
+            years = []
+            for row in cursor.fetchall():
+                years.append({
+                    'year': row['year'],
+                    'answer_count': row['answer_count']
+                })
+
+            return jsonify({
+                'success': True,
+                'years': years
+            })
+
+    except Exception as e:
+        print(f"연도 목록 조회 오류: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp_link11.route('/link11/api/copy-from-year', methods=['POST'])
+def copy_from_year():
+    """이전 자료 불러오기 - 이전 연도 데이터를 현재 연도로 복사"""
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+
+    try:
+        data = request.get_json()
+        user_info = get_user_info()
+
+        company_id = data.get('company_id', user_info.get('company_name', 'default'))
+        source_year = data.get('source_year')
+        target_year = data.get('target_year', datetime.now().year)
+
+        if not source_year:
+            return jsonify({'success': False, 'message': '원본 연도를 선택해주세요.'}), 400
+
+        if source_year == target_year:
+            return jsonify({'success': False, 'message': '같은 연도로는 복사할 수 없습니다.'}), 400
+
+        with get_db() as conn:
+            # 기존 타겟 연도 데이터 삭제
+            conn.execute('''
+                DELETE FROM disclosure_answers
+                WHERE company_id = ? AND year = ?
+            ''', (company_id, target_year))
+
+            conn.execute('''
+                DELETE FROM disclosure_sessions
+                WHERE company_id = ? AND year = ?
+            ''', (company_id, target_year))
+
+            # 이전 연도 답변 복사
+            cursor = conn.execute('''
+                SELECT question_id, value, status
+                FROM disclosure_answers
+                WHERE company_id = ? AND year = ?
+            ''', (company_id, source_year))
+
+            copied_count = 0
+            for row in cursor.fetchall():
+                answer_id = generate_uuid()
+                conn.execute('''
+                    INSERT INTO disclosure_answers
+                    (id, question_id, company_id, user_id, year, value, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    answer_id, row['question_id'], company_id,
+                    str(user_info.get('user_id', '')), target_year,
+                    row['value'], row['status']
+                ))
+                copied_count += 1
+
+            conn.commit()
+
+            # 진행률 업데이트
+            _update_session_progress(conn, company_id, target_year, str(user_info.get('user_id', '')))
+
+            return jsonify({
+                'success': True,
+                'message': f'{source_year}년 자료를 {target_year}년으로 복사했습니다. ({copied_count}개 답변)',
+                'copied_count': copied_count
+            })
+
+    except Exception as e:
+        print(f"자료 복사 오류: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
