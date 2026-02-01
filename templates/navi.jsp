@@ -33,6 +33,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="/link11" class="nav-link">
+                            <i class="fas fa-shield-alt me-1"></i>정보보호공시
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="{{ url_for('link6.elc_design_evaluation') }}" class="nav-link">
                             <i class="fas fa-building me-1"></i>ELC 평가
                         </a>
@@ -74,11 +79,6 @@
                                 <i class="fas fa-chart-line me-2"></i>종목 분석
                             </a></li>
                         </ul>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/link11" class="nav-link">
-                            <i class="fas fa-shield-alt me-1"></i>정보보호공시
-                        </a>
                     </li>
                     {% if user_info and user_info.get('admin_flag') == 'Y' %}
                     <li class="nav-item">

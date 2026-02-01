@@ -395,6 +395,85 @@ def get_answers(user_id, year):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@bp_link11.route('/link11/api/answers/<question_id>', methods=['DELETE'])
+def delete_answer(question_id):
+    """특정 질문의 답변 삭제 (하위 질문 포함)"""
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+
+    try:
+        data = request.get_json()
+        year = data.get('year', datetime.now().year)
+
+        user_info = get_user_info()
+        company_id = get_company_name_by_user_id(user_info.get('user_id'))
+
+        with get_db() as conn:
+            # 해당 질문의 종속 질문 ID 조회
+            cursor = conn.execute('''
+                SELECT dependent_question_ids FROM disclosure_questions
+                WHERE id = ?
+            ''', (question_id,))
+            row = cursor.fetchone()
+
+            # 삭제할 질문 ID 목록
+            question_ids_to_delete = [question_id]
+
+            # 종속 질문이 있으면 재귀적으로 모든 하위 질문 추가
+            if row and row['dependent_question_ids']:
+                try:
+                    dependent_ids = json.loads(row['dependent_question_ids'])
+                    question_ids_to_delete.extend(_get_all_dependent_question_ids(conn, dependent_ids))
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+            # 모든 질문의 답변 삭제
+            placeholders = ','.join(['?'] * len(question_ids_to_delete))
+            cursor = conn.execute(f'''
+                DELETE FROM disclosure_answers
+                WHERE question_id IN ({placeholders}) AND company_id = ? AND year = ?
+            ''', (*question_ids_to_delete, company_id, year))
+
+            deleted_count = cursor.rowcount
+            conn.commit()
+
+            # 진행률 업데이트
+            _update_session_progress(conn, company_id, year)
+
+            return jsonify({
+                'success': True,
+                'message': f'{deleted_count}개의 답변이 삭제되었습니다.',
+                'deleted_count': deleted_count,
+                'deleted_questions': question_ids_to_delete
+            })
+
+    except Exception as e:
+        print(f"답변 삭제 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+def _get_all_dependent_question_ids(conn, dependent_ids):
+    """재귀적으로 모든 하위 질문 ID를 가져오는 함수"""
+    all_ids = []
+    for dep_id in dependent_ids:
+        all_ids.append(dep_id)
+        # 해당 질문의 하위 질문 조회
+        cursor = conn.execute('''
+            SELECT dependent_question_ids FROM disclosure_questions
+            WHERE id = ?
+        ''', (dep_id,))
+        row = cursor.fetchone()
+        if row and row['dependent_question_ids']:
+            try:
+                sub_dependent_ids = json.loads(row['dependent_question_ids'])
+                all_ids.extend(_get_all_dependent_question_ids(conn, sub_dependent_ids))
+            except (json.JSONDecodeError, TypeError):
+                pass
+    return all_ids
+
+
 # ============================================================================
 # API Endpoints - 증빙 자료 관리
 # ============================================================================
