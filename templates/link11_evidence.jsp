@@ -347,7 +347,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const companyId = '{{ user_info.company_name if user_info else "default" }}';
+        const userId = {{ user_info.user_id if user_info else 0 }};
+        const companyName = '{{ user_info.company_name if user_info else "default" }}';
         const currentYear = new Date().getFullYear();
         let evidenceList = [];
 
@@ -363,7 +364,7 @@
                 const type = document.getElementById('filter-type').value;
                 const search = document.getElementById('filter-search').value;
 
-                let url = `/link11/api/evidence/${encodeURIComponent(companyId)}/${currentYear}`;
+                let url = `/link11/api/evidence/${userId}/${currentYear}`;
                 const params = new URLSearchParams();
                 if (category) params.append('category', category);
                 if (type) params.append('type', type);
@@ -385,7 +386,7 @@
         // 통계 로드
         async function loadStats() {
             try {
-                const response = await fetch(`/link11/api/evidence/stats/${encodeURIComponent(companyId)}/${currentYear}`);
+                const response = await fetch(`/link11/api/evidence/stats/${userId}/${currentYear}`);
                 const data = await response.json();
 
                 if (data.success) {
@@ -451,7 +452,6 @@
             for (const file of files) {
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('company_id', companyId);
                 formData.append('year', currentYear);
                 formData.append('question_id', '');
                 formData.append('evidence_type', '기타');

@@ -314,6 +314,31 @@
             transition: all 0.3s ease;
         }
 
+        /* 금액 입력 필드 (오른쪽 정렬, 쉼표 표시) */
+        .currency-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: right;
+            font-family: 'Consolas', 'Monaco', monospace;
+            transition: all 0.3s ease;
+        }
+
+        .currency-input:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(var(--secondary-color-rgb), 0.1);
+        }
+
+        .currency-input::placeholder {
+            text-align: left;
+            font-weight: normal;
+            font-size: 1rem;
+        }
+
         .text-input:focus, .number-input:focus, .date-input:focus {
             outline: none;
             border-color: var(--secondary-color);
@@ -761,7 +786,8 @@
     <script>
         // 전역 변수
         let currentYear = new Date().getFullYear();
-        let companyId = '{{ user_info.company_name if user_info else "default" }}';
+        let userId = {{ user_info.user_id if user_info else 0 }};
+        let companyName = '{{ user_info.company_name if user_info else "default" }}';
         let questions = [];
         let answers = {};
         let currentCategory = null;
@@ -808,7 +834,8 @@
                 const iconInfo = categoryIcons[cat.name] || { icon: 'fas fa-folder', color: '#6b7280' };
                 const card = document.createElement('div');
                 card.className = 'category-card';
-                card.onclick = () => showCategory(cat.name);
+                card.dataset.categoryId = cat.id;  // ID 저장
+                card.onclick = () => showCategory(cat.id, cat.name);
 
                 card.innerHTML = `
                     <div class="category-header">
@@ -832,7 +859,7 @@
         async function loadProgress() {
             {% if is_logged_in %}
             try {
-                const response = await fetch(`/link11/api/progress/${encodeURIComponent(companyId)}/${currentYear}`);
+                const response = await fetch(`/link11/api/progress/${userId}/${currentYear}`);
                 const data = await response.json();
 
                 if (data.success) {
@@ -905,15 +932,17 @@
         }
 
         // 카테고리 질문 표시
-        async function showCategory(categoryName) {
+        let currentCategoryId = null;
+        async function showCategory(categoryId, categoryName) {
             currentCategory = categoryName;
+            currentCategoryId = categoryId;
             document.getElementById('dashboard-view').style.display = 'none';
             document.getElementById('questions-view').style.display = 'block';
             document.getElementById('category-title').textContent = categoryName;
 
             try {
-                // 질문 로드
-                const qResponse = await fetch(`/link11/api/questions?category=${encodeURIComponent(categoryName)}`);
+                // 질문 로드 (카테고리 ID로 요청)
+                const qResponse = await fetch(`/link11/api/questions?category=${categoryId}`);
                 const qData = await qResponse.json();
 
                 if (qData.success) {
@@ -921,7 +950,7 @@
 
                     // 기존 답변 로드
                     {% if is_logged_in %}
-                    const aResponse = await fetch(`/link11/api/answers/${encodeURIComponent(companyId)}/${currentYear}`);
+                    const aResponse = await fetch(`/link11/api/answers/${userId}/${currentYear}`);
                     const aData = await aResponse.json();
 
                     if (aData.success) {
@@ -933,6 +962,15 @@
                     {% endif %}
 
                     renderQuestions(questions);
+
+                    // 금액 필드 초기 포맷팅 및 비율 계산
+                    setTimeout(() => {
+                        const q12Input = document.getElementById('input-Q1-2');
+                        const q13Input = document.getElementById('input-Q1-3');
+                        if (q12Input && q12Input.value) formatCurrencyOnBlur(q12Input);
+                        if (q13Input && q13Input.value) formatCurrencyOnBlur(q13Input);
+                        calculateInvestmentRatio();
+                    }, 100);
                 }
             } catch (error) {
                 console.error('질문 로드 오류:', error);
@@ -998,12 +1036,48 @@
                     break;
 
                 case 'number':
-                    answerHtml = `
-                        <input type="number" class="number-input"
-                               placeholder="숫자를 입력하세요"
-                               value="${currentValue}"
-                               onchange="updateAnswer('${q.id}', this.value)">
-                    `;
+                    // Q1-3 (정보보호 투자액)인 경우 비율 자동 계산 표시 추가
+                    if (q.id === 'Q1-3') {
+                        const formattedQ13 = currentValue ? formatCurrency(currentValue) : '';
+                        answerHtml = `
+                            <div class="currency-input-wrapper" style="position: relative;">
+                                <input type="text" class="currency-input" id="input-Q1-3"
+                                       placeholder="정보보호 투자액을 입력하세요"
+                                       value="${formattedQ13}"
+                                       data-raw-value="${currentValue}"
+                                       oninput="handleCurrencyInput(this, '${q.id}')"
+                                       onblur="formatCurrencyOnBlur(this)"
+                                       style="padding-right: 40px;">
+                                <span style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #64748b; font-weight: 600;">원</span>
+                            </div>
+                            <div id="investment-ratio-display" class="ratio-display" style="margin-top: 10px; padding: 12px; background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                                <i class="fas fa-calculator" style="color: #0ea5e9; margin-right: 8px;"></i>
+                                <span style="color: #0369a1; font-weight: 600;">IT 예산 대비 정보보호 투자 비율: </span>
+                                <span id="ratio-value" style="color: #0ea5e9; font-weight: 700; font-size: 1.1em;">--%</span>
+                            </div>
+                        `;
+                    } else if (q.id === 'Q1-2') {
+                        const formattedQ12 = currentValue ? formatCurrency(currentValue) : '';
+                        answerHtml = `
+                            <div class="currency-input-wrapper" style="position: relative;">
+                                <input type="text" class="currency-input" id="input-Q1-2"
+                                       placeholder="전체 IT 투자금액을 입력하세요"
+                                       value="${formattedQ12}"
+                                       data-raw-value="${currentValue}"
+                                       oninput="handleCurrencyInput(this, '${q.id}')"
+                                       onblur="formatCurrencyOnBlur(this)"
+                                       style="padding-right: 40px;">
+                                <span style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #64748b; font-weight: 600;">원</span>
+                            </div>
+                        `;
+                    } else {
+                        answerHtml = `
+                            <input type="number" class="number-input"
+                                   placeholder="숫자를 입력하세요"
+                                   value="${currentValue}"
+                                   onchange="updateAnswer('${q.id}', this.value)">
+                        `;
+                    }
                     break;
 
                 case 'date':
@@ -1159,6 +1233,60 @@
             console.log(`Answer updated: ${questionId} = ${JSON.stringify(value)}`);
         }
 
+        // 금액 포맷팅 (천 단위 쉼표)
+        function formatCurrency(value) {
+            if (!value && value !== 0) return '';
+            const num = String(value).replace(/[^\d]/g, '');
+            if (!num) return '';
+            return parseInt(num, 10).toLocaleString('ko-KR');
+        }
+
+        // 금액 입력 처리
+        function handleCurrencyInput(input, questionId) {
+            // 숫자만 추출
+            const rawValue = input.value.replace(/[^\d]/g, '');
+            input.dataset.rawValue = rawValue;
+
+            // 답변 업데이트
+            updateAnswer(questionId, rawValue);
+
+            // 비율 계산
+            calculateInvestmentRatio();
+        }
+
+        // blur 시 포맷팅 적용
+        function formatCurrencyOnBlur(input) {
+            const rawValue = input.dataset.rawValue || input.value.replace(/[^\d]/g, '');
+            if (rawValue) {
+                input.value = formatCurrency(rawValue);
+            }
+        }
+
+        // 정보보호 투자 비율 자동 계산
+        function calculateInvestmentRatio() {
+            const totalItInput = document.getElementById('input-Q1-2');
+            const securityInput = document.getElementById('input-Q1-3');
+            const ratioDisplay = document.getElementById('ratio-value');
+
+            if (!totalItInput || !securityInput || !ratioDisplay) return;
+
+            // raw value 사용 (쉼표 제거된 숫자)
+            const totalIt = parseFloat(totalItInput.dataset.rawValue || totalItInput.value.replace(/[^\d]/g, '')) || 0;
+            const security = parseFloat(securityInput.dataset.rawValue || securityInput.value.replace(/[^\d]/g, '')) || 0;
+
+            if (totalIt > 0 && security > 0) {
+                const ratio = (security / totalIt * 100).toFixed(2);
+                ratioDisplay.textContent = ratio + '%';
+                ratioDisplay.style.color = '#0ea5e9';
+            } else if (totalIt > 0 && security === 0) {
+                ratioDisplay.textContent = '0%';
+                ratioDisplay.style.color = '#64748b';
+            } else {
+                ratioDisplay.textContent = '--%';
+                ratioDisplay.style.color = '#94a3b8';
+            }
+        }
+
         // 토스트 메시지 표시
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
@@ -1197,7 +1325,6 @@
                             body: JSON.stringify({
                                 question_id: questionId,
                                 value: value,
-                                company_id: companyId,
                                 year: currentYear
                             })
                         });
@@ -1235,26 +1362,26 @@
 
         // 다음 카테고리로 이동
         function goToNextCategory() {
-            // 카테고리 순서 정의
+            // 카테고리 순서 정의 (ID, 이름)
             const categoryOrder = [
-                '정보보호 투자 현황',
-                '정보보호 인력 현황',
-                '정보보호 관련 인증',
-                '정보보호 관련 활동'
+                { id: 1, name: '정보보호 투자 현황' },
+                { id: 2, name: '정보보호 인력 현황' },
+                { id: 3, name: '정보보호 관련 인증' },
+                { id: 4, name: '정보보호 관련 활동' }
             ];
 
-            if (!currentCategory) {
+            if (!currentCategoryId) {
                 showDashboard();
                 return;
             }
 
-            const currentIndex = categoryOrder.indexOf(currentCategory);
+            const currentIndex = categoryOrder.findIndex(c => c.id === currentCategoryId);
 
             if (currentIndex >= 0 && currentIndex < categoryOrder.length - 1) {
                 // 다음 카테고리로 이동
                 const nextCategory = categoryOrder[currentIndex + 1];
-                showToast(`'${nextCategory}' 카테고리로 이동합니다.`, 'info');
-                showCategory(nextCategory);
+                showToast(`'${nextCategory.name}' 카테고리로 이동합니다.`, 'info');
+                showCategory(nextCategory.id, nextCategory.name);
             } else {
                 // 마지막 카테고리이면 대시보드로
                 showToast('모든 카테고리를 완료했습니다!', 'success');
@@ -1267,6 +1394,7 @@
             document.getElementById('dashboard-view').style.display = 'block';
             document.getElementById('questions-view').style.display = 'none';
             currentCategory = null;
+            currentCategoryId = null;
             loadProgress();
         }
 
@@ -1291,7 +1419,6 @@
         async function uploadFile() {
             const form = document.getElementById('upload-form');
             const formData = new FormData(form);
-            formData.append('company_id', companyId);
             formData.append('year', currentYear);
 
             try {
@@ -1321,7 +1448,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        company_id: companyId,
+                        company_id: companyName,
                         year: currentYear,
                         format: 'json'
                     })
@@ -1355,7 +1482,6 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        company_id: companyId,
                         year: currentYear
                     })
                 });
@@ -1386,7 +1512,7 @@
             loadBtn.disabled = false;
 
             try {
-                const response = await fetch(`/link11/api/available-years/${encodeURIComponent(companyId)}`);
+                const response = await fetch(`/link11/api/available-years/${userId}`);
                 const data = await response.json();
 
                 if (data.success && data.years.length > 0) {
@@ -1427,7 +1553,6 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        company_id: companyId,
                         source_year: parseInt(sourceYear),
                         target_year: currentYear
                     })

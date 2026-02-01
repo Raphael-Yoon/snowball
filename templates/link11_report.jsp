@@ -413,7 +413,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const companyId = '{{ user_info.company_name if user_info else "default" }}';
+        const userId = {{ user_info.user_id if user_info else 0 }};
+        const companyName = '{{ user_info.company_name if user_info else "default" }}';
         const currentYear = new Date().getFullYear();
         let selectedFormat = 'excel';
         let reportData = null;
@@ -426,7 +427,7 @@
         // 진행 상황 로드
         async function loadProgress() {
             try {
-                const response = await fetch(`/link11/api/progress/${encodeURIComponent(companyId)}/${currentYear}`);
+                const response = await fetch(`/link11/api/progress/${userId}/${currentYear}`);
                 const data = await response.json();
 
                 if (data.success) {
@@ -482,7 +483,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        company_id: companyId,
+                        company_id: companyName,
                         year: currentYear,
                         format: 'json'
                     })
@@ -551,7 +552,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        company_id: companyId,
+                        company_id: companyName,
                         year: currentYear,
                         format: selectedFormat
                     })
@@ -565,7 +566,7 @@
                     a.href = url;
 
                     const ext = selectedFormat === 'pdf' ? 'pdf' : 'xlsx';
-                    a.download = `정보보호공시_${companyId}_${currentYear}.${ext}`;
+                    a.download = `정보보호공시_${companyName}_${currentYear}.${ext}`;
 
                     document.body.appendChild(a);
                     a.click();

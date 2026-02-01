@@ -75,6 +75,41 @@ def generate_uuid():
     return str(uuid.uuid4())
 
 
+def get_company_name_by_user_id(user_id):
+    """user_id로 company_name 조회"""
+    try:
+        with get_db() as conn:
+            cursor = conn.execute('''
+                SELECT company_name FROM sb_user WHERE user_id = ?
+            ''', (user_id,))
+            result = cursor.fetchone()
+            return result['company_name'] if result else 'default'
+    except Exception as e:
+        print(f"회사명 조회 오류: {e}")
+        return 'default'
+
+
+# 카테고리 ID ↔ 이름 매핑
+CATEGORY_MAP = {
+    1: '정보보호 투자 현황',
+    2: '정보보호 인력 현황',
+    3: '정보보호 관련 인증',
+    4: '정보보호 관련 활동'
+}
+
+CATEGORY_REVERSE_MAP = {v: k for k, v in CATEGORY_MAP.items()}
+
+
+def get_category_name(category_id):
+    """카테고리 ID로 이름 조회"""
+    return CATEGORY_MAP.get(category_id)
+
+
+def get_category_id(category_name):
+    """카테고리 이름으로 ID 조회"""
+    return CATEGORY_REVERSE_MAP.get(category_name)
+
+
 # ============================================================================
 # Routes - 메인 페이지
 # ============================================================================
@@ -140,15 +175,18 @@ def report_view():
 def get_questions():
     """모든 질문 조회 (카테고리별 필터링 가능)"""
     try:
-        category = request.args.get('category')
+        category_id = request.args.get('category', type=int)
 
         with get_db() as conn:
-            if category:
+            if category_id:
+                category_name = get_category_name(category_id)
+                if not category_name:
+                    return jsonify({'success': False, 'message': '유효하지 않은 카테고리 ID입니다.'}), 400
                 cursor = conn.execute('''
                     SELECT * FROM disclosure_questions
                     WHERE category = ?
                     ORDER BY sort_order
-                ''', (category,))
+                ''', (category_name,))
             else:
                 cursor = conn.execute('''
                     SELECT * FROM disclosure_questions
@@ -232,6 +270,7 @@ def get_categories():
                 ''', (cat,))
                 stats = cursor.fetchone()
                 category_stats.append({
+                    'id': get_category_id(cat),  # 카테고리 ID 추가
                     'name': cat,
                     'total': stats['total'],
                     'level1_count': stats['level1_count']
@@ -320,10 +359,11 @@ def save_answer():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@bp_link11.route('/link11/api/answers/<company_id>/<int:year>', methods=['GET'])
-def get_answers(company_id, year):
+@bp_link11.route('/link11/api/answers/<int:user_id>/<int:year>', methods=['GET'])
+def get_answers(user_id, year):
     """특정 회사의 특정 연도 모든 답변 조회"""
     try:
+        company_id = get_company_name_by_user_id(user_id)
         with get_db() as conn:
             cursor = conn.execute('''
                 SELECT a.*, q.text as question_text, q.type as question_type
@@ -391,7 +431,8 @@ def upload_evidence():
         question_id = request.form.get('question_id')
         answer_id = request.form.get('answer_id')
         evidence_type = request.form.get('evidence_type', '')
-        company_id = request.form.get('company_id', user_info.get('company_name', 'default'))
+        company_id = user_info.get('company_name', 'default')
+        user_id = user_info.get('user_id', 0)
         year = int(request.form.get('year', datetime.now().year))
 
         # 안전한 파일명 생성
@@ -399,8 +440,8 @@ def upload_evidence():
         file_ext = original_filename.rsplit('.', 1)[1].lower() if '.' in original_filename else ''
         stored_filename = f"{generate_uuid()}.{file_ext}"
 
-        # 회사/연도별 폴더 생성
-        upload_dir = os.path.join(UPLOAD_FOLDER, company_id, str(year))
+        # user_id/연도별 폴더 생성 (숫자 기반으로 안전한 경로)
+        upload_dir = os.path.join(UPLOAD_FOLDER, str(user_id), str(year))
         os.makedirs(upload_dir, exist_ok=True)
 
         # 파일 저장
@@ -473,10 +514,11 @@ def delete_evidence(evidence_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@bp_link11.route('/link11/api/evidence/<company_id>/<int:year>', methods=['GET'])
-def get_evidence_list(company_id, year):
+@bp_link11.route('/link11/api/evidence/<int:user_id>/<int:year>', methods=['GET'])
+def get_evidence_list(user_id, year):
     """특정 회사/연도의 모든 증빙 자료 조회"""
     try:
+        company_id = get_company_name_by_user_id(user_id)
         with get_db() as conn:
             cursor = conn.execute('''
                 SELECT e.*, q.text as question_text
@@ -499,10 +541,11 @@ def get_evidence_list(company_id, year):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@bp_link11.route('/link11/api/evidence/missing/<company_id>/<int:year>', methods=['GET'])
-def get_missing_evidence(company_id, year):
+@bp_link11.route('/link11/api/evidence/missing/<int:user_id>/<int:year>', methods=['GET'])
+def get_missing_evidence(user_id, year):
     """누락된 증빙 자료 조회"""
     try:
+        company_id = get_company_name_by_user_id(user_id)
         with get_db() as conn:
             # 답변이 완료된 질문 중 증빙 자료가 필요하지만 없는 것 찾기
             cursor = conn.execute('''
@@ -565,10 +608,11 @@ def download_evidence(evidence_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@bp_link11.route('/link11/api/evidence/stats/<company_id>/<int:year>', methods=['GET'])
-def get_evidence_stats(company_id, year):
+@bp_link11.route('/link11/api/evidence/stats/<int:user_id>/<int:year>', methods=['GET'])
+def get_evidence_stats(user_id, year):
     """증빙 자료 통계 조회"""
     try:
+        company_id = get_company_name_by_user_id(user_id)
         with get_db() as conn:
             # 전체 파일 수
             cursor = conn.execute('''
@@ -618,10 +662,11 @@ def get_evidence_stats(company_id, year):
 # API Endpoints - 진행 상황
 # ============================================================================
 
-@bp_link11.route('/link11/api/progress/<company_id>/<int:year>', methods=['GET'])
-def get_progress(company_id, year):
+@bp_link11.route('/link11/api/progress/<int:user_id>/<int:year>', methods=['GET'])
+def get_progress(user_id, year):
     """공시 진행 상황 조회"""
     try:
+        company_id = get_company_name_by_user_id(user_id)
         with get_db() as conn:
             # 카테고리별 진행 상황 계산 (세션 유무와 관계없이 항상 계산)
             cursor = conn.execute('''
@@ -1224,10 +1269,11 @@ def submit_disclosure():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@bp_link11.route('/link11/api/submissions/<company_id>', methods=['GET'])
-def get_submissions(company_id):
+@bp_link11.route('/link11/api/submissions/<int:user_id>', methods=['GET'])
+def get_submissions(user_id):
     """제출 이력 조회"""
     try:
+        company_id = get_company_name_by_user_id(user_id)
         with get_db() as conn:
             cursor = conn.execute('''
                 SELECT * FROM disclosure_submissions
@@ -1294,10 +1340,11 @@ def reset_disclosure():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@bp_link11.route('/link11/api/available-years/<company_id>', methods=['GET'])
-def get_available_years(company_id):
+@bp_link11.route('/link11/api/available-years/<int:user_id>', methods=['GET'])
+def get_available_years(user_id):
     """이전 자료가 있는 연도 목록 조회"""
     try:
+        company_id = get_company_name_by_user_id(user_id)
         current_year = datetime.now().year
 
         with get_db() as conn:
