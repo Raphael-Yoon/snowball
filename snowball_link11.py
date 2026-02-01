@@ -901,20 +901,12 @@ def _update_session_progress(conn, company_id, year, user_id=None):
 # API Endpoints - 보고서 생성
 # ============================================================================
 
-@bp_link11.route('/link11/api/report/generate', methods=['POST'])
-def generate_report():
+@bp_link11.route('/link11/api/report/generate/<int:user_id>/<int:year>', methods=['GET'])
+def generate_report(user_id, year):
     """공시 자료 보고서 생성"""
-    if not is_logged_in():
-        return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
-
     try:
-        data = request.get_json()
-        company_id = data.get('company_id')
-        year = data.get('year', datetime.now().year)
-        format_type = data.get('format', 'json')  # json, pdf, excel
-
-        if not company_id:
-            return jsonify({'success': False, 'message': '회사 ID가 필요합니다.'}), 400
+        company_id = get_company_name_by_user_id(user_id)
+        format_type = request.args.get('format', 'json')  # json, pdf, excel
 
         with get_db() as conn:
             # 모든 답변 조회
@@ -981,24 +973,15 @@ def generate_report():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@bp_link11.route('/link11/api/report/download', methods=['POST'])
-def download_report():
+@bp_link11.route('/link11/api/report/download/<int:user_id>/<int:year>', methods=['GET'])
+def download_report(user_id, year):
     """공시 자료 Excel 다운로드"""
-    if not is_logged_in():
-        return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
-
     try:
         from openpyxl import Workbook
         from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
         from io import BytesIO
 
-        data = request.get_json()
-        company_id = data.get('company_id')
-        year = data.get('year', datetime.now().year)
-        format_type = data.get('format', 'excel')
-
-        if not company_id:
-            return jsonify({'success': False, 'message': '회사 ID가 필요합니다.'}), 400
+        company_id = get_company_name_by_user_id(user_id)
 
         with get_db() as conn:
             # 모든 답변 조회
@@ -1198,22 +1181,18 @@ def download_report():
 # API Endpoints - 공시 제출
 # ============================================================================
 
-@bp_link11.route('/link11/api/submit', methods=['POST'])
-def submit_disclosure():
+@bp_link11.route('/link11/api/submit/<int:user_id>/<int:year>', methods=['POST'])
+def submit_disclosure(user_id, year):
     """공시 제출"""
     if not is_logged_in():
         return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
 
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         user_info = get_user_info()
 
-        company_id = data.get('company_id')
-        year = data.get('year', datetime.now().year)
+        company_id = get_company_name_by_user_id(user_id)
         submission_details = data.get('details', '')
-
-        if not company_id:
-            return jsonify({'success': False, 'message': '회사 ID가 필요합니다.'}), 400
 
         with get_db() as conn:
             # 세션 조회
@@ -1298,18 +1277,14 @@ def get_submissions(user_id):
 # API Endpoints - 데이터 관리 (새로하기, 이전 자료 불러오기)
 # ============================================================================
 
-@bp_link11.route('/link11/api/reset', methods=['POST'])
-def reset_disclosure():
+@bp_link11.route('/link11/api/reset/<int:user_id>/<int:year>', methods=['POST'])
+def reset_disclosure(user_id, year):
     """새로하기 - 현재 연도 데이터 초기화"""
     if not is_logged_in():
         return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
 
     try:
-        data = request.get_json()
-        user_info = get_user_info()
-
-        company_id = data.get('company_id', user_info.get('company_name', 'default'))
-        year = data.get('year', datetime.now().year)
+        company_id = get_company_name_by_user_id(user_id)
 
         with get_db() as conn:
             # 답변 삭제
@@ -1373,22 +1348,15 @@ def get_available_years(user_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@bp_link11.route('/link11/api/copy-from-year', methods=['POST'])
-def copy_from_year():
+@bp_link11.route('/link11/api/copy-from-year/<int:user_id>/<int:source_year>/<int:target_year>', methods=['POST'])
+def copy_from_year(user_id, source_year, target_year):
     """이전 자료 불러오기 - 이전 연도 데이터를 현재 연도로 복사"""
     if not is_logged_in():
         return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
 
     try:
-        data = request.get_json()
         user_info = get_user_info()
-
-        company_id = data.get('company_id', user_info.get('company_name', 'default'))
-        source_year = data.get('source_year')
-        target_year = data.get('target_year', datetime.now().year)
-
-        if not source_year:
-            return jsonify({'success': False, 'message': '원본 연도를 선택해주세요.'}), 400
+        company_id = get_company_name_by_user_id(user_id)
 
         if source_year == target_year:
             return jsonify({'success': False, 'message': '같은 연도로는 복사할 수 없습니다.'}), 400
