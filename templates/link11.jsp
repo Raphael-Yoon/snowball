@@ -495,74 +495,6 @@
         .alert-warning { background: #fef3c7; color: #d97706; border: 1px solid #f59e0b; }
         .alert-error { background: #fee2e2; color: #dc2626; border: 1px solid #ef4444; }
 
-        /* 토스트 메시지 */
-        .toast-container {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .toast-message {
-            padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            min-width: 280px;
-            max-width: 400px;
-            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
-            font-weight: 500;
-        }
-
-        .toast-message.success {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-
-        .toast-message.error {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-        }
-
-        .toast-message.warning {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-        }
-
-        .toast-message.info {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            color: white;
-        }
-
-        .toast-message i {
-            font-size: 1.2rem;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes fadeOut {
-            from {
-                opacity: 1;
-            }
-            to {
-                opacity: 0;
-            }
-        }
-
         /* 반응형 */
         @media (max-width: 768px) {
             .disclosure-container {
@@ -595,9 +527,6 @@
 <body>
     <!-- 네비게이션 -->
     {% include 'navi.jsp' %}
-
-    <!-- 토스트 컨테이너 -->
-    <div class="toast-container" id="toast-container"></div>
 
     <div class="disclosure-container">
         <!-- 페이지 헤더 -->
@@ -777,6 +706,19 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                     <button type="button" class="btn btn-primary" onclick="loadFromYear()" id="load-from-year-btn">불러오기</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 토스트 컨테이너 (Bootstrap) -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+        <div id="saveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="fas fa-info-circle me-2 toast-icon"></i>
+                <strong class="me-auto toast-title">알림</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
             </div>
         </div>
     </div>
@@ -1178,7 +1120,10 @@
             const container = document.getElementById('questions-list');
             const parentEl = document.getElementById(`question-${parentQuestion.id}`);
 
-            parentQuestion.dependent_question_ids.forEach(depId => {
+            // 종속 질문을 역순으로 처리하여 올바른 순서로 표시
+            // (after()는 바로 다음에 삽입하므로 역순으로 처리해야 원래 순서가 유지됨)
+            const reversedIds = [...parentQuestion.dependent_question_ids].reverse();
+            reversedIds.forEach(depId => {
                 if (!document.getElementById(`question-${depId}`)) {
                     const depQ = questions.find(q => q.id === depId);
                     if (depQ) {
@@ -1287,26 +1232,45 @@
             }
         }
 
-        // 토스트 메시지 표시
+        // 토스트 메시지 표시 (Bootstrap 방식)
         function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast-message ${type}`;
+            const toastEl = document.getElementById('saveToast');
+            const toastBody = toastEl.querySelector('.toast-body');
+            const toastHeader = toastEl.querySelector('.toast-header');
+            const toastIcon = toastEl.querySelector('.toast-icon');
+            const toastTitle = toastEl.querySelector('.toast-title');
 
-            const icons = {
-                success: 'fa-check-circle',
-                error: 'fa-exclamation-circle',
-                warning: 'fa-exclamation-triangle',
-                info: 'fa-info-circle'
-            };
+            // 메시지 설정
+            toastBody.textContent = message;
 
-            toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${message}</span>`;
-            container.appendChild(toast);
+            // 타입에 따른 스타일 및 아이콘 설정
+            toastHeader.className = 'toast-header';
+            toastIcon.className = 'me-2 toast-icon';
 
-            // 3초 후 자동 제거
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
+            if (type === 'success') {
+                toastHeader.classList.add('bg-success', 'text-white');
+                toastIcon.classList.add('fas', 'fa-check-circle');
+                toastTitle.textContent = '성공';
+            } else if (type === 'error') {
+                toastHeader.classList.add('bg-danger', 'text-white');
+                toastIcon.classList.add('fas', 'fa-exclamation-circle');
+                toastTitle.textContent = '오류';
+            } else if (type === 'warning') {
+                toastHeader.classList.add('bg-warning');
+                toastIcon.classList.add('fas', 'fa-exclamation-triangle');
+                toastTitle.textContent = '경고';
+            } else {
+                toastHeader.classList.add('bg-info', 'text-white');
+                toastIcon.classList.add('fas', 'fa-info-circle');
+                toastTitle.textContent = '알림';
+            }
+
+            // 토스트 표시
+            const toast = new bootstrap.Toast(toastEl, {
+                autohide: true,
+                delay: 3000
+            });
+            toast.show();
         }
 
         // 답변 저장
