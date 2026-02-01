@@ -90,10 +90,7 @@ logger.warning("CSRF Protection enabled with exemptions for API endpoints")
 # 진행률 관련 기능은 snowball_link2.py로 이동됨
 
 # 시작할 질문 번호 설정 (1부터 시작)
-if __name__ == '__main__':
-    START_QUESTION = 0
-else:
-    START_QUESTION = 0
+START_QUESTION = 0
 
 load_dotenv()
 

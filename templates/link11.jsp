@@ -258,6 +258,30 @@
             line-height: 1.6;
         }
 
+        .question-reset-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .question-reset-btn:hover {
+            background: #dc2626;
+            transform: scale(1.05);
+        }
+
+        .question-reset-btn i {
+            font-size: 0.75rem;
+        }
+
         .question-help {
             font-size: 0.9rem;
             color: #6c757d;
@@ -305,13 +329,32 @@
             color: #dc2626;
         }
 
-        .text-input, .number-input, .date-input {
+        .text-input, .date-input {
             width: 100%;
             padding: 12px 15px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             font-size: 1rem;
             transition: all 0.3s ease;
+        }
+
+        /* 숫자 입력 필드 (오른쪽 정렬) */
+        .number-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1.05rem;
+            font-weight: 500;
+            text-align: right;
+            font-family: 'Consolas', 'Monaco', monospace;
+            transition: all 0.3s ease;
+        }
+
+        .number-input::placeholder {
+            text-align: left;
+            font-weight: normal;
+            font-size: 1rem;
         }
 
         /* 금액 입력 필드 (오른쪽 정렬, 쉼표 표시) */
@@ -339,7 +382,13 @@
             font-size: 1rem;
         }
 
-        .text-input:focus, .number-input:focus, .date-input:focus {
+        .text-input:focus, .date-input:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(var(--secondary-color-rgb), 0.1);
+        }
+
+        .number-input:focus {
             outline: none;
             border-color: var(--secondary-color);
             box-shadow: 0 0 0 3px rgba(var(--secondary-color-rgb), 0.1);
@@ -360,10 +409,43 @@
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s ease;
+            position: relative;
         }
 
         .checkbox-item:hover, .radio-item:hover {
             border-color: var(--secondary-color);
+        }
+
+        /* 툴팁 스타일 */
+        .checkbox-item[title]:hover::after,
+        .radio-item[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            background: #1f2937;
+            color: white;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            white-space: nowrap;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .checkbox-item[title]:hover::before,
+        .radio-item[title]:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 2px;
+            border: 6px solid transparent;
+            border-top-color: #1f2937;
+            z-index: 1000;
         }
 
         .checkbox-item.selected, .radio-item.selected {
@@ -563,38 +645,6 @@
                 </div>
             </div>
 
-            <!-- 카테고리별 통계 카드 -->
-            <div class="dashboard-grid">
-                <div class="stat-card">
-                    <div class="stat-icon investment">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <div class="stat-value" id="stat-investment">0%</div>
-                    <div class="stat-label">투자 현황 (13개)</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon personnel">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stat-value" id="stat-personnel">0%</div>
-                    <div class="stat-label">인력 현황 (15개)</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon certification">
-                        <i class="fas fa-certificate"></i>
-                    </div>
-                    <div class="stat-value" id="stat-certification">0%</div>
-                    <div class="stat-label">인증 (8개)</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon activity">
-                        <i class="fas fa-tasks"></i>
-                    </div>
-                    <div class="stat-value" id="stat-activity">0%</div>
-                    <div class="stat-label">활동 (29개)</div>
-                </div>
-            </div>
-
             <!-- 카테고리 카드 -->
             <h3 class="mb-4"><i class="fas fa-folder-open"></i> 카테고리별 질문</h3>
             <div class="category-grid" id="category-list">
@@ -732,7 +782,59 @@
         let companyName = '{{ user_info.company_name if user_info else "default" }}';
         let questions = [];
         let answers = {};
+
+        // 보안 솔루션 용어 툴팁 매핑
+        const securityTerms = {
+            '방화벽': 'Firewall - 네트워크 트래픽을 IP/포트 기반으로 차단하는 보안 장비',
+            'IDS/IPS': 'Intrusion Detection/Prevention System - 침입 탐지/방지 시스템',
+            'SIEM': 'Security Information and Event Management - 보안 정보 및 이벤트 관리',
+            'DLP': 'Data Loss Prevention - 데이터 유출 방지',
+            'EDR': 'Endpoint Detection and Response - 엔드포인트 탐지 및 대응',
+            'WAF': 'Web Application Firewall - 웹 공격(SQL Injection, XSS 등)을 차단하는 특수 방화벽',
+            'VPN': 'Virtual Private Network - 가상 사설망',
+            'CISSP': 'Certified Information Systems Security Professional - 국제 공인 정보 시스템 보안 전문가',
+            'CEH': 'Certified Ethical Hacker - 공인 윤리적 해커',
+            'ISO27001': 'International Organization for Standardization 27001 - 국제 정보보안 관리체계 인증',
+            'ISO27018': 'ISO 27018 - 클라우드 개인정보보호 인증',
+            'SOC2': 'Service Organization Control 2 - 서비스 조직 통제 보고서',
+            'CSAP': 'Cloud Security Assurance Program - 클라우드 보안 인증',
+            'ISMS': 'Information Security Management System - 정보보안 관리체계'
+        };
         let currentCategory = null;
+
+        // 질문 표시 번호 계산 함수
+        function getDisplayQuestionNumber(question) {
+            // 부모가 없으면 (level 1 질문) 카테고리 내 순번으로 번호 매기기
+            if (!question.parent_question_id) {
+                // 같은 카테고리의 level 1 질문들 중에서 몇 번째인지 계산
+                const level1Questions = questions.filter(q =>
+                    q.category === question.category && q.level === 1
+                );
+                const index = level1Questions.findIndex(q => q.id === question.id);
+
+                // 카테고리 번호 추출 (예: "정보보호 투자 현황" -> 1)
+                const categoryNum = question.id.match(/^Q(\d+)/)[1];
+                return `Q${categoryNum}-${index + 1}`;
+            }
+
+            // 부모 질문 찾기
+            const parent = questions.find(q => q.id === question.parent_question_id);
+            if (!parent) {
+                return question.id;
+            }
+
+            // 부모의 표시 번호 가져오기 (재귀적으로)
+            const parentDisplayNum = getDisplayQuestionNumber(parent);
+
+            // 부모의 종속 질문 목록에서 현재 질문의 인덱스 찾기
+            const siblingIndex = parent.dependent_question_ids.indexOf(question.id);
+            if (siblingIndex === -1) {
+                return question.id;
+            }
+
+            // 부모 번호 + 하위 순번으로 표시
+            return `${parentDisplayNum}-${siblingIndex + 1}`;
+        }
 
         // 카테고리 아이콘 매핑
         const categoryIcons = {
@@ -743,9 +845,9 @@
         };
 
         // 페이지 로드 시 초기화
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCategories();
-            loadProgress();
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadCategories();  // 카테고리 로드 완료 후
+            await loadProgress();    // 진행률 로드
         });
 
         // 카테고리 목록 로드
@@ -779,6 +881,9 @@
                 card.dataset.categoryId = cat.id;  // ID 저장
                 card.onclick = () => showCategory(cat.id, cat.name);
 
+                // 카테고리 이름을 안전한 ID로 변환 (공백과 특수문자 제거)
+                const safeId = cat.name.replace(/\s+/g, '-');
+
                 card.innerHTML = `
                     <div class="category-header">
                         <div class="category-icon" style="background: ${iconInfo.color}">
@@ -788,8 +893,8 @@
                     </div>
                     <p class="text-muted mb-0">총 ${cat.total}개 질문 (1단계 ${cat.level1_count}개)</p>
                     <div class="category-progress">
-                        <span class="category-stats">진행률: <span id="cat-progress-${index}">0%</span></span>
-                        <span class="category-badge not-started" id="cat-badge-${index}">미시작</span>
+                        <span class="category-stats">진행률: <span id="cat-progress-${safeId}">0%</span></span>
+                        <span class="category-badge not-started" id="cat-badge-${safeId}">미시작</span>
                     </div>
                 `;
 
@@ -801,20 +906,28 @@
         async function loadProgress() {
             {% if is_logged_in %}
             try {
+                console.log('[진행률 로드] 시작...', { userId, currentYear });
                 const response = await fetch(`/link11/api/progress/${userId}/${currentYear}`);
                 const data = await response.json();
+                console.log('[진행률 로드] 응답 데이터:', data);
 
                 if (data.success) {
                     updateProgressUI(data);
+                    console.log('[진행률 로드] UI 업데이트 완료');
+                } else {
+                    console.error('[진행률 로드] 실패:', data.message);
                 }
             } catch (error) {
-                console.error('진행률 로드 오류:', error);
+                console.error('[진행률 로드] 오류:', error);
             }
+            {% else %}
+            console.warn('[진행률 로드] 로그인 필요');
             {% endif %}
         }
 
         // 진행률 UI 업데이트
         function updateProgressUI(data) {
+            console.log('[진행률 UI 업데이트] 시작', data);
             const progress = data.progress;
             const categories = data.categories;
 
@@ -824,52 +937,44 @@
             document.getElementById('progress-stats').textContent =
                 `응답 완료: ${progress.answered_questions} / ${progress.total_questions} 질문`;
 
-            // 보고서 생성 버튼 활성화
-            if (progress.completion_rate === 100) {
-                document.getElementById('generate-report-btn').disabled = false;
+            // 보고서 생성 버튼 활성화 (버튼이 있는 경우에만)
+            const reportBtn = document.getElementById('generate-report-btn');
+            if (reportBtn && progress.completion_rate === 100) {
+                reportBtn.disabled = false;
             }
 
             // 카테고리별 진행률
-            const categoryNames = Object.keys(categoryIcons);
-            categoryNames.forEach((name, index) => {
-                const catData = categories[name];
-                if (catData) {
-                    const progressEl = document.getElementById(`cat-progress-${index}`);
-                    const badgeEl = document.getElementById(`cat-badge-${index}`);
+            console.log('[진행률 UI 업데이트] 카테고리 데이터:', categories);
+            for (const [name, catData] of Object.entries(categories)) {
+                // 카테고리 이름을 안전한 ID로 변환 (공백과 특수문자 제거)
+                const safeId = name.replace(/\s+/g, '-');
+                console.log(`[진행률 UI 업데이트] ${name} -> ${safeId}, rate: ${catData.rate}%`);
 
-                    if (progressEl) progressEl.textContent = `${catData.rate}%`;
+                const progressEl = document.getElementById(`cat-progress-${safeId}`);
+                const badgeEl = document.getElementById(`cat-badge-${safeId}`);
 
-                    if (badgeEl) {
-                        if (catData.rate === 100) {
-                            badgeEl.className = 'category-badge complete';
-                            badgeEl.textContent = '완료';
-                        } else if (catData.rate > 0) {
-                            badgeEl.className = 'category-badge in-progress';
-                            badgeEl.textContent = '진행중';
-                        } else {
-                            badgeEl.className = 'category-badge not-started';
-                            badgeEl.textContent = '미시작';
-                        }
-                    }
+                if (progressEl) {
+                    console.log(`[진행률 UI 업데이트] ✓ progressEl 발견: cat-progress-${safeId}`);
+                    progressEl.textContent = `${catData.rate}%`;
+                } else {
+                    console.warn(`[진행률 UI 업데이트] ✗ progressEl 없음: cat-progress-${safeId}`);
                 }
-            });
 
-            // 통계 카드 업데이트
-            if (categories['정보보호 투자 현황']) {
-                document.getElementById('stat-investment').textContent =
-                    `${categories['정보보호 투자 현황'].rate}%`;
-            }
-            if (categories['정보보호 인력 현황']) {
-                document.getElementById('stat-personnel').textContent =
-                    `${categories['정보보호 인력 현황'].rate}%`;
-            }
-            if (categories['정보보호 관련 인증']) {
-                document.getElementById('stat-certification').textContent =
-                    `${categories['정보보호 관련 인증'].rate}%`;
-            }
-            if (categories['정보보호 관련 활동']) {
-                document.getElementById('stat-activity').textContent =
-                    `${categories['정보보호 관련 활동'].rate}%`;
+                if (badgeEl) {
+                    console.log(`[진행률 UI 업데이트] ✓ badgeEl 발견: cat-badge-${safeId}`);
+                    if (catData.rate === 100) {
+                        badgeEl.className = 'category-badge complete';
+                        badgeEl.textContent = '완료';
+                    } else if (catData.rate > 0) {
+                        badgeEl.className = 'category-badge in-progress';
+                        badgeEl.textContent = '진행중';
+                    } else {
+                        badgeEl.className = 'category-badge not-started';
+                        badgeEl.textContent = '미시작';
+                    }
+                } else {
+                    console.warn(`[진행률 UI 업데이트] ✗ badgeEl 없음: cat-badge-${safeId}`);
+                }
             }
         }
 
@@ -1013,12 +1118,28 @@
                             </div>
                         `;
                     } else {
-                        answerHtml = `
-                            <input type="number" class="number-input"
-                                   placeholder="숫자를 입력하세요"
-                                   value="${currentValue}"
-                                   onchange="updateAnswer('${q.id}', this.value)">
-                        `;
+                        // 질문 텍스트에 따라 포맷팅 방식 결정 (금액/비용 관련만 쉼표 적용)
+                        const isCurrencyRelated = q.text.includes('비용') || q.text.includes('금액') || q.text.includes('예산');
+
+                        if (isCurrencyRelated) {
+                            const formattedNumber = currentValue ? formatNumber(currentValue) : '';
+                            answerHtml = `
+                                <input type="text" class="number-input"
+                                       placeholder="숫자를 입력하세요"
+                                       value="${formattedNumber}"
+                                       data-raw-value="${currentValue}"
+                                       oninput="handleNumberInput(this, '${q.id}')"
+                                       onblur="formatNumberOnBlur(this)">
+                            `;
+                        } else {
+                            // 인원 수, 경력 등 일반 숫자는 쉼표 없이 오른쪽 정렬만
+                            answerHtml = `
+                                <input type="number" class="number-input"
+                                       placeholder="숫자를 입력하세요"
+                                       value="${currentValue}"
+                                       onchange="updateAnswer('${q.id}', this.value)">
+                            `;
+                        }
                     }
                     break;
 
@@ -1050,13 +1171,16 @@
                     const selectedValues = Array.isArray(currentValue) ? currentValue : [];
                     answerHtml = `
                         <div class="checkbox-group">
-                            ${checkOptions.map(opt => `
+                            ${checkOptions.map(opt => {
+                                const tooltip = securityTerms[opt] ? `title="${securityTerms[opt]}"` : '';
+                                return `
                                 <div class="checkbox-item ${selectedValues.includes(opt) ? 'selected' : ''}"
-                                     onclick="toggleCheckbox('${q.id}', '${opt}', this)">
+                                     onclick="toggleCheckbox('${q.id}', '${opt}', this)"
+                                     ${tooltip}>
                                     <i class="fas ${selectedValues.includes(opt) ? 'fa-check-square' : 'fa-square'}"></i>
                                     ${opt}
                                 </div>
-                            `).join('')}
+                            `}).join('')}
                         </div>
                     `;
                     break;
@@ -1080,10 +1204,15 @@
                 `;
             }
 
+            const displayNumber = getDisplayQuestionNumber(q);
+
             div.innerHTML = `
                 <div class="question-header">
-                    <span class="question-number">${q.id}</span>
+                    <span class="question-number">${displayNumber}</span>
                     <span class="question-text">${q.text}</span>
+                    <button class="question-reset-btn" onclick="resetQuestion('${q.id}'); event.stopPropagation();" title="이 질문 초기화">
+                        <i class="fas fa-undo"></i> 초기화
+                    </button>
                 </div>
                 ${q.help_text ? `<div class="question-help"><i class="fas fa-info-circle"></i> ${q.help_text}</div>` : ''}
                 <div class="answer-section">
@@ -1207,6 +1336,44 @@
             }
         }
 
+        // 숫자 포맷팅 (천 단위 쉼표, 소수점 허용)
+        function formatNumber(value) {
+            if (!value && value !== 0) return '';
+            const num = String(value).replace(/[^\d.]/g, '');
+            if (!num) return '';
+
+            // 소수점 처리
+            const parts = num.split('.');
+            parts[0] = parseInt(parts[0], 10).toLocaleString('ko-KR');
+
+            return parts.length > 1 ? parts.join('.') : parts[0];
+        }
+
+        // 숫자 입력 처리
+        function handleNumberInput(input, questionId) {
+            // 숫자와 소수점만 추출
+            let rawValue = input.value.replace(/[^\d.]/g, '');
+
+            // 소수점이 여러 개 있으면 첫 번째만 유지
+            const parts = rawValue.split('.');
+            if (parts.length > 2) {
+                rawValue = parts[0] + '.' + parts.slice(1).join('');
+            }
+
+            input.dataset.rawValue = rawValue;
+
+            // 답변 업데이트 (raw value 사용)
+            updateAnswer(questionId, rawValue);
+        }
+
+        // blur 시 숫자 포맷팅 적용
+        function formatNumberOnBlur(input) {
+            const rawValue = input.dataset.rawValue || input.value.replace(/[^\d.]/g, '');
+            if (rawValue) {
+                input.value = formatNumber(rawValue);
+            }
+        }
+
         // 정보보호 투자 비율 자동 계산
         function calculateInvestmentRatio() {
             const totalItInput = document.getElementById('input-Q1-2');
@@ -1309,6 +1476,53 @@
                 loadProgress();
             } else {
                 showToast('저장 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 특정 질문 초기화
+        async function resetQuestion(questionId) {
+            if (!confirm('이 질문의 답변을 초기화하시겠습니까?')) {
+                return;
+            }
+
+            {% if not is_logged_in %}
+            showToast('로그인이 필요합니다.', 'warning');
+            return;
+            {% endif %}
+
+            try {
+                // 답변 삭제 API 호출
+                const response = await fetch(`/link11/api/answers/${questionId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        year: currentYear
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 로컬 answers 객체에서 제거
+                    delete answers[questionId];
+
+                    // 화면 새로고침하여 초기 상태로 되돌림
+                    const question = questions.find(q => q.id === questionId);
+                    if (question) {
+                        // 현재 카테고리 다시 로드
+                        if (currentCategoryId && currentCategory) {
+                            await showCategory(currentCategoryId, currentCategory);
+                        }
+                    }
+
+                    showToast('답변이 초기화되었습니다.', 'success');
+                    loadProgress();
+                } else {
+                    showToast('초기화 중 오류가 발생했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('질문 초기화 오류:', error);
+                showToast('초기화 중 오류가 발생했습니다.', 'error');
             }
         }
 

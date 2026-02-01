@@ -16,6 +16,10 @@
 - `snowball_drive.py`의 `append_to_work_log_docs` 기능을 사용하여 구글 드라이브의 `work_log` 문서에 기록한다.
 - **최신순 유지**: 새로운 로그는 항상 문서의 **최상단**에 추가한다.
 - **무흔적 원칙**: 기록을 위해 임시 스크립트(`.py`)를 생성한 경우, 기록 완료 즉시 해당 파일을 삭제하여 작업 디렉토리를 청결하게 유지한다.
+- **중요**: `snowball_drive.py` 실행 시 `credentials.json` 파일이 필요하므로, 반드시 `c:\Python\snowball` 폴더로 이동한 후 실행해야 한다.
+  ```powershell
+  cd 'c:\Python\snowball'; python -c "from snowball_drive import append_to_work_log_docs; ..."
+  ```
 
 ### 3. 완료 보고
 - 기록 완료 후 구글 독스 링크를 제공하고, 임시 파일이 모두 정리되었음을 사용자에게 알린다.
