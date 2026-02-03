@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,7 +31,7 @@
         }
 
         .back-btn {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
             color: white;
             border: none;
             padding: 8px 16px;
@@ -40,7 +41,7 @@
         }
 
         .back-btn:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255, 255, 255, 0.3);
             color: white;
         }
 
@@ -49,14 +50,14 @@
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
         }
 
         .evidence-table {
             background: white;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
         }
 
         .evidence-table table {
@@ -92,11 +93,30 @@
             font-size: 1.2rem;
         }
 
-        .file-icon.pdf { background: #fee2e2; color: #dc2626; }
-        .file-icon.excel { background: #dcfce7; color: #16a34a; }
-        .file-icon.word { background: #dbeafe; color: #2563eb; }
-        .file-icon.image { background: #fef3c7; color: #d97706; }
-        .file-icon.other { background: #f1f5f9; color: #64748b; }
+        .file-icon.pdf {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .file-icon.excel {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .file-icon.word {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .file-icon.image {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .file-icon.other {
+            background: #f1f5f9;
+            color: #64748b;
+        }
 
         .question-badge {
             background: #e0f2fe;
@@ -180,7 +200,7 @@
             border-radius: 12px;
             padding: 20px;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
         }
 
         .stat-box .value {
@@ -205,7 +225,7 @@
             background: white;
             padding: 15px 20px;
             border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
             margin-bottom: 10px;
             display: flex;
             align-items: center;
@@ -213,14 +233,32 @@
             animation: slideIn 0.3s ease;
         }
 
-        .toast-message.success { border-left: 4px solid #10b981; }
-        .toast-message.error { border-left: 4px solid #ef4444; }
-        .toast-message.warning { border-left: 4px solid #f59e0b; }
-        .toast-message.info { border-left: 4px solid #3b82f6; }
+        .toast-message.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .toast-message.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .toast-message.warning {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .toast-message.info {
+            border-left: 4px solid #3b82f6;
+        }
 
         @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         @media (max-width: 768px) {
@@ -247,7 +285,7 @@
                     <p class="mb-0 opacity-75">정보보호공시를 위한 증빙자료를 관리합니다.</p>
                 </div>
                 <a href="/link11" class="back-btn">
-                    <i class="fas fa-arrow-left"></i> 대시보드로 돌아가기
+                    <i class="fas fa-arrow-left"></i> 공시 현황으로 돌아가기
                 </a>
             </div>
         </div>
@@ -312,7 +350,8 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">검색</label>
-                    <input type="text" class="form-control" id="filter-search" placeholder="파일명 검색..." onkeyup="loadEvidence()">
+                    <input type="text" class="form-control" id="filter-search" placeholder="파일명 검색..."
+                        onkeyup="loadEvidence()">
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
@@ -352,7 +391,7 @@
         const currentYear = new Date().getFullYear();
         let evidenceList = [];
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             loadEvidence();
             loadStats();
         });
@@ -565,4 +604,5 @@
         }
     </script>
 </body>
+
 </html>

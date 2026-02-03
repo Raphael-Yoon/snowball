@@ -1107,6 +1107,9 @@ def cancel_design_evaluation_api():
 @login_required
 def download_evaluation_excel(rcm_id):
     """설계평가 엑셀 다운로드 - 원본 파일의 Template 시트를 통제별로 복사해서 생성"""
+    # URL 파라미터에서 세션명 가져오기
+    evaluation_session = request.args.get('evaluation_session') or request.args.get('session')
+    
     # mimetypes 초기화 및 .mpo 오류 방지
     import mimetypes
     try:
@@ -1170,9 +1173,8 @@ def download_evaluation_excel(rcm_id):
                 WHERE r.rcm_id = %s
             ''', (rcm_id,)).fetchone()
             
-            # 가장 최신 설계평가 세션명 조회 (통합 테이블)
-            evaluation_session = None
-            try:
+            # 평가 세션명 조회 (통합 테이블) - 파라미터로 전달되지 않았을 경우 최신 세션 사용
+            if not evaluation_session:
                 session_info = conn.execute('''
                     SELECT evaluation_name
                     FROM sb_evaluation_header
@@ -1183,13 +1185,11 @@ def download_evaluation_excel(rcm_id):
 
                 if session_info:
                     evaluation_session = session_info['evaluation_name']
-            except:
-                pass  # 설계평가 세션이 없는 경우 기본값 사용
             
-            if not rcm_info or not rcm_info['original_filename']:
+            if not rcm_info:
                 return jsonify({
                     'success': False,
-                    'message': '원본 엑셀 파일을 찾을 수 없습니다.'
+                    'message': 'RCM 정보를 찾을 수 없습니다.'
                 }), 404
             
             # RCM 상세 정보 가져오기
@@ -1263,23 +1263,44 @@ def download_evaluation_excel(rcm_id):
                 except Exception as e:
                     pass
 
-        # 원본 엑셀 파일 로드 (회사별 폴더 구조 지원)
-        # rcm_info['original_filename']이 이미 상대 경로(company_name/filename.xlsx)인 경우와
-        # 기존 방식(filename.xlsx)인 경우 모두 지원
-        if os.path.sep in rcm_info['original_filename'] or '/' in rcm_info['original_filename']:
-            # 이미 회사별 경로가 포함된 경우
-            original_file_path = os.path.join('uploads', rcm_info['original_filename'])
-        else:
-            # 기존 방식 - uploads 루트에서 찾기
-            original_file_path = os.path.join('uploads', rcm_info['original_filename'])
-        
-        if not os.path.exists(original_file_path):
-            return jsonify({
-                'success': False,
-                'message': f'원본 파일이 존재하지 않습니다: {original_file_path}'
-            }), 404
+        # 원본 파일 경로 결정
+        original_file_path = None
+        if rcm_info.get('original_filename'):
+            # 회사별 폴더 구조 또는 루트 uploads 폴더 확인
+            if os.path.sep in rcm_info['original_filename'] or '/' in rcm_info['original_filename']:
+                potential_path = os.path.join('uploads', rcm_info['original_filename'])
+            else:
+                # 기본 rcm 업로드 경로도 확인 (auth.py의 get_rcm_file_path 참고)
+                potential_path = os.path.join('static', 'uploads', 'rcm', str(rcm_id), rcm_info['original_filename'])
             
-        workbook = load_workbook(original_file_path)
+            if os.path.exists(potential_path):
+                original_file_path = potential_path
+            else:
+                # uploads 루트에서 한 번 더 확인
+                root_potential_path = os.path.join('uploads', rcm_info['original_filename'])
+                if os.path.exists(root_potential_path):
+                    original_file_path = root_potential_path
+
+        # 워크북 로드 (로드 실패 시 Fallback)
+        workbook = None
+        if original_file_path:
+            try:
+                workbook = load_workbook(original_file_path)
+                print(f"[DEBUG] Loaded original RCM: {original_file_path}")
+            except Exception as e:
+                print(f"[DEBUG] Error loading original RCM: {e}")
+
+        # Fallback: 원본 파일이 없거나 로드 실패 시 시스템 템플릿 사용
+        if not workbook:
+            fallback_template = os.path.join(os.path.dirname(__file__), 'paper_templates', 'Design_Template.xlsx')
+            if os.path.exists(fallback_template):
+                try:
+                    workbook = load_workbook(fallback_template)
+                    print(f"[DEBUG] Original RCM missing/failed. Using fallback: {fallback_template}")
+                except Exception as e:
+                    return jsonify({'success': False, 'message': f'템플릿 로드 실패: {str(e)}'}), 500
+            else:
+                return jsonify({'success': False, 'message': '원본 파일과 시스템 템플릿을 모두 찾을 수 없습니다.'}), 404
         
         # Template 시트가 있는지 확인
         if 'Template' not in workbook.sheetnames:
@@ -1591,9 +1612,9 @@ def archive_design_evaluation_api():
                     })
 
         # 세션 Archive 처리
-        success = archive_design_evaluation_session(rcm_id, user_info['user_id'], evaluation_session)
+        result = archive_design_evaluation_session(rcm_id, user_info['user_id'], evaluation_session)
 
-        if success:
+        if result.get('success'):
             # 활동 로그 기록
             log_user_activity(user_info, 'DESIGN_EVALUATION_ARCHIVE',
                              f'설계평가 세션 Archive - {evaluation_session}',
@@ -1607,7 +1628,7 @@ def archive_design_evaluation_api():
         else:
             return jsonify({
                 'success': False,
-                'message': '해당 평가 세션을 찾을 수 없습니다.'
+                'message': result.get('message', '해당 평가 세션을 찾을 수 없습니다.')
             })
 
     except Exception as e:
@@ -1652,9 +1673,9 @@ def unarchive_design_evaluation_api():
                     })
 
         # 세션 Unarchive 처리
-        success = unarchive_design_evaluation_session(rcm_id, user_info['user_id'], evaluation_session)
+        result = unarchive_design_evaluation_session(rcm_id, user_info['user_id'], evaluation_session)
 
-        if success:
+        if result.get('success'):
             # 활동 로그 기록
             log_user_activity(user_info, 'DESIGN_EVALUATION_UNARCHIVE',
                              f'설계평가 세션 Unarchive - {evaluation_session}',
@@ -1668,7 +1689,7 @@ def unarchive_design_evaluation_api():
         else:
             return jsonify({
                 'success': False,
-                'message': '해당 평가 세션을 찾을 수 없습니다.'
+                'message': result.get('message', '해당 평가 세션을 찾을 수 없습니다.')
             })
 
     except Exception as e:
@@ -1927,24 +1948,23 @@ def archive_elc_evaluation():
         with get_db() as conn:
             # 평가 정보 조회
             evaluation = conn.execute(
-                'SELECT evaluation_name, status FROM sb_evaluation_header WHERE header_id = ?',
+                'SELECT evaluation_name, status, rcm_id FROM sb_evaluation_header WHERE header_id = ?',
                 (header_id,)
             ).fetchone()
 
             if not evaluation:
                 return jsonify({'success': False, 'error': '평가를 찾을 수 없습니다.'}), 404
 
-            eval_dict = dict(evaluation)
-            
-            # status를 5(아카이브)로 변경
-            conn.execute('UPDATE sb_evaluation_header SET status = 5 WHERE header_id = ?', (header_id,))
-            conn.commit()
+            # auth.py의 공통 함수 사용 (user_id는 rcm_id 권한 확인용으로 이미 상위에서 get_user_info() 되어 있음)
+            result = archive_design_evaluation_session(evaluation['rcm_id'], user_info['user_id'], evaluation['evaluation_name'])
 
-            log_user_activity(user_info, 'ARCHIVE', 'ELC 평가 아카이브',
-                             f'header_id={header_id}, evaluation_name={eval_dict["evaluation_name"]}',
-                             request.remote_addr, request.headers.get('User-Agent'))
-
-            return jsonify({'success': True})
+            if result.get('success'):
+                log_user_activity(user_info, 'ARCHIVE', 'ELC 평가 아카이브',
+                                 f'header_id={header_id}, evaluation_name={evaluation["evaluation_name"]}',
+                                 request.remote_addr, request.headers.get('User-Agent'))
+                return jsonify({'success': True, 'message': 'ELC 평가가 아카이브되었습니다.'})
+            else:
+                return jsonify({'success': False, 'error': result.get('message', '아카이브 중 오류가 발생했습니다.')})
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -2392,15 +2412,22 @@ def archive_itgc_evaluation():
     try:
         with get_db() as conn:
             # header 존재 확인
-            header = conn.execute('SELECT * FROM sb_evaluation_header WHERE header_id = ?', (header_id,)).fetchone()
+            header = conn.execute('SELECT evaluation_name, rcm_id FROM sb_evaluation_header WHERE header_id = ?', (header_id,)).fetchone()
             if not header:
                 return jsonify({'success': False, 'error': 'Evaluation not found'})
 
-            # archived 플래그 설정
-            conn.execute('UPDATE sb_evaluation_header SET archived = 1 WHERE header_id = ?', (header_id,))
-            conn.commit()
+            # auth.py의 공통 함수 사용
+            result = archive_design_evaluation_session(header['rcm_id'], user_info['user_id'], header['evaluation_name'])
 
-        return jsonify({'success': True})
+            if result.get('success'):
+                # 활동 로그 기록
+                log_user_activity(user_info, 'ARCHIVE_ITGC', 
+                                f'ITGC 설계평가 아카이브 - {header["evaluation_name"]}',
+                                f'/itgc/evaluation/archive', 
+                                request.remote_addr, request.headers.get('User-Agent'))
+                return jsonify({'success': True, 'message': 'ITGC 설계평가가 아카이브되었습니다.'})
+            else:
+                return jsonify({'success': False, 'error': result.get('message', '아카이브 중 오류가 발생했습니다.')})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -2462,290 +2489,15 @@ def format_evidence_for_excel(evaluation_evidence_json, attributes_dict, populat
 @bp_link6.route('/design-evaluation/download')
 @login_required
 def download_design_evaluation():
-    """설계평가 결과를 Design_Template.xlsx 양식으로 다운로드"""
-    user_info = get_user_info()
-
+    """설계평가 결과 엑셀 다운로드 (레거시 경로 - 새로운 API로 리다이렉트)"""
     rcm_id = request.args.get('rcm_id')
     evaluation_session = request.args.get('evaluation_session')
 
-    if not rcm_id or not evaluation_session:
-        flash('RCM ID와 평가 세션이 필요합니다.', 'error')
+    if not rcm_id:
+        flash('RCM ID가 필요합니다.', 'error')
         return redirect(url_for('link6.user_design_evaluation'))
 
-    try:
-        # 템플릿 파일 경로
-        template_path = os.path.join(os.path.dirname(__file__), 'paper_templates', 'Design_Template.xlsx')
-
-        # 템플릿 로드
-        wb = load_workbook(template_path)
-
-        # RCM 정보 조회
-        with get_db() as conn:
-            rcm_info = conn.execute('''
-                SELECT rcm_name, description
-                FROM sb_rcm
-                WHERE rcm_id = %s
-            ''', (rcm_id,)).fetchone()
-
-            if not rcm_info:
-                flash('RCM 정보를 찾을 수 없습니다.', 'error')
-                return redirect(url_for('link6.user_design_evaluation'))
-
-            # 설계평가 결과 조회 (RCM attribute 메타 정보 포함) - 통합 테이블 사용
-            evaluations = conn.execute('''
-                SELECT
-                    l.line_id,
-                    l.control_code,
-                    rd.control_name,
-                    rd.control_description,
-                    rd.control_frequency,
-                    rd.control_type,
-                    rd.control_nature,
-                    l.description_adequacy as design_adequacy,
-                    l.improvement_suggestion,
-                    l.overall_effectiveness as conclusion,
-                    l.evaluation_rationale,
-                    l.evaluation_evidence,
-                    l.design_comment,
-                    l.evaluation_date,
-                    d.attribute0, d.attribute1, d.attribute2, d.attribute3, d.attribute4,
-                    d.attribute5, d.attribute6, d.attribute7, d.attribute8, d.attribute9,
-                    d.population_attribute_count
-                FROM sb_evaluation_line l
-                JOIN sb_evaluation_header h ON l.header_id = h.header_id
-                JOIN sb_rcm_detail_v rd ON h.rcm_id = rd.rcm_id AND l.control_code = rd.control_code
-                JOIN sb_rcm_detail d ON d.rcm_id = h.rcm_id AND d.control_code = l.control_code
-                WHERE h.rcm_id = %s AND h.evaluation_name = %s
-                ORDER BY l.control_code
-            ''', (rcm_id, evaluation_session)).fetchall()
-
-        # Template 시트를 사용하여 각 통제별 시트 생성
-        template_sheet = wb['Template']
-
-        # 각 통제별 시트 생성
-        for eval_data in evaluations:
-            eval_dict = dict(eval_data)
-            control_code = eval_dict['control_code']
-
-            # 템플릿 시트 복사
-            new_sheet = wb.copy_worksheet(template_sheet)
-            new_sheet.title = control_code
-
-            # Client 정보 (C2) - 회사명
-            new_sheet['C2'] = user_info.get('company_name', '')
-
-            # Prepared by (C4) - 사용자명
-            new_sheet['C4'] = user_info.get('user_name', '')
-
-            # 통제번호 (C7)
-            new_sheet['C7'] = control_code
-
-            # 통제명 (C8)
-            new_sheet['C8'] = eval_dict.get('control_name', '')
-
-            # 주기 (C9)
-            new_sheet['C9'] = eval_dict.get('control_frequency', '')
-
-            # 구분 (C10)
-            new_sheet['C10'] = eval_dict.get('control_type', '')
-
-            # 테스트 절차 (C11)
-            control_description = eval_dict.get('control_description', '')
-            new_sheet['C11'] = control_description
-
-            # C11 셀의 행 높이 자동 조정 (텍스트 길이에 따라)
-            if control_description:
-                # 줄바꿈 개수 계산
-                line_count = control_description.count('\n') + 1
-                # 기본 행 높이(15) + 각 줄당 추가 높이(15)
-                row_height = 15 + (line_count * 15)
-                # 최대 높이 제한 (300)
-                row_height = min(row_height, 300)
-                new_sheet.row_dimensions[11].height = row_height
-
-            # RCM attribute 메타 정보 수집 (C12, C13에서 공통 사용)
-            attributes_dict = {}
-            for i in range(10):
-                attr_key = f'attribute{i}'
-                attr_value = eval_dict.get(attr_key)
-                if attr_value:  # None이 아닌 경우만 저장
-                    attributes_dict[attr_key] = attr_value
-
-            population_count = eval_dict.get('population_attribute_count', 2)
-            evaluation_evidence_json = eval_dict.get('evaluation_evidence', '')
-
-            # 설계 평가 코멘트 (C12)
-            design_comment = eval_dict.get('design_comment', '')
-
-            # 설계평가 샘플의 증빙 항목을 검토 결과에 추가
-            line_id = eval_dict.get('line_id')
-            if line_id:
-                # 설계평가 샘플 조회
-                with get_db() as conn2:
-                    samples = conn2.execute('''
-                        SELECT sample_id, sample_number,
-                               attribute0, attribute1, attribute2, attribute3, attribute4,
-                               attribute5, attribute6, attribute7, attribute8, attribute9
-                        FROM sb_evaluation_sample
-                        WHERE line_id = %s AND evaluation_type = 'design'
-                        ORDER BY sample_number
-                        LIMIT 1
-                    ''', (line_id,)).fetchall()
-
-                    if samples and len(samples) > 0:
-                        sample = dict(samples[0])
-                        # 증빙 항목 (population_count부터) 수집
-                        attribute_lines = []
-                        for i in range(population_count, 10):
-                            attr_key = f'attribute{i}'
-                            attr_name = attributes_dict.get(attr_key)
-                            attr_value = sample.get(attr_key, '')
-
-                            if attr_name and attr_value:
-                                attribute_lines.append(f'{attr_name}: {attr_value}')
-
-                        # 검토 결과에 attribute 값 추가
-                        if attribute_lines:
-                            if design_comment:
-                                design_comment += '\n\n'
-                            design_comment += '\n'.join(attribute_lines)
-
-            new_sheet['C12'] = design_comment
-
-            # C12 셀의 행 높이 자동 조정
-            if design_comment:
-                line_count = design_comment.count('\n') + 1
-                row_height = 15 + (line_count * 15)
-                row_height = min(row_height, 300)
-                new_sheet.row_dimensions[12].height = row_height
-
-            # 증빙 내용 (C13) - 포맷팅된 텍스트
-
-            # 증빙 데이터 포맷팅 (컬럼명:증빙명 형식)
-            formatted_evidence, evidence_line_count = format_evidence_for_excel(
-                evaluation_evidence_json,
-                attributes_dict,
-                population_count
-            )
-
-            new_sheet['C13'] = formatted_evidence
-
-            # C13 셀 높이 자동 조정
-            if evidence_line_count > 0:
-                # 기본 높이(15) + 각 줄당 높이(15)
-                row_height = 15 + (evidence_line_count * 15)
-                # 최대 높이 제한 (300)
-                row_height = min(row_height, 300)
-                new_sheet.row_dimensions[13].height = row_height
-
-            # 증빙 이미지 (C14부터 시작)
-            # 이미지 파일이 저장된 경로: static/uploads/design_evaluations/{rcm_id}/{header_id}/{control_code}/
-            from openpyxl.drawing.image import Image as OpenpyxlImage
-
-            image_count = 0  # 삽입된 이미지 개수
-            with get_db() as conn:
-                header = conn.execute('''
-                    SELECT header_id
-                    FROM sb_evaluation_header
-                    WHERE rcm_id = %s AND evaluation_name = %s
-                ''', (rcm_id, evaluation_session)).fetchone()
-
-                if header:
-                    header_id = header['header_id']
-
-                    # DB에서 이미지 정보 조회
-                    try:
-                        # line_id 조회
-                        line_result = conn.execute('''
-                            SELECT line_id FROM sb_evaluation_line
-                            WHERE header_id = %s AND control_code = %s
-                        ''', (header_id, control_code)).fetchone()
-
-                        if line_result:
-                            images = conn.execute('''
-                                SELECT file_path, file_name
-                                FROM sb_evaluation_image
-                                WHERE evaluation_type = %s AND line_id = %s
-                                ORDER BY uploaded_at
-                            ''', ('design', line_result['line_id'])).fetchall()
-
-                            if images:
-                                # C14 셀부터 이미지 삽입
-                                row_offset = 14  # C14부터 시작
-                                for idx, img_data in enumerate(images):
-                                    image_path = img_data['file_path']
-                                    cell_position = f'C{row_offset + idx}'
-                                    try:
-                                        # 이미지 객체 생성
-                                        img = OpenpyxlImage(image_path)
-                                        # 이미지 크기 조정 (너비 280px로 제한하여 셀보다 작게)
-                                        max_width = 280
-                                        if img.width > max_width:
-                                            ratio = max_width / img.width
-                                            img.width = max_width
-                                            img.height = int(img.height * ratio)
-                                        else:
-                                            # 원본이 280px보다 작으면 90%로 축소
-                                            img.width = int(img.width * 0.9)
-                                            img.height = int(img.height * 0.9)
-                                        # 이미지를 C14, C15, C16... 위치에 삽입
-                                        new_sheet.add_image(img, cell_position)
-                                        # 행 높이 조정 (이미지 높이보다 약간 크게 여백 추가)
-                                        new_sheet.row_dimensions[row_offset + idx].height = (img.height * 0.75) + 5
-                                        image_count += 1
-                                        print(f"이미지 삽입 성공: {img_data['file_name']} -> {cell_position}")
-                                    except Exception as e:
-                                        print(f"이미지 삽입 오류 ({img_data['file_name']}): {e}")
-                                        import traceback
-                                        traceback.print_exc()
-                                        # 오류 발생 시 파일명만 표시
-                                        new_sheet[cell_position] = img_data['file_name']
-                                        image_count += 1
-                    except Exception as e:
-                        print(f"이미지 조회 오류: {e}")
-
-            # 결론 (이미지 이후 행)
-            conclusion_row = 15 if image_count == 0 else 14 + image_count
-            new_sheet[f'C{conclusion_row}'] = eval_dict.get('conclusion', '')
-
-        # Template 시트 삭제
-        if 'Template' in wb.sheetnames:
-            wb.remove(wb['Template'])
-
-        # 임시 파일로 저장
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
-        wb.save(temp_file.name)
-        temp_file.close()
-
-        # 다운로드 파일명 생성 (평가 세션명 사용)
-        # 한글을 유지하면서 안전하지 않은 문자만 제거
-        filename = f"{evaluation_session}.xlsx"
-        # 파일명에서 위험한 문자만 제거 (/, \, :, *, %s, ", <, >, |)
-        unsafe_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
-        for char in unsafe_chars:
-            filename = filename.replace(char, '_')
-
-        # 파일 전송 (한글 파일명 지원)
-        from flask import make_response
-        import urllib.parse
-
-        response = make_response(send_file(
-            temp_file.name,
-            as_attachment=True,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        ))
-
-        # 한글 파일명을 위한 Content-Disposition 헤더 설정
-        encoded_filename = urllib.parse.quote(filename.encode('utf-8'))
-        response.headers['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
-
-        return response
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        flash(f'다운로드 중 오류가 발생했습니다: {str(e)}', 'error')
-        return redirect(url_for('link6.user_design_evaluation'))
+    return redirect(url_for('link6.download_evaluation_excel', rcm_id=rcm_id, evaluation_session=evaluation_session))
 @bp_link6.route('/api/client-log', methods=['POST'])
 def client_log():
     """클라이언트 JavaScript 로그를 Flask 콘솔에 출력"""

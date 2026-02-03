@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,20 +9,19 @@
     <!-- CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-    		<link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
-		<link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
 </head>
+
 <body>
     {% include 'navi.jsp' %}
 
     <div class="container mt-4">
         <!-- 진행률 표시 -->
         <div class="progress">
-            <div class="progress-bar" role="progressbar" 
-                 style="width: {{ (current_index + 1) / question_count * 100 }}%"
-                 aria-valuenow="{{ current_index + 1 }}" 
-                 aria-valuemin="0" 
-                 aria-valuemax="{{ question_count }}">
+            <div class="progress-bar" role="progressbar"
+                style="width: {{ (current_index + 1) / question_count * 100 }}%" aria-valuenow="{{ current_index + 1 }}"
+                aria-valuemin="0" aria-valuemax="{{ question_count }}">
                 {{ "%.1f"|format((current_index + 1) / question_count * 100) }}%
             </div>
         </div>
@@ -30,39 +30,37 @@
         <div class="text-center mt-3">
             <h1 class="section-title">
                 {% if actual_question_number %}
-                    {% set q_num = actual_question_number - 1 %}
+                {% set q_num = actual_question_number - 1 %}
                 {% else %}
-                    {% set q_num = current_index %}
+                {% set q_num = current_index %}
                 {% endif %}
-                
-                {% if 0 <= q_num <= 5 %}
-                    <i class="fas fa-server"></i> 공통사항
-                {% elif 6 <= q_num <= 30 %}
-                    <i class="fas fa-lock"></i> APD(Access to Program & Data)
-                {% elif 31 <= q_num <= 37 %}
-                    <i class="fas fa-laptop-code"></i> PC(Program Change)
-                {% elif 38 <= q_num <= 46 %}
-                    <i class="fas fa-cogs"></i> CO(Computer Operation)
-                {% else %}
-                    <i class="fas fa-check-circle"></i> 모든 질문이 완료되었습니다.
-                {% endif %}
+
+                {% if q_num >= 0 and q_num <= 5 %} <i class="fas fa-server"></i> 공통사항
+                    {% elif q_num >= 6 and q_num <= 30 %} <i class="fas fa-lock"></i> APD(Access to Program & Data)
+                        {% elif q_num >= 31 and q_num <= 37 %} <i class="fas fa-laptop-code"></i> PC(Program Change)
+                            {% elif q_num >= 38 and q_num <= 46 %} <i class="fas fa-cogs"></i> CO(Computer Operation)
+                                {% else %}
+                                <i class="fas fa-check-circle"></i> 모든 질문이 완료되었습니다.
+                                {% endif %}
             </h1>
         </div>
 
         <div class="text-center mt-4">
             {% if remote_addr == '127.0.0.1' or (user_info and user_info.get('admin_flag') == 'Y') %}
-            <button type="button" class="btn btn-outline-secondary me-2" onclick="fillSample({{ actual_question_number - 1 if actual_question_number else current_index }}, {{ current_index }})">
+            <button type="button" class="btn btn-outline-secondary me-2"
+                onclick="fillSample({{ actual_question_number - 1 if actual_question_number else current_index }}, {{ current_index }})">
                 <i class="fas fa-magic"></i> 샘플입력
             </button>
-            <button type="button" class="btn btn-outline-warning me-2" onclick="fillSkipSample({{ actual_question_number - 1 if actual_question_number else current_index }}, {{ current_index }})">
+            <button type="button" class="btn btn-outline-warning me-2"
+                onclick="fillSkipSample({{ actual_question_number - 1 if actual_question_number else current_index }}, {{ current_index }})">
                 <i class="fas fa-fast-forward"></i> 스킵샘플
             </button>
             {% endif %}
         </div>
 
         <!-- 질문 폼 -->
-        <form action="/link2" method="post">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <form action="{{ url_for('link2.link2') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">
@@ -77,76 +75,104 @@
                     <div class="mb-3">
                         <!-- 입력 필드 -->
                         {% if question.answer_type == '0' %}
-                            <select class="form-select" name="a0" required>
-                                <option value="">담당자를 선택하세요</option>
-                                {# {% for i in range(0, users|length, 3) %}
-                                    <option value="{{ users[i+2] }}" {% if answer[0] == users[i+2] %}selected{% endif %}>{{ users[i] }} - {{ users[i+1] }}</option>
-                                {% endfor %} #}
-                            </select>
-                            <!-- 첫 번째 질문(이메일 입력) -->
-                            {% if current_index == 0 %}
-                            <div class="mt-2">
-                                <input type="text" class="form-control{% if is_logged_in %} bg-light{% endif %}" name="a0_text" placeholder="e-Mail 주소를 입력하세요" value="{{ answer[0] }}" {% if is_logged_in %}readonly{% endif %} />
-                                {% if is_logged_in %}
-                                <small class="form-text text-muted">
-                                    <i class="fas fa-lock me-1"></i>로그인된 계정의 이메일이 자동으로 사용됩니다.
-                                </small>
-                                {% endif %}
-                            </div>
+                        <select class="form-select" name="a0" required>
+                            <option value="">담당자를 선택하세요</option>
+                            {# {% for i in range(0, users|length, 3) %}
+                            <option value="{{ users[i+2] }}" {% if answer[0]==users[i+2] %}selected{% endif %}>{{
+                                users[i] }} - {{ users[i+1] }}</option>
+                            {% endfor %} #}
+                        </select>
+                        <!-- 첫 번째 질문(이메일 입력) -->
+                        {% if current_index == 0 %}
+                        <div class="mt-2">
+                            <input type="text" class="form-control{% if is_logged_in %} bg-light{% endif %}"
+                                name="a0_text" placeholder="e-Mail 주소를 입력하세요" value="{{ answer[0] }}" {% if is_logged_in
+                                %}readonly{% endif %} />
+                            {% if is_logged_in %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-lock me-1"></i>로그인된 계정의 이메일이 자동으로 사용됩니다.
+                            </small>
                             {% endif %}
+                        </div>
+                        {% endif %}
                         {% elif question.answer_type == '2' %}
-                            {% if current_index == 0 %}
-                                <!-- 첫 번째 질문(이메일 입력) -->
-                                <input type="text" class="form-control{% if is_logged_in %} bg-light{% endif %}" name="a{{ current_index }}" required placeholder="{{ question.text_help if question.text_help else 'e-Mail 주소를 입력하세요' }}" value="{{ answer[current_index] }}" {% if is_logged_in %}readonly{% endif %}>
-                                {% if is_logged_in %}
-                                <small class="form-text text-muted">
-                                    <i class="fas fa-lock me-1"></i>로그인된 계정의 이메일이 자동으로 사용됩니다.
-                                </small>
-                                {% endif %}
-                            {% else %}
-                                <!-- 일반 텍스트 입력 -->
-                                <input type="text" class="form-control" name="a{{ current_index }}" required placeholder="{{ question.text_help if question.text_help else '' }}" value="{{ answer[current_index] }}">
-                            {% endif %}
-                        {% elif question.answer_type == '3' %}
-                            <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" id="yes_{{ current_index }}" required {% if answer[current_index] == 'Y' %}checked{% endif %}>
-                                <span class="form-check-label">예</span>
-                            </label>
-                            <input type="text" class="form-control mt-2" name="a{{ current_index }}_1" placeholder="{{ question.text_help if question.text_help else '제품명을 입력하세요' }}" onclick="selectYes({{ current_index }})" value="{{ textarea_answer[current_index] }}">
-                            <label class="form-check mt-2">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" {% if answer[current_index] == 'N' %}checked{% endif %}>
-                                <span class="form-check-label">아니요</span>
-                            </label>
-                        {% elif question.answer_type == '4' %}
-                            <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required onchange="toggleTextarea({{ current_index }})" {% if answer[current_index] == 'Y' %}checked{% endif %}>
-                                <span class="form-check-label">예</span>
-                            </label>
-                            <textarea class="form-control mt-2" name="a{{ current_index }}_1" id="textarea_{{ current_index }}" placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5" {% if answer[current_index] != 'Y' %}readonly{% endif %} {% if answer[current_index] == 'Y' %}required{% endif %} onclick="selectYesAndEnableTextarea({{ current_index }})" style="cursor: pointer;">{{ textarea_answer[current_index] }}</textarea>
-                            <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" required onchange="toggleTextarea({{ current_index }})" {% if answer[current_index] == 'N' %}checked{% endif %}>
-                                <span class="form-check-label">아니요</span>
-                            </label>
-                        {% elif question.answer_type == '5' %}
-                            <textarea class="form-control" name="a{{ current_index }}" placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5">{{ answer[current_index] }}</textarea>
-                        {% elif question.answer_type == '1' %}
-                            <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required {% if answer[current_index] == 'Y' %}checked{% endif %}>
-                                <span class="form-check-label">예</span>
-                            </label>
-                            <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" {% if answer[current_index] == 'N' %}checked{% endif %}>
-                                <span class="form-check-label">아니요</span>
-                            </label>
-                        {% elif question.answer_type == '6' %}
-                            {% for option in question.text_help.split('|') %}
-                            <label class="form-check">
-                                <input type="radio" class="form-check-input" name="a{{ current_index }}" value="{{ option }}" required {% if answer[current_index] == option %}checked{% endif %}>
-                                <span class="form-check-label">{{ option }}</span>
-                            </label>
-                            {% endfor %}
+                        {% if current_index == 0 %}
+                        <!-- 첫 번째 질문(이메일 입력) -->
+                        <input type="text" class="form-control{% if is_logged_in %} bg-light{% endif %}"
+                            name="a{{ current_index }}" required
+                            placeholder="{{ question.text_help if question.text_help else 'e-Mail 주소를 입력하세요' }}"
+                            value="{{ answer[current_index] }}" {% if is_logged_in %}readonly{% endif %}>
+                        {% if is_logged_in %}
+                        <small class="form-text text-muted">
+                            <i class="fas fa-lock me-1"></i>로그인된 계정의 이메일이 자동으로 사용됩니다.
+                        </small>
+                        {% endif %}
                         {% else %}
-                            <input type="text" class="form-control" name="a{{ current_index }}" value="{{ answer[current_index] }}">
+                        <!-- 일반 텍스트 입력 -->
+                        <input type="text" class="form-control" name="a{{ current_index }}" required
+                            placeholder="{{ question.text_help if question.text_help else '' }}"
+                            value="{{ answer[current_index] }}">
+                        {% endif %}
+                        {% elif question.answer_type == '3' %}
+                        <label class="form-check">
+                            <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y"
+                                id="yes_{{ current_index }}" required {% if answer[current_index]=='Y' %}checked{% endif
+                                %}>
+                            <span class="form-check-label">예</span>
+                        </label>
+                        <input type="text" class="form-control mt-2" name="a{{ current_index }}_1"
+                            placeholder="{{ question.text_help if question.text_help else '제품명을 입력하세요' }}"
+                            onclick="selectYes({{ current_index }})" value="{{ textarea_answer[current_index] }}">
+                        <label class="form-check mt-2">
+                            <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" {% if
+                                answer[current_index]=='N' %}checked{% endif %}>
+                            <span class="form-check-label">아니요</span>
+                        </label>
+                        {% elif question.answer_type == '4' %}
+                        <label class="form-check">
+                            <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required
+                                onchange="toggleTextarea({{ current_index }})" {% if answer[current_index]=='Y'
+                                %}checked{% endif %}>
+                            <span class="form-check-label">예</span>
+                        </label>
+                        <textarea class="form-control mt-2" name="a{{ current_index }}_1"
+                            id="textarea_{{ current_index }}"
+                            placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}" rows="5"
+                            {% if answer[current_index] !='Y' %}readonly{% endif %} {% if answer[current_index]=='Y'
+                            %}required{% endif %} onclick="selectYesAndEnableTextarea({{ current_index }})"
+                            style="cursor: pointer;">{{ textarea_answer[current_index] }}</textarea>
+                        <label class="form-check">
+                            <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" required
+                                onchange="toggleTextarea({{ current_index }})" {% if answer[current_index]=='N'
+                                %}checked{% endif %}>
+                            <span class="form-check-label">아니요</span>
+                        </label>
+                        {% elif question.answer_type == '5' %}
+                        <textarea class="form-control" name="a{{ current_index }}"
+                            placeholder="{{ question.text_help if question.text_help else '관련 절차를 입력하세요.' }}"
+                            rows="5">{{ answer[current_index] }}</textarea>
+                        {% elif question.answer_type == '1' %}
+                        <label class="form-check">
+                            <input type="radio" class="form-check-input" name="a{{ current_index }}" value="Y" required
+                                {% if answer[current_index]=='Y' %}checked{% endif %}>
+                            <span class="form-check-label">예</span>
+                        </label>
+                        <label class="form-check">
+                            <input type="radio" class="form-check-input" name="a{{ current_index }}" value="N" {% if
+                                answer[current_index]=='N' %}checked{% endif %}>
+                            <span class="form-check-label">아니요</span>
+                        </label>
+                        {% elif question.answer_type == '6' %}
+                        {% for option in question.text_help.split('|') %}
+                        <label class="form-check">
+                            <input type="radio" class="form-check-input" name="a{{ current_index }}"
+                                value="{{ option }}" required {% if answer[current_index]==option %}checked{% endif %}>
+                            <span class="form-check-label">{{ option }}</span>
+                        </label>
+                        {% endfor %}
+                        {% else %}
+                        <input type="text" class="form-control" name="a{{ current_index }}"
+                            value="{{ answer[current_index] }}">
                         {% endif %}
                     </div>
                 </div>
@@ -155,15 +181,15 @@
             <!-- 도움말: s_questions의 help 필드를 활용하여 출력 -->
             {# 아래는 snowball.py의 s_questions 각 질문 딕셔너리의 help 필드를 그대로 출력합니다. #}
             {% if question.help %}
-                <div class="help-text">
-                    <i class="fas fa-info-circle me-2"></i>
-                    {{ question.help|safe }}
-                </div>
+            <div class="help-text">
+                <i class="fas fa-info-circle me-2"></i>
+                {{ question.help|safe }}
+            </div>
             {% endif %}
             <!-- 제출 버튼 -->
             <div class="text-center mt-4">
                 {% if current_index > 0 %}
-                <a href="/link2/prev" class="btn btn-secondary me-2">
+                <a href="{{ url_for('link2.link2_prev') }}" class="btn btn-secondary me-2">
                     <i class="fas fa-arrow-left"></i>
                     이전
                 </a>
@@ -178,38 +204,38 @@
 
     <!-- 완료 모달 -->
     <div class="modal fade" id="completeModal" tabindex="-1" aria-labelledby="completeModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="completeModalLabel">알림</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            완료
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="modalConfirmBtn">확인</button>
-          </div>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="completeModalLabel">알림</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    완료
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="modalConfirmBtn">확인</button>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
 
     <!-- 메일 전송 안내 모달 (43번 질문 전용) -->
     <div class="modal fade" id="mailModal" tabindex="-1" aria-labelledby="mailModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="mailModalLabel">알림</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            곧 메일이 전송됩니다.
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" id="mailModalConfirmBtn">확인</button>
-          </div>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mailModalLabel">알림</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    곧 메일이 전송됩니다.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="mailModalConfirmBtn">확인</button>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
 
     <!-- JavaScript -->
@@ -218,7 +244,7 @@
         function selectYes(questionNumber) {
             document.getElementById("yes_" + questionNumber).checked = true;
         }
-        
+
         function selectYesAndEnableTextarea(questionNumber) {
             console.log('selectYesAndEnableTextarea called for question:', questionNumber);
             // '예' 라디오 버튼 찾기
@@ -244,7 +270,7 @@
             const event = new Event('change', { bubbles: true });
             yesRadio.dispatchEvent(event);
         }
-        
+
         function toggleTextarea(questionNumber) {
             console.log('toggleTextarea called for question:', questionNumber);
             const textarea = document.getElementById(`textarea_${questionNumber}`);
@@ -267,14 +293,14 @@
                 console.log('Textarea disabled and cleared');
             }
         }
-        
+
         // 라디오 버튼 라벨 클릭 이벤트 처리
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // 모든 라디오 버튼 라벨에 클릭 이벤트 추가
             const radioLabels = document.querySelectorAll('.form-check-label');
-            
-            radioLabels.forEach(function(label) {
-                label.addEventListener('click', function(e) {
+
+            radioLabels.forEach(function (label) {
+                label.addEventListener('click', function (e) {
                     // 라벨에 연결된 라디오 버튼 찾기
                     const radioId = this.getAttribute('for');
                     if (radioId) {
@@ -282,7 +308,7 @@
                         if (radio) {
                             // 라디오 버튼 선택
                             radio.checked = true;
-                            
+
                             // 이벤트 발생 (폼 제출 시 값이 전송되도록)
                             const event = new Event('change', { bubbles: true });
                             radio.dispatchEvent(event);
@@ -345,7 +371,7 @@
                 45: { type: 'textarea', value: '매일 자동 백업 수행, 백업 성공/실패 여부 모니터링 및 주간 백업 상태 점검' }, // 질문 46번: 백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요. (인덱스 45)
                 46: { type: 'textarea', value: '출입 카드 인증 후 출입대장 작성, 동반 출입시 사전 승인 필요' } // 질문 47번: 서버실 출입시의 절차에 대해 기술해 주세요. (인덱스 46)
             };
-            
+
             // 인덱스와 질문 번호 매핑 확인을 위한 디버깅
             console.log(`[SAMPLE DEBUG] 현재 questionNumber: ${questionNumber}`);
             const sample = samples[questionNumber];
@@ -353,7 +379,7 @@
             if (!sample) {
                 console.log(`[SAMPLE] 샘플 데이터가 없습니다: ${questionNumber} - 자동으로 다음 질문으로 넘어갑니다`);
                 // 샘플 데이터가 없으면 자동으로 다음 질문으로 넘어가기
-                setTimeout(function() {
+                setTimeout(function () {
                     const submitBtn = document.querySelector('button[type="submit"]');
                     if (submitBtn) {
                         console.log(`[SAMPLE] 샘플 데이터 없음 - 자동 다음 질문 이동`);
@@ -366,7 +392,7 @@
             if (sample.type === 'text') {
                 if (sample.value === '') {
                     console.log(`[SAMPLE] 텍스트 값이 비어있음 - 자동으로 다음 질문으로 넘어갑니다`);
-                    setTimeout(function() {
+                    setTimeout(function () {
                         const submitBtn = document.querySelector('button[type="submit"]');
                         if (submitBtn) submitBtn.click();
                     }, 100);
@@ -379,7 +405,7 @@
             if (sample.type === 'radio') {
                 if (sample.value === '') {
                     console.log(`[SAMPLE] 라디오 값이 비어있음 - 자동으로 다음 질문으로 넘어갑니다`);
-                    setTimeout(function() {
+                    setTimeout(function () {
                         const submitBtn = document.querySelector('button[type="submit"]');
                         if (submitBtn) submitBtn.click();
                     }, 100);
@@ -422,7 +448,7 @@
                 if (textarea) textarea.value = sample.value;
             }
             // 자동으로 다음(제출) 버튼 클릭
-            setTimeout(function() {
+            setTimeout(function () {
                 const submitBtn = document.querySelector('button[type="submit"]');
                 console.log(`[SAMPLE] 제출 버튼 찾음:`, submitBtn);
                 if (submitBtn) {
@@ -436,7 +462,7 @@
 
         function fillSkipSample(questionNumber, currentIndex) {
             console.log(`[SKIP SAMPLE] fillSkipSample 호출됨 - questionNumber: ${questionNumber}, currentIndex: ${currentIndex}`);
-            
+
             // 스킵 조건을 만족하는 샘플값 정의 (모든 가능한 질문 스킵)
             const skipSamples = {
                 0: { type: 'text', value: 'snowball2727@naver.com' }, // 이메일
@@ -487,13 +513,13 @@
                 45: { type: 'textarea', value: '' }, // 백업 절차
                 46: { type: 'textarea', value: '' } // 서버실 출입 절차
             };
-            
+
             const sample = skipSamples[questionNumber];
             console.log(`[SKIP SAMPLE] questionNumber: ${questionNumber}, sample:`, sample);
             if (!sample) {
                 console.log(`[SKIP SAMPLE] 스킵 샘플 데이터가 없습니다: ${questionNumber} - 자동으로 다음 질문으로 넘어갑니다`);
                 // 샘플 데이터가 없으면 자동으로 다음 질문으로 넘어가기
-                setTimeout(function() {
+                setTimeout(function () {
                     const submitBtn = document.querySelector('button[type="submit"]');
                     if (submitBtn) {
                         console.log(`[SKIP SAMPLE] 샘플 데이터 없음 - 자동 다음 질문 이동`);
@@ -502,12 +528,12 @@
                 }, 100);
                 return;
             }
-            
+
             // fillSample과 동일한 입력 로직 사용 (빈 값 처리 포함)
             if (sample.type === 'text') {
                 if (sample.value === '') {
                     console.log(`[SKIP SAMPLE] 텍스트 값이 비어있음 - 자동으로 다음 질문으로 넘어갑니다`);
-                    setTimeout(function() {
+                    setTimeout(function () {
                         const submitBtn = document.querySelector('button[type="submit"]');
                         if (submitBtn) submitBtn.click();
                     }, 100);
@@ -519,7 +545,7 @@
             if (sample.type === 'radio') {
                 if (sample.value === '') {
                     console.log(`[SKIP SAMPLE] 라디오 값이 비어있음 - 자동으로 다음 질문으로 넘어갑니다`);
-                    setTimeout(function() {
+                    setTimeout(function () {
                         const submitBtn = document.querySelector('button[type="submit"]');
                         if (submitBtn) submitBtn.click();
                     }, 100);
@@ -560,9 +586,9 @@
                 console.log(`[SKIP SAMPLE] 질문 ${questionNumber}번은 자동입력하지 않음`);
                 return; // 자동입력하지 않고 종료
             }
-            
+
             // 자동으로 다음(제출) 버튼 클릭
-            setTimeout(function() {
+            setTimeout(function () {
                 const submitBtn = document.querySelector('button[type="submit"]');
                 console.log(`[SKIP SAMPLE] 제출 버튼 찾음:`, submitBtn);
                 if (submitBtn) {
@@ -575,7 +601,7 @@
         }
 
         // 단축키: Ctrl+Shift+S로 샘플입력, Ctrl+Shift+D로 스킵샘플 실행
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             if (e.ctrlKey && e.shiftKey && (e.key === 's' || e.key === 'S')) {
                 e.preventDefault();
                 const questionNumber = {{ actual_question_number - 1 if actual_question_number else current_index }};
@@ -589,9 +615,9 @@
                 fillSkipSample(questionNumber, currentIndex);
             }
         });
-
-        // 마지막 질문 제출 시 서버에서 AI 검토 선택 페이지로 리디렉션됨
+// 마지막 질문 제출 시 서버에서 AI 검토 선택 페이지로 리디렉션됨
         // JavaScript 인터셉트 제거하여 정상적인 서버 처리 허용
     </script>
 </body>
+
 </html>

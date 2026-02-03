@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,7 +31,7 @@
         }
 
         .back-btn {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
             color: white;
             border: none;
             padding: 8px 16px;
@@ -41,7 +42,7 @@
         }
 
         .back-btn:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255, 255, 255, 0.3);
             color: white;
         }
 
@@ -50,7 +51,7 @@
             border-radius: 12px;
             padding: 25px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
         }
 
         .section-title {
@@ -84,8 +85,13 @@
             font-size: 1.5rem;
         }
 
-        .progress-check.complete i { color: #16a34a; }
-        .progress-check.incomplete i { color: #d97706; }
+        .progress-check.complete i {
+            color: #16a34a;
+        }
+
+        .progress-check.incomplete i {
+            color: #d97706;
+        }
 
         .category-summary {
             display: grid;
@@ -150,9 +156,17 @@
             margin-bottom: 15px;
         }
 
-        .format-card.excel i { color: #16a34a; }
-        .format-card.pdf i { color: #dc2626; }
-        .format-card.kisa i { color: #7c3aed; }
+        .format-card.excel i {
+            color: #16a34a;
+        }
+
+        .format-card.pdf i {
+            color: #dc2626;
+        }
+
+        .format-card.kisa i {
+            color: #7c3aed;
+        }
 
         .format-card.disabled {
             opacity: 0.5;
@@ -216,10 +230,11 @@
         }
 
         .preview-item .answer {
-            font-weight: 500;
+            font-weight: 600;
             color: #1e3a5f;
             text-align: right;
-            max-width: 200px;
+            flex: 0 0 auto;
+            min-width: 100px;
         }
 
         .generate-btn {
@@ -232,6 +247,10 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+        }
+
+        .generate-btn.warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         }
 
         .generate-btn:hover {
@@ -257,7 +276,7 @@
             background: white;
             padding: 15px 20px;
             border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
             margin-bottom: 10px;
             display: flex;
             align-items: center;
@@ -265,14 +284,32 @@
             animation: slideIn 0.3s ease;
         }
 
-        .toast-message.success { border-left: 4px solid #10b981; }
-        .toast-message.error { border-left: 4px solid #ef4444; }
-        .toast-message.warning { border-left: 4px solid #f59e0b; }
-        .toast-message.info { border-left: 4px solid #3b82f6; }
+        .toast-message.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .toast-message.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .toast-message.warning {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .toast-message.info {
+            border-left: 4px solid #3b82f6;
+        }
 
         @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         .loading-overlay {
@@ -281,7 +318,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -306,7 +343,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         @media (max-width: 768px) {
@@ -343,7 +382,7 @@
                     <p class="mb-0 opacity-75">KISA 정보보호공시 제출용 자료를 생성합니다.</p>
                 </div>
                 <a href="/link11" class="back-btn">
-                    <i class="fas fa-arrow-left"></i> 대시보드로 돌아가기
+                    <i class="fas fa-arrow-left"></i> 공시 현황으로 돌아가기
                 </a>
             </div>
         </div>
@@ -419,7 +458,7 @@
         let selectedFormat = 'excel';
         let reportData = null;
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             loadProgress();
             loadPreview();
         });
@@ -455,8 +494,18 @@
                 </div>
             `;
 
-            // 완료되지 않으면 버튼 비활성화
-            document.getElementById('generate-btn').disabled = !isComplete;
+            // 완료되지 않아도 생성은 가능하도록 허용 (단, 경고 표시)
+            const generateBtn = document.getElementById('generate-btn');
+            if (generateBtn) {
+                generateBtn.disabled = false;
+                if (!isComplete) {
+                    generateBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 미완료 상태로 생성하기';
+                    generateBtn.classList.add('warning');
+                } else {
+                    generateBtn.innerHTML = '<i class="fas fa-download"></i> 공시자료 생성 및 다운로드';
+                    generateBtn.classList.remove('warning');
+                }
+            }
         }
 
         // 카테고리별 요약 렌더링
@@ -468,7 +517,8 @@
                 return;
             }
 
-            area.innerHTML = Object.entries(categories).map(([name, c]) => `
+            const sortedCategories = Object.entries(categories).sort((a, b) => a[1].id - b[1].id);
+            area.innerHTML = sortedCategories.map(([name, c]) => `
                 <div class="category-item">
                     <span class="name">${name}</span>
                     <span class="progress">${c.completed}/${c.total} 완료</span>
@@ -510,19 +560,53 @@
             }
 
             let html = '';
-            for (const [categoryName, categoryData] of Object.entries(report.categories)) {
+            const sortedReportCats = Object.entries(report.categories).sort((a, b) => a[1].id - b[1].id);
+            for (const [categoryName, categoryData] of sortedReportCats) {
                 html += `
                     <div class="preview-category">
                         <h6><i class="fas fa-folder"></i> ${categoryName}</h6>
                 `;
 
                 categoryData.questions.forEach(q => {
-                    const value = q.value || '-';
-                    const displayValue = typeof value === 'object' ? JSON.stringify(value) : value;
+                    let value = q.value;
+                    let displayValue = '-';
+
+                    // Q3(정보보호 투자 합계)는 type이 group이지만 실제로는 숫자값이므로 number로 취급
+                    const isNumericType = q.type === 'number' || q.id === 'Q3';
+
+                    if (value !== null && value !== undefined && value !== '' && value !== '해당 없음') {
+                        if (isNumericType) {
+                            try {
+                                const num = parseFloat(String(value).replace(/,/g, ''));
+                                displayValue = !isNaN(num) ? num.toLocaleString() : value;
+                            } catch (e) {
+                                displayValue = value;
+                            }
+                        } else if (q.type === 'yes_no') {
+                            const upperVal = String(value).toUpperCase();
+                            displayValue = (upperVal === 'YES') ? '예' : (upperVal === 'NO' ? '아니요' : value);
+                        } else if (typeof value === 'object') {
+                            if (Array.isArray(value)) {
+                                displayValue = value.join(', ');
+                            } else {
+                                // 랭크/구성 등 객체 형태 처리
+                                displayValue = Object.entries(value)
+                                    .map(([k, v]) => `${k}: ${v}`)
+                                    .join(' / ');
+                            }
+                        } else {
+                            displayValue = value;
+                        }
+                    } else if (isNumericType) {
+                        displayValue = '0';
+                    }
+
                     html += `
                         <div class="preview-item">
                             <span class="question">${q.id}. ${q.text}</span>
-                            <span class="answer">${displayValue}</span>
+                            <span class="answer" style="${(isNumericType && displayValue !== '해당 없음' && displayValue !== '-') ? 'color: #2563eb; font-family: monospace;' : ''}">
+                                ${displayValue}
+                            </span>
                         </div>
                     `;
                 });
@@ -605,4 +689,5 @@
         }
     </script>
 </body>
+
 </html>

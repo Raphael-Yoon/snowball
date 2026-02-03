@@ -71,10 +71,21 @@
             color: white;
         }
 
-        .stat-icon.investment { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
-        .stat-icon.personnel { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        .stat-icon.certification { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-        .stat-icon.activity { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); }
+        .stat-icon.investment {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        }
+
+        .stat-icon.personnel {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .stat-icon.certification {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .stat-icon.activity {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+        }
 
         .stat-value {
             font-size: 2rem;
@@ -200,9 +211,20 @@
             font-weight: 600;
         }
 
-        .category-badge.complete { background: #d1fae5; color: #059669; }
-        .category-badge.in-progress { background: #fef3c7; color: #d97706; }
-        .category-badge.not-started { background: #f3f4f6; color: #6b7280; }
+        .category-badge.complete {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .category-badge.in-progress {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .category-badge.not-started {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
 
         /* 질문 섹션 */
         .questions-section {
@@ -226,12 +248,40 @@
         }
 
         .question-item.level-1 {
-            background: #f8fafc;
+            background: #ffffff;
+            border-left: 6px solid #2563eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .question-item.level-2 {
             margin-left: 30px;
-            background: white;
+            background: #f8fafc;
+            border-left: 4px solid #64748b;
+        }
+
+        .question-item.level-3 {
+            margin-left: 60px;
+            background: #ffffff;
+            border-left: 3px dashed #94a3b8;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .question-item.level-4 {
+            margin-left: 90px;
+            background: #ffffff;
+            border-left: 2px dotted #cbd5e1;
+        }
+
+        /* Group 유형 질문의 안내 문구 스타일 */
+        .group-header {
+            padding: 12px 15px;
+            background: #eff6ff;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+            font-weight: 600;
+            color: #1e40af;
+            margin-top: 10px;
+            font-size: 0.95rem;
         }
 
         .question-header {
@@ -329,7 +379,8 @@
             color: #dc2626;
         }
 
-        .text-input, .date-input {
+        .text-input,
+        .date-input {
             width: 100%;
             padding: 12px 15px;
             border: 1px solid var(--border-color);
@@ -382,7 +433,8 @@
             font-size: 1rem;
         }
 
-        .text-input:focus, .date-input:focus {
+        .text-input:focus,
+        .date-input:focus {
             outline: none;
             border-color: var(--secondary-color);
             box-shadow: 0 0 0 3px rgba(var(--secondary-color-rgb), 0.1);
@@ -394,13 +446,15 @@
             box-shadow: 0 0 0 3px rgba(var(--secondary-color-rgb), 0.1);
         }
 
-        .checkbox-group, .select-group {
+        .checkbox-group,
+        .select-group {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
         }
 
-        .checkbox-item, .radio-item {
+        .checkbox-item,
+        .radio-item {
             display: flex;
             align-items: center;
             gap: 8px;
@@ -412,7 +466,8 @@
             position: relative;
         }
 
-        .checkbox-item:hover, .radio-item:hover {
+        .checkbox-item:hover,
+        .radio-item:hover {
             border-color: var(--secondary-color);
         }
 
@@ -448,7 +503,8 @@
             z-index: 1000;
         }
 
-        .checkbox-item.selected, .radio-item.selected {
+        .checkbox-item.selected,
+        .radio-item.selected {
             background: #eff6ff;
             border-color: var(--secondary-color);
         }
@@ -562,8 +618,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* 알림 메시지 */
@@ -573,34 +634,98 @@
             margin-bottom: 20px;
         }
 
-        .alert-success { background: #d1fae5; color: #059669; border: 1px solid #10b981; }
-        .alert-warning { background: #fef3c7; color: #d97706; border: 1px solid #f59e0b; }
-        .alert-error { background: #fee2e2; color: #dc2626; border: 1px solid #ef4444; }
+        .alert-success {
+            background: #d1fae5;
+            color: #059669;
+            border: 1px solid #10b981;
+        }
 
-        /* 반응형 */
-        @media (max-width: 768px) {
-            .disclosure-container {
-                padding: 15px;
-            }
+        .alert-warning {
+            background: #fef3c7;
+            color: #d97706;
+            border: 1px solid #f59e0b;
+        }
 
-            .page-title {
-                font-size: 1.8rem;
-            }
+        .alert-error {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #ef4444;
+        }
 
-            .dashboard-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        /* 가로 배치를 위한 그리드 스타일 */
+        .question-row-container {
+            display: flex;
+            gap: 15px;
+            margin-left: 30px;
+            /* level-2 들여쓰기 유지 */
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
 
-            .category-grid {
-                grid-template-columns: 1fr;
-            }
+        .question-grid-item {
+            flex: 1;
+            min-width: 250px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
 
-            .question-item.level-2 {
+        .question-grid-item:hover {
+            border-color: var(--secondary-color);
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .question-grid-item.level-2 {
+            margin-left: 0 !important;
+            /* 그리드 내부에서는 개별 들여쓰기 제거 */
+            margin-bottom: 0 !important;
+        }
+
+        .question-grid-item .question-header {
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .question-grid-item .question-number {
+            padding: 2px 8px;
+            font-size: 0.75rem;
+        }
+
+        .question-grid-item .question-text {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .question-grid-item .question-help {
+            font-size: 0.8rem;
+            padding: 8px;
+            margin-bottom: 12px;
+            flex-grow: 1;
+            /* 도움말 영역을 늘려 입력창 위치 통일 */
+            display: flex;
+            align-items: center;
+        }
+
+        .question-grid-item .number-input,
+        .question-grid-item .currency-input {
+            font-size: 1rem;
+            padding: 8px 12px;
+        }
+
+        /* 모바일 대응 */
+        @media (max-width: 992px) {
+            .question-row-container {
+                flex-direction: column;
                 margin-left: 15px;
             }
 
-            .yes-no-buttons {
-                flex-direction: column;
+            .question-grid-item {
+                min-width: 100%;
             }
         }
     </style>
@@ -641,7 +766,39 @@
                     <div class="progress-bar-fill" id="overall-progress-bar" style="width: 0%"></div>
                 </div>
                 <div class="mt-3 text-muted text-center" id="progress-stats">
-                    응답 완료: 0 / 65 질문
+                    응답 완료: 0 / 29 질문
+                </div>
+            </div>
+
+            <!-- 비율 요약 대시보드 -->
+            <div class="dashboard-grid mb-5">
+                <div class="stat-card">
+                    <div class="stat-icon investment">
+                        <i class="fas fa-hand-holding-usd"></i>
+                    </div>
+                    <div class="stat-value" id="dashboard-inv-ratio">0.00%</div>
+                    <div class="stat-label">정보보호 투자 비율 (B/A)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon personnel">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="stat-value" id="dashboard-per-ratio">0.00%</div>
+                    <div class="stat-label">정보보호 인력 비율 ((D1+D2)/C)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon certification">
+                        <i class="fas fa-medal"></i>
+                    </div>
+                    <div class="stat-value" id="dashboard-cert-count">0</div>
+                    <div class="stat-label">보유 인증 건수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon activity">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <div class="stat-value" id="dashboard-act-score">--</div>
+                    <div class="stat-label">보안 활동 지수</div>
                 </div>
             </div>
 
@@ -678,7 +835,7 @@
         <div id="questions-view" style="display: none;">
             <div class="mb-4">
                 <button class="btn-secondary-custom" onclick="showDashboard()">
-                    <i class="fas fa-arrow-left"></i> 대시보드로 돌아가기
+                    <i class="fas fa-arrow-left"></i> 공시 현황으로 돌아가기
                 </button>
             </div>
 
@@ -690,11 +847,14 @@
             </div>
 
             <div class="action-buttons">
+                <button class="btn-secondary-custom" onclick="showDashboard()">
+                    <i class="fas fa-th-large"></i> 공시 현황
+                </button>
                 <button class="btn-secondary-custom" onclick="saveDraft()">
                     <i class="fas fa-save"></i> 임시 저장
                 </button>
-                <button class="btn-primary-custom" onclick="saveAndNext()">
-                    저장 후 다음 <i class="fas fa-arrow-right"></i>
+                <button class="btn-secondary-custom" onclick="saveAndNext()">
+                    <i class="fas fa-arrow-right"></i> 저장 후 다음
                 </button>
             </div>
         </div>
@@ -754,7 +914,8 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-primary" onclick="loadFromYear()" id="load-from-year-btn">불러오기</button>
+                    <button type="button" class="btn btn-primary" onclick="loadFromYear()"
+                        id="load-from-year-btn">불러오기</button>
                 </div>
             </div>
         </div>
@@ -776,6 +937,43 @@
     <!-- 스크립트 -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // 질문 ID 상수 (백엔드 QID 클래스와 동기화)
+        const QID = {
+            // 1. 정보보호 투자 현황 (8개)
+            INV_HAS_INVESTMENT: "Q1",    // 정보보호 투자 발생 여부
+            INV_IT_AMOUNT: "Q2",         // 정보기술부문 투자액 A
+            INV_SEC_GROUP: "Q3",         // 정보보호부문 투자액 B Group
+            INV_SEC_DEPRECIATION: "Q4",  // 감가상각비
+            INV_SEC_SERVICE: "Q5",       // 서비스비용
+            INV_SEC_LABOR: "Q6",         // 인건비
+            INV_FUTURE_PLAN: "Q7",       // 향후 투자 계획
+            INV_FUTURE_AMOUNT: "Q8",     // 예정 투자액
+
+            // 2. 정보보호 인력 현황 (6개)
+            PER_HAS_TEAM: "Q9",          // 전담 부서/인력 여부
+            PER_TOTAL_EMP: "Q10",        // 총 임직원 수
+            PER_INTERNAL: "Q11",         // 내부 전담인력 수
+            PER_EXTERNAL: "Q12",         // 외주 전담인력 수
+            PER_HAS_CISO: "Q13",         // CISO/CPO 지정 여부
+            PER_CISO_DETAIL: "Q14",      // CISO/CPO 상세 현황
+
+            // 3. 정보보호 인증 (2개)
+            CERT_HAS_CERT: "Q15",        // 인증 보유 여부
+            CERT_DETAIL: "Q16",          // 인증 보유 현황
+
+            // 4. 정보보호 활동 (10개)
+            ACT_HAS_ACTIVITY: "Q17",     // 이용자 보호 활동 여부
+            ACT_ASSET_MGMT: "Q18",       // IT 자산 관리
+            ACT_TRAINING: "Q19",         // 교육/훈련 실적
+            ACT_GUIDELINES: "Q20",       // 지침/절차서
+            ACT_VULN_ANALYSIS: "Q21",    // 취약점 분석
+            ACT_ZERO_TRUST: "Q22",       // 제로트러스트
+            ACT_SBOM: "Q23",             // SBOM
+            ACT_CTAS: "Q24",             // C-TAS
+            ACT_MOCK_DRILL: "Q25",       // 모의훈련
+            ACT_INSURANCE: "Q26"         // 배상책임보험
+        };
+
         // 전역 변수
         let currentYear = new Date().getFullYear();
         let userId = {{ user_info.user_id if user_info else 0 }};
@@ -801,39 +999,12 @@
             'ISMS': 'Information Security Management System - 정보보안 관리체계'
         };
         let currentCategory = null;
+        let allCategories = []; // 서버에서 받아온 전체 카테고리 목록 저장
 
         // 질문 표시 번호 계산 함수
         function getDisplayQuestionNumber(question) {
-            // 부모가 없으면 (level 1 질문) 카테고리 내 순번으로 번호 매기기
-            if (!question.parent_question_id) {
-                // 같은 카테고리의 level 1 질문들 중에서 몇 번째인지 계산
-                const level1Questions = questions.filter(q =>
-                    q.category === question.category && q.level === 1
-                );
-                const index = level1Questions.findIndex(q => q.id === question.id);
-
-                // 카테고리 번호 추출 (예: "정보보호 투자 현황" -> 1)
-                const categoryNum = question.id.match(/^Q(\d+)/)[1];
-                return `Q${categoryNum}-${index + 1}`;
-            }
-
-            // 부모 질문 찾기
-            const parent = questions.find(q => q.id === question.parent_question_id);
-            if (!parent) {
-                return question.id;
-            }
-
-            // 부모의 표시 번호 가져오기 (재귀적으로)
-            const parentDisplayNum = getDisplayQuestionNumber(parent);
-
-            // 부모의 종속 질문 목록에서 현재 질문의 인덱스 찾기
-            const siblingIndex = parent.dependent_question_ids.indexOf(question.id);
-            if (siblingIndex === -1) {
-                return question.id;
-            }
-
-            // 부모 번호 + 하위 순번으로 표시
-            return `${parentDisplayNum}-${siblingIndex + 1}`;
+            // display_number 컬럼 사용 (없으면 ID로 fallback)
+            return question.display_number || question.id;
         }
 
         // 카테고리 아이콘 매핑
@@ -845,7 +1016,7 @@
         };
 
         // 페이지 로드 시 초기화
-        document.addEventListener('DOMContentLoaded', async function() {
+        document.addEventListener('DOMContentLoaded', async function () {
             await loadCategories();  // 카테고리 로드 완료 후
             await loadProgress();    // 진행률 로드
         });
@@ -857,6 +1028,7 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    allCategories = data.categories; // 전역 변수에 저장
                     renderCategories(data.categories);
                 }
             } catch (error) {
@@ -913,6 +1085,9 @@
 
                 if (data.success) {
                     updateProgressUI(data);
+                    if (data.ratios) {
+                        updateRatioDashboard(data.ratios);
+                    }
                     console.log('[진행률 로드] UI 업데이트 완료');
                 } else {
                     console.error('[진행률 로드] 실패:', data.message);
@@ -961,7 +1136,6 @@
                 }
 
                 if (badgeEl) {
-                    console.log(`[진행률 UI 업데이트] ✓ badgeEl 발견: cat-badge-${safeId}`);
                     if (catData.rate === 100) {
                         badgeEl.className = 'category-badge complete';
                         badgeEl.textContent = '완료';
@@ -972,14 +1146,45 @@
                         badgeEl.className = 'category-badge not-started';
                         badgeEl.textContent = '미시작';
                     }
-                } else {
-                    console.warn(`[진행률 UI 업데이트] ✗ badgeEl 없음: cat-badge-${safeId}`);
                 }
+            }
+        }
+
+        // 비율 요약 업데이트
+        function updateRatioDashboard(ratios) {
+            const invRatio = document.getElementById('dashboard-inv-ratio');
+            const perRatio = document.getElementById('dashboard-per-ratio');
+            if (invRatio) {
+                invRatio.textContent = ratios.investment_ratio.toFixed(2) + '%';
+                invRatio.style.color = ratios.investment_ratio > 0 ? '#0284c7' : '#94a3b8';
+            }
+            if (perRatio) {
+                perRatio.textContent = ratios.personnel_ratio.toFixed(2) + '%';
+                perRatio.style.color = ratios.personnel_ratio > 0 ? '#059669' : '#94a3b8';
+            }
+
+            // 보안 활동 지수 업데이트
+            const actScore = document.getElementById('dashboard-act-score');
+            if (actScore && ratios.activity_score !== undefined) {
+                actScore.textContent = ratios.activity_score;
+                // 점수에 따라 색상 변경 (0~30: 회색, 31~70: 주황색, 71~100: 초록색)
+                if (ratios.activity_score >= 70) actScore.style.color = '#10b981';
+                else if (ratios.activity_score >= 30) actScore.style.color = '#f59e0b';
+                else actScore.style.color = '#94a3b8';
             }
         }
 
         // 카테고리 질문 표시
         let currentCategoryId = null;
+        const GRID_QUESTION_GROUPS = {
+            'Q9': ['Q10', 'Q28', 'Q11', 'Q12'], // 인력 현황 (총임직원, IT인력, 내부, 외주)
+            'Q3': ['Q4', 'Q5', 'Q6']           // 투자액 상세 (감가, 서비스, 인건비)
+        };
+
+        function isGridQuestion(qid) {
+            return Object.values(GRID_QUESTION_GROUPS).flat().includes(qid);
+        }
+
         async function showCategory(categoryId, categoryName) {
             currentCategory = categoryName;
             currentCategoryId = categoryId;
@@ -1012,10 +1217,10 @@
 
                     // 금액 필드 초기 포맷팅 및 비율 계산
                     setTimeout(() => {
-                        const q12Input = document.getElementById('input-Q1-2');
-                        const q13Input = document.getElementById('input-Q1-3');
-                        if (q12Input && q12Input.value) formatCurrencyOnBlur(q12Input);
-                        if (q13Input && q13Input.value) formatCurrencyOnBlur(q13Input);
+                        const itAmountInput = document.getElementById(`input-${QID.INV_IT_AMOUNT}`);
+                        const secGroupInput = document.getElementById(`input-${QID.INV_SEC_GROUP}`);
+                        if (itAmountInput && itAmountInput.value) formatCurrencyOnBlur(itAmountInput);
+                        if (secGroupInput && secGroupInput.value) formatCurrencyOnBlur(secGroupInput);
                         calculateInvestmentRatio();
                     }, 100);
                 }
@@ -1029,24 +1234,64 @@
             const container = document.getElementById('questions-list');
             container.innerHTML = '';
 
-            // 1단계 질문만 먼저 표시하고, 종속 질문은 답변에 따라 표시
+            // 1단계 질문부터 재귀적으로 렌더링
             const level1Questions = questions.filter(q => q.level === 1);
-
             level1Questions.forEach(q => {
-                const questionEl = createQuestionElement(q);
-                container.appendChild(questionEl);
+                appendQuestionRecursive(container, q);
+            });
+        }
 
-                // YES 응답 시 종속 질문 표시
-                if (q.dependent_question_ids && answers[q.id] === 'YES') {
+        function appendQuestionRecursive(container, q) {
+            const isGrid = isGridQuestion(q.id);
+            const questionEl = createQuestionElement(q);
+
+            if (isGrid) {
+                questionEl.classList.add('question-grid-item');
+            }
+
+            container.appendChild(questionEl);
+
+            if (q.dependent_question_ids && isQuestionTriggered(q, answers[q.id])) {
+                const groupChildren = GRID_QUESTION_GROUPS[q.id];
+
+                if (groupChildren) {
+                    // 가로 배치를 위한 컨테이너 생성
+                    const rowContainer = document.createElement('div');
+                    rowContainer.className = 'question-row-container';
+                    container.appendChild(rowContainer);
+
                     q.dependent_question_ids.forEach(depId => {
                         const depQ = questions.find(dq => dq.id === depId);
                         if (depQ) {
-                            const depEl = createQuestionElement(depQ);
-                            container.appendChild(depEl);
+                            if (groupChildren.includes(depId)) {
+                                appendQuestionRecursive(rowContainer, depQ);
+                            } else {
+                                appendQuestionRecursive(container, depQ);
+                            }
+                        }
+                    });
+                } else {
+                    q.dependent_question_ids.forEach(depId => {
+                        const depQ = questions.find(dq => dq.id === depId);
+                        if (depQ) {
+                            appendQuestionRecursive(container, depQ);
                         }
                     });
                 }
-            });
+            }
+        }
+
+        // 질문 의존성 트리거 여부 확인
+        function isQuestionTriggered(question, answerValue) {
+            // Group 유형은 부모가 보이면 항상 하위 항목을 트리거함
+            if (question.type === 'group') return true;
+
+            if (answerValue === undefined || answerValue === null || answerValue === '') return false;
+
+            if (question.type === 'yes_no') {
+                return answerValue === 'YES' || answerValue === 'yes' || answerValue === 'Yes';
+            }
+            return false;
         }
 
         // 질문 요소 생성
@@ -1074,23 +1319,81 @@
                     `;
                     break;
 
+                case 'group':
+                    answerHtml = `
+                        <div class="group-header">
+                            <i class="fas fa-layer-group"></i> 아래 상세 항목을 입력해 주세요.
+                        </div>
+                    `;
+                    break;
+
+                case 'table':
+                    const tableOptions = q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : [];
+                    let tableData = [];
+                    try {
+                        tableData = currentValue ? (typeof currentValue === 'string' ? JSON.parse(currentValue) : currentValue) : [{}];
+                        if (!Array.isArray(tableData)) tableData = [{}];
+                    } catch (e) { tableData = [{}]; }
+
+                    let tableRowsHtml = tableData.map((row, idx) => `
+                        <tr>
+                            ${tableOptions.map(opt => `
+                                <td>
+                                    <input type="text" class="table-input" 
+                                           data-row-idx="${idx}" data-col-name="${opt}"
+                                           value="${row[opt] || ''}"
+                                           oninput="handleTableInput('${q.id}', this)"
+                                           style="width: 100%; border: none; padding: 5px; outline: none;">
+                                </td>
+                            `).join('')}
+                            <td style="width: 40px; text-align: center;">
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteTableRow('${q.id}', ${idx})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+
+                    answerHtml = `
+                        <div class="table-container" style="overflow-x: auto; background: white; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <table class="table table-bordered mb-0" style="min-width: 600px;">
+                                <thead class="table-light">
+                                    <tr>
+                                        ${tableOptions.map(opt => `<th>${opt}</th>`).join('')}
+                                        <th style="width: 50px;">삭제</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-${q.id}">
+                                    ${tableRowsHtml}
+                                </tbody>
+                            </table>
+                            <div class="p-2 bg-light text-end">
+                                <button class="btn btn-sm btn-primary" onclick="addTableRow('${q.id}')">
+                                    <i class="fas fa-plus"></i> 행 추가
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    break;
+
                 case 'text':
+                case 'textarea':
                     answerHtml = `
                         <textarea class="text-input" rows="3"
-                                  placeholder="답변을 입력하세요..."
+                                  placeholder="상세 내용을 입력하세요..."
                                   onchange="updateAnswer('${q.id}', this.value)">${currentValue}</textarea>
                     `;
                     break;
 
                 case 'number':
-                    // Q1-3 (정보보호 투자액)인 경우 비율 자동 계산 표시 추가
-                    if (q.id === 'Q1-3') {
-                        const formattedQ13 = currentValue ? formatCurrency(currentValue) : '';
+                    // 정보보호 투자액 Group(Q3)인 경우 비율 자동 계산 표시 추가
+                    if (q.id === QID.INV_SEC_GROUP) {
+                        const formattedSecGroup = currentValue ? formatCurrency(currentValue) : '';
                         answerHtml = `
                             <div class="currency-input-wrapper" style="position: relative;">
-                                <input type="text" class="currency-input" id="input-Q1-3"
+                                <input type="text" class="currency-input" id="input-${QID.INV_SEC_GROUP}"
                                        placeholder="정보보호 투자액을 입력하세요"
-                                       value="${formattedQ13}"
+                                       value="${formattedSecGroup}"
                                        data-raw-value="${currentValue}"
                                        oninput="handleCurrencyInput(this, '${q.id}')"
                                        onblur="formatCurrencyOnBlur(this)"
@@ -1103,13 +1406,14 @@
                                 <span id="ratio-value" style="color: #0ea5e9; font-weight: 700; font-size: 1.1em;">--%</span>
                             </div>
                         `;
-                    } else if (q.id === 'Q1-2') {
-                        const formattedQ12 = currentValue ? formatCurrency(currentValue) : '';
+                    } else if (q.text.includes('(원)')) {
+                        // 금액 관련 필드 (천 단위 콤마 + 원 단위 표시)
+                        const formattedVal = currentValue ? formatCurrency(currentValue) : '';
                         answerHtml = `
                             <div class="currency-input-wrapper" style="position: relative;">
-                                <input type="text" class="currency-input" id="input-Q1-2"
-                                       placeholder="전체 IT 투자금액을 입력하세요"
-                                       value="${formattedQ12}"
+                                <input type="text" class="currency-input" id="input-${q.id}"
+                                       placeholder="금액을 입력하세요"
+                                       value="${formattedVal}"
                                        data-raw-value="${currentValue}"
                                        oninput="handleCurrencyInput(this, '${q.id}')"
                                        onblur="formatCurrencyOnBlur(this)"
@@ -1118,29 +1422,70 @@
                             </div>
                         `;
                     } else {
-                        // 질문 텍스트에 따라 포맷팅 방식 결정 (금액/비용 관련만 쉼표 적용)
-                        const isCurrencyRelated = q.text.includes('비용') || q.text.includes('금액') || q.text.includes('예산');
-
-                        if (isCurrencyRelated) {
-                            const formattedNumber = currentValue ? formatNumber(currentValue) : '';
-                            answerHtml = `
-                                <input type="text" class="number-input"
-                                       placeholder="숫자를 입력하세요"
-                                       value="${formattedNumber}"
-                                       data-raw-value="${currentValue}"
-                                       oninput="handleNumberInput(this, '${q.id}')"
-                                       onblur="formatNumberOnBlur(this)">
-                            `;
-                        } else {
-                            // 인원 수, 경력 등 일반 숫자는 쉼표 없이 오른쪽 정렬만
-                            answerHtml = `
-                                <input type="number" class="number-input"
-                                       placeholder="숫자를 입력하세요"
-                                       value="${currentValue}"
-                                       onchange="updateAnswer('${q.id}', this.value)">
-                            `;
-                        }
+                        // 일반 숫자 (인원 수, 횟수 등)
+                        // Q4-17 (사고 건수) 등은 일반 숫자 처리
+                        answerHtml = `
+                            <input type="number" class="number-input"
+                                   placeholder="숫자를 입력하세요"
+                                   value="${currentValue}"
+                                   data-raw-value="${currentValue}"
+                                   oninput="handleNumberInput(this, '${q.id}')">
+                        `;
                     }
+                    break;
+
+                case 'rank_composition':
+                    let rankOptions = [];
+                    try {
+                        rankOptions = q.options ? JSON.parse(q.options) : [];
+                    } catch (e) {
+                        rankOptions = ["임원급", "팀장급", "실무자"];
+                    }
+
+                    let currentComp = {};
+                    try {
+                        if (typeof currentValue === 'string' && currentValue.startsWith('{')) {
+                            currentComp = JSON.parse(currentValue);
+                        } else if (typeof currentValue === 'object' && currentValue !== null) {
+                            currentComp = currentValue;
+                        }
+                    } catch (e) {
+                        console.error('JSON parse error for composition:', e);
+                        currentComp = {};
+                    }
+
+                    let fieldsHtml = rankOptions.map(opt => `
+                        <div class="composition-field" style="display: flex; align-items: center; margin-bottom: 8px; gap: 10px;">
+                            <span style="flex: 0 0 100px; font-weight: 500; color: #475569;">${opt}</span>
+                            <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                                <input type="number" class="number-input rank-input-${q.id}" 
+                                       data-rank-name="${opt}"
+                                       value="${(currentComp[opt] !== undefined && currentComp[opt] !== null) ? currentComp[opt] : ''}" 
+                                       oninput="handleCompositionInput('${q.id}')"
+                                       placeholder="0"
+                                       style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; width: 120px; text-align: right; background: white; font-weight: 600;">
+                                <span class="text-muted">명</span>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    const totalComp = Object.values(currentComp).reduce((a, b) => (Number(a) || 0) + (Number(b) || 0), 0);
+
+                    answerHtml = `
+                        <div class="composition-container" style="background: #f1f5f9; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                            <div style="margin-bottom: 15px; font-size: 0.9rem; color: #64748b; display: flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-info-circle"></i> 각 항목에 숫자를 입력하면 합계가 자동 계산됩니다.
+                            </div>
+                            ${fieldsHtml}
+                            <div class="composition-total" style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: flex-end; gap: 15px;">
+                                <span style="font-weight: 700; color: #1e293b; font-size: 1.1rem;">총 인원 합계:</span>
+                                <div style="display: flex; align-items: baseline; gap: 4px;">
+                                    <span id="total-${q.id}" style="font-size: 1.8rem; font-weight: 800; color: #3b82f6;">${totalComp}</span>
+                                    <span style="font-weight: 700; color: #1e293b; font-size: 1.1rem;">명</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                     break;
 
                 case 'date':
@@ -1172,8 +1517,8 @@
                     answerHtml = `
                         <div class="checkbox-group">
                             ${checkOptions.map(opt => {
-                                const tooltip = securityTerms[opt] ? `title="${securityTerms[opt]}"` : '';
-                                return `
+                        const tooltip = securityTerms[opt] ? `title="${securityTerms[opt]}"` : '';
+                        return `
                                 <div class="checkbox-item ${selectedValues.includes(opt) ? 'selected' : ''}"
                                      onclick="toggleCheckbox('${q.id}', '${opt}', this)"
                                      ${tooltip}>
@@ -1206,15 +1551,31 @@
 
             const displayNumber = getDisplayQuestionNumber(q);
 
+            const isGrid = isGridQuestion(q.id);
+            let formattedText = q.text;
+            if (isGrid && formattedText.includes(' (')) {
+                // 공백 + 괄호 형태(상세 설명)만 줄바꿈하고 스타일에 적용
+                // (C), (D1) 처럼 공백 없이 붙은 기호는 제목으로 취급하여 한 줄 유지
+                formattedText = formattedText.replace(' (', '<br><small class="text-muted" style="font-weight: normal; font-size: 0.8rem; margin-top: 4px; display: inline-block;">(');
+            }
+
+            let formattedHelpText = q.help_text || '';
+            if (isGrid && formattedHelpText.includes('(')) {
+                // 부모 괄호와 내용 삭제 (중복 방지)
+                formattedHelpText = formattedHelpText.replace(/\s*\(.*?\)/g, '').trim();
+            }
+
             div.innerHTML = `
-                <div class="question-header">
+                <div class="question-header" style="align-items: flex-start;">
                     <span class="question-number">${displayNumber}</span>
-                    <span class="question-text">${q.text}</span>
+                    <span class="question-text">${formattedText}</span>
+                    ${(q.type !== 'number' && !isGrid) ? `
                     <button class="question-reset-btn" onclick="resetQuestion('${q.id}'); event.stopPropagation();" title="이 질문 초기화">
                         <i class="fas fa-undo"></i> 초기화
                     </button>
+                    ` : ''}
                 </div>
-                ${q.help_text ? `<div class="question-help"><i class="fas fa-info-circle"></i> ${q.help_text}</div>` : ''}
+                ${formattedHelpText ? `<div class="question-help"><i class="fas fa-info-circle"></i> ${formattedHelpText}</div>` : ''}
                 <div class="answer-section">
                     ${answerHtml}
                 </div>
@@ -1225,39 +1586,90 @@
         }
 
         // YES/NO 선택
-        function selectYesNo(questionId, value, btn) {
+        // YES/NO 선택
+        async function selectYesNo(questionId, value, btn) {
+            const question = questions.find(q => q.id === questionId);
+
+            if (value === 'NO' && question && question.dependent_question_ids) {
+                // 재귀적으로 모든 하위 답변이 존재하는지 확인
+                const hasAnswers = checkAnyDependentAnswers(question);
+
+                if (hasAnswers) {
+                    if (!confirm('상위 질문을 "아니오"로 변경하면 이미 작성된 모든 하위 데이터가 삭제됩니다. 계속하시겠습니까?')) {
+                        return;
+                    }
+                    // 로컬 및 DB에서 재귀적 삭제 (API 호출 포함)
+                    recursiveClearAnswers(question);
+                }
+            }
+
             const buttons = btn.parentElement.querySelectorAll('.yes-no-btn');
             buttons.forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
-            updateAnswer(questionId, value);
 
-            // 종속 질문 처리
-            const question = questions.find(q => q.id === questionId);
+            updateAnswer(questionId, value, true);
+
             if (question && question.dependent_question_ids) {
                 if (value === 'YES') {
-                    // 종속 질문 표시
                     showDependentQuestions(question);
                 } else {
-                    // 종속 질문 숨기기
                     hideDependentQuestions(question);
                 }
             }
         }
 
+        // 재귀적으로 하위 답변 존재 여부 확인
+        function checkAnyDependentAnswers(parentQ) {
+            if (!parentQ.dependent_question_ids) return false;
+            for (const depId of parentQ.dependent_question_ids) {
+                if (answers[depId] !== undefined && answers[depId] !== null && answers[depId] !== '') return true;
+                const depQ = questions.find(q => q.id === depId);
+                if (depQ && checkAnyDependentAnswers(depQ)) return true;
+            }
+            return false;
+        }
+
+        // 재귀적으로 하위 답변 데이터 삭제
+        function recursiveClearAnswers(parentQ) {
+            if (!parentQ.dependent_question_ids) return;
+            parentQ.dependent_question_ids.forEach(depId => {
+                delete answers[depId];
+                // DB에서도 삭제되도록 (백엔드에서 이미 처리하지만 동기화를 위해)
+                const depQ = questions.find(q => q.id === depId);
+                if (depQ) recursiveClearAnswers(depQ);
+            });
+        }
+
         // 종속 질문 표시
         function showDependentQuestions(parentQuestion) {
-            const container = document.getElementById('questions-list');
             const parentEl = document.getElementById(`question-${parentQuestion.id}`);
+            if (!parentEl) return;
 
-            // 종속 질문을 역순으로 처리하여 올바른 순서로 표시
-            // (after()는 바로 다음에 삽입하므로 역순으로 처리해야 원래 순서가 유지됨)
+            // 종속 질문을 역순으로 처리하여 부모 바로 아래에 올바른 순서로 삽입
             const reversedIds = [...parentQuestion.dependent_question_ids].reverse();
             reversedIds.forEach(depId => {
                 if (!document.getElementById(`question-${depId}`)) {
-                    const depQ = questions.find(q => q.id === depId);
+                    const depQ = questions.find(dq => dq.id === depId);
                     if (depQ) {
                         const depEl = createQuestionElement(depQ);
-                        parentEl.after(depEl);
+                        if (isGridQuestion(depId)) {
+                            depEl.classList.add('question-grid-item');
+                            // 가로 배치 컨테이너가 없으면 생성 (동축 표시 대응)
+                            let rowContainer = parentEl.nextElementSibling;
+                            if (!rowContainer || !rowContainer.classList.contains('question-row-container')) {
+                                rowContainer = document.createElement('div');
+                                rowContainer.className = 'question-row-container';
+                                parentEl.after(rowContainer);
+                            }
+                            rowContainer.prepend(depEl);
+                        } else {
+                            parentEl.after(depEl);
+                        }
+
+                        // 하위의 하위 질문도 트리거 여부 확인하여 표시 (재귀)
+                        if (depQ.dependent_question_ids && isQuestionTriggered(depQ, answers[depId])) {
+                            showDependentQuestions(depQ);
+                        }
                     }
                 }
             });
@@ -1268,6 +1680,11 @@
             parentQuestion.dependent_question_ids.forEach(depId => {
                 const depEl = document.getElementById(`question-${depId}`);
                 if (depEl) {
+                    // 재귀적으로 하위의 하위 질문들도 삭제
+                    const depQ = questions.find(q => q.id === depId);
+                    if (depQ && depQ.dependent_question_ids) {
+                        hideDependentQuestions(depQ);
+                    }
                     depEl.remove();
                     delete answers[depId];
                 }
@@ -1283,7 +1700,9 @@
             });
             el.classList.add('selected');
             el.querySelector('i').className = 'fas fa-check-circle';
-            updateAnswer(questionId, value);
+
+            // 옵션 선택은 즉시 저장
+            updateAnswer(questionId, value, true);
         }
 
         // 체크박스 토글
@@ -1301,10 +1720,45 @@
             updateAnswer(questionId, selectedValues);
         }
 
-        // 답변 업데이트
-        function updateAnswer(questionId, value) {
+        let autoSaveTimer;
+        // 답변 업데이트 (immediate가 true이면 즉시 DB 저장, 아니면 디바운스 적용)
+        function updateAnswer(questionId, value, immediate = false) {
             answers[questionId] = value;
-            console.log(`Answer updated: ${questionId} = ${JSON.stringify(value)}`);
+
+            if (immediate) {
+                saveOneAnswer(questionId, value);
+            } else {
+                // 입력 중에는 1초 후 자동 저장
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(() => {
+                    saveOneAnswer(questionId, value);
+                }, 1000);
+            }
+        }
+
+        // 개별 답변 DB 저장 및 진행률 갱신
+        async function saveOneAnswer(questionId, value) {
+            try {
+                const response = await fetch('/link11/api/answers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question_id: questionId,
+                        value: value,
+                        year: currentYear
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    loadProgress();
+                } else if (data.message && data.message.includes('초과')) {
+                    showToast(data.message, 'error');
+                    // 입력값 원래대로 또는 강조? 
+                }
+            } catch (error) {
+                console.error('실시간 저장 오류:', error);
+            }
         }
 
         // 금액 포맷팅 (천 단위 쉼표)
@@ -1336,7 +1790,28 @@
             }
         }
 
-        // 숫자 포맷팅 (천 단위 쉼표, 소수점 허용)
+        // 구성 입력 처리 (Q2-4 등)
+        function handleCompositionInput(questionId) {
+            const inputs = document.querySelectorAll(`.rank-input-${questionId}`);
+            let composition = {};
+            let total = 0;
+
+            inputs.forEach(input => {
+                const val = parseInt(input.value) || 0;
+                const name = input.dataset.rankName;
+                composition[name] = val;
+                total += val;
+            });
+
+            // 합계 표시 업데이트
+            const totalEl = document.getElementById(`total-${questionId}`);
+            if (totalEl) totalEl.textContent = total;
+
+            // JSON 문자열로 저장
+            updateAnswer(questionId, JSON.stringify(composition));
+        }
+
+        // 숫자 입력 처리
         function formatNumber(value) {
             if (!value && value !== 0) return '';
             const num = String(value).replace(/[^\d.]/g, '');
@@ -1374,28 +1849,141 @@
             }
         }
 
+        // 통화 입력 처리 (콤마 추가)
+        function handleCurrencyInput(input, questionId) {
+            let rawValue = input.value.replace(/[^\d]/g, '');
+            input.dataset.rawValue = rawValue;
+
+            // 답변 업데이트
+            updateAnswer(questionId, rawValue);
+
+            // 정보보호 투자액 하위 항목인 경우 상위 합계 계산
+            const securitySubItems = [QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR];
+            if (securitySubItems.includes(questionId)) {
+                calculateSecurityInvestmentSum();
+            }
+
+            // 투자 비율 계산
+            const investmentRelatedItems = [QID.INV_IT_AMOUNT, QID.INV_SEC_GROUP, ...securitySubItems];
+            if (investmentRelatedItems.includes(questionId)) {
+                calculateInvestmentRatio();
+            }
+        }
+
+        function formatCurrencyOnBlur(input) {
+            if (input.dataset.rawValue) {
+                input.value = formatCurrency(input.dataset.rawValue);
+            }
+        }
+
+        // 정보보호 투자액 합계 자동 계산 (Group = 감가상각비 + 서비스비용 + 인건비)
+        function calculateSecurityInvestmentSum() {
+            const v1 = parseFloat(document.getElementById(`input-${QID.INV_SEC_DEPRECIATION}`)?.dataset.rawValue || 0) || 0;
+            const v2 = parseFloat(document.getElementById(`input-${QID.INV_SEC_SERVICE}`)?.dataset.rawValue || 0) || 0;
+            const v3 = parseFloat(document.getElementById(`input-${QID.INV_SEC_LABOR}`)?.dataset.rawValue || 0) || 0;
+
+            const sum = v1 + v2 + v3;
+
+            // 로컬 상태 업데이트
+            answers[QID.INV_SEC_GROUP] = sum;
+
+            // DB 저장 (Group 타입이라도 통계 및 보고서용으로 값이 필요함)
+            saveOneAnswer(QID.INV_SEC_GROUP, sum);
+
+            // 화면에 입력칸이 있으면 업데이트 (보통 Group 타입은 없지만 만일을 대비)
+            const secGroupInput = document.getElementById(`input-${QID.INV_SEC_GROUP}`);
+            if (secGroupInput) {
+                secGroupInput.value = formatCurrency(sum);
+                secGroupInput.dataset.rawValue = sum;
+            }
+        }
+
         // 정보보호 투자 비율 자동 계산
         function calculateInvestmentRatio() {
-            const totalItInput = document.getElementById('input-Q1-2');
-            const securityInput = document.getElementById('input-Q1-3');
+            const totalItInput = document.getElementById(`input-${QID.INV_IT_AMOUNT}`);
             const ratioDisplay = document.getElementById('ratio-value');
 
-            if (!totalItInput || !securityInput || !ratioDisplay) return;
+            if (!totalItInput || !ratioDisplay) return;
 
-            // raw value 사용 (쉼표 제거된 숫자)
-            const totalIt = parseFloat(totalItInput.dataset.rawValue || totalItInput.value.replace(/[^\d]/g, '')) || 0;
-            const security = parseFloat(securityInput.dataset.rawValue || securityInput.value.replace(/[^\d]/g, '')) || 0;
+            const totalIt = parseFloat((totalItInput.dataset.rawValue || totalItInput.value || '0').toString().replace(/[^\d.]/g, '')) || 0;
 
-            if (totalIt > 0 && security > 0) {
-                const ratio = (security / totalIt * 100).toFixed(2);
-                ratioDisplay.textContent = ratio + '%';
-                ratioDisplay.style.color = '#0ea5e9';
-            } else if (totalIt > 0 && security === 0) {
-                ratioDisplay.textContent = '0%';
-                ratioDisplay.style.color = '#64748b';
+            // 정보보호 투자액 Group 입력 필드를 찾거나, 없으면 로컬 데이터 또는 하위 항목 합계 사용
+            const secGroupInput = document.getElementById(`input-${QID.INV_SEC_GROUP}`);
+            let security = 0;
+            if (secGroupInput) {
+                security = parseFloat((secGroupInput.dataset.rawValue || secGroupInput.value || '0').toString().replace(/[^\d.]/g, '')) || 0;
             } else {
-                ratioDisplay.textContent = '--%';
+                // 하위 항목 실시간 합산
+                const v1 = parseFloat(document.getElementById(`input-${QID.INV_SEC_DEPRECIATION}`)?.dataset.rawValue || 0) || 0;
+                const v2 = parseFloat(document.getElementById(`input-${QID.INV_SEC_SERVICE}`)?.dataset.rawValue || 0) || 0;
+                const v3 = parseFloat(document.getElementById(`input-${QID.INV_SEC_LABOR}`)?.dataset.rawValue || 0) || 0;
+                security = v1 + v2 + v3;
+                if (security === 0 && answers[QID.INV_SEC_GROUP]) security = parseFloat(answers[QID.INV_SEC_GROUP]) || 0;
+            }
+
+            if (totalIt > 0) {
+                const ratio = (security / totalIt) * 100;
+                ratioDisplay.textContent = ratio.toFixed(2) + '%';
+
+                // 유효성 체크 색상 변경 (B > A 인 경우 경고)
+                if (security > totalIt) {
+                    ratioDisplay.style.color = '#ef4444';
+                    totalItInput.style.borderColor = '#ef4444';
+                } else {
+                    ratioDisplay.style.color = '#2563eb';
+                    totalItInput.style.borderColor = '';
+                }
+            } else {
+                ratioDisplay.textContent = '0.00%';
                 ratioDisplay.style.color = '#94a3b8';
+            }
+        }
+
+        // 테이블 입력 처리
+        function handleTableInput(questionId, input) {
+            const idx = parseInt(input.dataset.rowIdx);
+            const col = input.dataset.colName;
+
+            if (!answers[questionId] || !Array.isArray(answers[questionId])) {
+                answers[questionId] = [{}];
+            }
+
+            if (!answers[questionId][idx]) answers[questionId][idx] = {};
+            answers[questionId][idx][col] = input.value;
+
+            updateAnswer(questionId, answers[questionId]);
+        }
+
+        function addTableRow(questionId) {
+            if (!answers[questionId] || !Array.isArray(answers[questionId])) {
+                answers[questionId] = [];
+            }
+            answers[questionId].push({});
+            // UI 갱신을 위해 해당 질문만 다시 렌더링하거나 전체 렌더링
+            const q = questions.find(item => item.id === questionId);
+            if (q) {
+                const oldEl = document.getElementById(`question-${questionId}`);
+                if (oldEl) {
+                    const newEl = createQuestionElement(q);
+                    oldEl.replaceWith(newEl);
+                }
+            }
+        }
+
+        function deleteTableRow(questionId, idx) {
+            if (answers[questionId] && Array.isArray(answers[questionId])) {
+                answers[questionId].splice(idx, 1);
+                if (answers[questionId].length === 0) answers[questionId] = [{}];
+                updateAnswer(questionId, answers[questionId]);
+
+                const q = questions.find(item => item.id === questionId);
+                if (q) {
+                    const oldEl = document.getElementById(`question-${questionId}`);
+                    if (oldEl) {
+                        const newEl = createQuestionElement(q);
+                        oldEl.replaceWith(newEl);
+                    }
+                }
             }
         }
 
@@ -1540,24 +2128,16 @@
 
         // 다음 카테고리로 이동
         function goToNextCategory() {
-            // 카테고리 순서 정의 (ID, 이름)
-            const categoryOrder = [
-                { id: 1, name: '정보보호 투자 현황' },
-                { id: 2, name: '정보보호 인력 현황' },
-                { id: 3, name: '정보보호 관련 인증' },
-                { id: 4, name: '정보보호 관련 활동' }
-            ];
-
-            if (!currentCategoryId) {
+            if (!currentCategoryId || allCategories.length === 0) {
                 showDashboard();
                 return;
             }
 
-            const currentIndex = categoryOrder.findIndex(c => c.id === currentCategoryId);
+            const currentIndex = allCategories.findIndex(c => c.id === currentCategoryId);
 
-            if (currentIndex >= 0 && currentIndex < categoryOrder.length - 1) {
+            if (currentIndex >= 0 && currentIndex < allCategories.length - 1) {
                 // 다음 카테고리로 이동
-                const nextCategory = categoryOrder[currentIndex + 1];
+                const nextCategory = allCategories[currentIndex + 1];
                 showToast(`'${nextCategory.name}' 카테고리로 이동합니다.`, 'info');
                 showCategory(nextCategory.id, nextCategory.name);
             } else {

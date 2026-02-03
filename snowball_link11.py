@@ -30,6 +30,49 @@ MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# ============================================================================
+# 질문 ID 상수 정의 (순차형 ID 체계)
+# - ID는 순차적 (Q1, Q2, ...), display_number는 화면 표시용 계층형
+# ============================================================================
+class QID:
+    """정보보호공시 질문 ID 상수"""
+    # 카테고리 1: 정보보호 투자
+    INV_HAS_INVESTMENT = "Q1"      # 정보보호 투자 발생 여부
+    INV_IT_AMOUNT = "Q2"           # 정보기술부문 투자액 A
+    INV_SEC_GROUP = "Q3"           # 정보보호부문 투자액 B Group
+    INV_SEC_DEPRECIATION = "Q4"    # 감가상각비
+    INV_SEC_SERVICE = "Q5"         # 서비스비용
+    INV_SEC_LABOR = "Q6"           # 인건비
+    INV_HAS_PLAN = "Q7"            # 향후 투자 계획 여부
+    INV_PLAN_AMOUNT = "Q8"         # 예정 투자액
+    INV_MAIN_ITEMS = "Q27"         # 주요 투자 항목 (신규)
+
+    # 카테고리 2: 정보보호 인력
+    PER_HAS_TEAM = "Q9"            # 전담 부서/인력 여부
+    PER_TOTAL_EMPLOYEES = "Q10"    # 총 임직원 수
+    PER_INTERNAL = "Q11"           # 내부 전담인력 수
+    PER_EXTERNAL = "Q12"           # 외주 전담인력 수
+    PER_HAS_CISO = "Q13"           # CISO/CPO 지정 여부
+    PER_CISO_DETAIL = "Q14"        # CISO/CPO 상세 현황
+    PER_IT_EMPLOYEES = "Q28"       # 정보기술인력(C) (신규)
+    PER_CISO_ACTIVITY = "Q29"      # CISO 활동내역 (신규)
+
+    # 카테고리 3: 정보보호 인증
+    CERT_HAS_CERT = "Q15"          # 인증 보유 여부
+    CERT_DETAIL = "Q16"            # 인증 보유 현황
+
+    # 카테고리 4: 정보보호 활동
+    ACT_HAS_ACTIVITY = "Q17"       # 이용자 보호 활동 여부
+    ACT_IT_ASSET = "Q18"           # IT 자산 관리
+    ACT_TRAINING = "Q19"           # 교육/훈련 실적
+    ACT_PROCEDURE = "Q20"          # 지침/절차서
+    ACT_VULN_ASSESS = "Q21"        # 취약점 분석
+    ACT_ZERO_TRUST = "Q22"         # 제로트러스트
+    ACT_SBOM = "Q23"               # SBOM
+    ACT_CTAS = "Q24"               # C-TAS
+    ACT_DRILL = "Q25"              # 모의훈련
+    ACT_INSURANCE = "Q26"          # 배상책임보험
+
 
 # ============================================================================
 # Helper Functions
@@ -179,18 +222,15 @@ def get_questions():
 
         with get_db() as conn:
             if category_id:
-                category_name = get_category_name(category_id)
-                if not category_name:
-                    return jsonify({'success': False, 'message': '유효하지 않은 카테고리 ID입니다.'}), 400
                 cursor = conn.execute('''
-                    SELECT * FROM disclosure_questions
-                    WHERE category = ?
+                    SELECT * FROM sb_disclosure_questions
+                    WHERE category_id = ?
                     ORDER BY sort_order
-                ''', (category_name,))
+                ''', (category_id,))
             else:
                 cursor = conn.execute('''
-                    SELECT * FROM disclosure_questions
-                    ORDER BY sort_order
+                    SELECT * FROM sb_disclosure_questions
+                    ORDER BY category_id, sort_order
                 ''')
 
             questions = []
@@ -224,7 +264,7 @@ def get_question(question_id):
     try:
         with get_db() as conn:
             cursor = conn.execute('''
-                SELECT * FROM disclosure_questions WHERE id = ?
+                SELECT * FROM sb_disclosure_questions WHERE id = ?
             ''', (question_id,))
             row = cursor.fetchone()
 
@@ -253,12 +293,12 @@ def get_categories():
     try:
         with get_db() as conn:
             cursor = conn.execute('''
-                SELECT category, MIN(sort_order) as min_order
-                FROM disclosure_questions
-                GROUP BY category
-                ORDER BY min_order
+                SELECT category_id, category as name, MIN(sort_order) as min_order
+                FROM sb_disclosure_questions
+                GROUP BY category_id, category
+                ORDER BY category_id
             ''')
-            categories = [row['category'] for row in cursor.fetchall()]
+            categories = [dict(row) for row in cursor.fetchall()]
 
             # 카테고리별 질문 수 계산
             category_stats = []
@@ -266,12 +306,13 @@ def get_categories():
                 cursor = conn.execute('''
                     SELECT COUNT(*) as total,
                            SUM(CASE WHEN level = 1 THEN 1 ELSE 0 END) as level1_count
-                    FROM disclosure_questions WHERE category = ?
-                ''', (cat,))
+                    FROM sb_disclosure_questions 
+                    WHERE category_id = ? AND type != 'group'
+                ''', (cat['category_id'],))
                 stats = cursor.fetchone()
                 category_stats.append({
-                    'id': get_category_id(cat),  # 카테고리 ID 추가
-                    'name': cat,
+                    'id': cat['category_id'],
+                    'name': cat['name'],
                     'total': stats['total'],
                     'level1_count': stats['level1_count']
                 })
@@ -313,18 +354,40 @@ def save_answer():
             value = json.dumps(value, ensure_ascii=False)
 
         with get_db() as conn:
-            # 기존 답변 확인
+            # 1. 정보보호 투자액 검증 (B <= A)
+            if question_id == QID.INV_SEC_GROUP:  # Q3: 정보보호부문 투자액
+                cursor = conn.execute(f'SELECT value FROM sb_disclosure_answers WHERE question_id = ? AND company_id = ? AND year = ?', (QID.INV_IT_AMOUNT, company_id, year))
+                q_it = cursor.fetchone()
+                if q_it and q_it['value']:
+                    try:
+                        val_a = float(str(q_it['value']).replace(',', ''))
+                        val_b = float(str(value).replace(',', ''))
+                        if val_b > val_a:
+                            return jsonify({'success': False, 'message': '정보보호 투자액(B)은 정보기술 투자액(A)을 초과할 수 없습니다.'}), 400
+                    except ValueError: pass
+            elif question_id == QID.INV_IT_AMOUNT:  # Q2: 정보기술부문 투자액
+                cursor = conn.execute(f'SELECT value FROM sb_disclosure_answers WHERE question_id = ? AND company_id = ? AND year = ?', (QID.INV_SEC_GROUP, company_id, year))
+                q_sec = cursor.fetchone()
+                if q_sec and q_sec['value']:
+                    try:
+                        val_a = float(str(value).replace(',', ''))
+                        val_b = float(str(q_sec['value']).replace(',', ''))
+                        if val_b > val_a:
+                            return jsonify({'success': False, 'message': '정보기술 투자액(A)은 정보보호 투자액(B)보다 적을 수 없습니다.'}), 400
+                    except ValueError: pass
+
+            # 2. 기존 답변 확인
             cursor = conn.execute('''
-                SELECT id FROM disclosure_answers
+                SELECT id FROM sb_disclosure_answers
                 WHERE question_id = ? AND company_id = ? AND year = ?
             ''', (question_id, company_id, year))
             existing = cursor.fetchone()
 
             if existing:
-                # 기존 답변 업데이트
+                # 기존 답변 업데이트 (소프트 삭제된 경우 복구 가능성 포함)
                 conn.execute('''
-                    UPDATE disclosure_answers
-                    SET value = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP
+                    UPDATE sb_disclosure_answers
+                    SET value = ?, status = 'completed', updated_at = CURRENT_TIMESTAMP, deleted_at = NULL
                     WHERE id = ?
                 ''', (value, existing['id']))
                 answer_id = existing['id']
@@ -332,14 +395,26 @@ def save_answer():
                 # 새 답변 생성
                 answer_id = generate_uuid()
                 conn.execute('''
-                    INSERT INTO disclosure_answers
+                    INSERT INTO sb_disclosure_answers
                     (id, question_id, company_id, user_id, year, value, status)
                     VALUES (?, ?, ?, ?, ?, ?, 'completed')
                 ''', (answer_id, question_id, company_id, str(user_info.get('user_id', '')), year, value))
 
-            # "아니요" 또는 "NO" 선택 시 하위 질문들을 N/A로 자동 처리
-            if value in ('아니요', 'NO', 'no', 'No'):
-                _mark_dependent_questions_na(conn, question_id, company_id, year, str(user_info.get('user_id', '')))
+            # 3. 재귀적 데이터 클렌징 (상위 질문 'NO' 또는 N/A성 답변 시)
+            cursor = conn.execute('SELECT type FROM sb_disclosure_questions WHERE id = ?', (question_id,))
+            q_info = cursor.fetchone()
+
+            is_negative = False
+            if q_info and q_info['type'] == 'yes_no':
+                if str(value).strip().upper() in ('NO', 'N', 'FALSE', '0', '아니오', '아니요'):
+                    is_negative = True
+
+            if is_negative:
+                # 재귀적 실삭제 대신 deleted_at 처리
+                _recursive_soft_delete(conn, question_id, company_id, year)
+            else:
+                # 긍정적인 답변으로 변경 시, 하위 질문들 중 소프트 삭제된 것들만 보존 (사용자 결정에 따라 복구 가능)
+                pass
 
             conn.commit()
 
@@ -367,10 +442,10 @@ def get_answers(user_id, year):
         with get_db() as conn:
             cursor = conn.execute('''
                 SELECT a.*, q.text as question_text, q.type as question_type
-                FROM disclosure_answers a
-                JOIN disclosure_questions q ON a.question_id = q.id
-                WHERE a.company_id = ? AND a.year = ?
-                ORDER BY q.sort_order
+                FROM sb_disclosure_answers a
+                JOIN sb_disclosure_questions q ON a.question_id = q.id
+                WHERE a.company_id = ? AND a.year = ? AND a.deleted_at IS NULL
+                ORDER BY q.category_id, q.sort_order
             ''', (company_id, year))
 
             answers = []
@@ -411,7 +486,7 @@ def delete_answer(question_id):
         with get_db() as conn:
             # 해당 질문의 종속 질문 ID 조회
             cursor = conn.execute('''
-                SELECT dependent_question_ids FROM disclosure_questions
+                SELECT dependent_question_ids FROM sb_disclosure_questions
                 WHERE id = ?
             ''', (question_id,))
             row = cursor.fetchone()
@@ -430,7 +505,8 @@ def delete_answer(question_id):
             # 모든 질문의 답변 삭제
             placeholders = ','.join(['?'] * len(question_ids_to_delete))
             cursor = conn.execute(f'''
-                DELETE FROM disclosure_answers
+                UPDATE sb_disclosure_answers
+                SET deleted_at = CURRENT_TIMESTAMP
                 WHERE question_id IN ({placeholders}) AND company_id = ? AND year = ?
             ''', (*question_ids_to_delete, company_id, year))
 
@@ -454,24 +530,153 @@ def delete_answer(question_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-def _get_all_dependent_question_ids(conn, dependent_ids):
-    """재귀적으로 모든 하위 질문 ID를 가져오는 함수"""
-    all_ids = []
-    for dep_id in dependent_ids:
-        all_ids.append(dep_id)
-        # 해당 질문의 하위 질문 조회
-        cursor = conn.execute('''
-            SELECT dependent_question_ids FROM disclosure_questions
-            WHERE id = ?
-        ''', (dep_id,))
-        row = cursor.fetchone()
-        if row and row['dependent_question_ids']:
-            try:
-                sub_dependent_ids = json.loads(row['dependent_question_ids'])
-                all_ids.extend(_get_all_dependent_question_ids(conn, sub_dependent_ids))
-            except (json.JSONDecodeError, TypeError):
-                pass
     return all_ids
+
+
+def _recursive_soft_delete(conn, parent_question_id, company_id, year):
+    """부모 질문이 '아니요'일 때 하위 질문들을 재귀적으로 소프트 삭제 (deleted_at)"""
+    cursor = conn.execute('SELECT dependent_question_ids FROM sb_disclosure_questions WHERE id = ?', (parent_question_id,))
+    row = cursor.fetchone()
+    if not row or not row['dependent_question_ids']:
+        return
+
+    try:
+        dependent_ids = json.loads(row['dependent_question_ids'])
+        for dep_id in dependent_ids:
+            # 해당 질문 소프트 삭제
+            conn.execute('''
+                UPDATE sb_disclosure_answers
+                SET deleted_at = CURRENT_TIMESTAMP
+                WHERE question_id = ? AND company_id = ? AND year = ?
+            ''', (dep_id, company_id, year))
+            # 재귀 호출
+            _recursive_soft_delete(conn, dep_id, company_id, year)
+    except:
+        pass
+
+
+def _calculate_ratios(conn, company_id, year):
+    """투자 및 인력 비율 자동 계산"""
+    ratios = {
+        'investment_ratio': 0,
+        'personnel_ratio': 0,
+        'activity_score': 0
+    }
+    
+    try:
+        # 1. 투자 비율 (감가상각비 + 서비스비용 + 인건비 / 정보기술부문 투자액)
+        # Q3(Group)는 하위 항목들의 합을 사용함
+        inv_ids = [QID.INV_IT_AMOUNT, QID.INV_SEC_GROUP, QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR]
+        cursor = conn.execute(f'''
+            SELECT question_id, value FROM sb_disclosure_answers
+            WHERE question_id IN ({','.join(['?']*len(inv_ids))})
+            AND company_id = ? AND year = ? AND deleted_at IS NULL
+        ''', (*inv_ids, company_id, year))
+        ans = {row['question_id']: row['value'] for row in cursor.fetchall()}
+
+        if QID.INV_IT_AMOUNT in ans:
+            try:
+                a = float(str(ans[QID.INV_IT_AMOUNT]).replace(',', ''))
+                # 감가상각비 + 서비스비용 + 인건비 합계 계산
+                b1 = float(str(ans.get(QID.INV_SEC_DEPRECIATION, 0)).replace(',', ''))
+                b2 = float(str(ans.get(QID.INV_SEC_SERVICE, 0)).replace(',', ''))
+                b3 = float(str(ans.get(QID.INV_SEC_LABOR, 0)).replace(',', ''))
+                b_sum = b1 + b2 + b3
+
+                # 하위 항목 합계가 있으면 우선 사용, 없으면 Group 값 사용
+                b = b_sum if b_sum > 0 else float(str(ans.get(QID.INV_SEC_GROUP, 0)).replace(',', ''))
+
+                if a > 0:
+                    ratios['investment_ratio'] = round((b / a) * 100, 2)
+            except: pass
+
+        # 2. 인력 비율 (정보보호 전담인력 / 정보기술부문 인력 수 = D/C)
+        # Q28(IT 전체 인력)이 있으면 D/C로 계산, 없으면 기존처럼 총 임직원 대비 비율로 표시
+        per_ids = [QID.PER_TOTAL_EMPLOYEES, QID.PER_INTERNAL, QID.PER_EXTERNAL, QID.PER_IT_EMPLOYEES]
+        cursor = conn.execute(f'''
+            SELECT question_id, value FROM sb_disclosure_answers
+            WHERE question_id IN ({','.join(['?']*len(per_ids))}) AND company_id = ? AND year = ? AND deleted_at IS NULL
+        ''', (*per_ids, company_id, year))
+        ans = {row['question_id']: row['value'] for row in cursor.fetchall()}
+
+        internal = float(str(ans.get(QID.PER_INTERNAL, 0)).replace(',', ''))
+        external = float(str(ans.get(QID.PER_EXTERNAL, 0)).replace(',', ''))
+        d_sum = internal + external
+
+        if QID.PER_IT_EMPLOYEES in ans:
+            try:
+                it_total = float(str(ans[QID.PER_IT_EMPLOYEES]).replace(',', ''))
+                if it_total > 0:
+                    ratios['personnel_ratio'] = round((d_sum / it_total) * 100, 2)
+            except: pass
+        elif QID.PER_TOTAL_EMPLOYEES in ans:
+            try:
+                total = float(str(ans[QID.PER_TOTAL_EMPLOYEES]).replace(',', ''))
+                if total > 0:
+                    ratios['personnel_ratio'] = round((d_sum / total) * 100, 2)
+            except: pass
+
+        # 3. 활동 지수 (카테고리 4의 긍정 응답 비율)
+        try:
+            # 전체 활동 질문 수 (Q17 트리거 제외, Group 제외)
+            cursor = conn.execute(f'SELECT COUNT(*) FROM sb_disclosure_questions WHERE category_id = 4 AND id != ? AND type != "group"', (QID.ACT_HAS_ACTIVITY,))
+            total_act = cursor.fetchone()[0]
+
+            # 활동 카테고리 질문 ID 범위 (Q18~Q26)
+            act_ids = [QID.ACT_IT_ASSET, QID.ACT_TRAINING, QID.ACT_PROCEDURE, QID.ACT_VULN_ASSESS,
+                       QID.ACT_ZERO_TRUST, QID.ACT_SBOM, QID.ACT_CTAS, QID.ACT_DRILL, QID.ACT_INSURANCE]
+            cursor = conn.execute(f'''
+                SELECT COUNT(*) FROM sb_disclosure_answers
+                WHERE question_id IN ({','.join(['?']*len(act_ids))})
+                AND company_id = ? AND year = ? AND deleted_at IS NULL
+                AND value NOT IN ("NO", "no", "No", "0", "아니요", "아니오", "미수행", "도입전")
+            ''', (*act_ids, company_id, year))
+            active_act = cursor.fetchone()[0]
+
+            if total_act > 0:
+                ratios['activity_score'] = round((active_act / total_act) * 100)
+        except: pass
+            
+    except Exception as e:
+        print(f"비율 계산 오류: {e}")
+        
+    return ratios
+
+
+def _is_question_active(q, questions_dict, answers):
+    """질문이 현재 답변 상태에 따라 활성화(표시)되어야 하는지 확인 (재귀적)"""
+    if q['level'] == 1:
+        return True
+
+    parent_id = q.get('parent_question_id')
+    if not parent_id:
+        return True
+
+    parent_q = questions_dict.get(parent_id)
+    if not parent_q:
+        return False
+
+    # 부모 질문이 활성 상태여야 함
+    if not _is_question_active(parent_q, questions_dict, answers):
+        return False
+
+    # 부모 질문의 답변에 따라 트리거 여부 확인
+    parent_answer = answers.get(parent_id)
+    if parent_answer is None:
+        return False
+        
+    parent_answer_str = str(parent_answer).strip().upper()
+    
+    # 1. Group 유형은 항상 자식 트리거
+    if parent_q['type'] == 'group':
+        return True
+    
+    # 2. YES/NO 유형
+    if parent_q['type'] == 'yes_no':
+        # 다양한 '예'/'YES' 형태 지원
+        return parent_answer_str in ('YES', 'Y', 'TRUE', '1', '예', '네')
+
+    return False
 
 
 # ============================================================================
@@ -531,7 +736,7 @@ def upload_evidence():
         evidence_id = generate_uuid()
         with get_db() as conn:
             conn.execute('''
-                INSERT INTO disclosure_evidence
+                INSERT INTO sb_disclosure_evidence
                 (id, answer_id, question_id, company_id, year, file_name, file_url,
                  file_size, file_type, evidence_type, uploaded_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -570,7 +775,7 @@ def delete_evidence(evidence_id):
         with get_db() as conn:
             # 증빙 자료 조회
             cursor = conn.execute('''
-                SELECT * FROM disclosure_evidence WHERE id = ?
+                SELECT * FROM sb_disclosure_evidence WHERE id = ?
             ''', (evidence_id,))
             evidence = cursor.fetchone()
 
@@ -583,7 +788,7 @@ def delete_evidence(evidence_id):
                 os.remove(file_path)
 
             # 데이터베이스에서 삭제
-            conn.execute('DELETE FROM disclosure_evidence WHERE id = ?', (evidence_id,))
+            conn.execute('DELETE FROM sb_disclosure_evidence WHERE id = ?', (evidence_id,))
             conn.commit()
 
         return jsonify({'success': True, 'message': '증빙 자료가 삭제되었습니다.'})
@@ -601,8 +806,8 @@ def get_evidence_list(user_id, year):
         with get_db() as conn:
             cursor = conn.execute('''
                 SELECT e.*, q.text as question_text
-                FROM disclosure_evidence e
-                LEFT JOIN disclosure_questions q ON e.question_id = q.id
+                FROM sb_disclosure_evidence e
+                LEFT JOIN sb_disclosure_questions q ON e.question_id = q.id
                 WHERE e.company_id = ? AND e.year = ?
                 ORDER BY e.uploaded_at DESC
             ''', (company_id, year))
@@ -629,12 +834,12 @@ def get_missing_evidence(user_id, year):
             # 답변이 완료된 질문 중 증빙 자료가 필요하지만 없는 것 찾기
             cursor = conn.execute('''
                 SELECT q.id, q.text, q.evidence_list
-                FROM disclosure_questions q
-                JOIN disclosure_answers a ON q.id = a.question_id
+                FROM sb_disclosure_questions q
+                JOIN sb_disclosure_answers a ON q.id = a.question_id
                     AND a.company_id = ? AND a.year = ? AND a.status = 'completed'
                 WHERE q.evidence_list IS NOT NULL AND q.evidence_list != '[]'
                     AND NOT EXISTS (
-                        SELECT 1 FROM disclosure_evidence e
+                        SELECT 1 FROM sb_disclosure_evidence e
                         WHERE e.question_id = q.id
                             AND e.company_id = ? AND e.year = ?
                     )
@@ -665,7 +870,7 @@ def download_evidence(evidence_id):
     try:
         with get_db() as conn:
             cursor = conn.execute('''
-                SELECT * FROM disclosure_evidence WHERE id = ?
+                SELECT * FROM sb_disclosure_evidence WHERE id = ?
             ''', (evidence_id,))
             evidence = cursor.fetchone()
 
@@ -695,28 +900,28 @@ def get_evidence_stats(user_id, year):
         with get_db() as conn:
             # 전체 파일 수
             cursor = conn.execute('''
-                SELECT COUNT(*) as total FROM disclosure_evidence
+                SELECT COUNT(*) as total FROM sb_disclosure_evidence
                 WHERE company_id = ? AND year = ?
             ''', (company_id, year))
             total = cursor.fetchone()['total']
 
             # 연결된 질문 수
             cursor = conn.execute('''
-                SELECT COUNT(DISTINCT question_id) as questions FROM disclosure_evidence
+                SELECT COUNT(DISTINCT question_id) as questions FROM sb_disclosure_evidence
                 WHERE company_id = ? AND year = ? AND question_id IS NOT NULL
             ''', (company_id, year))
             questions = cursor.fetchone()['questions']
 
             # 총 용량
             cursor = conn.execute('''
-                SELECT COALESCE(SUM(file_size), 0) as total_size FROM disclosure_evidence
+                SELECT COALESCE(SUM(file_size), 0) as total_size FROM sb_disclosure_evidence
                 WHERE company_id = ? AND year = ?
             ''', (company_id, year))
             total_size = cursor.fetchone()['total_size']
 
             # 최근 7일 업로드
             cursor = conn.execute('''
-                SELECT COUNT(*) as recent FROM disclosure_evidence
+                SELECT COUNT(*) as recent FROM sb_disclosure_evidence
                 WHERE company_id = ? AND year = ?
                 AND uploaded_at >= datetime('now', '-7 days')
             ''', (company_id, year))
@@ -747,41 +952,73 @@ def get_progress(user_id, year):
     try:
         company_id = get_company_name_by_user_id(user_id)
         with get_db() as conn:
-            # 카테고리별 진행 상황 계산 (세션 유무와 관계없이 항상 계산)
+            # 모든 질문 로드
+            cursor = conn.execute('SELECT * FROM sb_disclosure_questions ORDER BY category_id, sort_order')
+            all_questions = [dict(row) for row in cursor.fetchall()]
+            questions_dict = {q['id']: q for q in all_questions}
+
             cursor = conn.execute('''
-                SELECT q.category,
-                       COUNT(DISTINCT q.id) as total,
-                       COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.question_id END) as completed
-                FROM disclosure_questions q
-                LEFT JOIN disclosure_answers a ON q.id = a.question_id
-                    AND a.company_id = ? AND a.year = ?
-                GROUP BY q.category
+                SELECT question_id, value FROM sb_disclosure_answers 
+                WHERE company_id = ? AND year = ? AND deleted_at IS NULL
             ''', (company_id, year))
+            answers = {row['question_id']: row['value'] for row in cursor.fetchall()}
 
             categories = {}
             total_questions = 0
             answered_questions = 0
 
-            for row in cursor.fetchall():
-                categories[row['category']] = {
-                    'total': row['total'],
-                    'completed': row['completed'],
-                    'rate': round((row['completed'] / row['total']) * 100) if row['total'] > 0 else 0
-                }
-                total_questions += row['total']
-                answered_questions += row['completed']
+            # 질문별 통계 합산 (전체 질문 수 기준, 비활성화 질문도 포함)
+            for q in all_questions:
+                cat_name = q['category']
+                if cat_name not in categories:
+                    categories[cat_name] = {
+                        'id': q['category_id'],
+                        'total': 0,
+                        'completed': 0,
+                        'rate': 0
+                    }
+
+                # Group 유형은 입력 필드가 없으므로 통계에서 제외 (안내 문구 역할)
+                if q['type'] == 'group':
+                    continue
+
+                # 전체 질문 수에 포함
+                categories[cat_name]['total'] += 1
+                total_questions += 1
+
+                # 활성화 상태 확인 (재귀적)
+                is_active = _is_question_active(q, questions_dict, answers)
+
+                if is_active:
+                    # 활성화된 질문: 답변이 있으면 완료
+                    if q['id'] in answers and answers[q['id']] not in (None, ''):
+                        categories[cat_name]['completed'] += 1
+                        answered_questions += 1
+                else:
+                    # 비활성화된 질문: 상위 질문이 NO여서 해당없음 → 자동 완료 처리
+                    categories[cat_name]['completed'] += 1
+                    answered_questions += 1
+
+            # 각 카테고리별 퍼센트 계산
+            for cat_name in categories:
+                cat = categories[cat_name]
+                if cat['total'] > 0:
+                    cat['rate'] = round((cat['completed'] / cat['total']) * 100)
 
             # 전체 진행률 계산
             completion_rate = round((answered_questions / total_questions) * 100) if total_questions > 0 else 0
 
             # 세션 조회
             cursor = conn.execute('''
-                SELECT * FROM disclosure_sessions
+                SELECT * FROM sb_disclosure_sessions
                 WHERE company_id = ? AND year = ?
             ''', (company_id, year))
             session_data = cursor.fetchone()
 
             session_dict = dict(session_data) if session_data else None
+
+            # 비율 계산 (투자 비율, 인력 비율)
+            ratios = _calculate_ratios(conn, company_id, year)
 
             return jsonify({
                 'success': True,
@@ -791,7 +1028,8 @@ def get_progress(user_id, year):
                     'answered_questions': answered_questions,
                     'completion_rate': completion_rate
                 },
-                'categories': categories
+                'categories': categories,
+                'ratios': ratios
             })
 
     except Exception as e:
@@ -818,7 +1056,7 @@ def create_or_update_session():
         with get_db() as conn:
             # 기존 세션 확인
             cursor = conn.execute('''
-                SELECT id FROM disclosure_sessions
+                SELECT id FROM sb_disclosure_sessions
                 WHERE company_id = ? AND year = ?
             ''', (company_id, year))
             existing = cursor.fetchone()
@@ -826,7 +1064,7 @@ def create_or_update_session():
             if existing:
                 # 세션 업데이트
                 conn.execute('''
-                    UPDATE disclosure_sessions
+                    UPDATE sb_disclosure_sessions
                     SET status = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
                 ''', (status, existing['id']))
@@ -835,7 +1073,7 @@ def create_or_update_session():
                 # 새 세션 생성
                 session_id = generate_uuid()
                 conn.execute('''
-                    INSERT INTO disclosure_sessions
+                    INSERT INTO sb_disclosure_sessions
                     (id, company_id, user_id, year, status)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (session_id, company_id, str(user_info.get('user_id', '')), year, status))
@@ -856,87 +1094,131 @@ def create_or_update_session():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-def _mark_dependent_questions_na(conn, parent_question_id, company_id, year, user_id):
-    """부모 질문이 '아니요'일 때 하위 질문들을 N/A로 자동 처리 (내부 함수)"""
-    try:
-        print(f"[DEBUG] _mark_dependent_questions_na 호출: parent={parent_question_id}, company={company_id}, year={year}")
 
+
+
+def _mark_dependent_questions_na(conn, parent_question_id, company_id, year, user_id):
+    """부모 질문이 '아니요' 등일 때 하위 질문들을 DB에서 'N/A' 및 'completed' 상태로 처리 (재귀적)
+    이렇게 함으로써 하위 질문이 화면에서 사라지더라도 진행률에는 '완료'로 계산되도록 함.
+    """
+    try:
         # 해당 질문의 dependent_question_ids 조회
         cursor = conn.execute('''
-            SELECT dependent_question_ids FROM disclosure_questions
+            SELECT dependent_question_ids FROM sb_disclosure_questions
             WHERE id = ?
         ''', (parent_question_id,))
         result = cursor.fetchone()
 
         if not result or not result['dependent_question_ids']:
-            print(f"[DEBUG] {parent_question_id}에 하위 질문 없음")
             return
 
         # dependent_question_ids 파싱
         dependent_ids_str = result['dependent_question_ids']
-        print(f"[DEBUG] dependent_ids_str: {dependent_ids_str}")
         try:
             dependent_ids = json.loads(dependent_ids_str)
         except (json.JSONDecodeError, TypeError):
-            # JSON이 아닌 경우 콤마로 분리 시도
-            dependent_ids = [id.strip() for id in dependent_ids_str.split(',') if id.strip()]
-
-        print(f"[DEBUG] 파싱된 dependent_ids: {dependent_ids}")
+            if dependent_ids_str:
+                dependent_ids = [id.strip() for id in dependent_ids_str.split(',') if id.strip()]
+            else:
+                dependent_ids = []
 
         if not dependent_ids:
             return
 
-        # 각 하위 질문에 대해 N/A 답변 저장
+        # 각 하위 질문 처리
         for dep_id in dependent_ids:
-            print(f"[DEBUG] N/A 처리 중: {dep_id}")
-            # 기존 답변 확인
+            # 1. DB에서 기존 답변 확인
             cursor = conn.execute('''
-                SELECT id FROM disclosure_answers
+                SELECT id FROM sb_disclosure_answers
                 WHERE question_id = ? AND company_id = ? AND year = ?
             ''', (dep_id, company_id, year))
             existing = cursor.fetchone()
 
             if existing:
-                # 기존 답변을 N/A로 업데이트
+                # 기존 답변이 있으면 'N/A'로 업데이트하고 완료 처리
                 conn.execute('''
-                    UPDATE disclosure_answers
+                    UPDATE sb_disclosure_answers
                     SET value = 'N/A', status = 'completed', updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
                 ''', (existing['id'],))
             else:
-                # 새 N/A 답변 생성
-                answer_id = generate_uuid()
+                # 답변이 없으면 'N/A' 상태로 신규 생성하여 진행률에 반영
+                ans_id = str(uuid.uuid4())
                 conn.execute('''
-                    INSERT INTO disclosure_answers
+                    INSERT INTO sb_disclosure_answers
                     (id, question_id, company_id, user_id, year, value, status)
                     VALUES (?, ?, ?, ?, ?, 'N/A', 'completed')
-                ''', (answer_id, dep_id, company_id, user_id, year))
-
-            # 재귀적으로 해당 하위 질문의 하위 질문도 처리
+                ''', (ans_id, dep_id, company_id, user_id, year))
+            
+            # 2. 재귀적으로 해당 하위 질문의 하위 질문도 처리
             _mark_dependent_questions_na(conn, dep_id, company_id, year, user_id)
 
     except Exception as e:
-        print(f"하위 질문 N/A 처리 오류: {e}")
+        print(f"하위 질문 정리 오류: {e}")
         import traceback
         traceback.print_exc()
+
+
+def _clear_na_from_dependents(conn, parent_question_id, company_id, year):
+    """부모 질문이 다시 활성화('예' 등) 되었을 때, 기존에 자동 N/A 처리되었던 하위 질문 답변들만 삭제 (재귀적)"""
+    try:
+        cursor = conn.execute('SELECT dependent_question_ids FROM sb_disclosure_questions WHERE id = ?', (parent_question_id,))
+        row = cursor.fetchone()
+        if not row or not row['dependent_question_ids']:
+            return
+
+        dependent_ids = []
+        try:
+            dependent_ids = json.loads(row['dependent_question_ids'])
+        except:
+            return
+
+        for dep_id in dependent_ids:
+            # value가 'N/A'인 경우만 삭제 (사용자가 직접 입력했던 데이터는 보호)
+            conn.execute('''
+                DELETE FROM sb_disclosure_answers
+                WHERE question_id = ? AND company_id = ? AND year = ? AND value = 'N/A'
+            ''', (dep_id, company_id, year))
+            
+            _clear_na_from_dependents(conn, dep_id, company_id, year)
+
+    except Exception as e:
+        print(f"하위 질문 N/A 정리 오류: {e}")
 
 
 def _update_session_progress(conn, company_id, year, user_id=None):
     """세션 진행률 자동 업데이트 (내부 함수)"""
     try:
-        # 답변 완료된 질문 수 계산 (N/A 포함)
-        cursor = conn.execute('''
-            SELECT COUNT(DISTINCT question_id) as answered
-            FROM disclosure_answers
-            WHERE company_id = ? AND year = ? AND status = 'completed'
-        ''', (company_id, year))
-        result = cursor.fetchone()
-        answered = result['answered'] if result else 0
-
-        # 전체 질문 수
-        cursor = conn.execute('SELECT COUNT(*) as total FROM disclosure_questions')
+        # 전체 질문 수 (Group 유형 제외)
+        cursor = conn.execute("SELECT COUNT(*) as total FROM sb_disclosure_questions WHERE type != 'group'")
         total_result = cursor.fetchone()
-        total = total_result['total'] if total_result else 65
+        total = total_result['total'] if total_result else 0
+
+        # 모든 질문 및 답변 조회
+        cursor = conn.execute('SELECT * FROM sb_disclosure_questions ORDER BY category_id, sort_order')
+        all_questions = [dict(row) for row in cursor.fetchall()]
+        questions_dict = {q['id']: q for q in all_questions}
+
+        cursor = conn.execute('''
+            SELECT question_id, value FROM sb_disclosure_answers
+            WHERE company_id = ? AND year = ? AND deleted_at IS NULL
+        ''', (company_id, year))
+        answers = {row['question_id']: row['value'] for row in cursor.fetchall()}
+
+        # 완료된 질문 수 계산 (활성화된 질문의 답변 + 비활성화된 질문)
+        answered = 0
+        for q in all_questions:
+            if q['type'] == 'group':
+                continue
+
+            is_active = _is_question_active(q, questions_dict, answers)
+            if is_active:
+                # 활성화된 질문: 답변이 있으면 완료
+                if q['id'] in answers and answers[q['id']] not in (None, ''):
+                    answered += 1
+            else:
+                # 비활성화된 질문: 자동 완료 처리
+                answered += 1
 
         # 진행률 계산
         completion_rate = round((answered / total) * 100) if total > 0 else 0
@@ -945,7 +1227,7 @@ def _update_session_progress(conn, company_id, year, user_id=None):
 
         # 세션 존재 여부 확인
         cursor = conn.execute('''
-            SELECT id FROM disclosure_sessions
+            SELECT id FROM sb_disclosure_sessions
             WHERE company_id = ? AND year = ?
         ''', (company_id, year))
         existing = cursor.fetchone()
@@ -953,7 +1235,7 @@ def _update_session_progress(conn, company_id, year, user_id=None):
         if existing:
             # 세션 업데이트
             conn.execute('''
-                UPDATE disclosure_sessions
+                UPDATE sb_disclosure_sessions
                 SET answered_questions = ?, completion_rate = ?, updated_at = CURRENT_TIMESTAMP,
                     status = CASE WHEN ? = 100 THEN 'completed' ELSE 'in_progress' END
                 WHERE company_id = ? AND year = ?
@@ -963,7 +1245,7 @@ def _update_session_progress(conn, company_id, year, user_id=None):
             session_id = generate_uuid()
             status = 'completed' if completion_rate == 100 else ('in_progress' if answered > 0 else 'draft')
             conn.execute('''
-                INSERT INTO disclosure_sessions
+                INSERT INTO sb_disclosure_sessions
                 (id, company_id, user_id, year, status, total_questions, answered_questions, completion_rate)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (session_id, company_id, user_id or '', year, status, total, answered, completion_rate))
@@ -980,21 +1262,25 @@ def _update_session_progress(conn, company_id, year, user_id=None):
 # API Endpoints - 보고서 생성
 # ============================================================================
 
-@bp_link11.route('/link11/api/report/generate/<int:user_id>/<int:year>', methods=['GET'])
-def generate_report(user_id, year):
+@bp_link11.route('/link11/api/report/generate', methods=['POST'])
+def generate_report():
     """공시 자료 보고서 생성"""
     try:
-        company_id = get_company_name_by_user_id(user_id)
-        format_type = request.args.get('format', 'json')  # json, pdf, excel
+        data = request.get_json()
+        user_info = get_user_info()
+        
+        company_id = data.get('company_id', user_info.get('company_name', 'default'))
+        year = data.get('year', datetime.now().year)
+        format_type = data.get('format', 'json')  # json, pdf, excel
 
         with get_db() as conn:
             # 모든 답변 조회
             cursor = conn.execute('''
                 SELECT q.*, a.value, a.status
-                FROM disclosure_questions q
-                LEFT JOIN disclosure_answers a ON q.id = a.question_id
-                    AND a.company_id = ? AND a.year = ?
-                ORDER BY q.sort_order
+                FROM sb_disclosure_questions q
+                LEFT JOIN sb_disclosure_answers a ON q.id = a.question_id
+                    AND a.company_id = ? AND a.year = ? AND a.deleted_at IS NULL
+                ORDER BY q.category_id, q.sort_order
             ''', (company_id, year))
 
             report_data = {
@@ -1004,33 +1290,51 @@ def generate_report(user_id, year):
                 'categories': {}
             }
 
-            for row in cursor.fetchall():
+            # 활동성 체크를 위한 사전 준비
+            all_rows = [dict(row) for row in cursor.fetchall()]
+            questions_dict = {q['id']: q for q in all_rows}
+            answers_dict = {q['id']: q['value'] for q in all_rows if q['value'] is not None}
+
+            for row in all_rows:
                 category = row['category']
                 if category not in report_data['categories']:
                     report_data['categories'][category] = {
+                        'id': row['category_id'],
                         'questions': [],
                         'completed': 0,
                         'total': 0
                     }
+
+                # 활성화 상태 확인
+                is_active = _is_question_active(row, questions_dict, answers_dict)
 
                 q_data = {
                     'id': row['id'],
                     'text': row['text'],
                     'type': row['type'],
                     'value': row['value'],
-                    'status': row['status'] or 'pending'
+                    'status': row['status'] or 'pending',
+                    'is_active': is_active
                 }
 
-                # JSON 값 파싱
-                if q_data['value']:
-                    try:
-                        q_data['value'] = json.loads(q_data['value'])
-                    except (json.JSONDecodeError, TypeError):
-                        pass
+                if not is_active:
+                    # 숫자 유형이거나 Q3(합계)인 경우 '0'으로 표시, 그 외엔 '해당 없음'
+                    if row['type'] == 'number' or row['id'] == 'Q3':
+                        q_data['value'] = '0'
+                    else:
+                        q_data['value'] = '해당 없음'
+                    q_data['status'] = 'completed'
+                else:
+                    # JSON 값 파싱
+                    if q_data['value']:
+                        try:
+                            q_data['value'] = json.loads(q_data['value'])
+                        except (json.JSONDecodeError, TypeError):
+                            pass
 
                 report_data['categories'][category]['questions'].append(q_data)
                 report_data['categories'][category]['total'] += 1
-                if row['status'] == 'completed':
+                if q_data['status'] == 'completed':
                     report_data['categories'][category]['completed'] += 1
 
             if format_type == 'json':
@@ -1052,28 +1356,35 @@ def generate_report(user_id, year):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@bp_link11.route('/link11/api/report/download/<int:user_id>/<int:year>', methods=['GET'])
-def download_report(user_id, year):
+@bp_link11.route('/link11/api/report/download', methods=['POST'])
+def download_report():
     """공시 자료 Excel 다운로드"""
     try:
+        data = request.get_json()
+        user_info = get_user_info()
+        
+        company_id = data.get('company_id', user_info.get('company_name', 'default'))
+        year = data.get('year', datetime.now().year)
+        format_type = data.get('format', 'excel')
         from openpyxl import Workbook
         from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
         from io import BytesIO
 
-        company_id = get_company_name_by_user_id(user_id)
-
         with get_db() as conn:
-            # 모든 답변 조회
+            # 모든 답변 조회 (parent_question_id 포함하여 모든 컬럼 조회)
             cursor = conn.execute('''
-                SELECT q.id, q.category, q.subcategory, q.text, q.type, q.level,
-                       a.value, a.status
-                FROM disclosure_questions q
-                LEFT JOIN disclosure_answers a ON q.id = a.question_id
-                    AND a.company_id = ? AND a.year = ?
-                ORDER BY q.sort_order
+                SELECT q.*, a.value, a.status
+                FROM sb_disclosure_questions q
+                LEFT JOIN sb_disclosure_answers a ON q.id = a.question_id
+                    AND a.company_id = ? AND a.year = ? AND a.deleted_at IS NULL
+                ORDER BY q.category_id, q.sort_order
             ''', (company_id, year))
 
-            questions = [dict(row) for row in cursor.fetchall()]
+            questions_flat = [dict(row) for row in cursor.fetchall()]
+
+        # 활동성 체크를 위한 사전 준비
+        questions_dict = {q['id']: q for q in questions_flat}
+        answers_dict = {q['id']: q['value'] for q in questions_flat if q['value'] is not None}
 
         # Excel 생성
         wb = Workbook()
@@ -1093,17 +1404,17 @@ def download_report(user_id, year):
         )
 
         # 제목
-        ws.merge_cells('A1:D1')
+        ws.merge_cells('A1:C1')
         ws['A1'] = f"정보보호공시 - {company_id} ({year}년)"
         ws['A1'].font = Font(bold=True, size=16)
         ws['A1'].alignment = Alignment(horizontal='center')
 
-        ws.merge_cells('A2:D2')
+        ws.merge_cells('A2:C2')
         ws['A2'] = f"생성일: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         ws['A2'].alignment = Alignment(horizontal='center')
 
         # 헤더
-        headers = ['질문ID', '질문', '답변', '상태']
+        headers = ['ID', '질문(항목)', '공시 내용']
         ws.append([])  # 빈 줄
         ws.append(headers)
 
@@ -1118,41 +1429,109 @@ def download_report(user_id, year):
         current_category = None
         row_num = 5
 
-        for q in questions:
+        for q in questions_flat:
             # 카테고리 헤더
             if q['category'] != current_category:
                 current_category = q['category']
-                ws.merge_cells(f'A{row_num}:D{row_num}')
+                ws.merge_cells(f'A{row_num}:C{row_num}')
                 ws[f'A{row_num}'] = current_category
                 ws[f'A{row_num}'].font = category_font
                 ws[f'A{row_num}'].fill = category_fill
                 ws[f'A{row_num}'].border = thin_border
                 row_num += 1
 
-            # 질문 데이터
-            value = q['value'] or ''
-            if value.startswith('[') and value.endswith(']'):
-                try:
-                    value = ', '.join(json.loads(value))
-                except:
-                    pass
+            # 활성화 상태 확인
+            is_active = _is_question_active(q, questions_dict, answers_dict)
+            
+            if not is_active:
+                # 숫자 유형이거나 Q3(합계)인 경우 '0'으로 표시, 그 외엔 '해당 없음'
+                if q.get('type') == 'number' or q['id'] == 'Q3':
+                    value = '0'
+                else:
+                    value = '해당 없음'
+            else:
+                # 질문 데이터 타입에 따른 포맷팅
+                raw_value = q['value'] or ''
+                q_type = q.get('type')
+                
+                if not raw_value:
+                    value = ''
+                elif q_type == 'number':
+                    try:
+                        # 숫자인 경우 천단위 구분기호 추가
+                        num_val = float(str(raw_value).replace(',', ''))
+                        if num_val == int(num_val):
+                            value = "{:,}".format(int(num_val))
+                        else:
+                            value = "{:,.2f}".format(num_val)
+                    except:
+                        value = raw_value
+                elif q_type == 'yes_no':
+                    if str(raw_value).upper() == 'YES':
+                        value = '예'
+                    elif str(raw_value).upper() == 'NO':
+                        value = '아니요'
+                    else:
+                        value = raw_value
+                elif raw_value.startswith('[') and raw_value.endswith(']'):
+                    try:
+                        data = json.loads(raw_value)
+                        if isinstance(data, list):
+                            if all(isinstance(item, list) for item in data):
+                                # 테이블 형태 (리스트의 리스트)
+                                value = '\n'.join([', '.join(map(str, row)) for row in data])
+                            elif all(isinstance(item, dict) for item in data):
+                                # 테이블 형태 (리스트의 딕셔너리)
+                                value = '\n'.join([', '.join([f"{v}" for v in item.values()]) for item in data])
+                            else:
+                                # 일반 리스트 (체크박스 등)
+                                value = ', '.join(map(str, data))
+                    except:
+                        value = raw_value
+                elif raw_value.startswith('{') and raw_value.endswith('}'):
+                    try:
+                        comp = json.loads(raw_value)
+                        if isinstance(comp, dict):
+                            val_parts = []
+                            total = 0
+                            for k, v in comp.items():
+                                val_parts.append(f"{k}: {v}")
+                                try: total += float(str(v).replace(',', ''))
+                                except: pass
+                            
+                            # 인력 현황 등의 경우 총계 표시 (질문 텍스트에 따라 유동적 가능하나 여기선 일반화)
+                            if '인원' in q['text'] or '인력' in q['text']:
+                                value = f"{', '.join(val_parts)} (총 {total:.1f}명)" if total % 1 != 0 else f"{', '.join(val_parts)} (총 {int(total)}명)"
+                            else:
+                                value = '\n'.join(val_parts)
+                    except:
+                        value = raw_value
+                else:
+                    value = raw_value
 
-            status = '완료' if q['status'] == 'completed' else ('N/A' if q['value'] == 'N/A' else '미완료')
+            ws.append([q['id'], q['text'], value])
 
-            ws.append([q['id'], q['text'], value, status])
-
-            for col in range(1, 5):
+            for col in range(1, 4):
                 cell = ws.cell(row=row_num, column=col)
                 cell.border = thin_border
-                cell.alignment = Alignment(vertical='center', wrap_text=True)
+                
+                # 수직 정렬 공통 적용
+                align_params = {'vertical': 'center', 'wrap_text': True}
+                
+                # 3번째 열(공시 내용)이면서 숫자 유형인 경우 오른쪽 정렬
+                if col == 3 and q.get('type') == 'number':
+                    align_params['horizontal'] = 'right'
+                elif col == 1:
+                    align_params['horizontal'] = 'center'
+                
+                cell.alignment = Alignment(**align_params)
 
             row_num += 1
 
         # 열 너비 조정
-        ws.column_dimensions['A'].width = 12
-        ws.column_dimensions['B'].width = 60
-        ws.column_dimensions['C'].width = 30
-        ws.column_dimensions['D'].width = 10
+        ws.column_dimensions['A'].width = 10
+        ws.column_dimensions['B'].width = 55
+        ws.column_dimensions['C'].width = 45
 
         # ============================================
         # 증빙자료 시트 추가 (내부 관리용)
@@ -1162,8 +1541,8 @@ def download_report(user_id, year):
                 SELECT e.id, e.question_id, e.file_name, e.file_size, e.file_type,
                        e.evidence_type, e.uploaded_at, e.uploaded_by,
                        q.category, q.text as question_text
-                FROM disclosure_evidence e
-                LEFT JOIN disclosure_questions q ON e.question_id = q.id
+                FROM sb_disclosure_evidence e
+                LEFT JOIN sb_disclosure_questions q ON e.question_id = q.id
                 WHERE e.company_id = ? AND e.year = ?
                 ORDER BY q.category, e.uploaded_at
             ''', (company_id, year))
@@ -1276,7 +1655,7 @@ def submit_disclosure(user_id, year):
         with get_db() as conn:
             # 세션 조회
             cursor = conn.execute('''
-                SELECT * FROM disclosure_sessions
+                SELECT * FROM sb_disclosure_sessions
                 WHERE company_id = ? AND year = ?
             ''', (company_id, year))
             session_data = cursor.fetchone()
@@ -1296,7 +1675,7 @@ def submit_disclosure(user_id, year):
             confirmation_number = f"DISC-{year}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
             conn.execute('''
-                INSERT INTO disclosure_submissions
+                INSERT INTO sb_disclosure_submissions
                 (id, session_id, company_id, year, submitted_by, submission_details, confirmation_number, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted')
             ''', (
@@ -1306,7 +1685,7 @@ def submit_disclosure(user_id, year):
 
             # 세션 상태 업데이트
             conn.execute('''
-                UPDATE disclosure_sessions
+                UPDATE sb_disclosure_sessions
                 SET status = 'submitted', submitted_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             ''', (session_data['id'],))
@@ -1334,7 +1713,7 @@ def get_submissions(user_id):
         company_id = get_company_name_by_user_id(user_id)
         with get_db() as conn:
             cursor = conn.execute('''
-                SELECT * FROM disclosure_submissions
+                SELECT * FROM sb_disclosure_submissions
                 WHERE company_id = ?
                 ORDER BY submitted_at DESC
             ''', (company_id,))
@@ -1368,13 +1747,13 @@ def reset_disclosure(user_id, year):
         with get_db() as conn:
             # 답변 삭제
             conn.execute('''
-                DELETE FROM disclosure_answers
+                DELETE FROM sb_disclosure_answers
                 WHERE company_id = ? AND year = ?
             ''', (company_id, year))
 
             # 세션 삭제
             conn.execute('''
-                DELETE FROM disclosure_sessions
+                DELETE FROM sb_disclosure_sessions
                 WHERE company_id = ? AND year = ?
             ''', (company_id, year))
 
@@ -1404,7 +1783,7 @@ def get_available_years(user_id):
         with get_db() as conn:
             cursor = conn.execute('''
                 SELECT DISTINCT year, COUNT(*) as answer_count
-                FROM disclosure_answers
+                FROM sb_disclosure_answers
                 WHERE company_id = ? AND year < ?
                 GROUP BY year
                 ORDER BY year DESC
@@ -1443,19 +1822,19 @@ def copy_from_year(user_id, source_year, target_year):
         with get_db() as conn:
             # 기존 타겟 연도 데이터 삭제
             conn.execute('''
-                DELETE FROM disclosure_answers
+                DELETE FROM sb_disclosure_answers
                 WHERE company_id = ? AND year = ?
             ''', (company_id, target_year))
 
             conn.execute('''
-                DELETE FROM disclosure_sessions
+                DELETE FROM sb_disclosure_sessions
                 WHERE company_id = ? AND year = ?
             ''', (company_id, target_year))
 
             # 이전 연도 답변 복사
             cursor = conn.execute('''
                 SELECT question_id, value, status
-                FROM disclosure_answers
+                FROM sb_disclosure_answers
                 WHERE company_id = ? AND year = ?
             ''', (company_id, source_year))
 
@@ -1463,7 +1842,7 @@ def copy_from_year(user_id, source_year, target_year):
             for row in cursor.fetchall():
                 answer_id = generate_uuid()
                 conn.execute('''
-                    INSERT INTO disclosure_answers
+                    INSERT INTO sb_disclosure_answers
                     (id, question_id, company_id, user_id, year, value, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (

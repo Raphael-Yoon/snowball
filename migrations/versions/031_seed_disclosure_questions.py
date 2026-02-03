@@ -1,1390 +1,188 @@
 """
-정보보호공시 65개 질문 Seed 데이터 삽입
+정보보호공시 2025 가이드라인 기반 질문 데이터 시드
 """
-import json
 
-
-# 65개 질문 데이터 정의
 DISCLOSURE_QUESTIONS = [
     # ============================================================================
-    # 1. 정보보호 투자 현황 (13개)
+    # 1. 정보보호 투자 (Q1)
     # ============================================================================
-
-    # 카테고리 1-1: 정보보호 투자 규모
     {
-        "id": "Q1-1",
-        "level": 1,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-1: 정보보호 투자 규모",
-        "text": "정보보호 관련 투자를 하고 계신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q1-2", "Q1-3", "Q1-4"],
-        "required": True,
-        "help_text": "정보보호를 위한 예산 투자 여부를 확인합니다.",
-        "evidence_list": ["정보보호 투자 내역서", "보안 솔루션 구매 영수증/계약서", "연간 예산 편성 문서"],
-        "sort_order": 1
+        "id": "Q1-1", "level": 1, "category_id": 1, "category": "정보보호 투자", "subcategory": "투자",
+        "text": "공시대상연도(1~12월)에 정보보호 투자가 발생했나요?", "type": "yes_no",
+        "dependent_question_ids": ["Q1-2", "Q1-3"], "sort_order": 1,
+        "help_text": "정보보호 관련 설비 구입, 서비스 이용, 인건비 등 투자가 있었는지 확인합니다.",
+        "evidence_list": ["예산서", "품의서"]
     },
     {
-        "id": "Q1-2",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-1: 정보보호 투자 규모",
-        "text": "최근 1년간 회사 전체 IT 투자금액은 얼마인가요? (원)",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q1-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "최근 회계연도 기준 전체 IT 투자 금액을 입력하세요.",
-        "evidence_list": ["IT 예산서", "투자내역서", "예산문서"],
-        "sort_order": 2
+        "id": "Q1-2", "level": 2, "category_id": 1, "category": "정보보호 투자", "subcategory": "투자",
+        "text": "정보기술부문 투자액(A) (원)", "type": "number",
+        "parent_question_id": "Q1-1", "sort_order": 2, "help_text": "발생주의 원칙에 따른 1년 간의 총 IT 투자액",
+        "evidence_list": ["정보기술 투자 내역 보고서"]
     },
     {
-        "id": "Q1-3",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-1: 정보보호 투자 규모",
-        "text": "그 중 정보보호 관련 투자액은 얼마인가요? (원)",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q1-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "전체 IT 투자금액 중 정보보호 관련 투자 금액을 입력하세요. (비율 자동 계산)",
-        "evidence_list": ["투자내역서", "영수증", "예산문서"],
-        "sort_order": 3
+        "id": "Q1-3", "level": 2, "category_id": 1, "category": "정보보호 투자", "subcategory": "투자",
+        "text": "정보보호부문 투자액(B) - 다음 3개 항목의 합계", "type": "group",
+        "parent_question_id": "Q1-1", "dependent_question_ids": ["Q1-3-1", "Q1-3-2", "Q1-3-3"], "sort_order": 3,
+        "help_text": "정보보호 투자액은 감가상각비, 서비스비용, 인건비의 합으로 구성됩니다."
     },
     {
-        "id": "Q1-4",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-1: 정보보호 투자 규모",
-        "text": "향후 정보보호 투자 계획이 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q1-1",
-        "dependent_question_ids": ["Q1-4-1"],
-        "required": True,
-        "help_text": "차년도 이후 정보보호 투자 계획 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 4
+        "id": "Q1-3-1", "level": 3, "category_id": 1, "category": "정보보호 투자", "subcategory": "투자",
+        "text": "1) 유/무형자산 당기 감가상각비", "type": "number",
+        "parent_question_id": "Q1-3", "sort_order": 4, "help_text": "보안 장비, S/W 등의 당기 감가상각비"
     },
     {
-        "id": "Q1-4-1",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-1: 정보보호 투자 규모",
-        "text": "예정 투자액은 얼마인가요? (원)",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q1-4",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "계획된 투자 금액을 입력하세요.",
-        "evidence_list": ["투자계획서", "예산안"],
-        "sort_order": 5
-    },
-
-    # 카테고리 1-2: 보안 솔루션 현황
-    {
-        "id": "Q1-5",
-        "level": 1,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-2: 보안 솔루션 현황",
-        "text": "보안 솔루션을 도입하셨나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q1-6", "Q1-7", "Q1-8"],
-        "required": True,
-        "help_text": "보안 솔루션 도입 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 6
+        "id": "Q1-3-2", "level": 3, "category_id": 1, "category": "정보보호 투자", "subcategory": "투자",
+        "text": "2) 비용(서비스 이용료, 외주용역비 등)", "type": "number",
+        "parent_question_id": "Q1-3", "sort_order": 5, "help_text": "클라우드 보안 서비스, 보안 관제, 컨설팅 비용 등"
     },
     {
-        "id": "Q1-6",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-2: 보안 솔루션 현황",
-        "text": "도입된 보안 솔루션은 무엇인가요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["방화벽", "IDS/IPS", "SIEM", "DLP", "EDR", "WAF", "VPN", "기타"],
-        "parent_question_id": "Q1-5",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "도입된 보안 솔루션을 모두 선택하세요.",
-        "evidence_list": ["구매계약서"],
-        "sort_order": 7
+        "id": "Q1-3-3", "level": 3, "category_id": 1, "category": "정보보호 투자", "subcategory": "투자",
+        "text": "3) 내부 전담인력 인건비(급여, 상여, 퇴직급여 등)", "type": "number",
+        "parent_question_id": "Q1-3", "sort_order": 6, "help_text": "정보보호 업무만을 전담하는 인력의 인건비"
     },
     {
-        "id": "Q1-7",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-2: 보안 솔루션 현황",
-        "text": "각 솔루션별 도입 시기는 언제인가요?",
-        "type": "text",
-        "options": None,
-        "parent_question_id": "Q1-5",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "솔루션별 도입 시기를 기재하세요. (예: 방화벽 2020년 1월, SIEM 2022년 6월)",
-        "evidence_list": ["라이선스 계약서"],
-        "sort_order": 8
+        "id": "Q1-4", "level": 1, "category_id": 1, "category": "정보보호 투자", "subcategory": "투자 계획",
+        "text": "향후(차기 연도) 정보보호 투자 계획이 있으신가요?", "type": "yes_no",
+        "dependent_question_ids": ["Q1-4-1"], "sort_order": 7
     },
     {
-        "id": "Q1-8",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-2: 보안 솔루션 현황",
-        "text": "각 솔루션의 운영 현황은 어떠한가요?",
-        "type": "select",
-        "options": ["정상운영", "부분운영", "미운영", "계획중"],
-        "parent_question_id": "Q1-5",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "솔루션별 운영 상태를 선택하세요.",
-        "evidence_list": ["운영현황보고서"],
-        "sort_order": 9
-    },
-
-    # 카테고리 1-3: 백업 및 재해복구 투자
-    {
-        "id": "Q1-9",
-        "level": 1,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-3: 백업 및 재해복구 투자",
-        "text": "정기적인 백업을 실시하고 계신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q1-10", "Q1-11", "Q1-12", "Q1-13"],
-        "required": True,
-        "help_text": "정기적인 데이터 백업 실시 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 10
-    },
-    {
-        "id": "Q1-10",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-3: 백업 및 재해복구 투자",
-        "text": "백업 주기는 어떻게 되나요?",
-        "type": "select",
-        "options": ["매일", "주1회", "월1회", "기타"],
-        "parent_question_id": "Q1-9",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "백업 실시 주기를 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 11
-    },
-    {
-        "id": "Q1-11",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-3: 백업 및 재해복구 투자",
-        "text": "백업 데이터는 운영 환경과 물리적으로 분리되어 보관되나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q1-9",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "백업 데이터의 물리적 분리 보관 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 12
-    },
-    {
-        "id": "Q1-12",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-3: 백업 및 재해복구 투자",
-        "text": "복구 가능성을 검증하기 위한 복구 테스트를 실시하시나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q1-9",
-        "dependent_question_ids": ["Q1-12-1"],
-        "required": True,
-        "help_text": "백업 데이터 복구 테스트 실시 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 13
-    },
-    {
-        "id": "Q1-12-1",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-3: 백업 및 재해복구 투자",
-        "text": "최근 테스트 실시 시기는 언제인가요?",
-        "type": "date",
-        "options": None,
-        "parent_question_id": "Q1-12",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "최근 복구 테스트를 실시한 날짜를 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 14
-    },
-    {
-        "id": "Q1-13",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-3: 백업 및 재해복구 투자",
-        "text": "재해복구 계획(BCP/DRP)이 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q1-9",
-        "dependent_question_ids": ["Q1-13-1"],
-        "required": True,
-        "help_text": "재해복구 계획 수립 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 15
-    },
-    {
-        "id": "Q1-13-1",
-        "level": 2,
-        "category": "정보보호 투자 현황",
-        "subcategory": "카테고리 1-3: 백업 및 재해복구 투자",
-        "text": "정기 훈련을 실시하시나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q1-13",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "재해복구 훈련 실시 여부를 확인합니다.",
-        "evidence_list": ["계획서", "훈련기록"],
-        "sort_order": 16
+        "id": "Q1-4-1", "level": 2, "category_id": 1, "category": "정보보호 투자", "subcategory": "투자 계획",
+        "text": "예정 투자액 (원)", "type": "number",
+        "parent_question_id": "Q1-4", "sort_order": 8
     },
 
     # ============================================================================
-    # 2. 정보보호 인력 현황 (15개)
+    # 2. 정보보호 인력 (Q2)
     # ============================================================================
-
-    # 카테고리 2-1: 정보보호 조직 구성
     {
-        "id": "Q2-1",
-        "level": 1,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-1: 정보보호 조직 구성",
-        "text": "정보보호를 전담하는 부서/팀이 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q2-2", "Q2-3", "Q2-4", "Q2-5"],
-        "required": True,
-        "help_text": "정보보호 전담 조직 존재 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 17
+        "id": "Q2-1", "level": 1, "category_id": 2, "category": "정보보호 인력", "subcategory": "정보보호 인력",
+        "text": "정보보호 전담 부서 또는 전담 인력이 있나요? ", "type": "yes_no",
+        "dependent_question_ids": ["Q2-2", "Q2-3", "Q2-4"], "sort_order": 9
     },
     {
-        "id": "Q2-2",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-1: 정보보호 조직 구성",
-        "text": "정보보호 부서명은 무엇인가요?",
-        "type": "text",
-        "options": None,
-        "parent_question_id": "Q2-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "정보보호 전담 부서/팀 명칭을 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 18
+        "id": "Q2-2", "level": 2, "category_id": 2, "category": "정보보호 인력", "subcategory": "인력",
+        "text": "총 임직원 수 (월평균 간이세액 인원)", "type": "number",
+        "parent_question_id": "Q2-1", "sort_order": 10, "help_text": "매월 간이세액 신고 인원의 12개월 평균"
     },
     {
-        "id": "Q2-3",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-1: 정보보호 조직 구성",
-        "text": "정보보호 부서의 총 인원은 몇 명인가요?",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q2-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "정보보호 부서의 총 인원 수를 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 19
+        "id": "Q2-3", "level": 2, "category_id": 2, "category": "정보보호 인력", "subcategory": "인력",
+        "text": "내부 전담인력 수 (월평균, 소수점 포함)", "type": "number",
+        "parent_question_id": "Q2-1", "sort_order": 11, "help_text": "정보보호 전담 조직에 속한 내부 인원(월평균)"
     },
     {
-        "id": "Q2-4",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-1: 정보보호 조직 구성",
-        "text": "직급별 인원 구성은 어떻게 되나요? (임원급, 팀장급, 실무자)",
-        "type": "text",
-        "options": None,
-        "parent_question_id": "Q2-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "직급별 인원 구성을 입력하세요. (예: 임원급 1명, 팀장급 2명, 실무자 5명)",
-        "evidence_list": ["조직도", "인원배치현황"],
-        "sort_order": 20
+        "id": "Q2-4", "level": 2, "category_id": 2, "category": "정보보호 인력", "subcategory": "인력",
+        "text": "외주 전담인력 수 (계약서 M/M 기반 월평균)", "type": "number",
+        "parent_question_id": "Q2-1", "sort_order": 12, "help_text": "외주 인력 중 정보보호 업무 전담 인원(월평균)"
     },
     {
-        "id": "Q2-5",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-1: 정보보호 조직 구성",
-        "text": "조직도상 정보보호 부서는 어디에 위치하나요?",
-        "type": "select",
-        "options": ["CEO직속", "CTO산하", "IT부서산하", "기타"],
-        "parent_question_id": "Q2-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "정보보호 부서의 조직 내 위치를 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 21
-    },
-
-    # 카테고리 2-2: 정보보호 책임자
-    {
-        "id": "Q2-6",
-        "level": 1,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-2: 정보보호 책임자",
-        "text": "정보보호 책임자(CISO 또는 유사 역할)가 지정되어 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q2-7", "Q2-8", "Q2-9"],
-        "required": True,
-        "help_text": "CISO 또는 유사한 정보보호 책임자 지정 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 22
+        "id": "Q2-5", "level": 1, "category_id": 2, "category": "정보보호 인력", "subcategory": "CISO/CPO",
+        "text": "최고책임자(CISO/CPO) 지정 현황", "type": "yes_no",
+        "dependent_question_ids": ["Q2-5-1"], "sort_order": 13
     },
     {
-        "id": "Q2-7",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-2: 정보보호 책임자",
-        "text": "책임자 이름 및 직급은 무엇인가요?",
-        "type": "text",
-        "options": None,
-        "parent_question_id": "Q2-6",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "정보보호 책임자의 이름과 직급을 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 23
-    },
-    {
-        "id": "Q2-8",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-2: 정보보호 책임자",
-        "text": "책임자는 누구에게 직보고하시나요?",
-        "type": "select",
-        "options": ["CEO", "CFO", "CTO", "기타"],
-        "parent_question_id": "Q2-6",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "정보보호 책임자의 직속 보고 대상을 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 24
-    },
-    {
-        "id": "Q2-9",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-2: 정보보호 책임자",
-        "text": "책임자의 정보보호 관련 경력은 몇 년인가요?",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q2-6",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "정보보호 책임자의 관련 경력 연수를 입력하세요.",
-        "evidence_list": ["임명장", "조직도"],
-        "sort_order": 25
-    },
-
-    # 카테고리 2-3: 정보보호 인력 역량
-    {
-        "id": "Q2-10",
-        "level": 1,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-3: 정보보호 인력 역량",
-        "text": "정보보호 담당자들이 관련 자격증을 보유하고 계신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q2-11", "Q2-12"],
-        "required": True,
-        "help_text": "정보보호 담당자의 자격증 보유 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 26
-    },
-    {
-        "id": "Q2-11",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-3: 정보보호 인력 역량",
-        "text": "보유한 자격증은 무엇인가요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["CISSP", "정보보안기사", "CCNA Security", "CEH", "기타"],
-        "parent_question_id": "Q2-10",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "보유한 자격증을 모두 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 27
-    },
-    {
-        "id": "Q2-12",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-3: 정보보호 인력 역량",
-        "text": "지난 1년간 정보보호 교육/훈련을 받은 인원은 몇 명인가요?",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q2-10",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "지난 1년간 교육/훈련을 받은 인원 수를 입력하세요.",
-        "evidence_list": ["자격증사본", "교육이수기록"],
-        "sort_order": 28
-    },
-
-    # 카테고리 2-4: 외부 용역
-    {
-        "id": "Q2-13",
-        "level": 1,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-4: 외부 용역",
-        "text": "외부 정보보호 용역(컨설팅, 감시 등)을 활용하고 계신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q2-14", "Q2-15"],
-        "required": True,
-        "help_text": "외부 정보보호 용역 활용 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 29
-    },
-    {
-        "id": "Q2-14",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-4: 외부 용역",
-        "text": "외부 용역의 종류는 무엇인가요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["컨설팅", "모니터링", "취약점진단", "침투테스트", "기타"],
-        "parent_question_id": "Q2-13",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "활용 중인 외부 용역 종류를 모두 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 30
-    },
-    {
-        "id": "Q2-15",
-        "level": 2,
-        "category": "정보보호 인력 현황",
-        "subcategory": "카테고리 2-4: 외부 용역",
-        "text": "각 용역의 연간 비용은 얼마인가요? (원)",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q2-13",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "외부 용역의 연간 총 비용을 입력하세요.",
-        "evidence_list": ["계약서", "영수증"],
-        "sort_order": 31
+        "id": "Q2-5-1", "level": 2, "category_id": 2, "category": "정보보호 인력", "subcategory": "CISO/CPO",
+        "text": "CISO/CPO 상세 현황", "type": "table",
+        "parent_question_id": "Q2-5", "sort_order": 14,
+        "options": ["이름", "직급", "임원여부(Y/N)", "겸직여부(Y/N)"]
     },
 
     # ============================================================================
-    # 3. 정보보호 관련 인증 (8개)
+    # 3. 정보보호 인증 (Q3)
     # ============================================================================
-
-    # 카테고리 3-1: ISMS 인증
     {
-        "id": "Q3-1",
-        "level": 1,
-        "category": "정보보호 관련 인증",
-        "subcategory": "카테고리 3-1: ISMS 인증",
-        "text": "ISMS(정보보안관리체계) 인증을 취득하셨나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q3-2", "Q3-3", "Q3-4", "Q3-5"],
-        "required": True,
-        "help_text": "ISMS 인증 취득 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 32
+        "id": "Q3-1", "level": 1, "category_id": 3, "category": "정보보호 인증", "subcategory": "인증/평가",
+        "text": "ISMS, ISO27001 등 유효한 인증이 있나요?", "type": "yes_no",
+        "dependent_question_ids": ["Q3-2"], "sort_order": 15
     },
     {
-        "id": "Q3-2",
-        "level": 2,
-        "category": "정보보호 관련 인증",
-        "subcategory": "카테고리 3-1: ISMS 인증",
-        "text": "ISMS 인증 취득 시기는 언제인가요? (년월)",
-        "type": "date",
-        "options": None,
-        "parent_question_id": "Q3-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "ISMS 인증 취득 시기를 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 33
-    },
-    {
-        "id": "Q3-3",
-        "level": 2,
-        "category": "정보보호 관련 인증",
-        "subcategory": "카테고리 3-1: ISMS 인증",
-        "text": "현재 유효한 인증서가 있으신가요?",
-        "type": "select",
-        "options": ["YES(유효)", "NO(만료)", "YES(갱신중)"],
-        "parent_question_id": "Q3-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "현재 인증서 유효 상태를 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 34
-    },
-    {
-        "id": "Q3-4",
-        "level": 2,
-        "category": "정보보호 관련 인증",
-        "subcategory": "카테고리 3-1: ISMS 인증",
-        "text": "인증서 유효기간은 어떻게 되나요?",
-        "type": "text",
-        "options": None,
-        "parent_question_id": "Q3-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "인증서 유효기간을 입력하세요. (예: 2025년 1월 ~ 2027년 12월)",
-        "evidence_list": None,
-        "sort_order": 35
-    },
-    {
-        "id": "Q3-5",
-        "level": 2,
-        "category": "정보보호 관련 인증",
-        "subcategory": "카테고리 3-1: ISMS 인증",
-        "text": "ISMS 인증 유지를 위한 정기 심사 예정 시기는 언제인가요? (년월)",
-        "type": "date",
-        "options": None,
-        "parent_question_id": "Q3-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "정기 심사 예정 시기를 입력하세요.",
-        "evidence_list": ["인증서사본", "심사계획서", "심사보고서"],
-        "sort_order": 36
-    },
-
-    # 카테고리 3-2: 기타 인증
-    {
-        "id": "Q3-6",
-        "level": 1,
-        "category": "정보보호 관련 인증",
-        "subcategory": "카테고리 3-2: 기타 인증",
-        "text": "ISMS 외 다른 정보보호 관련 인증이 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q3-7", "Q3-8"],
-        "required": True,
-        "help_text": "ISMS 외 다른 정보보호 인증 보유 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 37
-    },
-    {
-        "id": "Q3-7",
-        "level": 2,
-        "category": "정보보호 관련 인증",
-        "subcategory": "카테고리 3-2: 기타 인증",
-        "text": "보유한 인증은 무엇인가요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["ISO27001", "ISO27018", "SOC2", "CSAP", "기타"],
-        "parent_question_id": "Q3-6",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "보유한 인증을 모두 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 38
-    },
-    {
-        "id": "Q3-8",
-        "level": 2,
-        "category": "정보보호 관련 인증",
-        "subcategory": "카테고리 3-2: 기타 인증",
-        "text": "각 인증의 유효기간은 어떻게 되나요?",
-        "type": "text",
-        "options": None,
-        "parent_question_id": "Q3-6",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "인증별 유효기간을 기재하세요.",
-        "evidence_list": ["인증서사본"],
-        "sort_order": 39
+        "id": "Q3-2", "level": 2, "category_id": 3, "category": "정보보호 인증", "subcategory": "인증/평가",
+        "text": "인증 보유 현황", "type": "table",
+        "parent_question_id": "Q3-1", "sort_order": 16,
+        "options": ["인증종류", "유효기간", "발행기관"]
     },
 
     # ============================================================================
-    # 4. 정보보호 관련 활동 (29개)
+    # 4. 정보보호 활동 (Q4)
     # ============================================================================
-
-    # 카테고리 4-1: 정책 및 관리 체계
     {
-        "id": "Q4-1",
-        "level": 1,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-1: 정책 및 관리 체계",
-        "text": "정보보호 기본 정책이 수립되어 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q4-2", "Q4-3", "Q4-4"],
-        "required": True,
-        "help_text": "정보보호 기본 정책 수립 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 40
+        "id": "Q4-1", "level": 1, "category_id": 4, "category": "정보보호 활동", "subcategory": "보호 활동",
+        "text": "이용자 보호를 위한 활동이 있나요?", "type": "yes_no",
+        "dependent_question_ids": ["Q4-2", "Q4-3", "Q4-4", "Q4-5", "Q4-6", "Q4-7", "Q4-8", "Q4-9", "Q4-10"], "sort_order": 17,
+        "help_text": "가이드라인에 명시된 주요 정보보호 관련 활동 수행 현황을 입력합니다."
     },
     {
-        "id": "Q4-2",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-1: 정책 및 관리 체계",
-        "text": "정책 수립 시기는 언제인가요? (년월)",
-        "type": "date",
-        "options": None,
-        "parent_question_id": "Q4-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "정책 최초 수립 시기를 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 41
+        "id": "Q4-2", "level": 2, "category_id": 4, "category": "정보보호 활동", "subcategory": "관리적 활동",
+        "text": "IT 자산 식별 및 관리 현황", "type": "select",
+        "options": ["미수행", "기초관리(엑셀 등)", "자산관리시스템 운영", "정기적 현행화 및 점검"],
+        "parent_question_id": "Q4-1", "sort_order": 18, "help_text": "정보보호의 기본인 IT 자산(H/W, S/W) 목록 관리 및 최신화 여부"
     },
     {
-        "id": "Q4-3",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-1: 정책 및 관리 체계",
-        "text": "최근 정책 개정 시기는 언제인가요? (년월)",
-        "type": "date",
-        "options": None,
-        "parent_question_id": "Q4-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "정책의 최근 개정 시기를 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 42
+        "id": "Q4-3", "level": 2, "category_id": 4, "category": "정보보호 활동", "subcategory": "관리적 활동",
+        "text": "임직원 정보보호 교육 및 훈련 실적", "type": "table",
+        "options": ["교육구분(임직원/협력사)", "실시횟수(연간)", "이수율(%)"],
+        "parent_question_id": "Q4-1", "sort_order": 19, "help_text": "정기 보안 교육, 캠페인 등 인식 제고 활동"
     },
     {
-        "id": "Q4-4",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-1: 정책 및 관리 체계",
-        "text": "정책은 몇 년마다 검토하시나요?",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q4-1",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "정책 검토 주기를 입력하세요. (예: 1년마다)",
-        "evidence_list": ["정책문서", "승인결재", "개정이력"],
-        "sort_order": 43
-    },
-
-    # 카테고리 4-2: 세부 규정/지침
-    {
-        "id": "Q4-5",
-        "level": 1,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-2: 세부 규정/지침",
-        "text": "정보보호 기본 정책 외에 세부 규정/지침이 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q4-6", "Q4-7", "Q4-8"],
-        "required": True,
-        "help_text": "세부 규정/지침 존재 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 44
+        "id": "Q4-4", "level": 2, "category_id": 4, "category": "정보보호 활동", "subcategory": "관리적 활동",
+        "text": "정보보호 지침 및 절차서 수립/관리", "type": "yes_no",
+        "parent_question_id": "Q4-1", "sort_order": 20, "help_text": "정보보호 정책, 지침, 매뉴얼 등의 제정 및 개정 관리"
     },
     {
-        "id": "Q4-6",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-2: 세부 규정/지침",
-        "text": "수립된 세부 규정/지침은 무엇인가요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["접근통제", "암호화", "변경관리", "개인정보보호", "사고대응", "교육", "네트워크보안", "기타"],
-        "parent_question_id": "Q4-5",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "수립된 세부 규정/지침을 모두 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 45
+        "id": "Q4-5", "level": 2, "category_id": 4, "category": "정보보호 활동", "subcategory": "기술적 활동",
+        "text": "정보시스템 취약점 분석 및 평가", "type": "select",
+        "options": ["미수행", "자체 점검(간이)", "정기 점검(연 1회 이상)", "상시 취약점 관리체계"],
+        "parent_question_id": "Q4-1", "sort_order": 21, "help_text": "서버, 네트워크, DB, 웹/앱 등에 대한 보안 취약점 점검"
     },
     {
-        "id": "Q4-7",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-2: 세부 규정/지침",
-        "text": "총 몇 개의 규정/지침이 있으신가요?",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q4-5",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "규정/지침의 총 개수를 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 46
+        "id": "Q4-6", "level": 2, "category_id": 4, "category": "정보보호 활동", "subcategory": "기술적 활동",
+        "text": "제로트러스트(Zero Trust) 도입 단계", "type": "select",
+        "options": ["도입전", "계획수립", "기초운영", "고도화단계"],
+        "parent_question_id": "Q4-1", "sort_order": 22
     },
     {
-        "id": "Q4-8",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-2: 세부 규정/지침",
-        "text": "규정/지침은 정기적으로 검토/개정되나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-5",
-        "dependent_question_ids": ["Q4-8-1"],
-        "required": True,
-        "help_text": "규정/지침의 정기 검토/개정 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 47
+        "id": "Q4-7", "level": 2, "category_id": 4, "category": "정보보호 활동", "subcategory": "기술적 활동",
+        "text": "공급망 보안(SBOM) 관리 및 조치 (건)", "type": "number",
+        "parent_question_id": "Q4-1", "sort_order": 23
     },
     {
-        "id": "Q4-8-1",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-2: 세부 규정/지침",
-        "text": "검토 주기는 어떻게 되나요? (년)",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q4-8",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "검토 주기를 입력하세요. (예: 1년마다)",
-        "evidence_list": ["규정지침문서", "개정이력"],
-        "sort_order": 48
-    },
-
-    # 카테고리 4-3: 정보보호 교육
-    {
-        "id": "Q4-9",
-        "level": 1,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-3: 정보보호 교육",
-        "text": "정기적인 정보보호 교육을 실시하시나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q4-10", "Q4-11", "Q4-12", "Q4-13", "Q4-14"],
-        "required": True,
-        "help_text": "정기적인 정보보호 교육 실시 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 49
+        "id": "Q4-8", "level": 2, "category_id": 4, "category": "정보보호 활동", "subcategory": "보호 활동",
+        "text": "사이버 위협정보 분석/공유시스템(C-TAS) 참여", "type": "checkbox",
+        "options": ["C-TAS 정회원", "C-TAS 준회원", "기타 보안커뮤니티 활동"],
+        "parent_question_id": "Q4-1", "sort_order": 24
     },
     {
-        "id": "Q4-10",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-3: 정보보호 교육",
-        "text": "최근 1년간 교육 실시 현황은 어떻게 되나요? (총 횟수, 참석인원, 평균시간)",
-        "type": "text",
-        "options": None,
-        "parent_question_id": "Q4-9",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "교육 실시 현황을 입력하세요. (예: 총 4회, 200명, 평균 2시간)",
-        "evidence_list": None,
-        "sort_order": 50
+        "id": "Q4-9", "level": 2, "category_id": 4, "category": "정보보호 활동", "subcategory": "보호 활동",
+        "text": "사이버 위기대응 모의훈련 (DDoS, 랜섬웨어 등)", "type": "table",
+        "options": ["훈련종류", "실시일자", "참여인원"],
+        "parent_question_id": "Q4-1", "sort_order": 25
     },
     {
-        "id": "Q4-11",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-3: 정보보호 교육",
-        "text": "교육 대상층은 누구인가요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["신입직원", "일반직원", "임원진", "개발자", "기타"],
-        "parent_question_id": "Q4-9",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "교육 대상층을 모두 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 51
-    },
-    {
-        "id": "Q4-12",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-3: 정보보호 교육",
-        "text": "교육 주요 내용은 무엇인가요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["피싱대응", "패스워드관리", "개인정보보호", "사고대응", "기타"],
-        "parent_question_id": "Q4-9",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "교육 주요 내용을 모두 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 52
-    },
-    {
-        "id": "Q4-13",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-3: 정보보호 교육",
-        "text": "신입 직원 대상 정보보호 교육이 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-9",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "신입 직원 대상 정보보호 교육 실시 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 53
-    },
-    {
-        "id": "Q4-14",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-3: 정보보호 교육",
-        "text": "임원진 대상 정보보호 교육이 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-9",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "임원진 대상 정보보호 교육 실시 여부를 확인합니다.",
-        "evidence_list": ["교육계획서", "실시기록", "참석자명단", "교육자료"],
-        "sort_order": 54
-    },
-
-    # 카테고리 4-4: 보안 훈련
-    {
-        "id": "Q4-15",
-        "level": 1,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-4: 보안 훈련",
-        "text": "보안 훈련(모의해킹, 피싱훈련 등)을 실시하시나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q4-16", "Q4-17", "Q4-18"],
-        "required": True,
-        "help_text": "보안 훈련 실시 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 55
-    },
-    {
-        "id": "Q4-16",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-4: 보안 훈련",
-        "text": "실시하는 훈련의 종류는 무엇인가요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["피싱메일훈련", "모의해킹", "사고대응훈련", "기타"],
-        "parent_question_id": "Q4-15",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "실시하는 훈련 종류를 모두 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 56
-    },
-    {
-        "id": "Q4-17",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-4: 보안 훈련",
-        "text": "최근 1년간 훈련 실시 현황은 어떻게 되나요? (종류별 횟수)",
-        "type": "text",
-        "options": None,
-        "parent_question_id": "Q4-15",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "훈련 종류별 실시 횟수를 입력하세요. (예: 피싱훈련 2회, 모의해킹 1회)",
-        "evidence_list": None,
-        "sort_order": 57
-    },
-    {
-        "id": "Q4-18",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-4: 보안 훈련",
-        "text": "훈련 결과를 기록하고 개선사항을 반영하시나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-15",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "훈련 결과 기록 및 개선 반영 여부를 확인합니다.",
-        "evidence_list": ["훈련계획서", "결과보고서", "참석기록"],
-        "sort_order": 58
-    },
-
-    # 카테고리 4-5: 보안 모니터링
-    {
-        "id": "Q4-19",
-        "level": 1,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-5: 보안 모니터링",
-        "text": "보안 사고를 탐지하기 위한 모니터링 시스템이 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q4-20", "Q4-21", "Q4-22"],
-        "required": True,
-        "help_text": "보안 모니터링 시스템 존재 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 59
-    },
-    {
-        "id": "Q4-20",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-5: 보안 모니터링",
-        "text": "모니터링 시스템은 무엇인가요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["SIEM", "IDS/IPS", "EDR", "기타"],
-        "parent_question_id": "Q4-19",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "사용 중인 모니터링 시스템을 모두 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 60
-    },
-    {
-        "id": "Q4-21",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-5: 보안 모니터링",
-        "text": "모니터링 운영 방식은 어떻게 되나요?",
-        "type": "select",
-        "options": ["24/7운영", "업무시간만", "외부용역"],
-        "parent_question_id": "Q4-19",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "모니터링 운영 방식을 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 61
-    },
-    {
-        "id": "Q4-22",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-5: 보안 모니터링",
-        "text": "보안 알람 발생 시 대응 절차가 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-19",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "보안 알람 대응 절차 존재 여부를 확인합니다.",
-        "evidence_list": ["시스템구성도", "운영절차서", "대응기록"],
-        "sort_order": 62
-    },
-
-    # 카테고리 4-6: 정기적 보안 감사/점검
-    {
-        "id": "Q4-23",
-        "level": 1,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-6: 정기적 보안 감사/점검",
-        "text": "정기적인 보안 감사/점검을 실시하시나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q4-24", "Q4-25", "Q4-26"],
-        "required": True,
-        "help_text": "정기적인 보안 감사/점검 실시 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 63
-    },
-    {
-        "id": "Q4-24",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-6: 정기적 보안 감사/점검",
-        "text": "감사/점검 종류는 무엇인가요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["내부감사", "외부감사", "정기점검", "기타"],
-        "parent_question_id": "Q4-23",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "실시하는 감사/점검 종류를 모두 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 64
-    },
-    {
-        "id": "Q4-25",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-6: 정기적 보안 감사/점검",
-        "text": "감사/점검 주기는 어떻게 되나요? (종류별)",
-        "type": "text",
-        "options": None,
-        "parent_question_id": "Q4-23",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "감사/점검 종류별 주기를 입력하세요. (예: 내부감사 분기별, 외부감사 연1회)",
-        "evidence_list": None,
-        "sort_order": 65
-    },
-    {
-        "id": "Q4-26",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-6: 정기적 보안 감사/점검",
-        "text": "최근 감사/점검 실시 시기는 언제인가요? (년월)",
-        "type": "date",
-        "options": None,
-        "parent_question_id": "Q4-23",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "최근 감사/점검 실시 시기를 입력하세요.",
-        "evidence_list": ["감사계획서", "감사보고서", "지적사항및개선조치"],
-        "sort_order": 66
-    },
-
-    # 카테고리 4-7: 취약점 진단 및 침투테스트
-    {
-        "id": "Q4-27",
-        "level": 1,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-7: 취약점 진단 및 침투테스트",
-        "text": "정기적인 보안 취약점 진단을 실시하시나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q4-28", "Q4-29", "Q4-30"],
-        "required": True,
-        "help_text": "정기적인 보안 취약점 진단 실시 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 67
-    },
-    {
-        "id": "Q4-28",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-7: 취약점 진단 및 침투테스트",
-        "text": "진단 주기는 어떻게 되나요? (년에 몇 회)",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q4-27",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "연간 진단 실시 횟수를 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 68
-    },
-    {
-        "id": "Q4-29",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-7: 취약점 진단 및 침투테스트",
-        "text": "최근 진단 실시 시기는 언제인가요? (년월)",
-        "type": "date",
-        "options": None,
-        "parent_question_id": "Q4-27",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "최근 진단 실시 시기를 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 69
-    },
-    {
-        "id": "Q4-30",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-7: 취약점 진단 및 침투테스트",
-        "text": "침투테스트(Penetration Test)를 실시하시나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-27",
-        "dependent_question_ids": ["Q4-30-1"],
-        "required": True,
-        "help_text": "침투테스트 실시 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 70
-    },
-    {
-        "id": "Q4-30-1",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-7: 취약점 진단 및 침투테스트",
-        "text": "침투테스트 주기는 어떻게 되나요? (년에 몇 회)",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q4-30",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "연간 침투테스트 실시 횟수를 입력하세요.",
-        "evidence_list": ["진단보고서", "테스트보고서", "개선조치기록"],
-        "sort_order": 71
-    },
-
-    # 카테고리 4-8: 정보보호 사건·사고 관리
-    {
-        "id": "Q4-31",
-        "level": 1,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-8: 정보보호 사건·사고 관리",
-        "text": "정보보호 사고 대응 계획(Incident Response Plan)이 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q4-32", "Q4-33", "Q4-34", "Q4-35", "Q4-36"],
-        "required": True,
-        "help_text": "정보보호 사고 대응 계획 수립 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 72
-    },
-    {
-        "id": "Q4-32",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-8: 정보보호 사건·사고 관리",
-        "text": "사고 대응 팀이 구성되어 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-31",
-        "dependent_question_ids": ["Q4-32-1"],
-        "required": True,
-        "help_text": "사고 대응 팀 구성 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 73
-    },
-    {
-        "id": "Q4-32-1",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-8: 정보보호 사건·사고 관리",
-        "text": "팀 구성 인원은 몇 명인가요?",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q4-32",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "사고 대응 팀의 인원 수를 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 74
-    },
-    {
-        "id": "Q4-33",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-8: 정보보호 사건·사고 관리",
-        "text": "사고 대응 절차(보고→격리→조사→복구)가 정의되어 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-31",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "사고 대응 절차 정의 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 75
-    },
-    {
-        "id": "Q4-34",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-8: 정보보호 사건·사고 관리",
-        "text": "최근 1년간 발생한 정보보호 사고는 몇 건인가요?",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q4-31",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "최근 1년간 발생한 정보보호 사고 건수를 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 76
-    },
-    {
-        "id": "Q4-35",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-8: 정보보호 사건·사고 관리",
-        "text": "사고별 원인분석(RCA)을 실시하셨나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-31",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "사고별 원인분석(RCA) 실시 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 77
-    },
-    {
-        "id": "Q4-36",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-8: 정보보호 사건·사고 관리",
-        "text": "분석 결과에 따른 재발 방지 대책을 수립/실행하셨나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-31",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "재발 방지 대책 수립/실행 여부를 확인합니다.",
-        "evidence_list": ["대응계획서", "팀구성표", "사고보고서", "RCA보고서", "재발방지대책"],
-        "sort_order": 78
-    },
-
-    # 카테고리 4-9: 개인정보 보호
-    {
-        "id": "Q4-37",
-        "level": 1,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-9: 개인정보 보호",
-        "text": "개인정보 보호 정책이 수립되어 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": None,
-        "dependent_question_ids": ["Q4-38", "Q4-39", "Q4-40", "Q4-41", "Q4-42"],
-        "required": True,
-        "help_text": "개인정보 보호 정책 수립 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 79
-    },
-    {
-        "id": "Q4-38",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-9: 개인정보 보호",
-        "text": "개인정보 처리 담당자가 지정되어 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-37",
-        "dependent_question_ids": ["Q4-38-1"],
-        "required": True,
-        "help_text": "개인정보 처리 담당자 지정 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 80
-    },
-    {
-        "id": "Q4-38-1",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-9: 개인정보 보호",
-        "text": "담당자명은 누구인가요?",
-        "type": "text",
-        "options": None,
-        "parent_question_id": "Q4-38",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "개인정보 처리 담당자의 이름을 입력하세요.",
-        "evidence_list": None,
-        "sort_order": 81
-    },
-    {
-        "id": "Q4-39",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-9: 개인정보 보호",
-        "text": "개인정보는 어떻게 보호되나요? (중복선택 가능)",
-        "type": "checkbox",
-        "options": ["암호화", "접근제한", "마스킹", "기타"],
-        "parent_question_id": "Q4-37",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "개인정보 보호 방법을 모두 선택하세요.",
-        "evidence_list": None,
-        "sort_order": 82
-    },
-    {
-        "id": "Q4-40",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-9: 개인정보 보호",
-        "text": "개인정보 접근 기록을 감시하시나요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-37",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "개인정보 접근 기록 감시 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 83
-    },
-    {
-        "id": "Q4-41",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-9: 개인정보 보호",
-        "text": "개인정보 유출 사고 시 대응 절차가 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-37",
-        "dependent_question_ids": ["Q4-41-1"],
-        "required": True,
-        "help_text": "개인정보 유출 사고 대응 절차 존재 여부를 확인합니다.",
-        "evidence_list": None,
-        "sort_order": 84
-    },
-    {
-        "id": "Q4-41-1",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-9: 개인정보 보호",
-        "text": "신고 기간은 며칠 이내인가요?",
-        "type": "number",
-        "options": None,
-        "parent_question_id": "Q4-41",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "개인정보 유출 신고 기간을 입력하세요. (예: 72시간 이내 = 3일)",
-        "evidence_list": None,
-        "sort_order": 85
-    },
-    {
-        "id": "Q4-42",
-        "level": 2,
-        "category": "정보보호 관련 활동",
-        "subcategory": "카테고리 4-9: 개인정보 보호",
-        "text": "피해자 통지 및 보상 계획이 있으신가요?",
-        "type": "yes_no",
-        "options": None,
-        "parent_question_id": "Q4-37",
-        "dependent_question_ids": None,
-        "required": True,
-        "help_text": "피해자 통지 및 보상 계획 존재 여부를 확인합니다.",
-        "evidence_list": ["정책", "임명장", "대응계획", "감시로그"],
-        "sort_order": 86
-    },
+        "id": "Q4-10", "level": 2, "category_id": 4, "category": "정보보호 활동", "subcategory": "보호 활동",
+        "text": "침해사고 배상책임보험 또는 준비금 가입", "type": "yes_no",
+        "parent_question_id": "Q4-1", "sort_order": 26, "help_text": "사고 발생 시 이용자 피해 보상을 위한 보험 가입 또는 적립금 여부"
+    }
 ]
 
+import json
 
 def upgrade(conn):
-    """65개 질문 데이터 삽입"""
-
+    # 기존 질문 데이터 삭제
+    conn.execute('DELETE FROM sb_disclosure_questions')
+    
+    # 신규 질문 데이터 삽입
     for q in DISCLOSURE_QUESTIONS:
-        # JSON 필드 직렬화
-        options_json = json.dumps(q.get("options"), ensure_ascii=False) if q.get("options") else None
-        dependent_json = json.dumps(q.get("dependent_question_ids"), ensure_ascii=False) if q.get("dependent_question_ids") else None
-        evidence_json = json.dumps(q.get("evidence_list"), ensure_ascii=False) if q.get("evidence_list") else None
-
         conn.execute('''
-            INSERT OR REPLACE INTO disclosure_questions (
-                id, level, category, subcategory, text, type, options,
-                parent_question_id, dependent_question_ids, required,
-                help_text, evidence_list, sort_order
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO sb_disclosure_questions
+            (id, level, category_id, category, subcategory, text, type, options, parent_question_id, dependent_question_ids, sort_order, help_text, evidence_list)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            q["id"],
-            q["level"],
-            q["category"],
-            q.get("subcategory"),
-            q["text"],
-            q["type"],
-            options_json,
-            q.get("parent_question_id"),
-            dependent_json,
-            1 if q.get("required", True) else 0,
-            q.get("help_text"),
-            evidence_json,
-            q.get("sort_order", 0)
+            q["id"], q["level"], q["category_id"], q["category"], q.get("subcategory"),
+            q["text"], q["type"], json.dumps(q.get("options"), ensure_ascii=False) if q.get("options") else None,
+            q.get("parent_question_id"), 
+            json.dumps(q.get("dependent_question_ids"), ensure_ascii=False) if q.get("dependent_question_ids") else None,
+            q["sort_order"], q.get("help_text"),
+            json.dumps(q.get("evidence_list"), ensure_ascii=False) if q.get("evidence_list") else None
         ))
 
-    print(f"  - {len(DISCLOSURE_QUESTIONS)}개 질문 데이터 삽입 완료")
-
-
 def downgrade(conn):
-    """질문 데이터 삭제"""
-    conn.execute('DELETE FROM disclosure_questions')
-    print("  - 질문 데이터 삭제 완료")
+    pass

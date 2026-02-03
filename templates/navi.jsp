@@ -1,19 +1,22 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Snowball Navigation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-    		<link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
-		<link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
             <a class="navbar-brand" href="/">
-                <img src="{{ url_for('static', filename='img/logo.jpg')}}" class="logo" alt="Snowball Logo" style="max-height: 40px; width: auto;">
+                <img src="{{ url_for('static', filename='img/logo.jpg')}}" class="logo" alt="Snowball Logo"
+                    style="max-height: 40px; width: auto;">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -33,7 +36,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="/link11" class="nav-link">
+                        <a href="{{ url_for('link11.index') }}" class="nav-link">
                             <i class="fas fa-shield-alt me-1"></i>정보보호공시
                         </a>
                     </li>
@@ -58,31 +61,34 @@
                         </a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="publicMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="javascript:void(0);" id="publicMenuDropdown"
+                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-globe me-1"></i>Public
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="publicMenuDropdown">
-                            <li><a class="dropdown-item" href="/link1">
-                                <i class="fas fa-clipboard-list me-2"></i>RCM 생성
-                            </a></li>
-                            <li><a class="dropdown-item" href="/link2?reset=1">
-                                <i class="fas fa-user-tie me-2"></i>인터뷰/설계평가
-                            </a></li>
-                            <li><a class="dropdown-item" href="/link3">
-                                <i class="fas fa-cogs me-2"></i>운영평가 가이드
-                            </a></li>
-                            <li><a class="dropdown-item" href="/link4">
-                                <i class="fas fa-film me-2"></i>영상 가이드
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/link10">
-                                <i class="fas fa-chart-line me-2"></i>종목 분석
-                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('link1.link1') }}">
+                                    <i class="fas fa-clipboard-list me-2"></i>RCM 생성
+                                </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('link2.link2', reset=1) }}">
+                                    <i class="fas fa-user-tie me-2"></i>인터뷰/설계평가
+                                </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('link3.link3') }}">
+                                    <i class="fas fa-cogs me-2"></i>운영평가 가이드
+                                </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('link4.link4') }}">
+                                    <i class="fas fa-film me-2"></i>영상 가이드
+                                </a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="{{ url_for('link10.index') }}">
+                                    <i class="fas fa-chart-line me-2"></i>종목 분석
+                                </a></li>
                         </ul>
                     </li>
                     {% if user_info and user_info.get('admin_flag') == 'Y' %}
                     <li class="nav-item">
-                        <a href="/admin" class="nav-link">
+                        <a href="{{ url_for('admin.admin') }}" class="nav-link">
                             <i class="fas fa-user-shield me-1"></i>Admin
                         </a>
                     </li>
@@ -90,27 +96,27 @@
                     {% else %}
                     <!-- 비로그인 상태: Public 메뉴 표시 -->
                     <li class="nav-item">
-                        <a href="/link1" class="nav-link">
+                        <a href="{{ url_for('link1.link1') }}" class="nav-link">
                             <i class="fas fa-clipboard-list me-1"></i>RCM 생성
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="/link2?reset=1" class="nav-link">
+                        <a href="{{ url_for('link2.link2', reset=1) }}" class="nav-link">
                             <i class="fas fa-user-tie me-1"></i>인터뷰/설계평가
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="/link3" class="nav-link">
+                        <a href="{{ url_for('link3.link3') }}" class="nav-link">
                             <i class="fas fa-cogs me-1"></i>운영평가 가이드
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="/link4" class="nav-link">
+                        <a href="{{ url_for('link4.link4') }}" class="nav-link">
                             <i class="fas fa-film me-1"></i>영상 가이드
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="/link10" class="nav-link">
+                        <a href="{{ url_for('link10.index') }}" class="nav-link">
                             <i class="fas fa-chart-line me-1"></i>종목 분석
                         </a>
                     </li>
@@ -121,24 +127,28 @@
                     </li>
                     {% endif %}
                 </ul>
-                
+
                 <ul class="navbar-nav">
                     {% if is_logged_in %}
                     {% if session.get('original_admin_id') %}
                     <li class="nav-item">
-                        <a href="/admin/switch_back" class="nav-link text-danger" title="관리자로 돌아가기">
+                        <a href="{{ url_for('admin.admin_switch_back') }}" class="nav-link text-danger"
+                            title="관리자로 돌아가기">
                             <i class="fas fa-undo me-1"></i>관리자로 돌아가기
                         </a>
                     </li>
                     {% endif %}
                     <li class="nav-item">
                         {% if user_info and user_info.get('admin_flag') == 'Y' %}
-                        <a href="#" class="nav-link company-info" onclick="showUserSwitchModal(); return false;" style="cursor: pointer;" title="사용자 전환">
-                            <i class="fas fa-user-cog me-1"></i>{{ user_info.company_name if user_info.company_name else '회사명 미등록' }}
+                        <a href="#" class="nav-link company-info" onclick="showUserSwitchModal(); return false;"
+                            style="cursor: pointer;" title="사용자 전환">
+                            <i class="fas fa-user-cog me-1"></i>{{ user_info.company_name if user_info.company_name else
+                            '회사명 미등록' }}
                         </a>
                         {% else %}
                         <span class="navbar-text company-info">
-                            <i class="fas fa-building me-1"></i>{{ user_info.company_name if user_info.company_name else '회사명 미등록' }}
+                            <i class="fas fa-building me-1"></i>{{ user_info.company_name if user_info.company_name else
+                            '회사명 미등록' }}
                         </span>
                         {% endif %}
                     </li>
@@ -236,26 +246,27 @@
                 },
                 body: JSON.stringify({ user_id: userId })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 모달 닫기
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('userSwitchModal'));
-                    if (modal) {
-                        modal.hide();
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 모달 닫기
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('userSwitchModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        // 페이지 새로고침
+                        window.location.reload();
+                    } else {
+                        alert('사용자 전환에 실패했습니다: ' + data.message);
                     }
-                    // 페이지 새로고침
-                    window.location.reload();
-                } else {
-                    alert('사용자 전환에 실패했습니다: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('사용자 전환 오류:', error);
-                alert('사용자 전환 중 오류가 발생했습니다.');
-            });
+                })
+                .catch(error => {
+                    console.error('사용자 전환 오류:', error);
+                    alert('사용자 전환 중 오류가 발생했습니다.');
+                });
         }
     </script>
 
 </body>
+
 </html>
