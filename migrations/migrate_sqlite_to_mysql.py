@@ -63,6 +63,8 @@ COLUMN_VARCHAR_LENGTHS = {
     'category': 100,
     'role': 50,
     'ai_review_status': 50,
+    'control_category': 100,
+    'control_id': 50,
 }
 
 
@@ -128,7 +130,7 @@ def get_table_indexes(sqlite_cursor, table_name):
     return result + unique_constraints
 
 
-def convert_sqlite_type_to_mysql(sqlite_type, col_name, table_name, is_pk=False):
+def convert_sqlite_type_to_mysql(sqlite_type, col_name, table_name, is_pk=False, has_default=False):
     """SQLite 타입을 MySQL 타입으로 변환"""
     sqlite_type_upper = (sqlite_type or '').upper()
 
@@ -139,14 +141,16 @@ def convert_sqlite_type_to_mysql(sqlite_type, col_name, table_name, is_pk=False)
         return 'DATETIME'
 
     # TEXT 타입 PRIMARY KEY는 VARCHAR로 변환 (MySQL에서 TEXT는 PK 불가)
-    if 'TEXT' in sqlite_type_upper:
-        # PRIMARY KEY인 경우
-        if is_pk and table_name in TEXT_PK_VARCHAR_LENGTH:
-            length = TEXT_PK_VARCHAR_LENGTH[table_name].get(col_name, 255)
+        # PRIMARY KEY이거나 기본값이 있는 TEXT는 VARCHAR로 변환 (MySQL 제약)
+        if is_pk or has_default:
+            # 명시적 지정이 있으면 사용, 없으면 기본 255 (PK는 좀 더 짧게 100)
+            if table_name in TEXT_PK_VARCHAR_LENGTH and col_name in TEXT_PK_VARCHAR_LENGTH[table_name]:
+                length = TEXT_PK_VARCHAR_LENGTH[table_name][col_name]
+            elif col_name in COLUMN_VARCHAR_LENGTHS:
+                length = COLUMN_VARCHAR_LENGTHS[col_name]
+            else:
+                length = 100 if is_pk else 500
             return f'VARCHAR({length})'
-        # 특정 컬럼명 (FK 참조 등)
-        if col_name in COLUMN_VARCHAR_LENGTHS:
-            return f'VARCHAR({COLUMN_VARCHAR_LENGTHS[col_name]})'
         return 'TEXT'
 
     # TIMESTAMP → DATETIME
@@ -176,7 +180,8 @@ def create_mysql_table(mysql_cursor, sqlite_cursor, table_name, schema):
     for col in schema:
         col_name = col['name']
         is_pk = bool(col['pk'])
-        col_type = convert_sqlite_type_to_mysql(col['type'], col_name, table_name, is_pk)
+        has_default = col['dflt_value'] is not None
+        col_type = convert_sqlite_type_to_mysql(col['type'], col_name, table_name, is_pk, has_default)
 
         # PRIMARY KEY 처리
         if is_pk:
@@ -274,7 +279,8 @@ def print_create_table_sql(table_name, schema, sqlite_cursor):
     for col in schema:
         col_name = col['name']
         is_pk = bool(col['pk'])
-        col_type = convert_sqlite_type_to_mysql(col['type'], col_name, table_name, is_pk)
+        has_default = col['dflt_value'] is not None
+        col_type = convert_sqlite_type_to_mysql(col['type'], col_name, table_name, is_pk, has_default)
 
         if is_pk:
             primary_keys.append(col_name)
