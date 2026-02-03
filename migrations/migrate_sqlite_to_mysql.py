@@ -142,16 +142,15 @@ def convert_sqlite_type_to_mysql(sqlite_type, col_name, table_name, is_pk=False,
 
     # PRIMARY KEY이거나 기본값이 있는 TEXT(또는 타입없음)는 VARCHAR로 변환 (MySQL 제약)
     if is_pk or has_default:
-        # 명시적 지정이 있으면 사용, 없으면 기본 255 (PK는 좀 더 짧게 100)
-        if table_name in TEXT_PK_VARCHAR_LENGTH and col_name in TEXT_PK_VARCHAR_LENGTH[table_name]:
-            length = TEXT_PK_VARCHAR_LENGTH[table_name][col_name]
-        elif col_name in COLUMN_VARCHAR_LENGTHS:
-            length = COLUMN_VARCHAR_LENGTHS[col_name]
-        else:
-            length = 100 if is_pk else 500
-        
-        # 실제 SQLite 타입이 INTEGER인 경우는 제외 (이미 PK-AUTO_INCREMENT 로직이 있음)
-        if not ('INTEGER' in sqlite_type_upper or 'INT' in sqlite_type_upper):
+        # 실제 SQLite 타입이 정수나 날짜형인 경우는 제외 (원래 타입을 유지해야 함)
+        if not any(t in sqlite_type_upper for t in ['INTEGER', 'INT', 'DATETIME', 'TIMESTAMP', 'DATE']):
+            # 명시적 지정이 있으면 사용, 없으면 기본 255 (PK는 좀 더 짧게 100)
+            if table_name in TEXT_PK_VARCHAR_LENGTH and col_name in TEXT_PK_VARCHAR_LENGTH[table_name]:
+                length = TEXT_PK_VARCHAR_LENGTH[table_name][col_name]
+            elif col_name in COLUMN_VARCHAR_LENGTHS:
+                length = COLUMN_VARCHAR_LENGTHS[col_name]
+            else:
+                length = 100 if is_pk else 500
             return f'VARCHAR({length})'
 
     # TIMESTAMP → DATETIME
