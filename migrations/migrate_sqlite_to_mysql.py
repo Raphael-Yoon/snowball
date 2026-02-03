@@ -59,6 +59,9 @@ COLUMN_VARCHAR_LENGTHS = {
     'status': 50,
     'type': 50,
     'evaluation_type': 50,
+    'is_active': 10,
+    'category': 100,
+    'role': 50,
 }
 
 
