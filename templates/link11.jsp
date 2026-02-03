@@ -2058,6 +2058,7 @@
 
         // 임시 저장
         async function saveDraft() {
+            showToast('저장 중입니다...', 'info');
             const success = await saveAnswers();
             if (success) {
                 showToast('임시 저장되었습니다.', 'success');
@@ -2114,8 +2115,9 @@
             }
         }
 
-        // 저장 후 다음 카테고리로 이동
+        // 저장 후 다음 카테고리를 이동
         async function saveAndNext() {
+            showToast('저장 중입니다...', 'info');
             const success = await saveAnswers();
             if (success) {
                 showToast('저장되었습니다.', 'success');
