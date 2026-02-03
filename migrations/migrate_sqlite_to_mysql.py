@@ -58,6 +58,7 @@ COLUMN_VARCHAR_LENGTHS = {
     'display_number': 50,
     'status': 50,
     'type': 50,
+    'evaluation_type': 50,
 }
 
 
