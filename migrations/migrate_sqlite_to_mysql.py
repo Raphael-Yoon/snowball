@@ -62,6 +62,7 @@ COLUMN_VARCHAR_LENGTHS = {
     'is_active': 10,
     'category': 100,
     'role': 50,
+    'ai_review_status': 50,
 }
 
 
