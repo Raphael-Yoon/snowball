@@ -13,7 +13,7 @@ from email import encoders
 from io import BytesIO
 from openpyxl import load_workbook
 from snowball_link1 import bp_link1
-from snowball_link2 import export_interview_excel_and_send, s_questions, question_count, is_ineffective, fill_sheet, link2_prev_logic, get_text_itgc, get_conditional_questions, clear_skipped_answers, get_progress_status, set_progress_status, update_progress, reset_progress
+from snowball_link2 import bp_link2
 from snowball_link3 import bp_link3
 from snowball_link4 import bp_link4
 from snowball_link5 import bp_link5
@@ -74,6 +74,7 @@ csrf = CSRFProtect(app)
 
 # CSRF 제외할 엔드포인트 (임시 - 향후 템플릿에 CSRF 토큰 추가 후 제거)
 # csrf.exempt(bp_link1)  # CSRF 보호 적용 완료
+csrf.exempt(bp_link2)
 csrf.exempt(bp_link3)
 csrf.exempt(bp_link4)
 csrf.exempt(bp_link5)
@@ -89,8 +90,7 @@ logger.warning("CSRF Protection enabled with exemptions for API endpoints")
 # --- File-based Progress Tracking ---
 # 진행률 관련 기능은 snowball_link2.py로 이동됨
 
-# 시작할 질문 번호 설정 (1부터 시작)
-START_QUESTION = 0
+# 시작할 질문 번호는 snowball_link2.py에서 관리됨
 
 load_dotenv()
 
@@ -100,19 +100,8 @@ PYTHONANYWHERE_AUTH_CODE = os.getenv('PYTHONANYWHERE_AUTH_CODE')
 if is_production_env and not PYTHONANYWHERE_AUTH_CODE:
     raise ValueError("PYTHONANYWHERE_AUTH_CODE must be set in production environment")
 
-# 데이터베이스 초기화
 # 데이터베이스 초기화는 더 이상 서버 시작 시 자동 실행되지 않습니다.
 # 마이그레이션 시스템을 사용하세요: python migrate.py upgrade
-#
-# try:
-#     print("데이터베이스 초기화 시작")
-#     with app.app_context():
-#         init_db()
-#     print("데이터베이스 초기화 완료")
-# except Exception as e:
-#     print(f"데이터베이스 초기화 오류: {e}")
-#     import traceback
-#     traceback.print_exc()
 
 @app.context_processor
 def inject_globals():
@@ -150,31 +139,6 @@ def require_login_for_feature(feature_name="이 기능"):
             'login_url': url_for('login')
         }
     return {'error': False}
-
-
-def reset_interview_session():
-    """인터뷰 관련 세션만 초기화 (로그인 세션은 보존)"""
-    # 인터뷰 관련 키만 제거
-    interview_keys = ['question_index', 'answer', 'textarea_answer', 'System', 'Cloud', 'OS_Tool', 'DB_Tool', 'Batch_Tool']
-    for key in interview_keys:
-        session.pop(key, None)
-    
-    # 인터뷰 세션 재초기화
-    user_info = get_user_info()
-    if user_info and user_info.get('user_email'):
-        # 로그인된 사용자: 첫 번째 질문에 이메일 자동 입력하고 두 번째 질문부터 시작
-        session['question_index'] = 1
-        session['answer'] = [''] * question_count
-        session['textarea_answer'] = [''] * question_count
-        session['answer'][0] = user_info['user_email']  # 첫 번째 답변에 이메일 설정
-    else:
-        # 비로그인 사용자: 첫 번째 질문부터 시작
-        session['question_index'] = START_QUESTION - 1 if 1 <= START_QUESTION <= question_count else 0
-        session['answer'] = [''] * question_count
-        session['textarea_answer'] = [''] * question_count
-    
-    print("인터뷰 세션이 초기화되었습니다 (로그인 세션 보존)")
-
 
 @app.route('/')
 def index():
@@ -411,6 +375,10 @@ def health_check():
     except Exception as e:
         return {'status': 'error', 'message': str(e)}, 500
 
+@app.route('/test_simple')
+def test_simple():
+    return "Hello World"
+
 @app.route('/clear_session', methods=['POST'])
 def clear_session():
     """브라우저 종료 시 세션 해제 엔드포인트"""
@@ -420,8 +388,14 @@ def clear_session():
         print(f"브라우저 종료로 세션 해제: {user_name}")
     return '', 204
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    logger.error(f"Unhandled Exception: {traceback.format_exc()}")
+    return "Internal Server Error: check logs", 500
+
 def main():
-    app.run(host='0.0.0.0', debug=False, port=5001, use_reloader=False)
+    app.run(host='0.0.0.0', debug=True, port=5001, use_reloader=True)
     #app.run(host='127.0.0.1', debug=False, port=8001)
 
 @app.route('/link0')   
@@ -433,390 +407,6 @@ def link0():
 def proposal():
     """Snowball 제안서 페이지"""
     return render_template('proposal.jsp')
-
-# link1 라우트는 bp_link1 Blueprint로 이동됨
-
-@app.route('/link2', methods=['GET', 'POST'])
-def link2():
-    print("Interview Function")
-
-    user_info = get_user_info()
-    # Interview 기능 시작 시에만 로그 기록 (GET 요청이고 reset=1 파라미터가 있거나 최초 진입 시)
-    if is_logged_in() and request.method == 'GET':
-        if request.args.get('reset') == '1' or 'question_index' not in session:
-            log_user_activity(user_info, 'FEATURE_START', 'Interview 기능 시작', '/link2',
-                             request.remote_addr, request.headers.get('User-Agent'))
-
-    if request.method == 'GET':
-        # 쿼리 파라미터로 reset이 있을 때만 인터뷰 세션 초기화 (로그인 세션은 보존)
-        if request.args.get('reset') == '1':
-            reset_interview_session()
-        # 세션에 값이 없으면(최초 진입)만 초기화
-        elif 'question_index' not in session:
-            user_info = get_user_info()
-            if user_info and user_info.get('user_email'):
-                # 로그인된 사용자: 첫 번째 질문에 이메일 자동 입력하고 두 번째 질문부터 시작
-                session['question_index'] = 1
-                session['answer'] = [''] * question_count
-                session['textarea_answer'] = [''] * question_count
-                session['answer'][0] = user_info['user_email']  # 첫 번째 답변에 이메일 설정
-            else:
-                # 비로그인 사용자: 첫 번째 질문부터 시작
-                session['question_index'] = 0
-                session['answer'] = [''] * question_count
-                session['textarea_answer'] = [''] * question_count
-
-        user_info = get_user_info()
-        users = user_info['user_name'] if user_info else "Guest"
-        # 현재 답변을 기반으로 필터링된 질문 목록 가져오기
-        filtered_questions = get_conditional_questions(session.get('answer', []))
-        current_question_index = session['question_index']
-
-        # 현재 질문을 필터링된 목록에서 찾기
-        current_question = None
-        current_filtered_index = 0
-
-        for idx, q in enumerate(filtered_questions):
-            if q['index'] == current_question_index:
-                current_question = q
-                current_filtered_index = idx
-                break
-
-        if current_question is None:
-            # 필터링된 목록에 없으면 원본에서 가져오기 (혹시 모를 상황 대비)
-            current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
-
-        return render_template('link2.jsp',
-                             question=current_question,
-                             question_count=len(filtered_questions),
-                             current_index=current_filtered_index,  # 필터링된 목록에서의 인덱스
-                             actual_question_number=current_question['index'] + 1,  # 실제 질문 번호
-                             remote_addr=request.remote_addr,
-                             users=users,
-                             is_logged_in=is_logged_in(),
-                             user_info=user_info,
-                             answer=session['answer'],
-                             textarea_answer=session['textarea_answer'])
-
-    question_index = session.get('question_index', 0)
-
-    if request.method == 'POST':
-        form_data = request.form
-
-        # 현재 질문의 filtered index를 구하기
-        filtered_questions_before = get_conditional_questions(session.get('answer', []))
-        current_filtered_index = 0
-        for i, q in enumerate(filtered_questions_before):
-            if q['index'] == question_index:
-                current_filtered_index = i
-                break
-
-        # form 데이터는 current_filtered_index 기반으로 저장됨
-        session['answer'][question_index] = form_data.get(f"a{current_filtered_index}", '')
-        session['textarea_answer'][question_index] = form_data.get(f"a{current_filtered_index}_1", '')
-        if form_data.get('a1_1'):
-            session['System'] = form_data.get('a1_1')
-        if form_data.get('a4_1'):
-            session['Cloud'] = form_data.get('a4_1')
-        if form_data.get('a6_1'):
-            session['OS_Tool'] = form_data.get('a6_1')
-        if form_data.get('a7_1'):
-            session['DB_Tool'] = form_data.get('a7_1')
-        if form_data.get('a8_1'):
-            session['Batch_Tool'] = form_data.get('a8_1')
-
-        # 현재 답변을 기반으로 필터링된 질문 목록 가져오기
-        filtered_questions = get_conditional_questions(session.get('answer', []))
-
-        # 다음 질문 인덱스를 결정하는 로직 (필터링된 질문 기준)
-        current_filtered_index = 0
-        for i, q in enumerate(filtered_questions):
-            if q['index'] == question_index:
-                current_filtered_index = i
-                break
-
-        # 다음 필터링된 질문으로 이동
-        next_filtered_index = current_filtered_index + 1
-        if next_filtered_index < len(filtered_questions):
-            next_question_index = filtered_questions[next_filtered_index]['index']
-        else:
-            next_question_index = question_count  # 마지막 질문 이후
-
-        # 마지막 질문 제출 시 AI 검토 선택 페이지로 이동
-        if next_filtered_index >= len(filtered_questions):
-            print('interview completed - redirecting to AI review selection page')
-            print(f'Current question_index: {question_index}, question_count: {question_count}')
-            print('--- 모든 답변(answers) ---')
-            for idx, ans in enumerate(session.get('answer', [])):
-                print(f"a{idx}: {ans}")
-            print('--- 모든 textarea 답변(textarea_answer) ---')
-            for idx, ans in enumerate(session.get('textarea_answer', [])):
-                print(f"a{idx}_1: {ans}")
-
-            # AI 검토 선택 페이지로 리디렉션
-            return redirect(url_for('ai_review_selection'))
-
-        session['question_index'] = next_question_index
-        print(f"goto {session['question_index']}")
-        print("Answers:", ", ".join(f"{i}: {ans}" for i, ans in enumerate(session['answer'])))
-        print(f"입력받은 값(a{question_index}): {session['answer'][question_index]}")
-        print(f"textarea 값(a{question_index}_1): {session['textarea_answer'][question_index]}")
-
-        if next_question_index >= question_count:
-            # 마지막 질문 이후에는 save_to_excel 호출하지 않음
-            return redirect(url_for('index'))
-
-    # 현재 질문을 렌더링
-    filtered_questions = get_conditional_questions(session.get('answer', []))
-    current_question_index = session['question_index']
-
-    # 현재 질문을 필터링된 목록에서 찾기
-    current_question = None
-    current_filtered_index = 0
-
-    for idx, q in enumerate(filtered_questions):
-        if q['index'] == current_question_index:
-            current_question = q
-            current_filtered_index = idx
-            break
-
-    if current_question is None:
-        current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
-
-
-    user_info = get_user_info()
-    users = user_info['user_name'] if user_info else "User List"
-    return render_template(
-        'link2.jsp',
-        question=current_question,
-        question_count=len(filtered_questions),
-        current_index=current_filtered_index,
-        actual_question_number=current_question['index'] + 1,
-        remote_addr=request.remote_addr,
-        users=users,
-        is_logged_in=is_logged_in(),
-        user_info=user_info,
-        answer=session['answer'],
-        textarea_answer=session['textarea_answer']
-    )
-
-@app.route('/link2/prev')
-def link2_prev():
-    # 세션에서 현재 인덱스 가져오기 및 이전으로 이동 (로직 분리)
-    link2_prev_logic(session)
-    # 다시 질문 페이지로 이동
-    return redirect(url_for('link2'))
-
-# link3 라우트는 bp_link3 Blueprint로 이동됨
-
-# link4 라우트는 bp_link4 Blueprint로 이동됨
-
-def sanitize_text(text, allow_newlines=False):
-    """텍스트 입력값 정제"""
-    if not text:
-        return ""
-    text = text.strip()
-    if not allow_newlines:
-        text = text.replace('\r', '').replace('\n', ' ')
-    return text[:5000]
-
-def is_valid_email(email):
-    """이메일 형식 검증"""
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return re.match(pattern, email) is not None
-
-# rcm_generate 라우트는 bp_link1 Blueprint로 이동됨
-
-@app.route('/paper_request', methods=['POST'])
-def paper_request():
-    """
-    Deprecated: 이 라우트는 더 이상 사용되지 않습니다.
-    기존 코드와의 호환성을 위해 유지되고 있습니다.
-    """
-    print("Paper Request called (Deprecated)")
-    print("Warning: /paper_request is deprecated and should not be used")
-
-    # Link2로 리다이렉트
-    return redirect(url_for('link2'))
-
-# paper_template_download 라우트는 bp_link3 Blueprint로 이동됨
-# paper_generate 라우트는 제거됨 (사용되지 않음)
-
-# get_content_link3 라우트는 bp_link3 Blueprint로 이동됨
-# get_content_link4 라우트는 bp_link4 Blueprint로 이동됨
-
-@app.route('/ai_review_selection')
-@login_required
-def ai_review_selection():
-    """AI 검토 옵션 선택 화면 (인증 필요)"""
-    user_email = session.get('answer', [''])[0] if session.get('answer') else ''
-    if not user_email:
-        return redirect(url_for('link2', reset=1))  # 세션이 없으면 인터뷰 처음으로
-    
-    user_info = get_user_info()
-
-    return render_template('link2_ai_review.jsp',
-                         user_email=user_email,
-                         is_logged_in=is_logged_in(),
-                         user_info=user_info,
-                         remote_addr=request.remote_addr)
-
-@app.route('/update_session_email', methods=['POST'])
-@login_required
-def update_session_email():
-    """세션의 이메일 주소 업데이트 (인증 필요)"""
-    try:
-        data = request.get_json()
-        new_email = data.get('email', '').strip()
-        
-        if not new_email:
-            return jsonify({'success': False, 'message': '이메일 주소가 비어있습니다.'})
-        
-        # 이메일 유효성 검사 (서버 측)
-        import re
-        email_pattern = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
-        if not re.match(email_pattern, new_email):
-            return jsonify({'success': False, 'message': '올바른 이메일 형식이 아닙니다.'})
-        
-        # 세션의 answer 배열 첫 번째 요소(이메일) 업데이트
-        if 'answer' in session:
-            session['answer'][0] = new_email
-            session.modified = True  # 세션이 수정되었음을 명시
-        else:
-            return jsonify({'success': False, 'message': '세션 정보를 찾을 수 없습니다.'})
-        
-        print(f"이메일 업데이트 완료: {new_email}")
-        return jsonify({'success': True, 'message': '이메일이 성공적으로 변경되었습니다.'})
-        
-    except Exception as e:
-        print(f"이메일 업데이트 오류: {e}")
-        return jsonify({'success': False, 'message': '서버 오류가 발생했습니다.'})
-
-@app.route('/process_with_ai_option', methods=['POST'])
-@login_required
-def process_with_ai_option():
-    """AI 검토 옵션에 따라 처리 페이지로 이동 (인증 필요)"""
-    enable_ai_review = request.form.get('enable_ai_review', 'false').lower() == 'true'
-    user_email = session.get('answer', [''])[0] if session.get('answer') else ''
-    
-    if enable_ai_review and is_logged_in():
-        # 로그인한 사용자만 AI 검토 횟수 기록
-        increment_ai_review_count(user_email)
-    
-    # 세션에 AI 검토 옵션 저장
-    session['enable_ai_review'] = enable_ai_review
-    
-    print(f"User selected AI review: {enable_ai_review}")
-    
-    # processing 페이지로 리디렉션
-    return redirect(url_for('processing'))
-
-@app.route('/processing')
-def processing():
-    """인터뷰 완료 후 처리 중 화면"""
-    user_email = session.get('answer', [''])[0] if session.get('answer') else ''
-    enable_ai_review = session.get('enable_ai_review', False)
-    
-    # 고유한 작업 ID 생성 및 세션에 저장
-    task_id = str(uuid.uuid4())
-    session['processing_task_id'] = task_id
-    
-    # 초기 진행률 상태 파일 생성
-    reset_progress(task_id) # 기존 파일이 있다면 삭제
-    initial_status = {
-        'percentage': 0,
-        'current_task': 'AI 검토를 준비하고 있습니다...',
-        'is_processing': True
-    }
-    set_progress_status(task_id, initial_status)
-    
-    return render_template('processing.jsp', user_email=user_email, enable_ai_review=enable_ai_review, task_id=task_id)
-
-@app.route('/get_progress')
-def get_progress():
-    """진행률 상태 조회 엔드포인트"""
-    task_id = request.args.get('task_id')
-    if not task_id:
-        print("Error: No task_id provided in get_progress")
-        return jsonify({'error': 'No task_id provided'}), 400
-    
-    print(f"GET /get_progress called for task_id: {task_id}")
-    status = get_progress_status(task_id)
-    print(f"Returning status for task {task_id}: {status}")
-    return jsonify(status)
-
-@app.route('/process_interview', methods=['POST'])
-@login_required
-def process_interview():
-    """실제 인터뷰 처리 및 메일 발송 (인증 필요)"""
-    data = request.get_json() or {}
-    task_id = data.get('task_id')
-
-    if not task_id:
-        return jsonify({'success': False, 'error': 'No task_id provided'})
-
-    try:
-        # task_id를 포함하는 콜백 함수 생성
-        progress_callback = lambda p, t: update_progress(task_id, p, t)
-        
-        progress_callback(5, "인터뷰 데이터를 확인하고 있습니다...")
-        
-        answers = session.get('answer', [])
-        textarea_answers = session.get('textarea_answer', [])
-        
-        if not answers:
-            reset_progress(task_id)
-            return jsonify({'success': False, 'error': '인터뷰 데이터가 없습니다.'})
-        
-        user_email = answers[0] if answers else ''
-        if not user_email:
-            reset_progress(task_id)
-            return jsonify({'success': False, 'error': '메일 주소가 입력되지 않았습니다.'})
-        
-        progress_callback(10, "AI 검토 설정을 확인하고 있습니다...")
-        
-        enable_ai_review = session.get('enable_ai_review', False)
-        
-        print(f"Processing interview for {user_email} (Task ID: {task_id})")
-        progress_callback(15, "ITGC 설계평가 문서 생성을 시작합니다...")
-        
-        # 스킵된 질문들의 답변을 최종적으로 공란으로 처리
-        clear_skipped_answers(answers, textarea_answers)
-        
-        success, returned_email, error = export_interview_excel_and_send(
-            answers,
-            textarea_answers,
-            get_text_itgc,
-            fill_sheet,
-            is_ineffective,
-            send_gmail_with_attachment,
-            enable_ai_review,
-            progress_callback
-        )
-        
-        if success:
-            status = get_progress_status(task_id)
-            status['percentage'] = 100
-            status['current_task'] = "처리가 완료되었습니다!"
-            status['is_processing'] = False
-            set_progress_status(task_id, status)
-            print(f"Mail sent successfully to {returned_email}")
-            # 성공 시에도 파일은 유지하여 클라이언트가 100%를 확인할 시간을 줌
-            # reset_progress(task_id) # -> 클라이언트가 완료를 확인한 후 삭제하는 것이 더 나을 수 있음
-            return jsonify({'success': True, 'email': returned_email})
-        else:
-            reset_progress(task_id)
-            print(f"Mail send failed: {error}")
-            return jsonify({'success': False, 'error': error})
-            
-    except Exception as e:
-        reset_progress(task_id)
-        print(f"Error in process_interview: {e}")
-        return jsonify({'success': False, 'error': str(e)})
-
-
-# 관리자 기능들이 제거됨
-
 
 # === 사용자 전용 페이지 ===
 @app.route('/user/rcm')
@@ -869,128 +459,6 @@ def user_design_evaluation():
         # GET 요청 - 레거시 지원
         return redirect(url_for('link6.itgc_evaluation'))
 
-# 이 함수는 snowball_link6.py로 이전됨 - 전체 주석 처리
-# @app.route('/api/design-evaluation/save', methods=['POST'])
-# @login_required
-# def save_design_evaluation_api():
-#     """설계평가 결과 저장 API"""
-#     user_info = get_user_info()
-#     data = request.get_json()
-#     
-#     rcm_id = data.get('rcm_id')
-#     control_code = data.get('control_code')
-#     evaluation_data = data.get('evaluation_data')
-#     evaluation_session = data.get('evaluation_session')  # 평가 세션명
-#     
-#     if not all([rcm_id, control_code, evaluation_data, evaluation_session]):
-#         missing_fields = []
-#         if not rcm_id: missing_fields.append('RCM ID')
-#         if not control_code: missing_fields.append('통제 코드')
-#         if not evaluation_data: missing_fields.append('평가 데이터')
-#         if not evaluation_session: missing_fields.append('세션명')
-#         
-#         return jsonify({
-#             'success': False,
-#             'message': f'필수 데이터가 누락되었습니다: {", ".join(missing_fields)}'
-#         })
-#     
-#     try:
-#         # 사용자가 해당 RCM에 접근 권한이 있는지 확인
-#         with get_db() as conn:
-#             access_check = conn.execute('''
-#                 SELECT permission_type FROM sb_user_rcm
-#                 WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
-#             ''', (user_info['user_id'], rcm_id)).fetchone()
-#             
-#             if not access_check:
-#                 return jsonify({
-#                     'success': False,
-#                     'message': '해당 RCM에 대한 접근 권한이 없습니다.'
-#                 })
-#         
-#         # 설계평가 결과 저장
-#         save_design_evaluation(rcm_id, control_code, user_info['user_id'], evaluation_data, evaluation_session)
-#         
-#         # 활동 로그 기록
-#         log_user_activity(user_info, 'DESIGN_EVALUATION', f'설계평가 저장 - {control_code}', 
-#                          f'/api/design-evaluation/save', 
-#                          request.remote_addr, request.headers.get('User-Agent'))
-#         
-#         return jsonify({
-#             'success': True,
-#             'message': '설계평가 결과가 저장되었습니다.'
-#         })
-#         
-#     except Exception as e:
-#         print(f"설계평가 저장 오류: {e}")
-#         return jsonify({
-#             'success': False,
-#             'message': '저장 중 오류가 발생했습니다.'
-#         })
-
-# 이 함수도 snowball_link6.py로 이전됨 - 주석 처리
-# @app.route('/api/design-evaluation/load/<int:rcm_id>')
-# @login_required
-# def load_design_evaluations_api(rcm_id):
-#     """설계평가 결과 불러오기 API - link5로 리디렉션"""
-#     return redirect(url_for('link5.load_design_evaluation', rcm_id=rcm_id))
-
-# 이 함수도 snowball_link6.py로 이전됨 - 주석 처리
-# @app.route('/api/design-evaluation/reset', methods=['POST'])
-# @login_required
-# def reset_design_evaluations_api():
-#     """설계평가 결과 초기화 API"""
-#     user_info = get_user_info()
-#     data = request.get_json()
-#     
-#     rcm_id = data.get('rcm_id')
-#     
-#     if not rcm_id:
-#         return jsonify({
-#             'success': False,
-#             'message': 'RCM ID가 누락되었습니다.'
-#         })
-#     
-#     try:
-#         # 사용자가 해당 RCM에 접근 권한이 있는지 확인
-#         with get_db() as conn:
-#             access_check = conn.execute('''
-#                 SELECT permission_type FROM sb_user_rcm
-#                 WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
-#             ''', (user_info['user_id'], rcm_id)).fetchone()
-#             
-#             if not access_check:
-#                 return jsonify({
-#                     'success': False,
-#                     'message': '해당 RCM에 대한 접근 권한이 없습니다.'
-#                 })
-#             
-#             # 해당 사용자의 모든 설계평가 결과 삭제
-#             cursor = conn.execute('''
-#                 DELETE FROM sb_design_evaluation 
-#                 WHERE rcm_id = %s AND user_id = %s
-#             ''', (rcm_id, user_info['user_id']))
-#             deleted_count = cursor.rowcount
-#             
-#             conn.commit()
-#         
-#         # 활동 로그 기록
-#         log_user_activity(user_info, 'DESIGN_EVALUATION_RESET', f'설계평가 초기화 - RCM ID: {rcm_id}', 
-#                          f'/api/design-evaluation/reset', 
-#                          request.remote_addr, request.headers.get('User-Agent'))
-#         
-#         return jsonify({
-#             'success': True,
-#             'message': f'{deleted_count}개의 설계평가 결과가 초기화되었습니다.',
-#             'deleted_count': deleted_count
-#         })
-#         
-#     except Exception as e:
-#         print(f"설계평가 초기화 오류: {e}")
-#         return jsonify({
-#             'success': False,
-#             'message': '초기화 중 오류가 발생했습니다.'
-#         })
 
 @app.route('/api/control-sample/upload', methods=['POST'])
 @login_required
@@ -1307,6 +775,7 @@ def check_operation_evaluation(control_type):
 
 
 app.register_blueprint(bp_link1)
+app.register_blueprint(bp_link2)
 app.register_blueprint(bp_link3)
 app.register_blueprint(bp_link4)
 app.register_blueprint(bp_link5)

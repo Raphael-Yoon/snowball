@@ -1,10 +1,10 @@
 """
 정보보호공시 모듈 테이블 생성
-- 질문 테이블 (disclosure_questions)
-- 답변 테이블 (disclosure_answers)
-- 증빙 자료 테이블 (disclosure_evidence)
-- 공시 세션 테이블 (disclosure_sessions)
-- 공시 제출 기록 테이블 (disclosure_submissions)
+- 질문 테이블 (sb_disclosure_questions)
+- 답변 테이블 (sb_disclosure_answers)
+- 증빙 자료 테이블 (sb_disclosure_evidence)
+- 공시 세션 테이블 (sb_disclosure_sessions)
+- 공시 제출 기록 테이블 (sb_disclosure_submissions)
 """
 
 
@@ -13,7 +13,7 @@ def upgrade(conn):
 
     # 질문 테이블
     conn.execute('''
-        CREATE TABLE IF NOT EXISTS disclosure_questions (
+        CREATE TABLE IF NOT EXISTS sb_disclosure_questions (
             id TEXT PRIMARY KEY,
             level INTEGER NOT NULL,
             category TEXT NOT NULL,
@@ -34,7 +34,7 @@ def upgrade(conn):
 
     # 답변 테이블
     conn.execute('''
-        CREATE TABLE IF NOT EXISTS disclosure_answers (
+        CREATE TABLE IF NOT EXISTS sb_disclosure_answers (
             id TEXT PRIMARY KEY,
             question_id TEXT NOT NULL,
             company_id TEXT NOT NULL,
@@ -44,7 +44,7 @@ def upgrade(conn):
             status TEXT DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (question_id) REFERENCES disclosure_questions(id),
+            FOREIGN KEY (question_id) REFERENCES sb_disclosure_questions(id),
             UNIQUE(question_id, company_id, year)
         )
     ''')
@@ -52,17 +52,17 @@ def upgrade(conn):
     # 인덱스 생성
     conn.execute('''
         CREATE INDEX IF NOT EXISTS idx_disclosure_answers_company_year
-        ON disclosure_answers(company_id, year)
+        ON sb_disclosure_answers(company_id, year)
     ''')
 
     conn.execute('''
         CREATE INDEX IF NOT EXISTS idx_disclosure_answers_question_company
-        ON disclosure_answers(question_id, company_id)
+        ON sb_disclosure_answers(question_id, company_id)
     ''')
 
     # 증빙 자료 테이블
     conn.execute('''
-        CREATE TABLE IF NOT EXISTS disclosure_evidence (
+        CREATE TABLE IF NOT EXISTS sb_disclosure_evidence (
             id TEXT PRIMARY KEY,
             answer_id TEXT,
             question_id TEXT,
@@ -75,24 +75,24 @@ def upgrade(conn):
             evidence_type TEXT,
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             uploaded_by TEXT,
-            FOREIGN KEY (answer_id) REFERENCES disclosure_answers(id),
-            FOREIGN KEY (question_id) REFERENCES disclosure_questions(id)
+            FOREIGN KEY (answer_id) REFERENCES sb_disclosure_answers(id),
+            FOREIGN KEY (question_id) REFERENCES sb_disclosure_questions(id)
         )
     ''')
 
     conn.execute('''
         CREATE INDEX IF NOT EXISTS idx_disclosure_evidence_answer_id
-        ON disclosure_evidence(answer_id)
+        ON sb_disclosure_evidence(answer_id)
     ''')
 
     conn.execute('''
         CREATE INDEX IF NOT EXISTS idx_disclosure_evidence_company_year
-        ON disclosure_evidence(company_id, year)
+        ON sb_disclosure_evidence(company_id, year)
     ''')
 
     # 공시 세션 테이블
     conn.execute('''
-        CREATE TABLE IF NOT EXISTS disclosure_sessions (
+        CREATE TABLE IF NOT EXISTS sb_disclosure_sessions (
             id TEXT PRIMARY KEY,
             company_id TEXT NOT NULL,
             user_id TEXT NOT NULL,
@@ -110,12 +110,12 @@ def upgrade(conn):
 
     conn.execute('''
         CREATE INDEX IF NOT EXISTS idx_disclosure_sessions_company_user
-        ON disclosure_sessions(company_id, user_id)
+        ON sb_disclosure_sessions(company_id, user_id)
     ''')
 
     # 공시 제출 기록 테이블
     conn.execute('''
-        CREATE TABLE IF NOT EXISTS disclosure_submissions (
+        CREATE TABLE IF NOT EXISTS sb_disclosure_submissions (
             id TEXT PRIMARY KEY,
             session_id TEXT NOT NULL,
             company_id TEXT NOT NULL,
@@ -126,13 +126,13 @@ def upgrade(conn):
             submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             confirmation_number TEXT,
             status TEXT DEFAULT 'draft',
-            FOREIGN KEY (session_id) REFERENCES disclosure_sessions(id)
+            FOREIGN KEY (session_id) REFERENCES sb_disclosure_sessions(id)
         )
     ''')
 
     conn.execute('''
         CREATE INDEX IF NOT EXISTS idx_disclosure_submissions_company_year
-        ON disclosure_submissions(company_id, year)
+        ON sb_disclosure_submissions(company_id, year)
     ''')
 
 
@@ -148,8 +148,8 @@ def downgrade(conn):
     conn.execute('DROP INDEX IF EXISTS idx_disclosure_answers_company_year')
 
     # 테이블 삭제 (의존성 역순)
-    conn.execute('DROP TABLE IF EXISTS disclosure_submissions')
-    conn.execute('DROP TABLE IF EXISTS disclosure_sessions')
-    conn.execute('DROP TABLE IF EXISTS disclosure_evidence')
-    conn.execute('DROP TABLE IF EXISTS disclosure_answers')
-    conn.execute('DROP TABLE IF EXISTS disclosure_questions')
+    conn.execute('DROP TABLE IF EXISTS sb_disclosure_submissions')
+    conn.execute('DROP TABLE IF EXISTS sb_disclosure_sessions')
+    conn.execute('DROP TABLE IF EXISTS sb_disclosure_evidence')
+    conn.execute('DROP TABLE IF EXISTS sb_disclosure_answers')
+    conn.execute('DROP TABLE IF EXISTS sb_disclosure_questions')

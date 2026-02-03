@@ -18,8 +18,17 @@ class IndexableDict(dict):
     def __getitem__(self, key):
         if isinstance(key, int):
             # 인덱스 접근 지원
-            return list(self.values())[key]
-        return super().__getitem__(key)
+            try:
+                return list(self.values())[key]
+            except IndexError:
+                print(f"[DEBUG] IndexableDict IndexError: {key}")
+                raise
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            # Jinja2에서 dictionary access 실패 시 nicer하게 처리되도록 하되 로그 남김
+            print(f"[DEBUG] IndexableDict KeyError: {key}")
+            raise
 
 class DatabaseCursor:
     """MySQL cursor 래퍼 - datetime을 문자열로 자동 변환"""
@@ -1975,20 +1984,44 @@ def archive_design_evaluation_session(rcm_id, user_id, evaluation_session):
     with get_db() as conn:
         # 해당 평가가 존재하고 완료 상태인지 확인
         header = conn.execute('''
-            SELECT header_id, status, progress
-            FROM sb_evaluation_header
-            WHERE rcm_id = %s AND user_id = %s AND evaluation_name = %s
-        ''', (rcm_id, user_id, evaluation_session)).fetchone()
+            SELECT header_id FROM sb_evaluation_header
+            WHERE rcm_id = %s AND evaluation_name = %s
+        ''', (rcm_id, evaluation_session)).fetchone()
 
         if not header:
             return {'success': False, 'message': '해당 평가를 찾을 수 없습니다.'}
 
-        # 아카이브 기능은 삭제로 대체 (status 0~4로는 아카이브 상태 표현 불가)
-        return {'success': False, 'message': '아카이브 기능은 현재 지원하지 않습니다. 삭제를 사용하세요.'}
+        # archived 플래그를 1로 설정
+        conn.execute('''
+            UPDATE sb_evaluation_header
+            SET archived = 1
+            WHERE header_id = %s
+        ''', (header['header_id'],))
+        conn.commit()
+        
+        return {'success': True, 'message': f'세션 "{evaluation_session}"이 아카이브되었습니다.'}
 
 def unarchive_design_evaluation_session(rcm_id, user_id, evaluation_session):
-    """아카이브된 설계평가 세션을 복원 (현재 지원하지 않음)"""
-    return {'success': False, 'message': '아카이브 복원 기능은 현재 지원하지 않습니다.'}
+    """아카이브된 설계평가 세션을 복원"""
+    with get_db() as conn:
+        # 해당 평가가 존재하고 아카이브 상태인지 확인
+        header = conn.execute('''
+            SELECT header_id FROM sb_evaluation_header
+            WHERE rcm_id = %s AND evaluation_name = %s
+        ''', (rcm_id, evaluation_session)).fetchone()
+
+        if not header:
+            return {'success': False, 'message': '해당 평가를 찾을 수 없습니다.'}
+
+        # archived 플래그를 0으로 설정
+        conn.execute('''
+            UPDATE sb_evaluation_header
+            SET archived = 0
+            WHERE header_id = %s
+        ''', (header['header_id'],))
+        conn.commit()
+        
+        return {'success': True, 'message': f'세션 "{evaluation_session}"이 복원되었습니다.'}
 
 # 기준통제 관련 함수들
 
