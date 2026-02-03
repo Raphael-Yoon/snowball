@@ -56,6 +56,8 @@ COLUMN_VARCHAR_LENGTHS = {
     'session_id': 100,
     'answer_id': 100,
     'display_number': 50,
+    'status': 50,
+    'type': 50,
 }
 
 
