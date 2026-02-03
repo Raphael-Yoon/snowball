@@ -203,11 +203,27 @@ def create_mysql_table(mysql_cursor, sqlite_cursor, table_name, schema):
             dflt = col['dflt_value']
             dflt_upper = dflt.upper() if dflt else ''
 
-            # CURRENT_TIMESTAMP 처리
-            if 'CURRENT_TIMESTAMP' in dflt_upper:
-                col_def += ' DEFAULT CURRENT_TIMESTAMP'
+            # DATETIME/TIMESTAMP 컬럼의 특수 처리
+            if 'DATETIME' in col_type.upper() or 'TIMESTAMP' in col_type.upper():
+                if 'CURRENT_TIMESTAMP' in dflt_upper or '(' in dflt_upper:
+                    col_def += ' DEFAULT CURRENT_TIMESTAMP'
+                elif dflt_upper == 'NULL':
+                    col_def += ' DEFAULT NULL'
+                elif "'" in dflt or '"' in dflt:
+                    # '0000-00-00' 같은 잘못된 날짜 형식 필터링
+                    if '0000-00-00' in dflt:
+                        # 기본값 없이 진행하거나 NULL 허용 시 NULL로
+                        pass
+                    else:
+                        col_def += f" DEFAULT {dflt}"
+                else:
+                    # 숫자만 있는 경우 등은 그대로
+                    col_def += f" DEFAULT {dflt}"
+            # 일반 컬럼 처리
             elif dflt_upper == 'NULL':
                 col_def += ' DEFAULT NULL'
+            elif 'CURRENT_TIMESTAMP' in dflt_upper:
+                col_def += ' DEFAULT CURRENT_TIMESTAMP'
             else:
                 col_def += f" DEFAULT {dflt}"
 
