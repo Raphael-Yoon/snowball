@@ -441,7 +441,7 @@ def check_ongoing_evaluations(rcm_id, user_id=None):
     진행 중인 평가 확인
     Args:
         rcm_id: RCM ID
-        user_id: 사용자 ID (None이면 모든 사용자 체크)
+        user_id: 사용자 ID (None이면 모든 사용자 체크) - 현재 테이블 구조에서는 미사용
     Returns: {
         'has_design': bool,
         'has_operation': bool,
@@ -450,51 +450,30 @@ def check_ongoing_evaluations(rcm_id, user_id=None):
     }
     """
     with get_db() as conn:
-        # 진행 중인 설계평가 확인 (NOT COMPLETED)
-        if user_id is not None:
-            # 특정 사용자만 체크
-            design_cursor = conn.execute('''
-                SELECT evaluation_session, evaluation_status, total_controls, evaluated_controls, user_id
-                FROM sb_evaluation_header
-                WHERE rcm_id = %s AND user_id = %s
-                AND evaluation_status != 'COMPLETED'
-                AND evaluation_status != 'ARCHIVED'
-            ''', (rcm_id, user_id))
-        else:
-            # 모든 사용자 체크 (RCM 삭제 시)
-            design_cursor = conn.execute('''
-                SELECT evaluation_session, evaluation_status, total_controls, evaluated_controls, user_id
-                FROM sb_evaluation_header
-                WHERE rcm_id = %s
-                AND evaluation_status != 'COMPLETED'
-                AND evaluation_status != 'ARCHIVED'
-            ''', (rcm_id,))
-        design_sessions = [dict(row) for row in design_cursor.fetchall()]
+        # 진행 중인 평가 확인 (archived가 아니고 진행 중인 것)
+        # 현재 테이블 구조: header_id, rcm_id, evaluation_name, status, progress, created_at, last_updated, archived
+        cursor = conn.execute('''
+            SELECT header_id, evaluation_name, status, progress, archived
+            FROM sb_evaluation_header
+            WHERE rcm_id = %s
+            AND (archived IS NULL OR archived = 0)
+            AND progress < 100
+        ''', (rcm_id,))
+        ongoing_evaluations = [dict(row) for row in cursor.fetchall()]
 
-        # 진행 중인 운영평가 확인 (IN_PROGRESS 또는 완료되지 않은 것)
-        if user_id is not None:
-            # 특정 사용자만 체크
-            operation_cursor = conn.execute('''
-                SELECT evaluation_session, evaluation_status, user_id
-                FROM sb_evaluation_header
-                WHERE rcm_id = %s AND user_id = %s
-                AND evaluation_status IN ('IN_PROGRESS', 'NOT_STARTED')
-            ''', (rcm_id, user_id))
-        else:
-            # 모든 사용자 체크 (RCM 삭제 시)
-            operation_cursor = conn.execute('''
-                SELECT evaluation_session, evaluation_status, user_id
-                FROM sb_evaluation_header
-                WHERE rcm_id = %s
-                AND evaluation_status IN ('IN_PROGRESS', 'NOT_STARTED')
-            ''', (rcm_id,))
-        operation_sessions = [dict(row) for row in operation_cursor.fetchall()]
+        # 평가 세션 정보를 새 구조에 맞게 변환
+        sessions = []
+        for eval_row in ongoing_evaluations:
+            sessions.append({
+                'evaluation_session': eval_row.get('evaluation_name', f"평가_{eval_row['header_id']}"),
+                'progress': eval_row.get('progress', 0)
+            })
 
         return {
-            'has_design': len(design_sessions) > 0,
-            'has_operation': len(operation_sessions) > 0,
-            'design_sessions': design_sessions,
-            'operation_sessions': operation_sessions
+            'has_design': len(sessions) > 0,
+            'has_operation': False,  # 현재 구조에서는 설계/운영 구분 없음
+            'design_sessions': sessions,
+            'operation_sessions': []
         }
 
 bp_link5 = Blueprint('link5', __name__)
