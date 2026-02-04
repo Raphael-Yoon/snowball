@@ -2,6 +2,13 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from flask_wtf.csrf import CSRFProtect
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from pathlib import Path
+
+# .env 파일 먼저 로드 (다른 모듈에서 환경변수 사용하기 전에)
+# 현재 파일 기준으로 .env 파일 경로 지정 (작업 디렉토리와 무관하게 동작)
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
+
 from logger_config import setup_logging, get_logger
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -91,8 +98,6 @@ logger.warning("CSRF Protection enabled with exemptions for API endpoints")
 # 진행률 관련 기능은 snowball_link2.py로 이동됨
 
 # 시작할 질문 번호는 snowball_link2.py에서 관리됨
-
-load_dotenv()
 
 # 보안 관련 상수 (환경변수에서 로드) - 운영 환경에서만 필수
 is_production_env = os.getenv('PYTHONANYWHERE_DOMAIN') is not None
