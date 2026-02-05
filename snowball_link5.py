@@ -212,20 +212,31 @@ def validate_excel_file_type(file):
         file_header = file.read(2048)
         file.seek(0)  # 다시 처음으로
 
-        mime = magic.from_buffer(file_header, mime=True)
-
-        if mime not in allowed_mime_types:
-            return False, f'허용되지 않은 파일 형식입니다. (감지된 타입: {mime})'
-
-        # Excel 파일의 매직 넘버 검증
+        # Excel 파일의 매직 넘버 검증 (먼저 수행)
         # .xlsx: PK (ZIP) 시그니처
         # .xls: D0 CF 11 E0 A1 B1 1A E1 (OLE2)
-        if file_header[:2] == b'PK' or file_header[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1':
+        is_valid_magic = file_header[:2] == b'PK' or file_header[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'
+
+        # magic 라이브러리가 있으면 MIME 타입도 검증
+        if magic is not None:
+            mime = magic.from_buffer(file_header, mime=True)
+
+            if mime not in allowed_mime_types:
+                return False, f'허용되지 않은 파일 형식입니다. (감지된 타입: {mime})'
+
+        # 매직 넘버가 유효하면 통과
+        if is_valid_magic:
             return True, None
 
         return False, '유효한 Excel 파일이 아닙니다.'
 
     except Exception as e:
+        # magic 라이브러리 오류 시 매직 넘버만으로 검증
+        file.seek(0)
+        file_header = file.read(2048)
+        file.seek(0)
+        if file_header[:2] == b'PK' or file_header[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1':
+            return True, None
         return False, f'파일 타입 검증 중 오류가 발생했습니다: {str(e)}'
 
 
