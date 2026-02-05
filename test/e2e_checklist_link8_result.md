@@ -20,7 +20,7 @@
 - [ ] **test_link8_save_progress**: 진행 상황 저장 API 호출 시 데이터베이스에 정상적으로 반영되는지 확인 (필요 시)
 
 ## 5. 단계별 상세 페이지 (Step 1~6)
-- [❌] **test_link8_step_templates**: 1단계(계획)부터 6단계(보고)까지 각 단계별 템플릿이 정상적으로 렌더링되는지 확인
+- [✅] **test_link8_step_templates**: 1단계(계획)부터 6단계(보고)까지 각 단계별 템플릿이 정상적으로 렌더링되는지 확인
     - Step 1: `assessment_step1_planning.jsp`
     - Step 2: `assessment_step2_design.jsp`
     - Step 3: `assessment_step3_operation.jsp`
@@ -33,7 +33,7 @@
 
 | 항목 | 개수 | 비율 |
 |------|------|------|
-| ✅ 통과 | 7 | 87.5% |
-| ❌ 실패 | 1 | 12.5% |
+| ✅ 통과 | 8 | 100.0% |
+| ❌ 실패 | 0 | 0.0% |
 | ⚠️ 경고 | 0 | 0.0% |
 | ⊘ 건너뜀 | 0 | 0.0% |
