@@ -66,9 +66,9 @@
                     <h5 class="card-title">
                         <i class="fas fa-question-circle"></i>
                         {% if actual_question_number %}
-                        질문 {{ actual_question_number }}/47
+                        질문 {{ actual_question_number }}/48
                         {% else %}
-                        질문 {{ current_index + 1 }}/{{ question_count }}
+                        질문 {{ current_index + 1 }}/48
                         {% endif %}
                     </h5>
                     <p class="card-text">{{ question.text }}</p>
@@ -322,54 +322,54 @@
             console.log(`[SAMPLE] fillSample 호출됨 - questionNumber: ${questionNumber}, currentIndex: ${currentIndex}`);
             // 질문별 샘플값 정의
             const samples = {
-                0: { type: 'text', value: 'snowball2727@naver.com' }, // 산출물을 전달받을 e-Mail 주소를 입력해주세요.
-                1: { type: 'text', value: 'SAP ERP' }, // 시스템 이름을 적어주세요.
-                2: { type: 'radio_text', radio: 'Y', text: 'SAP S/4HANA' }, // 사용하고 있는 시스템은 상용소프트웨어입니까?
-                3: { type: 'radio', value: 'Y' }, // Cloud 서비스를 사용하고 있습니까?
-                4: { type: 'radio', value: 'SaaS' }, // 어떤 종류의 Cloud입니까?
-                5: { type: 'radio', value: 'Y' }, // Cloud 서비스 업체에서는 SOC1 Report를 발행하고 있습니까?
-                6: { type: 'radio', value: 'N' }, // 사용자 권한부여 이력이 시스템에 기록되고 있습니까? - 미비점 유발
-                7: { type: 'radio', value: 'N' }, // 사용자 권한회수 이력이 시스템에 기록되고 있습니까? - 미비점 유발
-                8: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM을 통해 요청서 작성 후 팀장 승인을 받아 IT팀에서 권한 부여' }, // 사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                9: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까? - 미비점 유발
-                10: { type: 'radio_textarea', radio: 'Y', textarea: '인사팀 인사명령 전달 시 IT팀에서 즉시 접근권한 차단' }, // 퇴사자 발생시 접근권한을 차단하는 절차가 있습니까?
-                11: { type: 'textarea', value: 'IT운영팀 김○○ 책임, 시스템 관리자' }, // Application 관리자(Superuser) 권한을 보유한 인원에 대해 기술해 주세요.
-                12: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까? - 미비점 유발
-                13: { type: 'textarea', value: '최소 8자, 영문/숫자/특수문자 조합, 90일마다 변경' }, // 패스워드 설정사항을 기술해 주세요.
-                14: { type: 'radio', value: 'N' }, // 데이터 변경 이력이 시스템에 기록되고 있습니까? - 미비점 유발
-                15: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까? - 미비점 유발
-                16: { type: 'textarea', value: 'IT운영팀 최○○ 책임, DBA' }, // 데이터 변경 권한을 보유한 인원에 대해 기술해 주세요.
-                17: { type: 'radio', value: 'Y' }, // 회사에서 DB에 접속하여 필요한 작업을 수행하는 것이 가능하십니까?
-                18: { type: 'text', value: 'Oracle Database 19c' }, // DB 종류와 버전을 작성해 주세요.
-                19: { type: 'radio_text', radio: 'N', text: '' }, // DB 접근제어 Tool을 사용하고 있습니까? - 미비점 유발
-                20: { type: 'radio', value: 'N' }, // DB 접근권한 부여 이력이 시스템에 기록되고 있습니까? - 미비점 유발
-                21: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 후 서버 책임자 승인을 받아 DB 권한 부여' }, // DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?
-                22: { type: 'textarea', value: 'IT운영팀 이○○ 수석, DBA 권한 보유' }, // DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.
-                23: { type: 'textarea', value: '최소 10자, 영문/숫자/특수문자 조합, 180일마다 변경' }, // DB 패스워드 설정사항을 기술해 주세요.
-                24: { type: 'radio', value: 'Y' }, // 회사에서 OS서버에 접속하여 필요한 작업을 수행하는 것이 가능하십니까?
-                25: { type: 'text', value: 'Windows Server 2019' }, // OS 종류와 버전을 작성해 주세요.
-                26: { type: 'radio_text', radio: 'N', text: '' }, // OS 접근제어 Tool을 사용하고 있습니까? - 미비점 유발
-                27: { type: 'radio', value: 'Y' }, // OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?
-                28: { type: 'radio_textarea', radio: 'N', textarea: '' }, // OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까? - 미비점 유발
-                29: { type: 'textarea', value: 'IT운영팀 정○○ 책임, 시스템 관리자' }, // OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.
-                30: { type: 'textarea', value: '최소 12자, 영문/숫자/특수문자 조합, 60일마다 변경' }, // 질문 31번: OS 패스워드 설정사항을 기술해 주세요. (인덱스 30)
-                31: { type: 'radio', value: 'Y' }, // 질문 32번: 주요 로직을 회사내부에서 수정하여 사용할 수 있습니까? (인덱스 31)
-                32: { type: 'radio', value: 'N' }, // 질문 33번: 프로그램 변경 이력이 시스템에 기록되고 있습니까? - 미비점 유발 (인덱스 32)
-                33: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 요청서 작성 후 부서장 승인을 받아 개발팀에서 프로그램 변경' }, // 질문 34번: 프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까? (인덱스 33)
-                34: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 질문 35번: 프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까? - 미비점 유발 (인덱스 34)
-                35: { type: 'radio_textarea', radio: 'Y', textarea: '테스트 완료 후 이관 요청서 작성하고 부서장 승인을 받아 배포' }, // 질문 36번: 프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까? (인덱스 35)
-                36: { type: 'textarea', value: '인프라관리팀 박○○ 수석, 배포 담당자' }, // 질문 37번: 이관(배포)권한을 보유한 인원에 대해 기술해 주세요. (인덱스 36)
-                37: { type: 'radio', value: 'N' }, // 질문 38번: 운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까? - 미비점 유발 (인덱스 37)
-                38: { type: 'radio', value: 'N' }, // 질문 39번: 현재 실행중인 배치 스케줄이 있습니까? (인덱스 38)
-                // 배치 관련 질문들은 38번='N'일 때 스킵됨 (39~43번)
-                39: { type: 'radio_text', radio: 'N', text: '' }, // 별도의 Batch Schedule Tool을 사용하고 있습니까? - 스킵됨
-                40: { type: 'radio', value: 'N' }, // 배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까? (스킵되지만 기본값 제공)
-                41: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까? (스킵되지만 기본값 제공)
-                42: { type: 'textarea', value: '없음' }, // 배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요. (스킵되지만 기본값 제공)
-                43: { type: 'textarea', value: '자동 모니터링 시스템으로 배치 실행 상태 감시, 오류 발생시 관리자에게 즉시 알림' }, // 질문 44번: 배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요. (인덱스 43)
-                44: { type: 'textarea', value: '장애 발생시 즉시 담당자에게 알림 후 원인 분석 및 복구 작업 수행, 조치내역 문서화' }, // 질문 45번: 장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요. (인덱스 44)
-                45: { type: 'textarea', value: '매일 자동 백업 수행, 백업 성공/실패 여부 모니터링 및 주간 백업 상태 점검' }, // 질문 46번: 백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요. (인덱스 45)
-                46: { type: 'textarea', value: '출입 카드 인증 후 출입대장 작성, 동반 출입시 사전 승인 필요' } // 질문 47번: 서버실 출입시의 절차에 대해 기술해 주세요. (인덱스 46)
+                0: { type: 'text', value: 'snowball2727@naver.com' }, // 이메일
+                1: { type: 'text', value: 'SAP ERP' }, // 시스템 이름
+                2: { type: 'radio_text', radio: 'Y', text: 'SAP S/4HANA' }, // 상용 SW
+                3: { type: 'radio', value: 'Y' }, // Cloud 사용 여부
+                4: { type: 'radio', value: 'IaaS' }, // Cloud 종류 (IaaS로 해야 질문이 안 끊김)
+                5: { type: 'radio', value: 'N' }, // SOC1 Report (N으로 해야 모든 질문 노출)
+                6: { type: 'radio', value: 'Y' }, // 권한부여 이력
+                7: { type: 'radio', value: 'Y' }, // 권한회수 이력
+                8: { type: 'radio_textarea', radio: 'Y', textarea: 'ITSM 승인 절차 준수' }, // 권한 신청 절차
+                9: { type: 'radio_textarea', radio: 'Y', textarea: '인사 이동 발생 시 즉시 회수' }, // 권한 회수 절차
+                10: { type: 'radio_textarea', radio: 'Y', textarea: '퇴사 즉시 계정 잠금 처리' }, // 퇴사자 절차
+                11: { type: 'textarea', value: 'IT운영팀 김책임, 관리자' }, // App 관리자
+                12: { type: 'radio_textarea', radio: 'Y', textarea: '매 분기 권한 적정성 점검 수행' }, // 모니터링
+                13: { type: 'textarea', value: '8자리 이상, 90일 주기 변경' }, // 패스워드 정책
+                14: { type: 'radio', value: 'Y' }, // DB 접속 가능 여부
+                15: { type: 'radio', value: 'Y' }, // 데이터 변경 이력 기록
+                16: { type: 'radio_textarea', radio: 'Y', textarea: 'DBA 승인 후 쿼리 수행' }, // 데이터 변경 절차
+                17: { type: 'textarea', value: 'IT운영팀 이수석, DBA' }, // 데이터 변경 권한자
+                18: { type: 'text', value: 'Oracle 19c' }, // DB 종류
+                19: { type: 'radio_text', radio: 'Y', text: 'Hiware' }, // DB 접근제어
+                20: { type: 'radio', value: 'Y' }, // DB 권한 이력
+                21: { type: 'radio_textarea', radio: 'Y', textarea: 'DB 접속은 ITSM 승인이 필수입니다' }, // DB 권한 절차
+                22: { type: 'textarea', value: 'IT팀 박책임, DBA' }, // DB 관리자
+                23: { type: 'textarea', value: '10자리 이상, 특수문자 포함' }, // DB 패스워드
+                24: { type: 'radio', value: 'Y' }, // OS 접속 가능 여부
+                25: { type: 'text', value: 'Linux Ubuntu 22.04' }, // OS 종류
+                26: { type: 'radio_text', radio: 'Y', text: 'CyberArk' }, // OS 접근제어
+                27: { type: 'radio', value: 'Y' }, // OS 이력 기록
+                28: { type: 'radio_textarea', radio: 'Y', textarea: '서버 관리자 승인 후 접속 가능' }, // OS 권한 절차
+                29: { type: 'textarea', value: '인프라팀 정과장' }, // OS 관리자
+                30: { type: 'textarea', value: '60일마다 강제 변경' }, // OS 패스워드
+                31: { type: 'radio', value: 'Y' }, // 로직 수정 가능 여부
+                32: { type: 'radio', value: 'Y' }, // 변경 이력 기록
+                33: { type: 'radio_textarea', radio: 'Y', textarea: '개발팀 부서장 승인 절차' }, // 변경 승인
+                34: { type: 'radio_textarea', radio: 'Y', textarea: '현업 담당자 테스트 완료 후 이관' }, // 사용자 테스트
+                35: { type: 'radio_textarea', radio: 'Y', textarea: '이관 승인 요청서 작성' }, // 이관 승인
+                36: { type: 'textarea', value: '배포 담당자 최책임' }, // 이관 권한자
+                37: { type: 'radio', value: 'Y' }, // 개발/운영 분리
+                38: { type: 'radio', value: 'Y' }, // 배치 스케줄 존재
+                39: { type: 'radio_text', radio: 'Y', text: 'Control-M' }, // 배치 툴
+                40: { type: 'radio', value: 'Y' }, // 배치 이력 기록
+                41: { type: 'radio_textarea', radio: 'Y', textarea: '스케줄 등록 전 승인 필수' }, // 배치 승인
+                42: { type: 'textarea', value: '운영팀 전체' }, // 배치 권한자
+                43: { type: 'textarea', value: '24시간 관제 센터 모니터링' }, // 배치 모니터링
+                44: { type: 'textarea', value: '장애 발생 시 유선 및 메일 전파' }, // 장애 대응
+                45: { type: 'textarea', value: '매일 02시 전체 백업 수행' }, // 백업
+                46: { type: 'textarea', value: '지문 인식 및 CCTV 상시 가동' }, // 서버실 출입
+                47: { type: 'radio', value: 'Y' } // SOC1 Report 검토/승인 (신규 추가)
             };
 
             // 인덱스와 질문 번호 매핑 확인을 위한 디버깅
@@ -480,9 +480,9 @@
                 12: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 권한 모니터링 절차 없음
                 13: { type: 'textarea', value: '' }, // 패스워드 정책
                 14: { type: 'radio', value: 'N' }, // DB 접속 불가 → 15~23번 스킵
-                15: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 데이터 변경 절차 없음
-                16: { type: 'textarea', value: '' }, // 데이터 변경 권한자
-                17: { type: 'radio', value: 'Y' }, // DB 접속 가능
+                15: { type: 'radio', value: 'N' }, // 데이터 변경 이력 미기록
+                16: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 데이터 변경 승인 절차 없음
+                17: { type: 'textarea', value: '' }, // 데이터 변경 권한자
                 18: { type: 'text', value: 'MySQL 8.0' }, // DB 종류와 버전 (스킵되지만 기본값 제공)
                 19: { type: 'radio_text', radio: 'N', text: '' }, // DB 접근제어 Tool 미사용 (스킵되지만 기본값 제공)
                 20: { type: 'radio', value: 'N' }, // DB 접근권한 부여 이력 미기록 (스킵되지만 기본값 제공)
@@ -509,9 +509,9 @@
                 41: { type: 'radio_textarea', radio: 'N', textarea: '' }, // 배치 스케줄 승인 절차 없음 (스킵되지만 기본값 제공)
                 42: { type: 'textarea', value: '' }, // 배치 스케줄 권한자 (스킵되지만 기본값 제공)
                 43: { type: 'textarea', value: '' }, // 배치 모니터링 (스킵되지만 기본값 제공)
-                44: { type: 'textarea', value: '' }, // 장애 대응 절차
-                45: { type: 'textarea', value: '' }, // 백업 절차
-                46: { type: 'textarea', value: '' } // 서버실 출입 절차
+                44: { type: 'textarea', value: '장애 대응 무시' }, // 장애 대응
+                45: { type: 'textarea', value: '백업 안함' }, // 백업 절차
+                46: { type: 'textarea', value: '서버실 없음' } // 서버실 출입 절차
             };
 
             const sample = skipSamples[questionNumber];
@@ -604,18 +604,21 @@
         document.addEventListener('keydown', function (e) {
             if (e.ctrlKey && e.shiftKey && (e.key === 's' || e.key === 'S')) {
                 e.preventDefault();
-                const questionNumber = {{ actual_question_number - 1 if actual_question_number else current_index }};
-                const currentIndex = {{ current_index }};
-                fillSample(questionNumber, currentIndex);
+                const questionNumber = {{ actual_question_number - 1 if actual_question_number else current_index
             }
-            if (e.ctrlKey && e.shiftKey && (e.key === 'd' || e.key === 'D')) {
-                e.preventDefault();
-                const questionNumber = {{ actual_question_number - 1 if actual_question_number else current_index }};
-                const currentIndex = {{ current_index }};
-                fillSkipSample(questionNumber, currentIndex);
+        };
+        const currentIndex = {{ current_index }};
+        fillSample(questionNumber, currentIndex);
+            }
+        if (e.ctrlKey && e.shiftKey && (e.key === 'd' || e.key === 'D')) {
+            e.preventDefault();
+            const questionNumber = {{ actual_question_number - 1 if actual_question_number else current_index
+        }};
+        const currentIndex = {{ current_index }};
+        fillSkipSample(questionNumber, currentIndex);
             }
         });
-// 마지막 질문 제출 시 서버에서 AI 검토 선택 페이지로 리디렉션됨
+        // 마지막 질문 제출 시 서버에서 AI 검토 선택 페이지로 리디렉션됨
         // JavaScript 인터셉트 제거하여 정상적인 서버 처리 허용
     </script>
 </body>

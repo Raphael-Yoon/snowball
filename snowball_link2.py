@@ -1073,28 +1073,28 @@ def check_answer_consistency(answers, textarea_answers):
             consistency_issues.append("상용소프트웨어를 사용하면서 내부에서 주요 로직을 수정할 수 있다고 답변하셨습니다. 일반적으로 상용소프트웨어는 내부 수정이 제한적입니다.")
     
     # 클라우드 관련 일관성 체크
-    if len(answers) > 7:
-        uses_cloud = answers[7] == 'Y'  # 7번: 클라우드 사용 여부
-        cloud_type = textarea_answers[8] if len(textarea_answers) > 8 else ""  # 8번: 클라우드 종류
+    if len(answers) > 4:
+        uses_cloud = answers[3] == 'Y'  # 3번: 클라우드 사용 여부
+        cloud_type = answers[4] if len(answers) > 4 else ""  # 4번: 클라우드 종류
         
         if uses_cloud and not cloud_type.strip():
-            consistency_issues.append("클라우드 서비스를 사용한다고 답변하셨지만 클라우드 종류가 입력되지 않았습니다.")
+            consistency_issues.append("클라우드 서비스를 사용한다고 답변하셨지만 클라우드 종류가 선택되지 않았습니다.")
     
     # 권한 관리 일관성 체크
-    if len(answers) > 11:
-        has_auth_history = answers[11] == 'Y'  # 11번: 사용자 권한부여 이력 기록 여부
-        has_revoke_history = answers[12] == 'Y' if len(answers) > 12 else False  # 12번: 권한회수 이력 기록 여부
+    if len(answers) > 8:
+        has_auth_history = answers[6] == 'Y'  # 6번: 사용자 권한부여 이력 기록 여부
+        has_revoke_history = answers[7] == 'Y' if len(answers) > 7 else False  # 7번: 권한회수 이력 기록 여부
         
         if has_auth_history and not has_revoke_history:
-            consistency_issues.append("권한 부여 이력은 기록되지만 권한 회수 이력은 기록되지 않는다고 답변하셨습니다. 권한 관리의 완전성을 위해 두 이력 모두 기록되는 것이 바람직합니다.")
+            consistency_issues.append("권한 부여 이력은 기록되지만 권한 회수 이력은 기록되지 않는다고 답변하셨습니다.")
     
     # 데이터베이스 관련 일관성 체크
-    if len(answers) > 24:
-        has_data_change_history = answers[19] == 'Y' if len(answers) > 19 else False  # 19번: 데이터 변경 이력
-        has_db_auth_history = answers[25] == 'Y'  # 25번: DB 접근권한 부여 이력
+    if len(answers) > 20:
+        has_data_change_history = answers[15] == 'Y' if len(answers) > 15 else False  # 15번: 데이터 변경 이력
+        has_db_auth_history = answers[20] == 'Y' if len(answers) > 20 else False  # 20번: DB 접근권한 부여 이력
         
         if has_db_auth_history and not has_data_change_history:
-            consistency_issues.append("DB 접근권한 이력은 기록되지만 데이터 변경 이력은 기록되지 않는다고 답변하셨습니다. 보안 관점에서 데이터 변경 이력도 기록되어야 합니다.")
+            consistency_issues.append("DB 접근권한 이력은 기록되지만 데이터 변경 이력은 기록되지 않는다고 답변하셨습니다.")
     
     return consistency_issues
 
