@@ -1320,11 +1320,30 @@
                     break;
 
                 case 'group':
-                    answerHtml = `
-                        <div class="group-header">
-                            <i class="fas fa-layer-group"></i> 아래 상세 항목을 입력해 주세요.
-                        </div>
-                    `;
+                    if (q.id === QID.INV_SEC_GROUP) {
+                        const sum = parseFloat(currentValue) || 0;
+                        answerHtml = `
+                            <div class="group-header" style="margin-bottom: 10px;">
+                                <i class="fas fa-layer-group"></i> 정보보호 투자액(B) - 다음 3개 항목의 합계
+                            </div>
+                            <div id="investment-total-display" class="total-display" style="margin-bottom: 8px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 600; color: #475569;">정보보호 투자액 합계(B):</span>
+                                <span id="input-${QID.INV_SEC_GROUP}-display" style="font-size: 1.1em; font-weight: 700; color: #1e293b;">${formatCurrency(sum)}원</span>
+                                <input type="hidden" id="input-${QID.INV_SEC_GROUP}" value="${sum}" data-raw-value="${sum}">
+                            </div>
+                            <div id="investment-ratio-display" class="ratio-display" style="padding: 12px; background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                                <i class="fas fa-calculator" style="color: #0ea5e9; margin-right: 8px;"></i>
+                                <span style="color: #0369a1; font-weight: 600;">IT 예산 대비 정보보호 투자 비율: </span>
+                                <span id="ratio-value" style="color: #0ea5e9; font-weight: 700; font-size: 1.1em;">--%</span>
+                            </div>
+                        `;
+                    } else {
+                        answerHtml = `
+                            <div class="group-header">
+                                <i class="fas fa-layer-group"></i> 아래 상세 항목을 입력해 주세요.
+                            </div>
+                        `;
+                    }
                     break;
 
                 case 'table':
@@ -1386,27 +1405,7 @@
                     break;
 
                 case 'number':
-                    // 정보보호 투자액 Group(Q3)인 경우 비율 자동 계산 표시 추가
-                    if (q.id === QID.INV_SEC_GROUP) {
-                        const formattedSecGroup = currentValue ? formatCurrency(currentValue) : '';
-                        answerHtml = `
-                            <div class="currency-input-wrapper" style="position: relative;">
-                                <input type="text" class="currency-input" id="input-${QID.INV_SEC_GROUP}"
-                                       placeholder="정보보호 투자액을 입력하세요"
-                                       value="${formattedSecGroup}"
-                                       data-raw-value="${currentValue}"
-                                       oninput="handleCurrencyInput(this, '${q.id}')"
-                                       onblur="formatCurrencyOnBlur(this)"
-                                       style="padding-right: 40px;">
-                                <span style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #64748b; font-weight: 600;">원</span>
-                            </div>
-                            <div id="investment-ratio-display" class="ratio-display" style="margin-top: 10px; padding: 12px; background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); border-radius: 8px; border-left: 4px solid #0ea5e9;">
-                                <i class="fas fa-calculator" style="color: #0ea5e9; margin-right: 8px;"></i>
-                                <span style="color: #0369a1; font-weight: 600;">IT 예산 대비 정보보호 투자 비율: </span>
-                                <span id="ratio-value" style="color: #0ea5e9; font-weight: 700; font-size: 1.1em;">--%</span>
-                            </div>
-                        `;
-                    } else if (q.text.includes('(원)')) {
+                    if (q.text.includes('(원)')) {
                         // 금액 관련 필드 (천 단위 콤마 + 원 단위 표시)
                         const formattedVal = currentValue ? formatCurrency(currentValue) : '';
                         answerHtml = `
@@ -1425,7 +1424,7 @@
                         // 일반 숫자 (인원 수, 횟수 등)
                         // Q4-17 (사고 건수) 등은 일반 숫자 처리
                         answerHtml = `
-                            <input type="number" class="number-input"
+                            <input type="number" class="number-input" id="input-${q.id}"
                                    placeholder="숫자를 입력하세요"
                                    value="${currentValue}"
                                    data-raw-value="${currentValue}"
@@ -1520,6 +1519,7 @@
                         const tooltip = securityTerms[opt] ? `title="${securityTerms[opt]}"` : '';
                         return `
                                 <div class="checkbox-item ${selectedValues.includes(opt) ? 'selected' : ''}"
+                                     data-value="${opt}"
                                      onclick="toggleCheckbox('${q.id}', '${opt}', this)"
                                      ${tooltip}>
                                     <i class="fas ${selectedValues.includes(opt) ? 'fa-check-square' : 'fa-square'}"></i>
@@ -1642,16 +1642,24 @@
 
         // 종속 질문 표시
         function showDependentQuestions(parentQuestion) {
+            console.log(`[showDependentQuestions] 부모 질문: ${parentQuestion.id}, 종속 질문:`, parentQuestion.dependent_question_ids);
+            
             const parentEl = document.getElementById(`question-${parentQuestion.id}`);
-            if (!parentEl) return;
+            if (!parentEl) {
+                console.error(`[showDependentQuestions] 부모 요소를 찾을 수 없음: question-${parentQuestion.id}`);
+                return;
+            }
 
             // 종속 질문을 역순으로 처리하여 부모 바로 아래에 올바른 순서로 삽입
             const reversedIds = [...parentQuestion.dependent_question_ids].reverse();
             reversedIds.forEach(depId => {
-                if (!document.getElementById(`question-${depId}`)) {
+                const existingEl = document.getElementById(`question-${depId}`);
+                if (!existingEl) {
                     const depQ = questions.find(dq => dq.id === depId);
                     if (depQ) {
+                        console.log(`[showDependentQuestions] 종속 질문 생성 중: ${depId}`);
                         const depEl = createQuestionElement(depQ);
+                        
                         if (isGridQuestion(depId)) {
                             depEl.classList.add('question-grid-item');
                             // 가로 배치 컨테이너가 없으면 생성 (동축 표시 대응)
@@ -1666,11 +1674,25 @@
                             parentEl.after(depEl);
                         }
 
+                        // DOM 삽입 확인
+                        setTimeout(() => {
+                            const inserted = document.getElementById(`question-${depId}`);
+                            if (inserted) {
+                                console.log(`[showDependentQuestions] ✓ 종속 질문 DOM 삽입 성공: ${depId}`);
+                            } else {
+                                console.error(`[showDependentQuestions] ✗ 종속 질문 DOM 삽입 실패: ${depId}`);
+                            }
+                        }, 100);
+
                         // 하위의 하위 질문도 트리거 여부 확인하여 표시 (재귀)
                         if (depQ.dependent_question_ids && isQuestionTriggered(depQ, answers[depId])) {
                             showDependentQuestions(depQ);
                         }
+                    } else {
+                        console.error(`[showDependentQuestions] 종속 질문을 찾을 수 없음: ${depId}`);
                     }
+                } else {
+                    console.log(`[showDependentQuestions] 종속 질문이 이미 존재함: ${depId}`);
                 }
             });
         }
@@ -1707,16 +1729,23 @@
 
         // 체크박스 토글
         function toggleCheckbox(questionId, value, el) {
+            console.log(`[toggleCheckbox] 질문: ${questionId}, 값: ${value}, 이전 상태:`, el.classList.contains('selected'));
+            
             el.classList.toggle('selected');
             const icon = el.querySelector('i');
             icon.className = el.classList.contains('selected') ? 'fas fa-check-square' : 'fas fa-square';
+
+            console.log(`[toggleCheckbox] 새 상태:`, el.classList.contains('selected'));
 
             // 현재 선택된 값들 수집
             const container = el.parentElement;
             const selectedValues = [];
             container.querySelectorAll('.checkbox-item.selected').forEach(item => {
-                selectedValues.push(item.textContent.trim());
+                const val = item.getAttribute('data-value') || item.textContent.trim();
+                selectedValues.push(val);
             });
+            
+            console.log(`[toggleCheckbox] 선택된 값들:`, selectedValues);
             updateAnswer(questionId, selectedValues);
         }
 
@@ -1839,6 +1868,18 @@
 
             // 답변 업데이트 (raw value 사용)
             updateAnswer(questionId, rawValue);
+
+            // 인력 관련 질문인 경우 검증
+            const personnelRelatedItems = [QID.PER_TOTAL_EMP, QID.PER_INTERNAL, QID.PER_EXTERNAL];
+            if (personnelRelatedItems.includes(questionId)) {
+                calculatePersonnelValidation();
+            }
+
+            // 정보보호 투자액 하위 항목인 경우 상위 합계 계산 및 검증
+            const securitySubItems = [QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR];
+            if (securitySubItems.includes(questionId)) {
+                calculateSecurityInvestmentSum();
+            }
         }
 
         // blur 시 숫자 포맷팅 적용
@@ -1884,18 +1925,71 @@
 
             const sum = v1 + v2 + v3;
 
+            // 정보기술부문 투자액(A) 가져오기
+            const totalItInput = document.getElementById(`input-${QID.INV_IT_AMOUNT}`);
+            const totalIt = parseFloat(totalItInput?.dataset.rawValue || 0) || 0;
+
+            // 검증: 정보보호 투자액(B)이 정보기술 투자액(A)보다 클 수 없음
+            if (sum > totalIt && totalIt > 0) {
+                console.error(`[투자액 검증 실패] 정보보호 투자액(${sum.toLocaleString()})이 정보기술 투자액(${totalIt.toLocaleString()})을 초과했습니다.`);
+                
+                // 경고 메시지 표시
+                alert(`⚠️ 투자액 오류\n\n정보보호 투자액(B): ${sum.toLocaleString()}원\n정보기술 투자액(A): ${totalIt.toLocaleString()}원\n\n정보보호 투자액은 정보기술 투자액을 초과할 수 없습니다.\n입력한 금액을 다시 확인해주세요.`);
+                
+                // 입력 필드 강조 표시
+                [QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR].forEach(qid => {
+                    const input = document.getElementById(`input-${qid}`);
+                    if (input) {
+                        input.style.borderColor = '#ef4444';
+                        input.style.backgroundColor = '#fef2f2';
+                    }
+                });
+                
+                if (totalItInput) {
+                    totalItInput.style.borderColor = '#ef4444';
+                    totalItInput.style.backgroundColor = '#fef2f2';
+                }
+                
+                // 에러 토스트 표시
+                showToast('정보보호 투자액이 정보기술 투자액을 초과했습니다.', 'error');
+                
+                return; // 저장하지 않음
+            } else {
+                // 정상인 경우 강조 표시 제거
+                [QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR].forEach(qid => {
+                    const input = document.getElementById(`input-${qid}`);
+                    if (input) {
+                        input.style.borderColor = '';
+                        input.style.backgroundColor = '';
+                    }
+                });
+                
+                if (totalItInput) {
+                    totalItInput.style.borderColor = '';
+                    totalItInput.style.backgroundColor = '';
+                }
+            }
+
             // 로컬 상태 업데이트
             answers[QID.INV_SEC_GROUP] = sum;
 
             // DB 저장 (Group 타입이라도 통계 및 보고서용으로 값이 필요함)
             saveOneAnswer(QID.INV_SEC_GROUP, sum);
 
-            // 화면에 입력칸이 있으면 업데이트 (보통 Group 타입은 없지만 만일을 대비)
+            // 화면에 입력칸 또는 디스플레이가 있으면 업데이트
             const secGroupInput = document.getElementById(`input-${QID.INV_SEC_GROUP}`);
+            const secGroupDisplay = document.getElementById(`input-${QID.INV_SEC_GROUP}-display`);
+            
             if (secGroupInput) {
-                secGroupInput.value = formatCurrency(sum);
+                secGroupInput.value = sum;
                 secGroupInput.dataset.rawValue = sum;
             }
+            if (secGroupDisplay) {
+                secGroupDisplay.innerText = formatCurrency(sum) + '원';
+            }
+
+            // 비율 다시 계산
+            calculateInvestmentRatio();
         }
 
         // 정보보호 투자 비율 자동 계산
@@ -1936,6 +2030,62 @@
             } else {
                 ratioDisplay.textContent = '0.00%';
                 ratioDisplay.style.color = '#94a3b8';
+            }
+        }
+
+        // 정보보호 인력 검증 (내부+외주 <= 총 임직원)
+        function calculatePersonnelValidation() {
+            const totalEmpInput = document.getElementById(`input-${QID.PER_TOTAL_EMP}`);
+            const internalInput = document.getElementById(`input-${QID.PER_INTERNAL}`);
+            const externalInput = document.getElementById(`input-${QID.PER_EXTERNAL}`);
+
+            if (!totalEmpInput) return;
+
+            const totalEmp = parseFloat(totalEmpInput.dataset.rawValue || totalEmpInput.value || '0') || 0;
+            const internal = parseFloat(internalInput?.dataset.rawValue || internalInput?.value || '0') || 0;
+            const external = parseFloat(externalInput?.dataset.rawValue || externalInput?.value || '0') || 0;
+
+            const securityPersonnel = internal + external;
+
+            // 검증: 정보보호 인력(내부+외주)이 총 임직원 수보다 클 수 없음
+            if (securityPersonnel > totalEmp && totalEmp > 0) {
+                console.error(`[인력 검증 실패] 정보보호 인력(${securityPersonnel})이 총 임직원 수(${totalEmp})를 초과했습니다.`);
+                
+                // 경고 메시지 표시
+                alert(`⚠️ 인력 수 오류\n\n정보보호 인력(내부+외주): ${securityPersonnel}명\n총 임직원 수: ${totalEmp}명\n\n정보보호 인력은 총 임직원 수를 초과할 수 없습니다.\n입력한 인원을 다시 확인해주세요.`);
+                
+                // 입력 필드 강조 표시
+                if (internalInput) {
+                    internalInput.style.borderColor = '#ef4444';
+                    internalInput.style.backgroundColor = '#fef2f2';
+                }
+                if (externalInput) {
+                    externalInput.style.borderColor = '#ef4444';
+                    externalInput.style.backgroundColor = '#fef2f2';
+                }
+                if (totalEmpInput) {
+                    totalEmpInput.style.borderColor = '#ef4444';
+                    totalEmpInput.style.backgroundColor = '#fef2f2';
+                }
+                
+                // 에러 토스트 표시
+                showToast('정보보호 인력이 총 임직원 수를 초과했습니다.', 'error');
+                
+                return; // 저장하지 않음
+            } else {
+                // 정상인 경우 강조 표시 제거
+                if (internalInput) {
+                    internalInput.style.borderColor = '';
+                    internalInput.style.backgroundColor = '';
+                }
+                if (externalInput) {
+                    externalInput.style.borderColor = '';
+                    externalInput.style.backgroundColor = '';
+                }
+                if (totalEmpInput) {
+                    totalEmpInput.style.borderColor = '';
+                    totalEmpInput.style.backgroundColor = '';
+                }
             }
         }
 

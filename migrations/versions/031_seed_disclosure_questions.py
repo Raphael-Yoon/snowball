@@ -92,7 +92,8 @@ DISCLOSURE_QUESTIONS = [
     {
         "id": "Q3-1", "level": 1, "category_id": 3, "category": "정보보호 인증", "subcategory": "인증/평가",
         "text": "ISMS, ISO27001 등 유효한 인증이 있나요?", "type": "yes_no",
-        "dependent_question_ids": ["Q3-2"], "sort_order": 15
+        "dependent_question_ids": ["Q3-2"], "sort_order": 15,
+        "evidence_list": ["인증서 사본", "인증 유효기간 증빙"]
     },
     {
         "id": "Q3-2", "level": 2, "category_id": 3, "category": "정보보호 인증", "subcategory": "인증/평가",

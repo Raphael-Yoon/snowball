@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Snowball - 내부평가</title>
+    <title>Snowball - Dashboard</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
@@ -102,7 +102,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="mb-4">
-                    <h1><i class="fas fa-tasks me-2 text-primary"></i>내부평가</h1>
+                    <h1><i class="fas fa-tasks me-2 text-primary"></i>Dashboard</h1>
                 </div>
                 <p class="text-muted mb-4">
                     RCM의 단계별 내부평가를 진행하여 통제 설계와 운영 효과성을 체계적으로 검토할 수 있습니다.
@@ -168,6 +168,11 @@
                                             <small class="text-muted" style="font-size: 0.85rem; font-weight: 500;">{{ step.name[:2] }}</small>
                                         </div>
                                         {% endfor %}
+                                    </div>
+                                    <div class="mb-3">
+                                        <a href="{{ url_for('link8.assessment_detail', rcm_id=item.rcm_info.rcm_id, evaluation_session=item.evaluation_session) }}" class="btn btn-sm btn-outline-primary w-100">
+                                            <i class="fas fa-info-circle"></i> 상세 현황 보기
+                                        </a>
                                     </div>
                                     <!-- 버튼 (ELC용) -->
                                     <div class="d-grid gap-2">
@@ -286,6 +291,11 @@
                                         </div>
                                         {% endfor %}
                                     </div>
+                                    <div class="mb-3">
+                                        <a href="{{ url_for('link8.assessment_detail', rcm_id=item.rcm_info.rcm_id, evaluation_session=item.evaluation_session) }}" class="btn btn-sm btn-outline-primary w-100">
+                                            <i class="fas fa-info-circle"></i> 상세 현황 보기
+                                        </a>
+                                    </div>
                                     <!-- 버튼 (TLC용) -->
                                     <div class="d-grid gap-2">
                                         {% if item.progress.steps[0].status == 'completed' %}
@@ -401,6 +411,11 @@
                                             <small class="text-muted" style="font-size: 0.85rem; font-weight: 500;">{{ step.name[:2] }}</small>
                                         </div>
                                         {% endfor %}
+                                    </div>
+                                    <div class="mb-3">
+                                        <a href="{{ url_for('link8.assessment_detail', rcm_id=item.rcm_info.rcm_id, evaluation_session=item.evaluation_session) }}" class="btn btn-sm btn-outline-primary w-100">
+                                            <i class="fas fa-info-circle"></i> 상세 현황 보기
+                                        </a>
                                     </div>
                                     <!-- 버튼 -->
                                     <div class="d-grid gap-2">

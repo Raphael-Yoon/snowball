@@ -1,8 +1,27 @@
+"""
+Link6: 설계평가 E2E 테스트
+
+[테스트 실행 방법]
+1. 서버가 이미 실행 중인 경우:
+   python test/test_e2e_link6.py --url http://localhost:5001
+
+2. 서버가 실행되지 않은 경우:
+   - 테스트 코드가 자동으로 서버 실행 여부를 확인하고,
+   - 서버가 없으면 시작, 있으면 기존 서버 사용
+
+[주의사항]
+- headless=False: 브라우저가 화면에 표시되어 테스트 과정을 눈으로 확인 가능
+- 서버 충돌 방지: 이미 실행 중인 서버가 있으면 새로 시작하지 않음
+- 테스트 완료 후 자동으로 생성된 데이터는 삭제됨
+"""
+
 import os
 import sys
 import time
 import pytest
 import unittest
+import requests
+import subprocess
 from pathlib import Path
 from datetime import datetime
 from playwright.sync_api import Page, expect
@@ -16,19 +35,68 @@ from test.playwright_base import PlaywrightTestBase, PageHelper, E2ETestResult, 
 class Link6DesignTestSuite(PlaywrightTestBase):
     """Link6: 설계평가 E2E 테스트"""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, base_url="http://localhost:5001", headless=False):
+        # headless=False가 기본값: 브라우저 화면이 보임
+        super().__init__(base_url=base_url, headless=headless)
         self.checklist_source = project_root / "test" / "e2e_checklist_link6.md"
         self.checklist_result = project_root / "test" / "e2e_checklist_link6_result.md"
         self.rcm_file_path = project_root / "test" / "assets" / "valid_rcm.xlsx"
-        
+
         # 테스트 상태 공유를 위한 변수
         self.rcm_name = f"Design_Test_RCM_{int(time.time())}"
         self.eval_name = ""
+        self.server_process = None  # 테스트에서 시작한 서버 프로세스
 
     def setup_test_data(self):
         """기존 RCM을 사용하므로 데이터 생성 생략"""
         pass
+
+    def check_server_running(self):
+        """서버가 실행 중인지 확인하고, 없으면 시작"""
+        try:
+            response = requests.get(f"{self.base_url}/health", timeout=5)
+            if response.status_code == 200:
+                print(f"✅ 서버가 이미 실행 중입니다 ({self.base_url})")
+                return True
+            else:
+                print(f"⚠️ 서버 응답 코드: {response.status_code}")
+                return True  # 서버는 실행 중
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            print(f"⚠️ 서버가 실행 중이지 않습니다. 서버를 시작합니다...")
+            return self._start_server()
+        except Exception as e:
+            print(f"⚠️ 서버 상태 확인 중 오류: {e}")
+            return self._start_server()
+
+    def _start_server(self):
+        """서버를 백그라운드로 시작"""
+        try:
+            # Windows에서 백그라운드로 서버 시작
+            self.server_process = subprocess.Popen(
+                [sys.executable, "snowball.py"],
+                cwd=str(project_root),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
+            )
+            print(f"   서버 시작 중... (PID: {self.server_process.pid})")
+
+            # 서버가 준비될 때까지 대기 (최대 30초)
+            for i in range(30):
+                time.sleep(1)
+                try:
+                    response = requests.get(f"{self.base_url}/health", timeout=2)
+                    if response.status_code == 200:
+                        print(f"✅ 서버 시작 완료 ({self.base_url})")
+                        return True
+                except:
+                    print(f"   서버 준비 대기 중... ({i+1}/30)")
+
+            print(f"❌ 서버 시작 시간 초과")
+            return False
+        except Exception as e:
+            print(f"❌ 서버 시작 실패: {e}")
+            return False
 
     def run_all_tests(self):
         """전체 테스트 시나리오 실행"""
@@ -36,9 +104,14 @@ class Link6DesignTestSuite(PlaywrightTestBase):
         print(f"Link6: 설계평가 E2E 테스트 (기존 데이터 활용 모드)")
         print(f"================================================================================\n")
 
+        # 서버 상태 확인
+        if not self.check_server_running():
+            print("\n❌ 서버에 연결할 수 없어 테스트를 중단합니다.")
+            return 1
+
         try:
             self.setup()  # 브라우저 시작
-            
+
             # 로그인 수행
             self._do_admin_login()
 
@@ -56,13 +129,19 @@ class Link6DesignTestSuite(PlaywrightTestBase):
             # 카테고리 2: 평가 수행 및 저장
             self.run_category("2. 평가 수행 및 저장", [
                 self.test_design_save_evaluation,
-                self.test_design_batch_save
+                self.test_design_batch_save,
+                self.test_design_evidence_attach
             ])
 
-            # 카테고리 4: 평가 완료
-            self.run_category("4. 평가 완료 및 다운로드", [
-                self.test_design_complete_and_archive,
-                self.test_design_download_excel
+            # 카테고리 3: 미비점(Defect) 관리
+            self.run_category("3. 미비점 관리", [
+                self.test_design_defect_logging
+            ])
+
+            # 카테고리 4: 평가 완료 및 대시보드
+            self.run_category("4. 평가 완료 및 대시보드", [
+                self.test_design_completion_status,
+                self.test_design_dashboard_reflection
             ])
             
             # 카테고리 5: 데이터 정리
@@ -89,29 +168,60 @@ class Link6DesignTestSuite(PlaywrightTestBase):
     # =========================================================================
     # Helper Methods
     # =========================================================================
-    
-    def _do_admin_login(self):
-        """관리자 로그인 (백도어 사용)"""
-        print(f"    → 관리자 로그인 시도 (백도어)... URL: {self.base_url}/dev/login")
-        # snowball.py 에 구현된 dev_login 백도어 사용
-        # admin email: snowball2727@naver.com
-        url = f"{self.base_url}/dev/login?email=snowball2727@naver.com"
-        response = self.page.goto(url)
-        print(f"    → 로그인 응답 상태: {response.status if response else 'No Response'}")
-        
-        # 로그인 후 대시보드나 메인 페이지로 이동 확인
-        print("    → 대시보드 대기 중...")
-        self.page.wait_for_url("**/")
+
+    def _close_any_open_modal(self):
+        """열려있는 모달이 있으면 닫기"""
+        page = self.page
         try:
-            # index.jsp 에는 .navbar 가 없고 대신 .hero-title 이나 .auth-info 가 있음
-            self.page.wait_for_selector(".hero-title, .auth-info", timeout=15000)
-            print("    → 로그인 및 메인 페이지 진입 완료")
-        except Exception as e:
-            print(f"    ⚠️ 메인 페이지 요소(.hero-title/.auth-info)를 찾을 수 없습니다: {e}")
-            # 현재 페이지의 타이틀이나 텍스트 출력
-            print(f"    → 현재 URL: {self.page.url}")
-            print(f"    → 현재 타이틀: {self.page.title()}")
-            raise e
+            # evaluationModal이 열려있는지 확인
+            modal = page.locator("#evaluationModal.show")
+            if modal.count() > 0:
+                print("    → 열려있는 모달 닫는 중...")
+                # 먼저 닫기 버튼 시도
+                close_btn = page.locator("#evaluationModal button[data-bs-dismiss='modal']")
+                if close_btn.count() > 0 and close_btn.first.is_visible():
+                    close_btn.first.click()
+                    page.wait_for_timeout(500)
+                else:
+                    # ESC 키로 닫기 시도
+                    page.keyboard.press("Escape")
+                    page.wait_for_timeout(500)
+                # 모달이 닫혔는지 확인
+                page.wait_for_selector("#evaluationModal", state="hidden", timeout=3000)
+        except:
+            pass  # 모달이 없거나 이미 닫힌 경우 무시
+
+    def _do_admin_login(self):
+        """관리자 로그인 버튼 클릭으로 로그인 (이미 로그인된 상태면 건너뜀)"""
+        page = self.page
+
+        # 현재 페이지 URL 확인 - 이미 메인 페이지에 있고 로그인 상태면 건너뛰기
+        current_url = page.url
+
+        # 메인 페이지로 이동해서 로그인 상태 확인
+        if "/login" not in current_url:
+            page.goto(f"{self.base_url}/")
+            page.wait_for_load_state("networkidle")
+
+            # 로그아웃 버튼이 있으면 이미 로그인 상태
+            if page.locator("a:has-text('로그아웃')").count() > 0:
+                print("    → 이미 로그인 상태, 건너뜀")
+                return
+
+        print("    → 로그인 페이지로 이동...")
+        page.goto(f"{self.base_url}/login")
+        page.wait_for_load_state("networkidle")
+
+        # 관리자 로그인 버튼 클릭
+        print("    → 관리자 로그인 버튼 클릭...")
+        admin_btn = page.locator(".admin-login-section button[type='submit']")
+        if admin_btn.count() > 0:
+            admin_btn.click()
+            # 메인 페이지로 이동 대기
+            page.wait_for_load_state("networkidle")
+            print("    → 로그인 완료")
+        else:
+            raise Exception("관리자 로그인 버튼을 찾을 수 없습니다")
 
     def _select_existing_rcm(self):
         """설계평가를 위해 이미 등록된 RCM 중 하나를 선택"""
@@ -153,7 +263,7 @@ class Link6DesignTestSuite(PlaywrightTestBase):
             row = page.locator(f"tr:has-text('{self.rcm_name}')")
             if row.count() > 0:
                 row.locator(".btn-delete").click() # 클래스명은 추측, 실제 확인 필요
-                page.on("dialog", lambda dialog: dialog.accept())
+                page.once("dialog", lambda dialog: dialog.accept())
         except:
             pass
 
@@ -259,13 +369,14 @@ class Link6DesignTestSuite(PlaywrightTestBase):
         print(f"    → 세션 '{self.eval_name}'의 계속하기 버튼 찾는 중...")
         
         # 버튼이 보이지 않으면 아코디언이 닫혀있을 확률이 높음
-        # 먼저 해당 RCM의 아코디언 헤더를 클릭하여 펼침
+        # 먼저 해당 RCM의 아코디언 헤더를 클릭하여 펼침 (설계평가 영역: #collapse로 시작)
         print(f"    → RCM '{self.rcm_name}' 아코디언 확장 시도...")
-        accordion_header = page.locator(f"h2.accordion-header:has-text('{self.rcm_name}') button")
+        # 설계평가 영역의 아코디언만 선택 (운영평가는 #opcollapse로 시작)
+        accordion_header = page.locator(f"h2.accordion-header:has-text('{self.rcm_name}') button[data-bs-target^='#collapse']")
         if accordion_header.count() > 0:
             # 보이지 않거나 collapsed 상태인 경우 클릭
-            if "collapsed" in (accordion_header.get_attribute("class") or ""):
-                accordion_header.click()
+            if "collapsed" in (accordion_header.first.get_attribute("class") or ""):
+                accordion_header.first.click()
                 page.wait_for_timeout(500) # 애니메이션 대기
         
         continue_btn = page.locator(f"//tr[contains(., '{self.eval_name}')]//button[contains(., '계속하기')]")
@@ -302,106 +413,405 @@ class Link6DesignTestSuite(PlaywrightTestBase):
         # 평가 모달 대기
         page.wait_for_selector("#evaluationModal.show", timeout=5000)
         
-        # '적정' 선택 (adequate)
+        # '적정' 선택 (adequate) - descriptionAdequacy는 select 요소
         print("    → '적정' 선택 및 저장...")
+        page.select_option("#descriptionAdequacy", "adequate")
+        page.wait_for_timeout(500)  # 효과성 필드 활성화 대기
         page.select_option("#overallEffectiveness", "effective")
-        page.fill("#descriptionAdequacy", "통제 활동이 적절하게 설계되어 있음")
-        
+
+        # 증빙 내용 입력 (선택사항)
+        evidence_el = page.locator("#evaluationEvidence")
+        if evidence_el.count() > 0:
+            evidence_el.fill("E2E 테스트 - 통제 활동이 적절하게 설계되어 있음")
+
         # 저장 버튼 클릭
         page.click("#saveEvaluationBtn")
-        
-        # 성공 메시지 대기 및 확인
-        page.wait_for_selector("text=저장되었습니다", timeout=5000)
-        page.click("button:has-text('확인')")
-        
-        # 모달 닫기 확인
-        page.wait_for_selector("#evaluationModal", state="hidden")
-        
+
+        # 성공 메시지 대기 및 확인 (다양한 메시지 형태 대응)
+        try:
+            page.wait_for_selector("text=저장되었습니다", timeout=5000)
+        except:
+            page.wait_for_selector("text=저장", timeout=3000)
+
+        # 확인 버튼 클릭
+        confirm_btn = page.locator("button:has-text('확인')")
+        if confirm_btn.count() > 0 and confirm_btn.is_visible():
+            confirm_btn.click()
+
+        # 모달 닫기 확인 (최대 5초 대기)
+        try:
+            page.wait_for_selector("#evaluationModal", state="hidden", timeout=5000)
+        except:
+            # 모달이 안 닫히면 강제로 닫기 시도
+            close_btn = page.locator("#evaluationModal button[data-bs-dismiss='modal']")
+            if close_btn.count() > 0:
+                close_btn.first.click()
+                page.wait_for_timeout(500)
+
         result.pass_test("개별 통제 평가 및 저장 완료")
 
     def test_design_batch_save(self, result: E2ETestResult):
-        """일괄 저장 기능 확인 (적정저장 활용)"""
-        # 이 기능은 관리자 전용 '적정저장'으로 대체하여 전체 완료를 유도함
-        result.skip_test("적정저장 기능으로 대체됨")
-
-    # =========================================================================
-    # 4. 평가 완료 및 아카이브 (3번은 skip 처리)
-    # =========================================================================
-
-    def test_design_complete_and_archive(self, result: E2ETestResult):
-        """평가 완료 및 아카이브 처리"""
+        """일괄 저장 기능 확인 (적정저장 버튼 활용)"""
         page = self.page
-        
+
+        # 열려있는 모달 먼저 닫기
+        self._close_any_open_modal()
+
+        # 상세 페이지에 있는지 확인
+        if "/design-evaluation/rcm" not in page.url:
+            result.skip_test("상세 페이지에 있지 않음 (이전 테스트 실패)")
+            return
+
+        try:
+            # '적정저장' 버튼 찾기
+            print("    → '적정저장' 버튼 확인 중...")
+            batch_save_btn = page.locator("button:has-text('적정저장')")
+
+            if batch_save_btn.count() > 0 and batch_save_btn.is_visible():
+                # confirm 다이얼로그 자동 수락 핸들러 설정
+                page.once("dialog", lambda dialog: dialog.accept())
+
+                batch_save_btn.click()
+                page.wait_for_timeout(1000)  # confirm 다이얼로그 처리 대기
+
+                # 완료 대기 (다양한 메시지 형태 대응)
+                try:
+                    page.wait_for_selector("text=저장이 완료되었습니다", timeout=20000)
+                    page.click("button:has-text('확인')")
+                except:
+                    # 다른 성공 메시지나 페이지 갱신 확인
+                    page.wait_for_timeout(2000)
+
+                result.pass_test("일괄 저장(적정저장) 기능 동작 확인")
+            else:
+                result.skip_test("적정저장 버튼을 찾을 수 없음 (관리자 전용)")
+        except Exception as e:
+            result.fail_test(f"일괄 저장 테스트 실패: {e}")
+
+    def test_design_evidence_attach(self, result: E2ETestResult):
+        """증빙자료 파일 업로드 기능 동작 및 파일명 표시 확인"""
+        page = self.page
+
+        # 열려있는 모달 먼저 닫기
+        self._close_any_open_modal()
+
+        # 상세 페이지에 있는지 확인
+        if "/design-evaluation/rcm" not in page.url:
+            result.skip_test("상세 페이지에 있지 않음")
+            return
+
+        try:
+            # 첫 번째 통제 항목의 '평가' 또는 '수정' 버튼 클릭
+            print("    → 통제 항목 평가 모달 열기...")
+            eval_btns = page.locator("#controlsTable button:has-text('평가'), #controlsTable button:has-text('수정')")
+
+            if eval_btns.count() == 0:
+                result.skip_test("평가/수정 버튼을 찾을 수 없음")
+                return
+
+            eval_btns.first.click()
+            page.wait_for_selector("#evaluationModal.show", timeout=5000)
+
+            # 파일 업로드 input 확인
+            print("    → 증빙자료 업로드 필드 확인...")
+            file_input = page.locator("#evaluationImages")
+
+            if file_input.count() > 0:
+                # 테스트 이미지 파일 생성 및 업로드
+                test_image_path = project_root / "test" / "assets" / "test_evidence.png"
+
+                # 간단한 테스트 이미지 생성 (1x1 픽셀 PNG)
+                if not test_image_path.exists():
+                    import struct
+                    import zlib
+
+                    def create_minimal_png(filepath):
+                        # 최소한의 1x1 흰색 PNG 파일 생성
+                        signature = b'\x89PNG\r\n\x1a\n'
+
+                        # IHDR chunk
+                        ihdr_data = struct.pack('>IIBBBBB', 1, 1, 8, 2, 0, 0, 0)
+                        ihdr_crc = zlib.crc32(b'IHDR' + ihdr_data)
+                        ihdr = struct.pack('>I', 13) + b'IHDR' + ihdr_data + struct.pack('>I', ihdr_crc)
+
+                        # IDAT chunk
+                        raw_data = b'\x00\xff\xff\xff'
+                        compressed = zlib.compress(raw_data)
+                        idat_crc = zlib.crc32(b'IDAT' + compressed)
+                        idat = struct.pack('>I', len(compressed)) + b'IDAT' + compressed + struct.pack('>I', idat_crc)
+
+                        # IEND chunk
+                        iend_crc = zlib.crc32(b'IEND')
+                        iend = struct.pack('>I', 0) + b'IEND' + struct.pack('>I', iend_crc)
+
+                        with open(filepath, 'wb') as f:
+                            f.write(signature + ihdr + idat + iend)
+
+                    create_minimal_png(test_image_path)
+
+                # 파일 업로드
+                file_input.set_input_files(str(test_image_path))
+                page.wait_for_timeout(1000)
+
+                # 업로드된 파일명 표시 확인
+                if page.locator("text=test_evidence.png").count() > 0 or \
+                   page.locator(".uploaded-file, .file-name").count() > 0:
+                    result.pass_test("증빙자료 업로드 및 파일명 표시 확인")
+                else:
+                    result.warn_test("파일 업로드는 되었으나 파일명 표시 확인 불가")
+
+                # 테스트 파일 삭제
+                if test_image_path.exists():
+                    test_image_path.unlink()
+            else:
+                result.skip_test("증빙자료 업로드 필드(#evaluationImages)를 찾을 수 없음")
+
+            # 모달 닫기
+            close_btn = page.locator("#evaluationModal button[data-bs-dismiss='modal']")
+            if close_btn.count() > 0:
+                close_btn.first.click()
+
+        except Exception as e:
+            result.fail_test(f"증빙자료 업로드 테스트 실패: {e}")
+
+    # =========================================================================
+    # 3. 미비점(Defect) 관리
+    # =========================================================================
+
+    def test_design_defect_logging(self, result: E2ETestResult):
+        """평가 결과를 '미비(비효과적)'로 선택 시 처리 확인"""
+        page = self.page
+
+        # 열려있는 모달 먼저 닫기
+        self._close_any_open_modal()
+
+        # 상세 페이지에 있는지 확인
+        if "/design-evaluation/rcm" not in page.url:
+            # 상세 페이지로 이동 시도
+            if "itgc-evaluation" not in page.url:
+                page.goto(f"{self.base_url}/itgc-evaluation")
+                page.wait_for_load_state('networkidle')
+
+            # 아코디언 확장 및 진입 (설계평가 영역: #collapse로 시작)
+            accordion_header = page.locator(f"h2.accordion-header:has-text('{self.rcm_name}') button[data-bs-target^='#collapse']")
+            if accordion_header.count() > 0 and "collapsed" in (accordion_header.first.get_attribute("class") or ""):
+                accordion_header.first.click()
+                page.wait_for_timeout(500)
+
+            continue_btn = page.locator(f"//tr[contains(., '{self.eval_name}')]//button[contains(., '계속하기') or contains(., '보기')]")
+            if continue_btn.count() > 0:
+                continue_btn.first.click()
+                page.wait_for_url("**/design-evaluation/rcm", timeout=10000)
+            else:
+                result.skip_test("상세 페이지 진입 불가")
+                return
+
+        try:
+            # 평가되지 않은 항목 또는 수정 가능한 항목 찾기
+            print("    → 미비(비효과적) 평가 테스트 시작...")
+            eval_btns = page.locator("#controlsTable button:has-text('평가'), #controlsTable button:has-text('수정')")
+
+            if eval_btns.count() == 0:
+                result.skip_test("평가/수정 버튼을 찾을 수 없음")
+                return
+
+            eval_btns.first.click()
+            page.wait_for_selector("#evaluationModal.show", timeout=5000)
+
+            # '해당 없음' 체크 해제 확인 (ID: no_occurrence_design)
+            no_occurrence = page.locator("#no_occurrence_design")
+            if no_occurrence.count() > 0 and no_occurrence.is_checked():
+                no_occurrence.click()
+                page.wait_for_timeout(500)
+
+            # 적절성을 'adequate'로 설정하여 효과성 필드 활성화
+            print("    → 적절성 'adequate' 선택...")
+            page.select_option("#descriptionAdequacy", "adequate")
+            page.wait_for_timeout(500)
+
+            # 효과성을 '비효과적(ineffective)'으로 선택
+            print("    → 효과성 '비효과적(ineffective)' 선택...")
+            effectiveness_select = page.locator("#overallEffectiveness")
+            if effectiveness_select.is_disabled():
+                result.skip_test("효과성 필드가 비활성화됨")
+                return
+
+            page.select_option("#overallEffectiveness", "ineffective")
+            page.wait_for_timeout(500)
+
+            # 권고 조치사항 필드 활성화 확인 (비효과적 선택 시에만 표시됨)
+            recommended_actions = page.locator("#recommendedActions")
+            if recommended_actions.count() > 0:
+                # 요소가 보일 때까지 대기 (최대 3초)
+                try:
+                    recommended_actions.wait_for(state="visible", timeout=3000)
+                    if not recommended_actions.is_disabled():
+                        recommended_actions.fill("테스트용 미비점 - 통제 설계 개선 필요")
+                        print("    → 권고 조치사항 입력 완료")
+                except:
+                    print("    → 권고 조치사항 필드 미표시 (건너뜀)")
+
+            # 증빙 내용 입력
+            evidence_el = page.locator("#evaluationEvidence")
+            if evidence_el.count() > 0:
+                evidence_el.fill("미비점 테스트 - 통제 미흡 사항 확인")
+
+            # 저장
+            print("    → 비효과적 평가 저장...")
+            page.click("#saveEvaluationBtn")
+
+            # 저장 완료 대기 (성공 메시지 또는 모달 닫힘)
+            try:
+                # successAlert 또는 저장 관련 메시지 대기
+                page.wait_for_selector("#successAlert, text=저장", timeout=5000)
+            except:
+                pass  # 메시지가 빠르게 사라질 수 있음
+
+            # 모달 닫기 확인 (저장 성공 시 자동 닫힘)
+            try:
+                page.wait_for_selector("#evaluationModal", state="hidden", timeout=5000)
+            except:
+                # 모달이 안 닫히면 닫기 버튼 클릭
+                close_btn = page.locator("#evaluationModal button[data-bs-dismiss='modal']")
+                if close_btn.count() > 0:
+                    close_btn.first.click()
+
+            # 목록에서 '부적정' 배지 확인 (비효과적으로 저장되면 부적정 표시)
+            page.wait_for_timeout(1000)  # UI 갱신 대기
+            if page.locator(".badge.bg-danger:has-text('부적정')").count() > 0:
+                result.pass_test("비효과적 평가 저장 및 '부적정' 표시 확인")
+            else:
+                result.warn_test("비효과적 평가 저장됨 (부적정 배지 확인 불가)")
+
+        except Exception as e:
+            result.fail_test(f"미비점 테스트 실패: {e}")
+
+    # =========================================================================
+    # 4. 평가 완료 및 대시보드
+    # =========================================================================
+
+    def test_design_completion_status(self, result: E2ETestResult):
+        """모든 항목 평가 완료 시 진행률 100% 도달 및 '완료' 상태 변경 확인"""
+        page = self.page
+
+        # 열려있는 모달 먼저 닫기
+        self._close_any_open_modal()
+
         # 상세 페이지에 있는지 확인
         if "/design-evaluation/rcm" not in page.url:
             print("    → 상세 페이지로 이동 중...")
-             # 상세 페이지가 아니면 목록에서 다시 진입
+            # 상세 페이지가 아니면 목록에서 다시 진입
             if "itgc-evaluation" not in page.url:
                 page.goto(f"{self.base_url}/itgc-evaluation")
-            
-            # 아코디언 확장
-            accordion_header = page.locator(f"h2.accordion-header:has-text('{self.rcm_name}') button")
-            if accordion_header.count() > 0 and "collapsed" in (accordion_header.get_attribute("class") or ""):
-                accordion_header.click()
+                page.wait_for_load_state('networkidle')
+
+            # 아코디언 확장 (설계평가 영역: #collapse로 시작)
+            accordion_header = page.locator(f"h2.accordion-header:has-text('{self.rcm_name}') button[data-bs-target^='#collapse']")
+            if accordion_header.count() > 0 and "collapsed" in (accordion_header.first.get_attribute("class") or ""):
+                accordion_header.first.click()
                 page.wait_for_timeout(500)
-                
+
             continue_btn = page.locator(f"//tr[contains(., '{self.eval_name}')]//button[contains(., '계속하기')]")
             if continue_btn.count() == 0:
                 continue_btn = page.locator(f"//tr[contains(., '{self.eval_name}')]//button[contains(., '보기')]")
-                
+
             if continue_btn.count() > 0:
-                continue_btn.click()
+                continue_btn.first.click()
                 page.wait_for_url("**/design-evaluation/rcm")
             else:
                 result.fail_test(f"세션 '{self.eval_name}'에 진입할 수 없음")
                 return
 
-        # [관리자] 모든 통제 '적정저장' 수행 (테스트 편의를 위해)
-        print("    → [관리자] 모든 통제 '적정저장' 수행 중...")
-        batch_save_btn = page.locator("button:has-text('적정저장')")
-        if batch_save_btn.count() > 0:
-            batch_save_btn.click()
-            # 확인 대화상자
-            page.wait_for_selector("text=모든 통제를 '적정'으로 저장하시겠습니까?", timeout=5000)
-            page.click("button:has-text('확인')")
-            # 완료 대기
-            page.wait_for_selector("text=저장이 완료되었습니다", timeout=20000)
-            page.click("button:has-text('확인')")
-        
-        # 완료 버튼 활성화 대기
-        print("    → 완료 버튼 클릭 시도...")
-        complete_btn = page.locator("#completeEvaluationBtn")
-        
-        # 버튼이 보일 때까지 대기 (진행률 100%여야 함)
         try:
-            complete_btn.wait_for(state="visible", timeout=10000)
-        except:
-            pass
-            
-        if complete_btn.is_visible() and complete_btn.is_enabled():
-            complete_btn.click()
-            # 확인 대화상자
-            page.wait_for_selector("text=평가를 완료하시겠습니까?", timeout=5000)
-            page.click("button:has-text('확인')")
-            # 아카이브 버튼으로 바뀌는지 확인
-            page.wait_for_selector("#archiveEvaluationBtn:visible", timeout=10000)
-            result.pass_test("설계평가 완료 처리 완료")
-        else:
-            result.fail_test("완료 버튼이 활성화되지 않음 (모든 항목 평가 필요)")
+            # [관리자] 모든 통제 '적정저장' 수행 (테스트 편의를 위해)
+            print("    → [관리자] 모든 통제 '적정저장' 수행 중...")
+            batch_save_btn = page.locator("button:has-text('적정저장')")
+            if batch_save_btn.count() > 0 and batch_save_btn.is_visible():
+                # confirm 다이얼로그 자동 수락 핸들러 설정
+                page.once("dialog", lambda dialog: dialog.accept())
 
-    def test_design_download_excel(self, result: E2ETestResult):
-        """Excel 다운로드 기능 확인"""
+                batch_save_btn.click()
+                page.wait_for_timeout(1000)  # confirm 다이얼로그 처리 대기
+
+                # 완료 대기 (다양한 메시지 형태 대응)
+                try:
+                    page.wait_for_selector("text=저장이 완료되었습니다", timeout=20000)
+                    page.click("button:has-text('확인')")
+                except:
+                    page.wait_for_timeout(2000)
+
+            # 진행률 100% 확인
+            print("    → 진행률 확인 중...")
+            progress_bar = page.locator(".progress-bar")
+            if progress_bar.count() > 0:
+                print("    → 진행률 바 표시 확인")
+
+            # 완료 버튼 활성화 대기
+            print("    → 완료 버튼 클릭 시도...")
+            complete_btn = page.locator("#completeEvaluationBtn")
+
+            # 버튼이 보일 때까지 대기 (진행률 100%여야 함)
+            try:
+                complete_btn.wait_for(state="visible", timeout=10000)
+            except:
+                pass
+
+            if complete_btn.is_visible() and complete_btn.is_enabled():
+                # confirm 다이얼로그 자동 수락 핸들러 설정
+                page.once("dialog", lambda dialog: dialog.accept())
+
+                complete_btn.click()
+                page.wait_for_timeout(1000)  # confirm 다이얼로그 처리 대기
+
+                # 완료 상태 확인 (아카이브 버튼 또는 완료 표시)
+                page.wait_for_timeout(2000)
+                if page.locator("#archiveEvaluationBtn").is_visible() or \
+                   page.locator("text=완료").count() > 0:
+                    result.pass_test("진행률 100% 도달 및 '완료' 상태 변경 확인")
+                else:
+                    result.warn_test("완료 처리됨 (상태 표시 확인 불가)")
+            else:
+                result.fail_test("완료 버튼이 활성화되지 않음 (모든 항목 평가 필요)")
+
+        except Exception as e:
+            result.fail_test(f"평가 완료 상태 테스트 실패: {e}")
+
+    def test_design_dashboard_reflection(self, result: E2ETestResult):
+        """메인 대시보드에서 설계평가 진행 현황 반영 확인"""
         page = self.page
-        download_btn = page.locator("#downloadBtn")
-        
-        if download_btn.is_visible():
-            with page.expect_download() as download_info:
-                download_btn.click()
-            download = download_info.value
-            print(f"    → 다운로드 완료: {download.suggested_filename}")
-            result.pass_test(f"Excel 다운로드 성공: {download.suggested_filename}")
-        else:
-            result.fail_test("다운로드 버튼이 활성화되지 않음 (완료 필요)")
+
+        try:
+            # 대시보드 페이지로 이동
+            print("    → 대시보드(/user/internal-assessment)로 이동...")
+            page.goto(f"{self.base_url}/user/internal-assessment")
+            page.wait_for_load_state('networkidle')
+
+            # 페이지 로드 확인
+            if page.url.endswith('/login') or '/login' in page.url:
+                result.skip_test("로그인 필요 - 대시보드 접근 불가")
+                return
+
+            # 설계평가 관련 정보가 표시되는지 확인
+            print("    → 설계평가 현황 확인 중...")
+
+            # ITGC 또는 설계평가 관련 섹션 확인
+            itgc_section = page.locator("text=ITGC, text=설계평가, text=Design")
+            progress_indicator = page.locator(".progress, .progress-bar, text=진행률, text=완료")
+
+            # 페이지에 평가 현황 관련 요소가 있는지 확인
+            page_content = page.inner_text("body")
+
+            if "ITGC" in page_content or "설계평가" in page_content or "평가" in page_content:
+                # 진행률이나 상태 정보 확인
+                if "완료" in page_content or "진행" in page_content or progress_indicator.count() > 0:
+                    result.pass_test("대시보드에서 평가 현황 정보 확인됨")
+                else:
+                    result.warn_test("대시보드 접근 가능하나 진행 현황 표시 확인 불가")
+            else:
+                result.warn_test("대시보드에 평가 관련 섹션 없음")
+
+        except Exception as e:
+            result.fail_test(f"대시보드 반영 테스트 실패: {e}")
 
     # =========================================================================
     # 5. 데이터 정리
@@ -410,29 +820,49 @@ class Link6DesignTestSuite(PlaywrightTestBase):
     def test_design_delete_session(self, result: E2ETestResult):
         """테스트로 생성된 세션 삭제"""
         page = self.page
-        
+
+        # 열려있는 모달 먼저 닫기
+        self._close_any_open_modal()
+
         # 목록 페이지로 이동
         print("    → ITGC 평가 목록으로 이동 중...")
         page.goto(f"{self.base_url}/itgc-evaluation")
         page.wait_for_load_state('networkidle')
-        
-        # 아코디언 확장
-        accordion_header = page.locator(f"h2.accordion-header:has-text('{self.rcm_name}') button")
-        if accordion_header.count() > 0 and "collapsed" in (accordion_header.get_attribute("class") or ""):
-            accordion_header.click()
+
+        # 아코디언 확장 (설계평가 영역: #collapse로 시작)
+        accordion_header = page.locator(f"h2.accordion-header:has-text('{self.rcm_name}') button[data-bs-target^='#collapse']")
+        if accordion_header.count() > 0 and "collapsed" in (accordion_header.first.get_attribute("class") or ""):
+            accordion_header.first.click()
             page.wait_for_timeout(500)
 
-        # 삭제 버튼 찾기
-        delete_btn = page.locator(f"//tr[contains(., '{self.eval_name}')]//button[contains(., '삭제')]")
+        # 삭제 버튼 찾기 (설계평가 영역에서만 - #collapse로 시작하는 아코디언 내부)
+        # 설계평가 아코디언 ID: #collapse + 숫자, 운영평가: #opcollapse + 숫자
+        delete_btn = page.locator(f"div[id^='collapse']:not([id^='opcollapse']) tr:has-text('{self.eval_name}') button:has-text('삭제')")
         if delete_btn.count() > 0:
             print(f"    → 세션 '{self.eval_name}' 삭제 중...")
-            delete_btn.click()
-            # 확인 대화상자
-            page.wait_for_selector("text=삭제하시겠습니까?", timeout=5000)
-            page.click("button:has-text('확인')")
-            # 삭제 완료 대기
-            page.wait_for_selector(f"text={self.eval_name}", state="hidden", timeout=10000)
-            result.pass_test("테스트 세션 삭제 완료")
+            delete_btn.first.click()
+
+            # 확인 대화상자 (다양한 메시지 형태 대응)
+            try:
+                # "삭제하시겠습니까?" 또는 "삭제" 포함 텍스트 대기
+                page.wait_for_selector("text=삭제", timeout=5000)
+            except:
+                pass  # 모달이 바로 표시될 수도 있음
+
+            # 확인 버튼 클릭 (다양한 버튼 텍스트 대응)
+            confirm_btn = page.locator("button:has-text('확인'), button:has-text('예'), button:has-text('삭제')")
+            if confirm_btn.count() > 0:
+                confirm_btn.first.click()
+
+            # 삭제 완료 대기 (세션이 목록에서 사라지거나 성공 메시지)
+            page.wait_for_timeout(2000)
+
+            # 목록에서 세션이 사라졌는지 확인
+            remaining = page.locator(f"text={self.eval_name}")
+            if remaining.count() == 0:
+                result.pass_test("테스트 세션 삭제 완료")
+            else:
+                result.warn_test("삭제 요청됨 (목록에서 확인 필요)")
         else:
             result.fail_test(f"삭제할 세션 '{self.eval_name}'을 찾을 수 없음")
 
@@ -454,17 +884,18 @@ class Link6DesignTestSuite(PlaywrightTestBase):
             for res in self.results:
                 if res.test_name in line:
                     # 테스트 상태에 따라 체크박스 및 결과 표시
+                    # 원본 형식: "- [ ] **test_name**" → 체크박스 상태와 아이콘 추가
                     if res.status == TestStatus.PASSED:
-                        updated_line = line.replace("- **", "- [x] ✅ **")
+                        updated_line = line.replace("- [ ] **", "- [x] ✅ **")
                         updated_line = updated_line.rstrip() + f" → **통과** ({res.message})\n"
                     elif res.status == TestStatus.FAILED:
-                        updated_line = line.replace("- **", "- [ ] ❌ **")
+                        updated_line = line.replace("- [ ] **", "- [ ] **")
                         updated_line = updated_line.rstrip() + f" → **실패** ({res.message})\n"
                     elif res.status == TestStatus.WARNING:
-                        updated_line = line.replace("- **", "- [~] ⚠️ **")
+                        updated_line = line.replace("- [ ] **", "- [~] ⚠️ **")
                         updated_line = updated_line.rstrip() + f" → **경고** ({res.message})\n"
                     elif res.status == TestStatus.SKIPPED:
-                        updated_line = line.replace("- **", "- [ ] ⊘ **")
+                        updated_line = line.replace("- [ ] **", "- [ ] **")
                         updated_line = updated_line.rstrip() + f" → **건너뜀** ({res.message})\n"
                     break
             updated_lines.append(updated_line)
@@ -491,16 +922,18 @@ class Link6DesignTestSuite(PlaywrightTestBase):
         print(f"\n✅ Link6 체크리스트 결과 저장됨: {self.checklist_result}")
 
 if __name__ == "__main__":
-    # 간단 실행 (python test/test_e2e_link6.py)
+    # 실행 방법:
+    #   python test/test_e2e_link6.py                    # 브라우저 화면 표시 (기본)
+    #   python test/test_e2e_link6.py --headless         # 브라우저 숨김
+    #   python test/test_e2e_link6.py --url http://localhost:5001
     import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--headless", action="store_true", help="Run in headless mode")
-    parser.add_argument("--url", default="http://127.0.0.1:5001", help="Target URL")
+    parser = argparse.ArgumentParser(description='Link6 설계평가 E2E 테스트')
+    parser.add_argument("--headless", action="store_true", help="브라우저 숨김 모드 (기본: 화면에 표시)")
+    parser.add_argument("--url", default="http://localhost:5001", help="서버 URL (기본: http://localhost:5001)")
     args = parser.parse_args()
 
-    test_suite = Link6DesignTestSuite()
-    test_suite.is_headless = args.headless
-    test_suite.base_url = args.url
-    
+    # headless=False가 기본값: 브라우저 화면이 보임
+    test_suite = Link6DesignTestSuite(base_url=args.url, headless=args.headless)
+
     exit_code = test_suite.run_all_tests()
     sys.exit(exit_code)

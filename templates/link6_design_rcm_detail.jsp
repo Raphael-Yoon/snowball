@@ -588,19 +588,19 @@
         {% if rcm_details %}
         {% for detail in rcm_details %}
         rcmAttributesData[{{ detail['control_code'] | tojson }}] = {
-            detailId: { { detail['detail_id'] | int } },
-            populationAttributeCount: { { detail['population_attribute_count'] | int if detail['population_attribute_count'] is not none else 2 } },
+            detailId: {{ detail['detail_id'] | int }},
+            populationAttributeCount: {{ detail['population_attribute_count'] | int if detail['population_attribute_count'] is not none else 2 }},
             attributes: {
-                attribute0: { { detail['attribute0'] | tojson if detail['attribute0'] else 'null' } },
-                attribute1: { { detail['attribute1'] | tojson if detail['attribute1'] else 'null' } },
-                attribute2: { { detail['attribute2'] | tojson if detail['attribute2'] else 'null' } },
-                attribute3: { { detail['attribute3'] | tojson if detail['attribute3'] else 'null' } },
-                attribute4: { { detail['attribute4'] | tojson if detail['attribute4'] else 'null' } },
-                attribute5: { { detail['attribute5'] | tojson if detail['attribute5'] else 'null' } },
-                attribute6: { { detail['attribute6'] | tojson if detail['attribute6'] else 'null' } },
-                attribute7: { { detail['attribute7'] | tojson if detail['attribute7'] else 'null' } },
-                attribute8: { { detail['attribute8'] | tojson if detail['attribute8'] else 'null' } },
-                attribute9: { { detail['attribute9'] | tojson if detail['attribute9'] else 'null' } }
+                attribute0: {{ detail['attribute0'] | tojson if detail['attribute0'] else 'null' }},
+                attribute1: {{ detail['attribute1'] | tojson if detail['attribute1'] else 'null' }},
+                attribute2: {{ detail['attribute2'] | tojson if detail['attribute2'] else 'null' }},
+                attribute3: {{ detail['attribute3'] | tojson if detail['attribute3'] else 'null' }},
+                attribute4: {{ detail['attribute4'] | tojson if detail['attribute4'] else 'null' }},
+                attribute5: {{ detail['attribute5'] | tojson if detail['attribute5'] else 'null' }},
+                attribute6: {{ detail['attribute6'] | tojson if detail['attribute6'] else 'null' }},
+                attribute7: {{ detail['attribute7'] | tojson if detail['attribute7'] else 'null' }},
+                attribute8: {{ detail['attribute8'] | tojson if detail['attribute8'] else 'null' }},
+                attribute9: {{ detail['attribute9'] | tojson if detail['attribute9'] else 'null' }}
             }
         };
         {% endfor %}
@@ -1970,7 +1970,7 @@
 
             // 서버에 결과 저장
             const controlCode = {% for detail in rcm_details %}
-        { { loop.index } } === currentEvaluationIndex ? '{{ detail.control_code }}' :
+        {{ loop.index }} === currentEvaluationIndex ? '{{ detail.control_code }}' :
             {% endfor %} null;
 
         console.log('Control code:', controlCode);
@@ -2585,7 +2585,7 @@
                         evaluation.overall_effectiveness === 'ineffective') {
                         // 통제 코드 찾기
                         const controlCode = {% for detail in rcm_details %}
-                    { { loop.index } } === parseInt(index) ? '{{ detail.control_code }}' :
+                    {{ loop.index }} === parseInt(index) ? '{{ detail.control_code }}' :
                         {% endfor %} null;
 
                 if (controlCode) {

@@ -103,7 +103,10 @@ def get_db():
         return auth_get_db()
     except ImportError:
         import sqlite3
-        conn = sqlite3.connect('snowball.db')
+        # 항상 이 파일이 위치한 디렉토리(snowball)에 DB 파일 사용
+        _db_dir = os.path.dirname(os.path.abspath(__file__))
+        _db_path = os.path.join(_db_dir, 'snowball.db')
+        conn = sqlite3.connect(_db_path)
         conn.row_factory = sqlite3.Row
         return conn
 

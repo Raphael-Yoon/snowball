@@ -2264,13 +2264,25 @@ def itgc_evaluation():
     current_rcm_id = flask_session.get('current_rcm_id')
     current_evaluation_session = flask_session.get('current_evaluation_session')
 
+    # start_design 파라미터가 있으면 해당 RCM으로 설계평가 시작 모달 자동 표시
+    start_design_rcm_id = request.args.get('start_design')
+    start_design_rcm_name = None
+    if start_design_rcm_id:
+        # RCM 이름 조회
+        for rcm in itgc_rcms:
+            if str(rcm['rcm_id']) == str(start_design_rcm_id):
+                start_design_rcm_name = rcm['rcm_name']
+                break
+
     return render_template('link6_evaluation.jsp',
                          category='ITGC',
                          rcms=itgc_rcms,
                          is_logged_in=is_logged_in(),
                          user_info=user_info,
                          current_rcm_id=current_rcm_id,
-                         current_evaluation_session=current_evaluation_session)
+                         current_evaluation_session=current_evaluation_session,
+                         start_design_rcm_id=start_design_rcm_id,
+                         start_design_rcm_name=start_design_rcm_name)
 
 @bp_link6.route('/itgc/design-evaluation/start', methods=['POST'])
 @login_required

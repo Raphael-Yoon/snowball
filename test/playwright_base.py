@@ -96,14 +96,16 @@ class E2ETestResult:
 class PlaywrightTestBase:
     """Playwright E2E 테스트 베이스 클래스"""
 
-    def __init__(self, base_url: str = "http://localhost:5000", headless: bool = True):
+    def __init__(self, base_url: str = "http://localhost:5000", headless: bool = True, slow_mo: int = 0):
         """
         Args:
             base_url: 테스트할 애플리케이션의 기본 URL
             headless: 헤드리스 모드 실행 여부
+            slow_mo: 동작 사이의 지연 시간 (밀리초)
         """
         self.base_url = base_url
         self.headless = headless
+        self.slow_mo = slow_mo
         self.playwright: Optional[Playwright] = None
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
@@ -119,7 +121,10 @@ class PlaywrightTestBase:
         self.playwright = sync_playwright().start()
 
         # Chromium 브라우저 실행 (Firefox, WebKit도 가능)
-        self.browser = self.playwright.chromium.launch(headless=self.headless)
+        self.browser = self.playwright.chromium.launch(
+            headless=self.headless,
+            slow_mo=self.slow_mo
+        )
 
         # 브라우저 컨텍스트 생성 (쿠키, 세션 격리)
         self.context = self.browser.new_context(
@@ -130,12 +135,6 @@ class PlaywrightTestBase:
 
         # 새 페이지 생성
         self.page = self.context.new_page()
-
-        # 콘솔 로그 캡처 (디버깅용)
-        self.page.on("console", lambda msg: print(f"[Browser Console] {msg.type}: {msg.text}"))
-
-        # 페이지 에러 캡처
-        self.page.on("pageerror", lambda err: print(f"[Page Error] {err}"))
 
     def teardown(self):
         """테스트 환경 정리"""
@@ -245,41 +244,30 @@ class PlaywrightTestBase:
                     pass
 
     def print_final_report(self):
-        """최종 리포트 출력 및 파일 저장"""
-        report_lines = []
-
-        # 헤더
-        header = "\n" + "=" * 80 + "\nE2E 테스트 결과 요약\n" + "=" * 80
-        print(header)
-        report_lines.append(header)
+        """최종 리포트 출력 (콘솔 전용)"""
+        print("\n" + "=" * 80)
+        print("E2E 테스트 결과 요약")
+        print("=" * 80)
 
         status_counts = {status: 0 for status in TestStatus}
         for result in self.results:
             status_counts[result.status] += 1
 
         total = len(self.results)
+        if total == 0:
+            print("실행된 테스트가 없습니다.")
+            return
+
         passed = status_counts[TestStatus.PASSED]
         failed = status_counts[TestStatus.FAILED]
         warning = status_counts[TestStatus.WARNING]
         skipped = status_counts[TestStatus.SKIPPED]
 
-        summary = f"\n총 테스트: {total}개\n"
-        summary += f"{TestStatus.PASSED.value} 통과: {passed}개 ({passed/total*100:.1f}%)\n"
-        summary += f"{TestStatus.FAILED.value} 실패: {failed}개 ({failed/total*100:.1f}%)\n"
-        summary += f"{TestStatus.WARNING.value} 경고: {warning}개 ({warning/total*100:.1f}%)\n"
-        summary += f"{TestStatus.SKIPPED.value} 건너뜀: {skipped}개 ({skipped/total*100:.1f}%)"
-
-        print(summary)
-        report_lines.append(summary)
-
-        # 텍스트 파일로 저장
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_path = project_root / 'test' / f'e2e_test_result_{timestamp}.txt'
-
-        with open(report_path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(report_lines))
-
-        print(f"\n📄 결과 저장됨: {report_path}")
+        print(f"\n총 테스트: {total}개")
+        print(f"{TestStatus.PASSED.value} 통과: {passed}개 ({passed/total*100:.1f}%)")
+        print(f"{TestStatus.FAILED.value} 실패: {failed}개 ({failed/total*100:.1f}%)")
+        print(f"{TestStatus.WARNING.value} 경고: {warning}개 ({warning/total*100:.1f}%)")
+        print(f"{TestStatus.SKIPPED.value} 건너뜀: {skipped}개 ({skipped/total*100:.1f}%)")
 
         return 0 if failed == 0 else 1
 
