@@ -11,7 +11,10 @@ load_dotenv()
 
 # 환경 변수로 DB 타입 결정 (USE_MYSQL 또는 DB_TYPE 지원)
 USE_MYSQL = os.getenv('USE_MYSQL', 'false').lower() == 'true' or os.getenv('DB_TYPE', 'sqlite').lower() == 'mysql'
-DATABASE = 'snowball.db'
+
+# 항상 이 파일이 위치한 디렉토리(snowball)에 DB 파일 생성
+_DB_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE = os.path.join(_DB_DIR, 'snowball.db')
 
 class IndexableDict(dict):
     """인덱스 접근을 지원하는 딕셔너리 (SQLite Row와의 호환성)"""

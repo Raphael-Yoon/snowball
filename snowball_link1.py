@@ -189,7 +189,6 @@ def link1():
 
 
 @bp_link1.route('/rcm_generate', methods=['POST'])
-@login_required
 def rcm_generate():
     """RCM 엑셀 생성 및 전송 (인증 필요)"""
     form_data = request.form.to_dict()

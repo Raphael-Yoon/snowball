@@ -3,10 +3,16 @@ from flask_wtf.csrf import CSRFProtect
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from pathlib import Path
+import os
+
+# 작업 디렉토리를 이 파일이 위치한 디렉토리(snowball)로 강제 변경
+# 이렇게 하면 어디서 실행하든 상대 경로가 올바르게 해석됨
+_APP_DIR = Path(__file__).parent.resolve()
+os.chdir(_APP_DIR)
 
 # .env 파일 먼저 로드 (다른 모듈에서 환경변수 사용하기 전에)
 # 현재 파일 기준으로 .env 파일 경로 지정 (작업 디렉토리와 무관하게 동작)
-env_path = Path(__file__).parent / '.env'
+env_path = _APP_DIR / '.env'
 load_dotenv(dotenv_path=env_path)
 
 from logger_config import setup_logging, get_logger
@@ -37,7 +43,6 @@ from snowball_drive import append_to_work_log, get_work_log, append_to_work_log_
 
 import base64
 import pickle
-import os
 import uuid
 import json
 import re
@@ -461,7 +466,10 @@ def user_design_evaluation():
         flash('잘못된 요청입니다.', 'danger')
         return redirect(url_for('link8.internal_assessment'))
     else:
-        # GET 요청 - 레거시 지원
+        # GET 요청 - rcm_id가 있으면 해당 RCM으로 설계평가 시작 모달 표시
+        rcm_id = request.args.get('rcm_id')
+        if rcm_id:
+            return redirect(url_for('link6.itgc_evaluation', start_design=rcm_id))
         return redirect(url_for('link6.itgc_evaluation'))
 
 

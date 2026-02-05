@@ -881,6 +881,15 @@
                 const bsOpCollapse = new bootstrap.Collapse(opCollapseElement, {toggle: true});
             }
             {% endif %}
+
+            {% if start_design_rcm_id and start_design_rcm_name %}
+            // URL 파라미터로 전달된 RCM으로 설계평가 시작 모달 자동 표시
+            setTimeout(function() {
+                selectRcmForDesign({{ start_design_rcm_id }}, '{{ start_design_rcm_name }}');
+                const modal = new bootstrap.Modal(document.getElementById('designEvaluationStartModal'));
+                modal.show();
+            }, 500);
+            {% endif %}
         });
     </script>
 </body>

@@ -148,7 +148,7 @@ def internal_assessment():
 @bp_link8.route('/internal-assessment/<int:rcm_id>')
 @bp_link8.route('/internal-assessment/<int:rcm_id>/<evaluation_session>')
 @login_required
-def assessment_detail(rcm_id, evaluation_name='DEFAULT'):
+def assessment_detail(rcm_id, evaluation_session='DEFAULT'):
     """특정 RCM의 특정 설계평가 세션에 대한 내부평가 상세 페이지"""
     user_info = get_user_info()
 
@@ -161,15 +161,15 @@ def assessment_detail(rcm_id, evaluation_name='DEFAULT'):
         return redirect(url_for('link8.internal_assessment'))
 
     # 내부평가 진행 상황 조회 (세션별)
-    progress = get_assessment_progress(rcm_id, user_info['user_id'], evaluation_name)
+    progress = get_assessment_progress(rcm_id, user_info['user_id'], evaluation_session)
 
     # 평가 단계별 데이터 조회
-    assessment_data = get_assessment_data(rcm_id, user_info['user_id'], evaluation_name)
+    assessment_data = get_assessment_data(rcm_id, user_info['user_id'], evaluation_session)
 
     log_user_activity(user_info, 'PAGE_ACCESS', '내부평가 상세 페이지',
                      f'/internal-assessment/{rcm_id}/{evaluation_session}',
                      request.remote_addr, request.headers.get('User-Agent'),
-                     {'rcm_id': rcm_id, 'evaluation_session': evaluation_name})
+                     {'rcm_id': rcm_id, 'evaluation_session': evaluation_session})
 
     return render_template('assessment_detail.jsp',
                          rcm_info=rcm_info,
@@ -182,7 +182,7 @@ def assessment_detail(rcm_id, evaluation_name='DEFAULT'):
 # API: 내부평가 상세 정보 (JSON)
 @bp_link8.route('/internal-assessment/api/detail/<int:rcm_id>/<evaluation_session>')
 @login_required
-def assessment_detail_api(rcm_id, evaluation_name='DEFAULT'):
+def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
     """내부평가 상세 정보를 JSON으로 반환하는 API"""
     user_info = get_user_info()
 
@@ -194,7 +194,7 @@ def assessment_detail_api(rcm_id, evaluation_name='DEFAULT'):
         return jsonify({'success': False, 'message': '해당 RCM에 대한 접근 권한이 없습니다.'}), 403
 
     # 내부평가 진행 상황 조회 (세션별)
-    progress = get_assessment_progress(rcm_id, user_info['user_id'], evaluation_name)
+    progress = get_assessment_progress(rcm_id, user_info['user_id'], evaluation_session)
 
     db = get_db()
 
@@ -203,7 +203,7 @@ def assessment_detail_api(rcm_id, evaluation_name='DEFAULT'):
     cursor = db.execute('''
         SELECT header_id FROM sb_evaluation_header
         WHERE rcm_id = ? AND evaluation_name = ?
-    ''', (rcm_id, evaluation_name))
+    ''', (rcm_id, evaluation_session))
     design_header = cursor.fetchone()
 
     if design_header:
@@ -341,7 +341,7 @@ def assessment_detail_api(rcm_id, evaluation_name='DEFAULT'):
     return jsonify({
         'success': True,
         'rcm_info': rcm_info,
-        'evaluation_session': evaluation_name,
+        'evaluation_session': evaluation_session,
         'progress': progress,
         'design_detail': design_detail,
         'operation_detail': operation_detail
@@ -349,8 +349,9 @@ def assessment_detail_api(rcm_id, evaluation_name='DEFAULT'):
 
 # 내부평가 단계별 페이지
 @bp_link8.route('/internal-assessment/<int:rcm_id>/step/<int:step>')
+@bp_link8.route('/internal-assessment/<int:rcm_id>/<evaluation_session>/step/<int:step>')
 @login_required
-def assessment_step(rcm_id, step):
+def assessment_step(rcm_id, step, evaluation_session='DEFAULT'):
     """내부평가 단계별 페이지"""
     user_info = get_user_info()
     
@@ -368,28 +369,29 @@ def assessment_step(rcm_id, step):
         return redirect(url_for('link8.assessment_detail', rcm_id=rcm_id))
     
     # 해당 단계의 데이터 조회
-    step_data = get_step_data(rcm_id, user_info['user_id'], step)
+    step_data = get_step_data(rcm_id, user_info['user_id'], step, evaluation_session)
     
-    # 단계별 템플릿 매핑
+    # 단계별 템플릿 매핑 (추후 구현 예정)
     step_templates = {
-        1: 'assessment_step1_planning.jsp',
-        2: 'assessment_step2_design.jsp', 
-        3: 'assessment_step3_operation.jsp',
-        4: 'assessment_step4_defects.jsp',
-        5: 'assessment_step5_improvement.jsp',
-        6: 'assessment_step6_report.jsp'
+        # 1: 'assessment_step1_planning.jsp',
+        # 2: 'assessment_step2_design.jsp', 
+        # 3: 'assessment_step3_operation.jsp',
+        # 4: 'assessment_step4_defects.jsp',
+        # 5: 'assessment_step5_improvement.jsp',
+        # 6: 'assessment_step6_report.jsp'
     }
     
     template = step_templates.get(step, 'assessment_step_generic.jsp')
     
     log_user_activity(user_info, 'PAGE_ACCESS', f'내부평가 {step}단계', 
-                     f'/internal-assessment/{rcm_id}/step/{step}', 
+                     f'/internal-assessment/{rcm_id}/{evaluation_session}/step/{step}', 
                      request.remote_addr, request.headers.get('User-Agent'),
-                     {'rcm_id': rcm_id, 'step': step})
+                     {'rcm_id': rcm_id, 'step': step, 'evaluation_session': evaluation_session})
     
     return render_template(template,
                          rcm_info=rcm_info,
                          step=step,
+                         evaluation_session=evaluation_session,
                          step_data=step_data,
                          is_logged_in=is_logged_in(),
                          user_info=user_info)
@@ -561,6 +563,7 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_name, progress)
                 design_progress = int(design_eval['progress_percentage'] or 0)
                 header_id = design_eval['header_id']
             else:
+                # 쿼리: status, NULL as total_controls, NULL as evaluated_controls, progress as progress_percentage, header_id
                 evaluation_status = design_eval[0]
                 total_controls_header = design_eval[1] or 0
                 evaluated_controls = design_eval[2] or 0
@@ -636,17 +639,29 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_name, progress)
             elif evaluated_controls > 0:
                 # 평가된 통제가 있으면 진행중
                 progress['steps'][0]['status'] = 'in-progress'
+            else:
+                progress['steps'][0]['status'] = 'pending'
         else:
             progress['steps'][0]['status'] = 'pending'
+            header_id = None # 헤더 ID 초기화
 
         # 2단계: 운영평가 (Link7) - 같은 헤더에서 conclusion 컬럼으로 운영평가 진행률 확인
         # 운영평가는 별도 세션이 아니라 같은 헤더의 conclusion 컬럼을 사용
 
-        operation_evaluation_status = None
         total_operation_controls = 0
         completed_operation_controls = 0
+        category_progress_op = {}
 
-        if design_eval:
+        # 운영평가 상세 정보 초기화
+        progress['steps'][1]['details'] = {
+            'total_controls': 0,
+            'completed_controls': 0,
+            'progress': 0,
+            'category_progress': {},
+            'category_stats': category_stats
+        }
+
+        if design_eval and header_id:
             # 같은 헤더에서 운영평가 진행률 확인
             cursor = db.execute('''
                 SELECT COUNT(*) as total,
@@ -681,23 +696,23 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_name, progress)
                         JOIN sb_rcm_detail detail ON line.control_code = detail.control_code AND detail.rcm_id = ?
                         WHERE line.header_id = ? AND detail.control_category = ?
                     ''', (rcm_id, header_id, category))
-                cat_data = cursor.fetchone()
+                    cat_data = cursor.fetchone()
 
-                # cat_data - 딕셔너리/튜플 모두 처리
-                if cat_data:
-                    if isinstance(cat_data, dict):
-                        cat_total = cat_data['total']
-                        cat_completed = cat_data['completed']
-                    else:
-                        cat_total = cat_data[0]
-                        cat_completed = cat_data[1]
+                    # cat_data - 딕셔너리/튜플 모두 처리
+                    if cat_data:
+                        if isinstance(cat_data, dict):
+                            cat_total = cat_data['total']
+                            cat_completed = cat_data['completed']
+                        else:
+                            cat_total = cat_data[0]
+                            cat_completed = cat_data[1]
 
-                    if cat_total > 0:
-                        category_progress_op[category] = {
-                            'total': cat_total,
-                            'completed': cat_completed,
-                            'progress': int((cat_completed / cat_total) * 100) if cat_total > 0 else 0
-                        }
+                        if cat_total > 0:
+                            category_progress_op[category] = {
+                                'total': cat_total,
+                                'completed': cat_completed,
+                                'progress': int((cat_completed / cat_total) * 100) if cat_total > 0 else 0
+                            }
 
                 progress['steps'][1]['details'] = {
                     'total_controls': total_operation_controls,
@@ -711,7 +726,7 @@ def update_progress_from_actual_data(rcm_id, user_id, evaluation_name, progress)
                 # - 설계평가 완료 여부: evaluation_status >= 3 (운영평가 시작)
                 # - 운영평가 완료 여부: 모든 통제의 conclusion이 입력되었는지 (completed_operation_controls == total_operation_controls)
 
-                if evaluation_status >= 3:
+                if evaluation_status is not None and evaluation_status >= 3:
                     # 설계평가 완료 상태
                     if total_operation_controls > 0 and completed_operation_controls == total_operation_controls:
                         # 상태 4: 모든 통제 평가 완료 -> 운영평가 완료
