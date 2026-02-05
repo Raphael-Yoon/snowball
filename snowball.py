@@ -405,7 +405,7 @@ def handle_exception(e):
     return "Internal Server Error: check logs", 500
 
 def main():
-    app.run(host='0.0.0.0', debug=True, port=5001, use_reloader=True)
+    app.run(host='0.0.0.0', debug=True, port=5001, use_reloader=False)
     #app.run(host='127.0.0.1', debug=False, port=8001)
 
 @app.route('/link0')   
