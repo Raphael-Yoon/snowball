@@ -26,10 +26,12 @@ def is_logged_in():
     from snowball import is_logged_in as main_is_logged_in
     return main_is_logged_in()
 
-def generate_and_send_rcm_excel(form_data):
+def generate_and_send_rcm_excel(form_data, save_local_path=None):
     """
     form_data: dict (Flask의 request.form.to_dict())
     RCM 엑셀 파일을 생성하고 이메일로 전송
+
+    save_local_path: 테스트용 - 이 경로가 지정되면 파일을 로컬에도 저장
     """
     # 파라미터 출력
     print("=== RCM Generate 파라미터 ===")
@@ -142,6 +144,14 @@ def generate_and_send_rcm_excel(form_data):
     wb.save(excel_stream)
     wb.close()
     excel_stream.seek(0)
+
+    # 테스트용: 로컬 파일 저장
+    if save_local_path:
+        os.makedirs(os.path.dirname(save_local_path), exist_ok=True)
+        with open(save_local_path, 'wb') as f:
+            f.write(excel_stream.read())
+        excel_stream.seek(0)  # 스트림 위치 초기화
+        print(f"[TEST] RCM 파일 로컬 저장: {save_local_path}")
 
     # 이메일 전송
     user_email = form_data.get('param1')

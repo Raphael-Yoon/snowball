@@ -1,5 +1,5 @@
 """
-Playwright E2E 테스트를 위한 베이스 클래스 및 유틸리티
+Playwright Unit 테스트를 위한 베이스 클래스 및 유틸리티
 
 Playwright를 활용한 엔드투엔드 테스트의 기본 기능을 제공합니다.
 - 브라우저 설정
@@ -10,6 +10,7 @@ Playwright를 활용한 엔드투엔드 테스트의 기본 기능을 제공합�
 
 import os
 import sys
+import re
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List
@@ -32,8 +33,8 @@ class TestStatus(Enum):
     SKIPPED = "⊘"
 
 
-class E2ETestResult:
-    """E2E 테스트 결과 클래스"""
+class UnitTestResult:
+    """Unit 테스트 결과 클래스"""
 
     def __init__(self, test_name: str, category: str):
         self.test_name = test_name
@@ -94,7 +95,7 @@ class E2ETestResult:
 
 
 class PlaywrightTestBase:
-    """Playwright E2E 테스트 베이스 클래스"""
+    """Playwright Unit 테스트 베이스 클래스"""
 
     def __init__(self, base_url: str = "http://localhost:5000", headless: bool = True, slow_mo: int = 0):
         """
@@ -110,7 +111,7 @@ class PlaywrightTestBase:
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.page: Optional[Page] = None
-        self.results: List[E2ETestResult] = []
+        self.results: List[UnitTestResult] = []
 
         # 스크린샷 저장 디렉토리
         self.screenshot_dir = project_root / "test" / "screenshots"
@@ -178,8 +179,10 @@ class PlaywrightTestBase:
         self.page.select_option(selector, value)
 
     def get_text(self, selector: str) -> str:
-        """텍스트 가져오기"""
-        return self.page.text_content(selector) or ""
+        """텍스트 가져오기 (공백 정규화)"""
+        text = self.page.text_content(selector) or ""
+        # HTML 공백/줄바꿈을 단일 공백으로 정규화
+        return re.sub(r'\s+', ' ', text).strip()
 
     def is_visible(self, selector: str) -> bool:
         """요소가 보이는지 확인"""
@@ -205,7 +208,7 @@ class PlaywrightTestBase:
         print(f"{'=' * 80}")
 
         for test_func in tests:
-            result = E2ETestResult(test_func.__name__, category_name)
+            result = UnitTestResult(test_func.__name__, category_name)
             self.results.append(result)
 
             try:
@@ -246,7 +249,7 @@ class PlaywrightTestBase:
     def print_final_report(self):
         """최종 리포트 출력 (콘솔 전용)"""
         print("\n" + "=" * 80)
-        print("E2E 테스트 결과 요약")
+        print("Unit 테스트 결과 요약")
         print("=" * 80)
 
         status_counts = {status: 0 for status in TestStatus}
@@ -276,7 +279,7 @@ class PlaywrightTestBase:
         # JSON 리포트는 더 이상 생성하지 않음 (텍스트 파일로 대체)
         # 기존 JSON 파일들 정리
         test_dir = project_root / 'test'
-        for json_file in test_dir.glob('*_e2e_report_*.json'):
+        for json_file in test_dir.glob('*_unit_report_*.json'):
             try:
                 os.remove(json_file)
             except:
@@ -298,7 +301,7 @@ class PlaywrightTestBase:
                     pass
 
         # JSON 리포트 정리
-        for json_file in test_dir.glob('*_e2e_report_*.json'):
+        for json_file in test_dir.glob('*_unit_report_*.json'):
             try:
                 os.remove(json_file)
             except:
