@@ -604,18 +604,15 @@
         document.addEventListener('keydown', function (e) {
             if (e.ctrlKey && e.shiftKey && (e.key === 's' || e.key === 'S')) {
                 e.preventDefault();
-                const questionNumber = {{ actual_question_number - 1 if actual_question_number else current_index
+                const questionNumber = {{ actual_question_number - 1 if actual_question_number else current_index }};
+                const currentIndex = {{ current_index }};
+                fillSample(questionNumber, currentIndex);
             }
-        };
-        const currentIndex = {{ current_index }};
-        fillSample(questionNumber, currentIndex);
-            }
-        if (e.ctrlKey && e.shiftKey && (e.key === 'd' || e.key === 'D')) {
-            e.preventDefault();
-            const questionNumber = {{ actual_question_number - 1 if actual_question_number else current_index
-        }};
-        const currentIndex = {{ current_index }};
-        fillSkipSample(questionNumber, currentIndex);
+            if (e.ctrlKey && e.shiftKey && (e.key === 'd' || e.key === 'D')) {
+                e.preventDefault();
+                const questionNumber = {{ actual_question_number - 1 if actual_question_number else current_index }};
+                const currentIndex = {{ current_index }};
+                fillSkipSample(questionNumber, currentIndex);
             }
         });
         // 마지막 질문 제출 시 서버에서 AI 검토 선택 페이지로 리디렉션됨

@@ -1,7 +1,0 @@
-# 테스트 리포트 파일 (자동 생성됨)
-test_checklist_*.txt
-*_test_report_*.json
-
-# __pycache__
-__pycache__/
-*.pyc
