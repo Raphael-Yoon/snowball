@@ -2127,16 +2127,18 @@
                     evaluation.description_adequacy &&
                     evaluation.overall_effectiveness;
 
-                // 첫 번째 항목만 디버깅 로그 출력
-                if (index === 1) {
+                // 첫 번째 항목만 디버깅 로그 출력 (유연한 비교를 위해 == 사용)
+                if (index == 1) {
                     console.log('=== updateEvaluationUI Debug (Index 1) ===');
                     console.log('headerCompletedDate:', headerCompletedDate);
                     console.log('isHeaderCompleted:', isHeaderCompleted);
                     console.log('hasValidEvaluationDate:', hasValidEvaluationDate);
+                    console.log('isTemporaryEvaluation:', isTemporaryEvaluation);
                     console.log('evaluation_date:', evaluation.evaluation_date);
+                    console.log('overall_effectiveness:', evaluation.overall_effectiveness);
                 }
 
-                if (hasValidEvaluationDate) {
+                if (hasValidEvaluationDate || isTemporaryEvaluation) {
                     // 결과 표시
                     let resultClass = '';
                     let resultText = '';
@@ -2146,7 +2148,7 @@
                         if (evaluation.overall_effectiveness === 'effective') {
                             resultClass = 'bg-success';
                             resultText = '적정';
-                        } else {
+                        } else if (evaluation.overall_effectiveness === 'ineffective' || evaluation.overall_effectiveness === 'partially_effective') {
                             // partially_effective, ineffective 모두 부적정
                             resultClass = 'bg-danger';
                             resultText = '부적정';
@@ -2156,21 +2158,19 @@
                         if (evaluation.description_adequacy === 'adequate') {
                             resultClass = 'bg-success';
                             resultText = '적정';
-                        } else {
+                        } else if (evaluation.description_adequacy === 'inadequate' || evaluation.description_adequacy === 'missing' || evaluation.description_adequacy === 'partially_adequate') {
                             // inadequate, missing, partially_adequate 모두 부적정
                             resultClass = 'bg-danger';
                             resultText = '부적정';
                         }
                     }
 
-                    // 첨부파일 유무 표시 제거
-                    const imageDisplay = '';
-                    resultElement.innerHTML = `<span class="badge ${resultClass}">${resultText}</span>`;
-
-                    resultElement.innerHTML = `
-                    <span class="badge ${resultClass}">${resultText}</span>
-                    ${imageDisplay}
-                `;
+                    // 평가 결과 뱃지 업데이트 (중복 코드 제거 및 깔끔하게 처리)
+                    if (resultText) {
+                        resultElement.innerHTML = `<span class="badge ${resultClass}">${resultText}</span>`;
+                    } else {
+                        resultElement.innerHTML = '<span class="text-muted">-</span>';
+                    }
 
                     if (actionElement) {
                         actionElement.innerHTML = evaluation.recommended_actions || '<span class="text-muted">-</span>';
