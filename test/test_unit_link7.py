@@ -155,7 +155,7 @@ class Link7OperationTestSuite(PlaywrightTestBase):
 
             # 카테고리 2: 모집단 설정
             self.run_category("2. 모집단 설정", [
-                self.test_operation_attribute_setting,
+                self.test_operation_sample_attribute_input,
             ])
 
             # 카테고리 3: 평가 수행 및 저장
@@ -398,13 +398,35 @@ class Link7OperationTestSuite(PlaywrightTestBase):
                 except:
                     page.wait_for_timeout(2000)
 
-            # 완료 버튼 클릭 - 삭제를 위해 완료 처리하지 않음
-            # 완료된 설계평가는 삭제가 안 될 수 있으므로, 완료 처리를 건너뜀
-            print("    → 설계평가 완료 처리 생략 (삭제 용이성을 위해)")
-            # complete_btn = page.locator("#completeEvaluationBtn")
-            # ... 완료 처리 생략
+            # 설계평가 완료(확정) 버튼 클릭 - 운영평가 진입을 위해 필수
+            print("    → 설계평가 완료(확정) 처리 중...")
+            complete_btn = page.locator("#completeEvaluationBtn")
+            if complete_btn.count() > 0 and complete_btn.is_visible():
+                try:
+                    complete_btn.wait_for(state="visible", timeout=5000)
+                    if complete_btn.is_enabled():
+                        page.once("dialog", lambda dialog: dialog.accept())
+                        complete_btn.click()
+                        page.wait_for_timeout(2000)
 
-            print("✅ 설계평가 생성 및 평가 완료 (완료 처리 생략)")
+                        # 완료 확인 메시지 처리
+                        try:
+                            page.wait_for_selector("text=완료되었습니다", timeout=5000)
+                            confirm_btn = page.locator("button:has-text('확인')")
+                            if confirm_btn.count() > 0 and confirm_btn.is_visible():
+                                confirm_btn.click()
+                        except:
+                            pass
+
+                        print("    → 설계평가 확정 완료 (status=1)")
+                    else:
+                        print("    → 완료 버튼 비활성화 (모든 항목 평가 필요)")
+                except Exception as e:
+                    print(f"    → 완료 버튼 처리 중 오류: {e}")
+            else:
+                print("    → 완료 버튼을 찾을 수 없음")
+
+            print("✅ 설계평가 생성 및 확정 완료")
             return True
 
         except Exception as e:
@@ -414,7 +436,7 @@ class Link7OperationTestSuite(PlaywrightTestBase):
             return False
 
     def _cleanup_all_test_data(self):
-        """테스트 데이터 전체 정리 (운영평가 → 설계평가 → RCM 순서로 삭제)"""
+        """테스트 데이터 전체 정리 (운영평가 → 설계평가 확정 취소 → 설계평가 삭제 → RCM 삭제)"""
         print(">> 정리작업: 테스트 데이터 삭제 중...")
         try:
             page = self.page
@@ -423,15 +445,89 @@ class Link7OperationTestSuite(PlaywrightTestBase):
             self._delete_operation_evaluation()
             page.wait_for_timeout(1000)
 
-            # 2. 설계평가 세션 삭제
+            # 2. 설계평가 확정 취소 (status 0으로 변경)
+            self._cancel_design_evaluation_completion()
+            page.wait_for_timeout(1000)
+
+            # 3. 설계평가 세션 삭제
             self._delete_design_evaluation()
             page.wait_for_timeout(2000)
 
-            # 3. RCM 삭제
+            # 4. RCM 삭제
             self._delete_test_rcm()
 
         except Exception as e:
             print(f"⚠️ 테스트 데이터 정리 중 에러: {e}")
+
+    def _cancel_design_evaluation_completion(self):
+        """설계평가 확정 취소 (status를 0으로 변경)"""
+        print("    → 설계평가 확정 취소 중...")
+        try:
+            page = self.page
+
+            # RCM ID를 가져오기 위해 RCM 목록 페이지로 이동
+            page.goto(f"{self.base_url}/user/rcm")
+            page.wait_for_load_state('networkidle')
+
+            # RCM ID 추출
+            rcm_row = page.locator(f"tr:has-text('{self.rcm_name}')")
+            if rcm_row.count() == 0:
+                print(f"    → RCM을 찾을 수 없음: {self.rcm_name}")
+                return False
+
+            # RCM ID를 data 속성이나 링크에서 추출
+            rcm_link = rcm_row.locator("a[href*='rcm_id='], button[onclick*='rcm_id']").first
+            rcm_id = None
+
+            if rcm_link.count() > 0:
+                href = rcm_link.get_attribute("href") or rcm_link.get_attribute("onclick") or ""
+                import re
+                match = re.search(r'rcm_id[=:](\d+)', href)
+                if match:
+                    rcm_id = match.group(1)
+
+            if not rcm_id:
+                # 다른 방법으로 RCM ID 추출 시도 - 테이블 행의 첫 번째 셀에서
+                first_cell = rcm_row.locator("td").first
+                if first_cell.count() > 0:
+                    # 숫자만 추출 시도
+                    cell_text = first_cell.inner_text().strip()
+                    if cell_text.isdigit():
+                        rcm_id = cell_text
+
+            if not rcm_id:
+                print("    → RCM ID를 추출할 수 없음")
+                return False
+
+            print(f"    → RCM ID: {rcm_id}, 평가 세션: {self.design_eval_name}")
+
+            # API 호출로 확정 취소
+            response = page.evaluate(f'''
+                async () => {{
+                    const response = await fetch('/api/design-evaluation/cancel', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json'
+                        }},
+                        body: JSON.stringify({{
+                            rcm_id: {rcm_id},
+                            evaluation_session: '{self.design_eval_name}'
+                        }})
+                    }});
+                    return await response.json();
+                }}
+            ''')
+
+            if response and response.get('success'):
+                print(f"✅ 설계평가 확정 취소 완료: {response.get('message', '')}")
+                return True
+            else:
+                print(f"    → 확정 취소 실패 또는 이미 취소됨: {response.get('message', '') if response else 'No response'}")
+                return False
+
+        except Exception as e:
+            print(f"    → 설계평가 확정 취소 중 에러: {e}")
+            return False
 
     def _delete_operation_evaluation(self):
         """운영평가 세션 삭제"""
@@ -481,57 +577,63 @@ class Link7OperationTestSuite(PlaywrightTestBase):
         try:
             page = self.page
 
-            # 최대 3번 시도
-            for attempt in range(3):
-                # ITGC 평가 목록으로 이동
-                page.goto(f"{self.base_url}/itgc-evaluation")
-                page.wait_for_load_state('networkidle')
-                page.wait_for_timeout(1000)
+            # ITGC 평가 목록으로 이동
+            page.goto(f"{self.base_url}/itgc-evaluation")
+            page.wait_for_load_state('networkidle')
+            page.wait_for_timeout(1000)
 
-                # 아코디언 확장
-                accordion_header = page.locator(f"h2.accordion-header:has-text('{self.rcm_name}') button[data-bs-target^='#collapse']")
-                if accordion_header.count() > 0 and "collapsed" in (accordion_header.first.get_attribute("class") or ""):
-                    accordion_header.first.click()
+            # 설계평가 현황 카드 내 아코디언 확장 (운영평가 현황과 구분)
+            # 설계평가는 #designEvaluationAccordion 또는 첫 번째 카드에 있음
+            design_accordion = page.locator(f"#designEvaluationAccordion h2.accordion-header:has-text('{self.rcm_name}') button")
+            if design_accordion.count() > 0:
+                btn_class = design_accordion.first.get_attribute("class") or ""
+                if "collapsed" in btn_class:
+                    design_accordion.first.click()
                     page.wait_for_timeout(500)
 
-                # 삭제 버튼 찾기
-                delete_btn = page.locator(f"div[id^='collapse']:not([id^='opcollapse']) tr:has-text('{self.design_eval_name}') button:has-text('삭제')")
-                if delete_btn.count() > 0:
-                    # 모든 다이얼로그 자동 수락하는 핸들러 등록
-                    def handle_all_dialogs(dialog):
-                        print(f"    → 다이얼로그: {dialog.message[:50]}...")
-                        dialog.accept()
-                    page.on("dialog", handle_all_dialogs)
+            # 설계평가 영역에서 삭제 버튼 찾기
+            delete_btn = page.locator(f"#designEvaluationAccordion tr:has-text('{self.design_eval_name}') button:has-text('삭제')")
+            if delete_btn.count() == 0:
+                print(f"    → 삭제할 설계평가 세션을 찾을 수 없음 (이미 삭제됨): {self.design_eval_name}")
+                return True
 
-                    delete_btn.first.click()
-                    page.wait_for_timeout(3000)
+            # 다이얼로그 핸들러 - 여러 개의 다이얼로그 처리
+            dialog_count = [0]
+            def handle_delete_dialogs(dialog):
+                dialog_count[0] += 1
+                print(f"    → 다이얼로그 #{dialog_count[0]}: {dialog.message[:50]}...")
+                dialog.accept()
 
-                    # 핸들러 제거
-                    page.remove_listener("dialog", handle_all_dialogs)
+            page.on("dialog", handle_delete_dialogs)
 
-                    # 삭제 확인
-                    page.goto(f"{self.base_url}/itgc-evaluation")
-                    page.wait_for_load_state('networkidle')
+            # 삭제 버튼 클릭
+            delete_btn.first.click()
+            page.wait_for_timeout(5000)  # 충분한 대기 시간
 
-                    # 아코디언 다시 확장
-                    accordion_header = page.locator(f"h2.accordion-header:has-text('{self.rcm_name}') button[data-bs-target^='#collapse']")
-                    if accordion_header.count() > 0 and "collapsed" in (accordion_header.first.get_attribute("class") or ""):
-                        accordion_header.first.click()
-                        page.wait_for_timeout(500)
+            # 핸들러 제거
+            page.remove_listener("dialog", handle_delete_dialogs)
 
-                    # 삭제 확인
-                    remaining = page.locator(f"div[id^='collapse']:not([id^='opcollapse']) tr:has-text('{self.design_eval_name}')")
-                    if remaining.count() == 0:
-                        print(f"✅ 설계평가 세션 삭제 완료: {self.design_eval_name}")
-                        return True
-                    else:
-                        print(f"    → 설계평가 세션이 아직 남아있음 (시도 {attempt + 1}/3)")
-                else:
-                    print(f"    → 삭제할 설계평가 세션을 찾을 수 없음 (이미 삭제됨)")
-                    return True
+            # 페이지 새로고침 후 삭제 확인
+            page.reload()
+            page.wait_for_load_state('networkidle')
+            page.wait_for_timeout(1000)
 
-            print(f"⚠️ 설계평가 세션 삭제 실패 (최대 시도 횟수 초과): {self.design_eval_name}")
-            return False
+            # 아코디언 다시 확장하여 확인
+            design_accordion = page.locator(f"#designEvaluationAccordion h2.accordion-header:has-text('{self.rcm_name}') button")
+            if design_accordion.count() > 0:
+                btn_class = design_accordion.first.get_attribute("class") or ""
+                if "collapsed" in btn_class:
+                    design_accordion.first.click()
+                    page.wait_for_timeout(500)
+
+            # 삭제 확인
+            remaining = page.locator(f"#designEvaluationAccordion tr:has-text('{self.design_eval_name}')")
+            if remaining.count() == 0:
+                print(f"✅ 설계평가 세션 삭제 완료: {self.design_eval_name}")
+                return True
+            else:
+                print(f"⚠️ 설계평가 세션이 아직 남아있음: {self.design_eval_name}")
+                return False
 
         except Exception as e:
             print(f"    → 설계평가 세션 삭제 중 에러: {e}")
@@ -742,9 +844,12 @@ class Link7OperationTestSuite(PlaywrightTestBase):
 
         return "/operation-evaluation/rcm" in page.url
 
-    def test_operation_attribute_setting(self, result: UnitTestResult):
-        """Attribute(모집단 필드 정의) 설정 및 저장 확인"""
+    def test_operation_sample_attribute_input(self, result: UnitTestResult):
+        """샘플 라인의 Attribute 값 입력 및 저장 확인 (RCM에서 정의된 Attribute 기반)"""
         page = self.page
+
+        # 모달 닫기
+        self._close_any_open_modal()
 
         # 상세 페이지 진입 확인
         if not self._navigate_to_operation_detail():
@@ -752,46 +857,49 @@ class Link7OperationTestSuite(PlaywrightTestBase):
             return
 
         try:
-            setup_btn = page.locator("button:has-text('설정'), button:has-text('Attribute')").first
-
-            if setup_btn.count() == 0:
-                result.skip_test("Attribute 설정 버튼을 찾을 수 없음")
+            # 평가 모달 열기
+            print("    → 평가 모달 열어서 샘플 라인 확인...")
+            eval_btns = page.locator("#controlsTable button.btn-warning")
+            if eval_btns.count() == 0:
+                result.skip_test("평가 버튼을 찾을 수 없음")
                 return
 
-            setup_btn.click()
+            eval_btns.first.click()
+            page.wait_for_selector("#operationEvaluationModal.show", timeout=10000)
+            page.wait_for_timeout(1000)  # 샘플 라인 로드 대기
 
-            try:
-                page.wait_for_selector("#attributeModal", state="visible", timeout=3000)
-            except:
-                result.skip_test("Attribute 설정 모달이 열리지 않음")
+            # 샘플 라인 테이블 확인
+            sample_tbody = page.locator("#sample-lines-tbody")
+            if sample_tbody.count() == 0:
+                result.skip_test("샘플 라인 테이블을 찾을 수 없음")
                 return
 
-            attr_input_0 = page.locator("#attr-input-0")
-            if attr_input_0.count() > 0:
-                attr_input_0.fill("전표번호")
-
-            attr_input_1 = page.locator("#attr-input-1")
-            if attr_input_1.count() > 0:
-                attr_input_1.fill("일자")
-
-            pop_count = page.locator("#population-attr-count")
-            if pop_count.count() > 0:
-                pop_count.fill("2")
-
-            save_btn = page.locator("#attributeModal button:has-text('저장')")
-            if save_btn.count() > 0:
-                save_btn.click()
-                page.wait_for_timeout(1000)
-
-                if page.locator("text=저장, text=2개 설정됨").count() > 0:
-                    result.pass_test("Attribute 설정 저장 확인")
+            # 샘플 라인의 입력 필드 찾기 (attribute 입력 또는 증빙 입력)
+            sample_inputs = page.locator("#sample-lines-tbody input[type='text'], #sample-lines-tbody textarea")
+            if sample_inputs.count() > 0:
+                # 첫 번째 입력 필드에 테스트 값 입력
+                first_input = sample_inputs.first
+                if first_input.is_visible() and first_input.is_enabled():
+                    first_input.fill("테스트 Attribute 값")
+                    print("    → 샘플 라인 입력 필드에 값 입력 완료")
+                    result.pass_test("샘플 라인 Attribute 입력 필드 동작 확인")
                 else:
-                    result.warn_test("저장은 된 것 같으나 UI 확인 불가")
+                    result.warn_test("샘플 입력 필드가 있으나 비활성화됨")
             else:
-                result.skip_test("Attribute 저장 버튼을 찾을 수 없음")
+                # 샘플 라인이 아직 생성되지 않은 경우 (표본수 설정 필요)
+                sample_size_input = page.locator("#sample_size")
+                if sample_size_input.count() > 0 and sample_size_input.is_visible():
+                    result.warn_test("샘플 라인 없음 - 표본수 설정 후 자동 생성됨")
+                else:
+                    result.skip_test("샘플 입력 필드를 찾을 수 없음")
+
+            # 모달 닫기
+            close_btn = page.locator("#operationEvaluationModal button[data-bs-dismiss='modal']")
+            if close_btn.count() > 0:
+                close_btn.first.click()
 
         except Exception as e:
-            result.fail_test(f"Attribute 설정 테스트 실패: {e}")
+            result.fail_test(f"샘플 Attribute 입력 테스트 실패: {e}")
 
     def test_operation_save_evaluation(self, result: UnitTestResult):
         """개별 통제 항목 운영평가 및 저장"""

@@ -6,7 +6,7 @@
 - [ ] **test_operation_continue_session**: 기존 세션 '계속' 버튼 클릭 시 상세 페이지로 이동 확인
 
 ## 2. 수동통제 모집단 및 샘플 관리
-- [ ] **test_operation_attribute_setting**: Attribute(모집단 필드 정의) 설정 및 저장 확인
+- [ ] **test_operation_sample_attribute_input**: 샘플 라인의 Attribute 값 입력 및 저장 확인 (RCM에서 정의된 Attribute 기반)
 - [ ] **test_operation_population_upload**: 모집단 파일(Excel) 업로드 및 건수 표시 확인
 - [ ] **test_operation_sample_extract**: 샘플 추출 기능 동작 및 추출된 샘플 목록 표시 확인
 - [ ] **test_operation_sample_count_validation**: 모집단 대비 샘플 수 적정성 확인 (25건 기준 등)
