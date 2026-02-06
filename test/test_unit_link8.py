@@ -5,6 +5,7 @@ Link8: 내부평가(Internal Assessment) Unit 테스트 코드
 import sys
 from pathlib import Path
 from datetime import datetime
+import json
 
 # 프로젝트 루트 및 테스트 경로 설정
 project_root = Path(__file__).parent.parent
@@ -218,6 +219,85 @@ class Link8UnitTest(PlaywrightTestBase):
             else:
                 result.fail_test("평가 단계 구조(타임라인/카드)를 찾을 수 없습니다.")
 
+    def test_link8_design_evaluation_sync(self, result: UnitTestResult):
+        """3. 설계평가 데이터 동기화 확인 (Link6 -> Link8)"""
+        self._do_admin_login()
+        self.navigate_to("/internal-assessment")
+        self.page.wait_for_timeout(2000)
+
+        detail_btn = self.page.locator("a:has-text('상세 현황 보기')").first
+        if detail_btn.count() == 0:
+            result.skip_test("상세 이동 불가")
+            return
+
+        detail_btn.click()
+        self.page.wait_for_timeout(1500)
+
+        # 설계평가(Step 1) 내의 평가 결과 통계 확인
+        # Link6의 결과가 Link8의 상세 대시보드에 반영됨
+        design_section = self.page.locator(".timeline-item", has_text="설계평가")
+        counts = design_section.locator(".info-row").all_inner_texts()
+        
+        if len(counts) > 0:
+            result.pass_test(f"설계평가 결과 동기화 확인 ({', '.join(counts)})")
+        else:
+            result.fail_test("설계평가 요약 정보를 찾을 수 없습니다.")
+
+    def test_link8_operation_evaluation_sync(self, result: UnitTestResult):
+        """3. 운영평가 데이터 동기화 확인 (Link7 -> Link8)"""
+        self._do_admin_login()
+        self.navigate_to("/internal-assessment")
+        self.page.wait_for_timeout(2000)
+
+        detail_btn = self.page.locator("a:has-text('상세 현황 보기')").first
+        if detail_btn.count() == 0:
+            result.skip_test("상세 이동 불가")
+            return
+
+        detail_btn.click()
+        self.page.wait_for_timeout(1500)
+
+        # 운영평가(Step 2) 내의 평가 결과 통계 확인
+        op_section = self.page.locator(".timeline-item", has_text="운영평가")
+        counts = op_section.locator(".info-row").all_inner_texts()
+        
+        if len(counts) > 0:
+            result.pass_test(f"운영평가 결과 동기화 확인 ({', '.join(counts)})")
+        else:
+            result.fail_test("운영평가 요약 정보를 찾을 수 없습니다.")
+
+    def test_link8_api_detail(self, result: UnitTestResult):
+        """4. 상세 데이터 API 확인"""
+        self._do_admin_login()
+        self.navigate_to("/internal-assessment")
+        self.page.wait_for_timeout(2000)
+
+        # 첫 번째 카드에서 rcm_id 추출
+        detail_link = self.page.locator("a:has-text('상세 현황 보기')").first
+        href = detail_link.get_attribute("href")
+        if not href:
+            result.skip_test("상세 링크 없음")
+            return
+            
+        # /internal-assessment/2/Eval_123 -> rcm_id=2, session=Eval_123
+        parts = href.strip("/").split("/")
+        if len(parts) >= 3:
+            rcm_id = parts[1]
+            session = parts[2]
+            api_url = f"{self.base_url}/internal-assessment/api/detail/{rcm_id}/{session}"
+            
+            response = self.page.request.get(api_url)
+            if response.status == 200:
+                data = response.json()
+                if data.get("success"):
+                    result.pass_test(f"API 호출 성공 (디자인 통제 수: {data.get('design_detail', {}).get('total_controls', 0)})")
+                else:
+                    result.fail_test(f"API 응답 실패: {data.get('message')}")
+            else:
+                result.fail_test(f"API 요청 실패 (Status: {response.status})")
+        else:
+            result.fail_test(f"URL 파싱 실패: {href}")
+
     def _update_checklist_result(self):
         """체크리스트 결과 파일 생성"""
         if not self.checklist_source.exists():
@@ -233,43 +313,34 @@ class Link8UnitTest(PlaywrightTestBase):
             updated_line = line
             for res in self.results:
                 if res.test_name in line:
+                    # 메시지 내 줄바꿈 제거 및 공백 정리
+                    clean_msg = res.message.replace('\n', ' ').replace('\r', '').strip()
                     if res.status == TestStatus.PASSED:
                         updated_line = line.replace("- [ ]", "- [x] ✅")
-                        updated_line = updated_line.rstrip() + f" → **통과** ({res.message})\n"
+                        updated_line = updated_line.rstrip() + f" → **통과** ({clean_msg})\n"
                     elif res.status == TestStatus.FAILED:
                         updated_line = line.replace("- [ ]", "- [ ] ❌")
-                        updated_line = updated_line.rstrip() + f" → **실패** ({res.message})\n"
-                    elif res.status == TestStatus.WARNING:
-                        updated_line = line.replace("- [ ]", "- [~] ⚠️")
-                        updated_line = updated_line.rstrip() + f" → **경고** ({res.message})\n"
-                    elif res.status == TestStatus.SKIPPED:
-                        updated_line = line.replace("- [ ]", "- [ ] ⊘")
-                        updated_line = updated_line.rstrip() + f" → **건너뜀** ({res.message})\n"
+                        updated_line = updated_line.rstrip() + f" → **실패** ({clean_msg})\n"
                     break
             updated_lines.append(updated_line)
 
         passed = sum(1 for r in self.results if r.status == TestStatus.PASSED)
-        failed = sum(1 for r in self.results if r.status == TestStatus.FAILED)
-        warned = sum(1 for r in self.results if r.status == TestStatus.WARNING)
-        skipped = sum(1 for r in self.results if r.status == TestStatus.SKIPPED)
-        total = len(self.results) if self.results else 1
-
+        total = len(self.results)
+        
         updated_lines.append("\n---\n")
         updated_lines.append(f"## 테스트 결과 요약\n\n")
         updated_lines.append(f"| 항목 | 개수 | 비율 |\n")
         updated_lines.append(f"|------|------|------|\n")
         updated_lines.append(f"| ✅ 통과 | {passed} | {passed/total*100:.1f}% |\n")
-        updated_lines.append(f"| ❌ 실패 | {failed} | {failed/total*100:.1f}% |\n")
-        updated_lines.append(f"| ⚠️ 경고 | {warned} | {warned/total*100:.1f}% |\n")
-        updated_lines.append(f"| ⊘ 건너뜀 | {skipped} | {skipped/total*100:.1f}% |\n")
-        updated_lines.append(f"| **총계** | **{total}** | **100%** |\n")
+        updated_lines.append(f"| ❌ 실패 | {total - passed} | {(total-passed)/total*100:.1f}% |\n")
+        updated_lines.append(f"| **합계** | **{total}** | **100%** |\n")
 
         with open(self.checklist_result, 'w', encoding='utf-8') as f:
             f.writelines(updated_lines)
         print(f"\n✅ Link8 체크리스트 결과 저장됨: {self.checklist_result}")
 
 def run_tests():
-    # 5001 포트 사용 (Link11과 동일하게 설정되어 있음)
+    # 5001 포트 사용
     test_runner = Link8UnitTest(base_url="http://localhost:5001", headless=False, slow_mo=500)
     test_runner.setup()
     try:
@@ -281,6 +352,9 @@ def run_tests():
             test_runner.test_link8_summary_stats,
             test_runner.test_link8_progress_stepper,
             test_runner.test_link8_step_navigation,
+            test_runner.test_link8_design_evaluation_sync,
+            test_runner.test_link8_operation_evaluation_sync,
+            test_runner.test_link8_api_detail,
             test_runner.test_link8_step_templates
         ])
     finally:

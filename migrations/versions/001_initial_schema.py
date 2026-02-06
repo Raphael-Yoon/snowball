@@ -220,6 +220,7 @@ def upgrade(conn):
             assessment_id INTEGER PRIMARY KEY AUTOINCREMENT,
             rcm_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
+            evaluation_session TEXT DEFAULT 'DEFAULT',
             step INTEGER NOT NULL,
             progress_data TEXT,
             status TEXT DEFAULT 'pending',
@@ -227,7 +228,7 @@ def upgrade(conn):
             updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (rcm_id) REFERENCES sb_rcm (rcm_id),
             FOREIGN KEY (user_id) REFERENCES sb_user (user_id),
-            UNIQUE(rcm_id, user_id, step)
+            UNIQUE(rcm_id, user_id, evaluation_session, step)
         )
     ''')
 

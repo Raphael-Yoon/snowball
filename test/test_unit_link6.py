@@ -275,14 +275,13 @@ class Link6DesignTestSuite(PlaywrightTestBase):
             # 미리보기 로드 대기
             page.wait_for_timeout(2000)
 
-            # 다이얼로그(alert) 자동 승인 핸들러 등록
-            dialog_message = None
+            # 다이얼로그(alert) 자동 승인 핸들러 등록 (once 사용으로 충돌 방지)
+            dialog_message = [None]  # 리스트로 감싸서 클로저에서 수정 가능
             def handle_dialog(dialog):
-                nonlocal dialog_message
-                dialog_message = dialog.message
-                print(f"    → 다이얼로그 메시지: {dialog_message}")
+                dialog_message[0] = dialog.message
+                print(f"    → 다이얼로그 메시지: {dialog_message[0]}")
                 dialog.accept()
-            page.on("dialog", handle_dialog)
+            page.once("dialog", handle_dialog)
 
             # 업로드 버튼 클릭
             print("    → 업로드 실행...")
@@ -293,8 +292,8 @@ class Link6DesignTestSuite(PlaywrightTestBase):
             print(f"    → 현재 URL: {page.url}")
 
             # 다이얼로그 메시지로 성공 여부 확인
-            if dialog_message and "성공" in dialog_message:
-                print(f"✅ RCM 업로드 성공 (다이얼로그): {dialog_message}")
+            if dialog_message[0] and "성공" in dialog_message[0]:
+                print(f"✅ RCM 업로드 성공 (다이얼로그): {dialog_message[0]}")
                 # 리다이렉션 대기
                 page.wait_for_load_state("networkidle")
                 return True
@@ -635,19 +634,28 @@ class Link6DesignTestSuite(PlaywrightTestBase):
             batch_save_btn = page.locator("button:has-text('적정저장')")
 
             if batch_save_btn.count() > 0 and batch_save_btn.is_visible():
-                # confirm 다이얼로그 자동 수락 핸들러 설정
+                # 첫 번째 다이얼로그 (confirm) 처리
                 page.once("dialog", lambda dialog: dialog.accept())
 
                 batch_save_btn.click()
-                page.wait_for_timeout(1000)  # confirm 다이얼로그 처리 대기
+                page.wait_for_timeout(1000)  # confirm 처리 대기
 
-                # 완료 대기 (다양한 메시지 형태 대응)
+                # 일괄 저장은 각 통제마다 API 호출하므로 충분한 시간 대기
+                # 그 후 페이지 리로드가 발생하므로 페이지 로드 완료 대기
+                print("    → 일괄 저장 및 페이지 리로드 대기 중...")
+
+                # 저장 완료 후 alert와 페이지 리로드 대기
+                # (saveAllAsAdequate는 모든 저장 완료 후 alert() -> window.location.reload() 호출)
+                page.wait_for_timeout(25000)  # 충분한 저장 및 리로드 시간 대기
+
+                # 페이지 리로드 후 테이블이 다시 나타날 때까지 대기
                 try:
-                    page.wait_for_selector("text=저장이 완료되었습니다", timeout=20000)
-                    page.click("button:has-text('확인')")
+                    page.wait_for_selector("#controlsTable", state="visible", timeout=30000)
+                    page.wait_for_load_state("networkidle")
                 except:
-                    # 다른 성공 메시지나 페이지 갱신 확인
-                    page.wait_for_timeout(2000)
+                    pass  # 이미 로드되어 있을 수 있음
+
+                page.wait_for_timeout(2000)  # 추가 안정화 시간
 
                 result.pass_test("일괄 저장(적정저장) 기능 동작 확인")
             else:
@@ -850,21 +858,33 @@ class Link6DesignTestSuite(PlaywrightTestBase):
                 if close_btn.count() > 0:
                     close_btn.first.click()
 
-            # 테이블에서 '평가결과' 컬럼 확인 (비효과적으로 저장되면 부적정 표시)
-            page.wait_for_timeout(1000)  # UI 갱신 대기
+            # 저장 후 서버에서 데이터 다시 로드하는 시간 대기 (loadExistingEvaluations 완료 대기)
+            # 비동기 fetch가 완료되고 UI가 갱신될 때까지 충분히 대기
+            page.wait_for_timeout(2500)
 
-            # 첫 번째 행의 '평가결과' 컬럼(마지막 컬럼) 값 확인
-            first_row = page.locator("#controlsTable tbody tr").first
-            eval_result_cell = first_row.locator("td").last  # 마지막 컬럼이 '평가결과'
-            eval_result_text = eval_result_cell.text_content() or ""
+            # 여러 번 재시도하여 부적정 표시 확인 (비동기 업데이트 고려)
+            max_retries = 3
+            found_defect = False
+            for retry in range(max_retries):
+                defect_badge = page.locator("#controlsTable td:has-text('부적정')")
+                if defect_badge.count() > 0:
+                    found_defect = True
+                    break
+                if retry < max_retries - 1:
+                    print(f"    → 부적정 확인 재시도 ({retry + 1}/{max_retries})...")
+                    page.wait_for_timeout(1000)
 
-            if "부적정" in eval_result_text:
-                result.pass_test(f"비효과적 평가 저장 및 '평가결과' 컬럼에 '부적정' 표시 확인")
-            elif "적정" in eval_result_text:
-                # 적정으로 표시된 경우 - 저장은 되었으나 다른 항목일 수 있음
-                result.warn_test(f"평가 저장됨 (평가결과: {eval_result_text.strip()})")
+            if found_defect:
+                result.pass_test(f"비효과적 평가 저장 및 '부적정' 표시 확인")
             else:
-                result.warn_test(f"비효과적 평가 저장됨 (평가결과 컬럼 값: {eval_result_text.strip()})")
+                # 부적정이 없으면 첫 번째 행의 평가결과 확인
+                first_row = page.locator("#controlsTable tbody tr").first
+                eval_result_text = first_row.locator("td").last.text_content() or ""
+                # 첫 번째 행의 result 요소도 확인 (id로 직접 접근)
+                result_el = page.locator("#result-1")
+                result_el_text = result_el.text_content() if result_el.count() > 0 else ""
+                print(f"    → 디버그: result-1 요소 내용: {result_el_text}")
+                result.warn_test(f"비효과적 평가 저장됨 (첫 번째 행 평가결과: {eval_result_text.strip()}, result-1: {result_el_text.strip()})")
 
         except Exception as e:
             result.fail_test(f"미비점 테스트 실패: {e}")

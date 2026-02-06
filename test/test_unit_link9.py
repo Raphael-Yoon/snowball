@@ -105,6 +105,52 @@ class Link9UnitTest(PlaywrightTestBase):
             # 메일 발송 설정이 안 되어 있으면 실패할 수 있음
             result.fail_test(f"성공 메시지가 나타나지 않음 (SMTP 설정 확인 필요): {str(e)}")
 
+    def test_link9_send_failure_handling(self, result: UnitTestResult):
+        """2. 문의 전송 실패 확인 (서버 오류 모의)"""
+        self._do_logout()
+        self.navigate_to("/contact")
+        
+        # POST 요청 가로채기
+        def handle_route(route):
+            if route.request.method == "POST":
+                # 실패 메시지를 포함한 HTML 응답 반환
+                html_content = """
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"></head>
+                <body>
+                    <div class="alert alert-danger text-center">문의 접수에 실패했습니다.<br>Mocked Server Error</div>
+                </body>
+                </html>
+                """
+                route.fulfill(status=200, body=html_content, content_type="text/html")
+            else:
+                route.continue_()
+
+        # 모든 /contact 요청 가로채되 POST만 처리
+        self.page.route("**/contact", handle_route)
+        
+        self.page.fill("#company_name", "Fail Test")
+        self.page.fill("#email", "fail@test.com")
+        self.page.fill("#message", "Force Fail Test")
+        
+        # 제출 클릭 및 이동 대기
+        self.page.click("button[type='submit']")
+        self.page.wait_for_timeout(2000)
+
+        error_alert = self.page.locator(".alert-danger")
+        if error_alert.count() > 0:
+            text = error_alert.inner_text()
+            if "실패" in text:
+                result.pass_test(f"실패 메시지 노출 확인: {text.strip()}")
+            else:
+                result.fail_test(f"경고창은 나타났으나 메시지 내용 불일치: {text}")
+        else:
+            result.fail_test("서버 오류 시 .alert-danger 메시지가 표시되지 않음")
+        
+        # 라우팅 해제
+        self.page.unroute("**/contact")
+
     def test_link9_service_inquiry(self, result: UnitTestResult):
         """3. 로그인 페이지 서비스 문의 확인"""
         self._do_logout()
@@ -208,6 +254,7 @@ def run_tests():
             test_runner.test_link9_ui_logged_in,
             test_runner.test_link9_form_validation,
             test_runner.test_link9_send_success,
+            test_runner.test_link9_send_failure_handling,
             test_runner.test_link9_service_inquiry
         ])
     finally:

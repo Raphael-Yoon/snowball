@@ -32,6 +32,7 @@ class Link11UnitTest(PlaywrightTestBase):
             'Q8': 'Q1-2-1',
             'Q9': 'Q2-1',
             'Q10': 'Q2-1-1',
+            'Q28': 'Q2-1-2',
             'Q11': 'Q2-1-3',
             'Q12': 'Q2-1-4',
             'Q13': 'Q2-2',
@@ -222,6 +223,49 @@ class Link11UnitTest(PlaywrightTestBase):
         else:
             result.fail_test("Q2 입력 필드를 찾을 수 없음")
 
+    def test_link11_number_input(self, result: UnitTestResult):
+        """2. 숫자 필드 입력 및 저장 확인"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2500)
+        
+        # 카테고리 2 클릭 (인력)
+        cat2 = self.page.locator(".category-card", has_text="인력").first
+        if cat2.count() > 0:
+            cat2.click()
+            self.page.wait_for_selector("#questions-view", state="visible")
+            self.page.wait_for_timeout(1000)
+            
+            # Q9 '예' 선택
+            q9_yes = self.page.locator("#question-Q9 .yes-no-btn.yes")
+            if q9_yes.count() > 0:
+                q9_yes.click()
+                self.page.wait_for_timeout(1500)
+                
+                # Q10 (총 임직원 수) 입력
+                q10_input = self.get_input_by_display('Q10')
+                if q10_input.count() > 0:
+                    q10_input.scroll_into_view_if_needed()
+                    q10_input.click()
+                    q10_input.fill("") 
+                    q10_input.type("1234")
+                    # 다른 곳을 클릭하여 blur 트리거
+                    self.page.locator("h3#category-title").first.click()
+                    self.page.wait_for_timeout(1000)
+                    
+                    # 포맷팅 확인 (1,234)
+                    val = q10_input.input_value()
+                    if "1,234" in val:
+                        result.pass_test(f"숫자 필드 입력 및 포맷팅 확인: {val}")
+                    else:
+                        result.fail_test(f"숫자 필드 포맷팅 실패: '{val}' (예상: 1,234)")
+                else:
+                    result.fail_test("Q10 입력 필드를 찾을 수 없음")
+            else:
+                result.fail_test("Q9 버튼을 찾을 수 없음")
+        else:
+            result.skip_test("인력 카테고리 카드 없음")
+
     def test_link11_multi_select(self, result: UnitTestResult):
         """3. 다중 선택 체크박스 확인"""
         self._do_admin_login()
@@ -244,22 +288,23 @@ class Link11UnitTest(PlaywrightTestBase):
                 
                 # Q18 등의 체크박스 아이템 클릭
                 # 활동 카테고리의 첫번째 체크박스 질문 찾기
+                self.page.wait_for_selector(".checkbox-item", state="visible", timeout=5000)
                 chk_items = self.page.locator(".checkbox-item")
                 if chk_items.count() > 0:
                     first_item = chk_items.nth(0)
-                    second_item = chk_items.nth(1) if chk_items.count() > 1 else first_item
                     
                     first_item.scroll_into_view_if_needed()
+                    # 현재 상태 확인 후 클릭
+                    was_selected = "selected" in (first_item.get_attribute("class") or "")
                     first_item.click()
-                    self.page.wait_for_timeout(500)
-                    if chk_items.count() > 1:
-                        second_item.click()
-                        self.page.wait_for_timeout(1000)
+                    self.page.wait_for_timeout(1500)
                     
-                    if "selected" in first_item.get_attribute("class"):
-                        result.pass_test("체크박스 선택 기능 확인")
+                    is_selected = "selected" in (first_item.get_attribute("class") or "")
+                    
+                    if is_selected != was_selected:
+                        result.pass_test(f"체크박스 선택 기능 확인 (상태 반전 성공: {was_selected} -> {is_selected})")
                     else:
-                        result.fail_test("체크박스 선택 상태 미반영")
+                        result.fail_test(f"체크박스 선택 상태 미반영 (class: {first_item.get_attribute('class')})")
                 else:
                     # 질문이 로드되었는지 확인 루프
                     result.skip_test("활동 카테고리 내 체크박스 질문을 찾을 수 없음")
@@ -471,12 +516,12 @@ class Link11UnitTest(PlaywrightTestBase):
             result.fail_test(f"수치 업데이트 미반영 (현재 비율: {new_rate}, B합계: {q3_text})")
 
     def test_link11_validation_personnel(self, result: UnitTestResult):
-        """3. 정보보호 인력 검증 (내부+외주 <= 총 임직원)"""
+        """3. 정보보호 인력 검증 (Total >= IT >= Security hierarchy)"""
         self._do_admin_login()
         self.navigate_to("/link11")
         self.page.wait_for_timeout(2500)
         
-        # 카테고리 2 클릭 (정보보호 인력)
+        # 인력 카테고리 클릭
         cat2 = self.page.locator(".category-card", has_text="인력").first
         cat2.click()
         self.page.wait_for_selector("#questions-view", state="visible")
@@ -485,52 +530,43 @@ class Link11UnitTest(PlaywrightTestBase):
         # Q9 '예' 선택 (정보보호 전담 부서/인력 여부)
         q9_selector = self.get_question_selector('Q9')
         self.page.locator(f"{q9_selector} .yes-no-btn.yes").click()
-        self.page.wait_for_timeout(2000)  # Grid 렌더링 대기
-        
-        # Grid 컨테이너가 나타날 때까지 대기
-        self.page.wait_for_selector(".question-row-container", state="visible", timeout=10000)
-        self.page.wait_for_timeout(1000)
+        self.page.wait_for_timeout(2000)
         
         # 다이얼로그 메시지 초기화
         self.last_dialog_message = None
         
-        # Q10 (총 임직원 수)에 100명 입력
-        q10_input = self.get_input_by_display('Q10')
-        q10_input.wait_for(state="visible", timeout=10000)
+        q10_input = self.get_input_by_display('Q10') # 총 임직원
+        q28_input = self.get_input_by_display('Q28') # 정보기술인력 C
+        q11_input = self.get_input_by_display('Q11') # 내부 D1
+        q12_input = self.get_input_by_display('Q12') # 외주 D2
+
+        # [테스트 1] IT 인력(C) > 총 임직원(Total) 오류 검증
         q10_input.fill("100")
-        q10_input.blur()
-        self.page.wait_for_timeout(1500) # 자동 저장 대기
-        
-        # Q11 (내부 전담인력)에 80명 입력
-        q11_input = self.get_input_by_display('Q11')
-        q11_input.wait_for(state="visible", timeout=10000)
-        q11_input.fill("80")
-        q11_input.blur()
+        q28_input.fill("120") # 오류 유발
+        q28_input.blur()
         self.page.wait_for_timeout(1000)
         
-        # Q12 (외주 전담인력)에 30명 입력 (합계 110명 > 총 임직원 100명)
-        q12_input = self.get_input_by_display('Q12')
-        q12_input.wait_for(state="visible", timeout=10000)
-        q12_input.fill("30")
-        q12_input.blur()
-        self.page.wait_for_timeout(2000) # 검증 및 alert 대기
+        case1_ok = self.last_dialog_message and "총 임직원 수" in self.last_dialog_message
+        self.last_dialog_message = None # 초기화
         
-        # alert가 표시되었는지 확인
-        if self.last_dialog_message and "초과" in self.last_dialog_message:
-            result.pass_test(f"인력 수 초과 검증 확인 (alert): {self.last_dialog_message[:50]}...")
+        # [테스트 2] 보안 인력(D1+D2) > IT 인력(C) 오류 검증
+        q28_input.fill("50") # 정상값으로 수정 (IT=50, Total=100)
+        q11_input.fill("40")
+        q12_input.fill("20") # 합계 60 > IT 50 (오류 유발)
+        q12_input.blur()
+        self.page.wait_for_timeout(1000)
+        
+        case2_ok = self.last_dialog_message and "정보기술부문 인력" in self.last_dialog_message
+        self.last_dialog_message = None # 초기화
+
+        # 결과 판정
+        if case1_ok and case2_ok:
+            result.pass_test("인력 수 계층 검증 확인 (Total >= IT / IT >= Security)")
         else:
-            # alert가 없으면 토스트 메시지 확인
-            toast = self.page.locator(".toast-body")
-            if toast.count() > 0:
-                toast_text = toast.first.inner_text()
-                if "초과" in toast_text:
-                    result.pass_test(f"인력 수 초과 검증 확인 (toast): {toast_text}")
-                else:
-                    result.fail_test(f"예상과 다른 토스트 메시지: {toast_text}")
-            elif self.last_dialog_message:
-                result.pass_test(f"인력 수 초과 검증 확인 (dialog): {self.last_dialog_message}")
-            else:
-                result.fail_test("인력 수 초과 검증 실패 (경고 메시지 없음)")
+            errors = []
+            if not case1_ok: errors.append("IT 인력 수 상부 초과 검증 실패")
+            if not case2_ok: errors.append("보안 인력 수 상부 초과 검증 실패")
+            result.fail_test(", ".join(errors))
 
 
     def _do_admin_login(self):
@@ -558,18 +594,20 @@ class Link11UnitTest(PlaywrightTestBase):
             updated_line = line
             for res in self.results:
                 if res.test_name in line:
+                    # 결과 메시지에서 개행 문자 제거하여 마크다운 양식 유지
+                    clean_message = res.message.replace('\n', ' ').strip()
                     if res.status == TestStatus.PASSED:
                         updated_line = line.replace("- [ ]", "- [x] ✅")
-                        updated_line = updated_line.rstrip() + f" → **통과** ({res.message})\n"
+                        updated_line = updated_line.rstrip() + f" → **통과** ({clean_message})\n"
                     elif res.status == TestStatus.FAILED:
                         updated_line = line.replace("- [ ]", "- [ ] ❌")
-                        updated_line = updated_line.rstrip() + f" → **실패** ({res.message})\n"
+                        updated_line = updated_line.rstrip() + f" → **실패** ({clean_message})\n"
                     elif res.status == TestStatus.WARNING:
                         updated_line = line.replace("- [ ]", "- [~] ⚠️")
-                        updated_line = updated_line.rstrip() + f" → **경고** ({res.message})\n"
+                        updated_line = updated_line.rstrip() + f" → **경고** ({clean_message})\n"
                     elif res.status == TestStatus.SKIPPED:
                         updated_line = line.replace("- [ ]", "- [ ] ⊘")
-                        updated_line = updated_line.rstrip() + f" → **건너뜀** ({res.message})\n"
+                        updated_line = updated_line.rstrip() + f" → **건너뜀** ({clean_message})\n"
                     break
             updated_lines.append(updated_line)
 
@@ -587,12 +625,14 @@ class Link11UnitTest(PlaywrightTestBase):
         updated_lines.append(f"| ❌ 실패 | {failed} | {failed/total*100:.1f}% |\n")
         updated_lines.append(f"| ⚠️ 경고 | {warning} | {warning/total*100:.1f}% |\n")
         updated_lines.append(f"| ⊘ 건너뜀 | {skipped} | {skipped/total*100:.1f}% |\n")
+        updated_lines.append(f"| **총계** | **{total}** | **100%** |\n")
 
         with open(self.checklist_result, 'w', encoding='utf-8') as f:
             f.writelines(updated_lines)
+        print(f"\n✅ Link11 체크리스트 결과 저장됨: {self.checklist_result}")
 
 def run_tests():
-    test_runner = Link11UnitTest(headless=False, slow_mo=500)
+    test_runner = Link11UnitTest(headless=True, slow_mo=500)
     test_runner.setup()
     try:
         test_runner.run_category("Link11 Unit Tests", [
@@ -605,6 +645,7 @@ def run_tests():
             test_runner.test_link11_validation_b_lt_a,
             test_runner.test_link11_validation_personnel,
             test_runner.test_link11_auto_calculation,
+            test_runner.test_link11_number_input,
             test_runner.test_link11_multi_select,
             test_runner.test_link11_evidence_modal,
             test_runner.test_link11_report_preview,

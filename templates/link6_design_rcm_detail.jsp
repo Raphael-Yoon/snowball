@@ -1634,6 +1634,10 @@
                     // Attribute 기반 증빙 테이블 생성 (기존 데이터 로드 전에 먼저 생성)
         generateDesignEvidenceTable(controlCode);
 
+        // 동적으로 생성된 요소에 이벤트 리스너 재설정
+        setupAdequacyControl();
+        setupRecommendedActionsField();
+
         // 기본 디버깅
         console.log('DEBUG - Modal opened for index:', index);
         console.log('DEBUG - evaluationResults:', evaluationResults);

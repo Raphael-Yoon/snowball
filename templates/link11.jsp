@@ -949,11 +949,12 @@
             INV_FUTURE_PLAN: "Q7",       // 향후 투자 계획
             INV_FUTURE_AMOUNT: "Q8",     // 예정 투자액
 
-            // 2. 정보보호 인력 현황 (6개)
+            // 2. 정보보호 인력 현황 (7개)
             PER_HAS_TEAM: "Q9",          // 전담 부서/인력 여부
             PER_TOTAL_EMP: "Q10",        // 총 임직원 수
-            PER_INTERNAL: "Q11",         // 내부 전담인력 수
-            PER_EXTERNAL: "Q12",         // 외주 전담인력 수
+            PER_IT_EMP: "Q28",           // 정보기술부문 인력 수 C (신규)
+            PER_INTERNAL: "Q11",         // 내부 전담인력 수 D1
+            PER_EXTERNAL: "Q12",         // 외주 전담인력 수 D2
             PER_HAS_CISO: "Q13",         // CISO/CPO 지정 여부
             PER_CISO_DETAIL: "Q14",      // CISO/CPO 상세 현황
 
@@ -1424,11 +1425,12 @@
                         // 일반 숫자 (인원 수, 횟수 등)
                         // Q4-17 (사고 건수) 등은 일반 숫자 처리
                         answerHtml = `
-                            <input type="number" class="number-input" id="input-${q.id}"
+                            <input type="text" class="number-input" id="input-${q.id}"
                                    placeholder="숫자를 입력하세요"
-                                   value="${currentValue}"
+                                   value="${currentValue ? formatNumber(currentValue) : ''}"
                                    data-raw-value="${currentValue}"
-                                   oninput="handleNumberInput(this, '${q.id}')">
+                                   oninput="handleNumberInput(this, '${q.id}')"
+                                   onblur="formatNumberOnBlur(this)">
                         `;
                     }
                     break;
@@ -1869,8 +1871,8 @@
             // 답변 업데이트 (raw value 사용)
             updateAnswer(questionId, rawValue);
 
-            // 인력 관련 질문인 경우 검증
-            const personnelRelatedItems = [QID.PER_TOTAL_EMP, QID.PER_INTERNAL, QID.PER_EXTERNAL];
+            // 인력 관련 질문인 경우 검증 (C, D1, D2 등 입력 시)
+            const personnelRelatedItems = [QID.PER_TOTAL_EMP, QID.PER_IT_EMP, QID.PER_INTERNAL, QID.PER_EXTERNAL];
             if (personnelRelatedItems.includes(questionId)) {
                 calculatePersonnelValidation();
             }
@@ -2033,60 +2035,42 @@
             }
         }
 
-        // 정보보호 인력 검증 (내부+외주 <= 총 임직원)
+        // 정보보호 인력 검증 (총 임직원 >= IT 인력(C) >= 정보보호 인력(D1+D2))
         function calculatePersonnelValidation() {
             const totalEmpInput = document.getElementById(`input-${QID.PER_TOTAL_EMP}`);
+            const itEmpInput = document.getElementById(`input-${QID.PER_IT_EMP}`);
             const internalInput = document.getElementById(`input-${QID.PER_INTERNAL}`);
             const externalInput = document.getElementById(`input-${QID.PER_EXTERNAL}`);
 
-            if (!totalEmpInput) return;
-
-            const totalEmp = parseFloat(totalEmpInput.dataset.rawValue || totalEmpInput.value || '0') || 0;
+            const totalEmp = parseFloat(totalEmpInput?.dataset.rawValue || totalEmpInput?.value || '0') || 0;
+            const itEmp = parseFloat(itEmpInput?.dataset.rawValue || itEmpInput?.value || '0') || 0;
             const internal = parseFloat(internalInput?.dataset.rawValue || internalInput?.value || '0') || 0;
             const external = parseFloat(externalInput?.dataset.rawValue || externalInput?.value || '0') || 0;
 
             const securityPersonnel = internal + external;
 
-            // 검증: 정보보호 인력(내부+외주)이 총 임직원 수보다 클 수 없음
-            if (securityPersonnel > totalEmp && totalEmp > 0) {
-                console.error(`[인력 검증 실패] 정보보호 인력(${securityPersonnel})이 총 임직원 수(${totalEmp})를 초과했습니다.`);
-                
-                // 경고 메시지 표시
-                alert(`⚠️ 인력 수 오류\n\n정보보호 인력(내부+외주): ${securityPersonnel}명\n총 임직원 수: ${totalEmp}명\n\n정보보호 인력은 총 임직원 수를 초과할 수 없습니다.\n입력한 인원을 다시 확인해주세요.`);
-                
-                // 입력 필드 강조 표시
-                if (internalInput) {
-                    internalInput.style.borderColor = '#ef4444';
-                    internalInput.style.backgroundColor = '#fef2f2';
-                }
-                if (externalInput) {
-                    externalInput.style.borderColor = '#ef4444';
-                    externalInput.style.backgroundColor = '#fef2f2';
-                }
-                if (totalEmpInput) {
-                    totalEmpInput.style.borderColor = '#ef4444';
-                    totalEmpInput.style.backgroundColor = '#fef2f2';
-                }
-                
-                // 에러 토스트 표시
-                showToast('정보보호 인력이 총 임직원 수를 초과했습니다.', 'error');
-                
-                return; // 저장하지 않음
-            } else {
-                // 정상인 경우 강조 표시 제거
-                if (internalInput) {
-                    internalInput.style.borderColor = '';
-                    internalInput.style.backgroundColor = '';
-                }
-                if (externalInput) {
-                    externalInput.style.borderColor = '';
-                    externalInput.style.backgroundColor = '';
-                }
-                if (totalEmpInput) {
-                    totalEmpInput.style.borderColor = '';
-                    totalEmpInput.style.backgroundColor = '';
-                }
+            // 1차 검증: 정보기술부문 인력(C)이 총 임직원 수보다 클 수 없음
+            if (itEmp > totalEmp && totalEmp > 0) {
+                alert(`⚠️ 인력 수 오류\n\n정보기술부문 인력(C): ${itEmp}명\n총 임직원 수: ${totalEmp}명\n\n정보기술부문 인력은 총 임직원 수를 초과할 수 없습니다.`);
+                if (itEmpInput) itEmpInput.style.borderColor = '#ef4444';
+                return;
             }
+
+            // 2차 검증: 정보보호 전담인력(D1+D2)이 정보기술부문 인력(C)을 초과할 수 없음
+            if (securityPersonnel > itEmp && itEmp > 0) {
+                alert(`⚠️ 인력 수 오류\n\n정보보호 인력(내부+외주): ${securityPersonnel}명\n정보기술부문 인력(C): ${itEmp}명\n\n정보보호 전담인력은 정보기술부문 인력(C)을 초과할 수 없습니다.`);
+                if (internalInput) internalInput.style.borderColor = '#ef4444';
+                if (externalInput) externalInput.style.borderColor = '#ef4444';
+                return;
+            }
+
+            // 정상인 경우 스타일 초기화
+            [totalEmpInput, itEmpInput, internalInput, externalInput].forEach(el => {
+                if (el) {
+                    el.style.borderColor = '';
+                    el.style.backgroundColor = '';
+                }
+            });
         }
 
         // 테이블 입력 처리

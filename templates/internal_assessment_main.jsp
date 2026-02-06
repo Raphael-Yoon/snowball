@@ -462,7 +462,7 @@
                                                 </button>
                                             </form>
                                             {% else %}
-                                            <a href="{{ url_for('link7.itgc_operation_evaluation') }}" class="btn btn-sm btn-warning w-100">
+                                            <a href="{{ url_for('link7.user_operation_evaluation') }}" class="btn btn-sm btn-warning w-100">
                                                 <i class="fas fa-play"></i> 운영평가 시작
                                             </a>
                                             {% endif %}

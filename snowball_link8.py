@@ -438,7 +438,7 @@ def save_assessment_progress(rcm_id):
             # 신규 삽입
             db.execute('''
                 INSERT INTO sb_internal_assessment
-                (rcm_id, user_id, evaluation_name, step, progress_data, status, created_date, updated_date)
+                (rcm_id, user_id, evaluation_session, step, progress_data, status, created_date, updated_date)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (rcm_id, user_info['user_id'], evaluation_name, step, json.dumps(progress_data),
                   status, datetime.now(), datetime.now()))
