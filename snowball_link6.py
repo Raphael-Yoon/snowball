@@ -506,9 +506,10 @@ def reset_design_evaluations_api():
                         'message': '해당 RCM에 대한 접근 권한이 없습니다.'
                     })
             
-            # 해당 RCM의 모든 평가 결과 삭제 (Header-Line 구조)
-            # 통합 테이블에는 user_id가 없으므로 rcm_id로만 삭제
-            # 1. 먼저 sample 레코드들 삭제
+            # 해당 RCM의 평가 결과 초기화 (Header-Line 구조 유지)
+            # 레코드는 삭제하지 않고 평가 결과 필드만 NULL로 리셋
+
+            # 1. sample 레코드들 삭제 (샘플은 재추출 필요)
             conn.execute('''
                 DELETE FROM sb_evaluation_sample
                 WHERE line_id IN (
@@ -518,21 +519,35 @@ def reset_design_evaluations_api():
                 )
             ''', (rcm_id,))
 
-            # 2. line 레코드들 삭제
-            conn.execute('''
-                DELETE FROM sb_evaluation_line
+            # 2. line 레코드들의 설계평가 결과 필드 초기화 (레코드 유지)
+            cursor = conn.execute('''
+                UPDATE sb_evaluation_line
+                SET description_adequacy = NULL,
+                    improvement_suggestion = NULL,
+                    overall_effectiveness = NULL,
+                    evaluation_rationale = NULL,
+                    design_comment = NULL,
+                    recommended_actions = NULL,
+                    no_occurrence = NULL,
+                    no_occurrence_reason = NULL,
+                    evaluation_evidence = NULL,
+                    evaluation_date = NULL,
+                    conclusion = NULL,
+                    operation_comment = NULL,
+                    last_updated = CURRENT_TIMESTAMP
                 WHERE header_id IN (
                     SELECT header_id FROM sb_evaluation_header
                     WHERE rcm_id = %s
                 )
             ''', (rcm_id,))
+            reset_count = cursor.rowcount
 
-            # 3. header 레코드 삭제
-            cursor = conn.execute('''
-                DELETE FROM sb_evaluation_header
+            # 3. header 레코드 상태 초기화 (레코드 유지, status=0으로 리셋)
+            conn.execute('''
+                UPDATE sb_evaluation_header
+                SET status = 0, last_updated = CURRENT_TIMESTAMP
                 WHERE rcm_id = %s
             ''', (rcm_id,))
-            deleted_count = cursor.rowcount
             
             conn.commit()
         
@@ -543,8 +558,8 @@ def reset_design_evaluations_api():
         
         return jsonify({
             'success': True,
-            'message': f'{deleted_count}개의 설계평가 결과가 초기화되었습니다.',
-            'deleted_count': deleted_count
+            'message': f'{reset_count}개의 통제 항목 평가 결과가 초기화되었습니다.',
+            'reset_count': reset_count
         })
         
     except Exception as e:
@@ -2172,6 +2187,69 @@ def tlc_evaluation():
                          current_rcm_id=current_rcm_id,
                          current_evaluation_session=current_evaluation_session)
 
+@bp_link6.route('/tlc/design-evaluation/start', methods=['POST'])
+@login_required
+def tlc_design_evaluation_start():
+    """TLC 설계평가 시작 - 평가 세션 생성 및 평가 페이지로 이동"""
+    user_info = get_user_info()
+    rcm_id = request.form.get('rcm_id')
+    evaluation_name = request.form.get('evaluation_name', '').strip()
+
+    if not rcm_id or not evaluation_name:
+        flash('RCM ID와 평가명은 필수입니다.', 'danger')
+        return redirect(url_for('link6.tlc_evaluation'))
+
+    try:
+        rcm_id = int(rcm_id)
+    except ValueError:
+        flash('유효하지 않은 RCM ID입니다.', 'danger')
+        return redirect(url_for('link6.tlc_evaluation'))
+
+    # sb_evaluation_header에 새 레코드 생성 (status=0: 설계 시작)
+    with get_db() as conn:
+        # 중복 평가명 체크
+        existing = conn.execute('''
+            SELECT header_id FROM sb_evaluation_header
+            WHERE rcm_id = %s AND evaluation_name = %s
+        ''', (rcm_id, evaluation_name)).fetchone()
+
+        if existing:
+            flash(f'이미 "{evaluation_name}" 평가명이 존재합니다. 다른 이름을 사용해주세요.', 'warning')
+            return redirect(url_for('link6.tlc_evaluation'))
+
+        # 새 평가 세션 생성
+        evaluation_period_start = request.form.get('evaluation_period_start', '').strip() or None
+        evaluation_period_end = request.form.get('evaluation_period_end', '').strip() or None
+
+        cursor = conn.execute('''
+            INSERT INTO sb_evaluation_header
+            (rcm_id, evaluation_name, evaluation_period_start, evaluation_period_end, status, progress)
+            VALUES (%s, %s, %s, %s, 0, 0)
+        ''', (rcm_id, evaluation_name, evaluation_period_start, evaluation_period_end))
+        header_id = cursor.lastrowid
+
+        # RCM의 TLC 통제 목록을 sb_evaluation_line에 삽입
+        conn.execute('''
+            INSERT INTO sb_evaluation_line (header_id, control_code)
+            SELECT %s, control_code
+            FROM sb_rcm_detail
+            WHERE rcm_id = %s AND control_category = 'TLC'
+        ''', (header_id, rcm_id))
+
+        conn.commit()
+
+        log_user_activity(user_info, 'CREATE', 'TLC 설계평가 시작',
+                         f'rcm_id={rcm_id}, evaluation_name={evaluation_name}',
+                         request.remote_addr, request.headers.get('User-Agent'))
+
+    # 세션에 정보 저장 후 설계평가 페이지로 리다이렉트
+    session['current_design_rcm_id'] = rcm_id
+    session['current_evaluation_type'] = 'TLC'
+    session['current_evaluation_session'] = evaluation_name
+
+    flash(f'"{evaluation_name}" 설계평가를 시작합니다.', 'success')
+    return redirect(url_for('link6.user_design_evaluation_rcm'))
+
 @bp_link6.route('/itgc-evaluation')
 @login_required
 def itgc_evaluation():
@@ -2352,10 +2430,9 @@ def itgc_design_evaluation_start():
 @login_required
 def delete_itgc_evaluation():
     """
-    ITGC 운영평가 삭제 (설계평가 완료 상태로 되돌림)
-    - status를 1(설계평가 완료)로 변경
-    - 운영평가 관련 필드 초기화 (conclusion, exception_details 등)
-    - sample 데이터 삭제 (운영평가 전용 데이터)
+    ITGC 평가 삭제
+    - 설계평가 삭제 (status <= 1): header, line, sample 완전 삭제
+    - 운영평가 삭제 (status >= 2): status를 1로 되돌리고 운영평가 필드만 초기화
     """
     data = request.get_json()
     header_id = data.get('header_id')
@@ -2365,45 +2442,75 @@ def delete_itgc_evaluation():
 
     try:
         with get_db() as conn:
-            # header 존재 확인 및 rcm_id 조회
-            header = conn.execute('SELECT rcm_id FROM sb_evaluation_header WHERE header_id = ?', (header_id,)).fetchone()
+            # header 존재 확인 및 status, rcm_id 조회
+            header = conn.execute('SELECT rcm_id, status FROM sb_evaluation_header WHERE header_id = ?', (header_id,)).fetchone()
             if not header:
                 return jsonify({'success': False, 'error': 'Evaluation not found'})
 
             header_dict = dict(header)
             rcm_id = header_dict['rcm_id']
+            current_status = header_dict.get('status', 0)
 
-            # 운영평가 파일 삭제 (파일시스템)
             import shutil
-            operation_upload_dir = os.path.join('static', 'uploads', 'operation_evaluations', str(rcm_id), str(header_id))
-            if os.path.exists(operation_upload_dir):
-                try:
-                    shutil.rmtree(operation_upload_dir)
-                except Exception as file_error:
-                    print(f"파일 삭제 중 오류 발생: {file_error}")
-                    # 파일 삭제 실패해도 DB 작업은 계속 진행
 
-            # status를 1(설계평가 완료)로 되돌림
-            conn.execute('UPDATE sb_evaluation_header SET status = 1 WHERE header_id = ?', (header_id,))
+            if current_status <= 1:
+                # 설계평가 상태 (status <= 1): 세션 완전 삭제
 
-            # 운영평가 관련 필드만 초기화 (설계평가 필드는 유지)
-            conn.execute('''
-                UPDATE sb_evaluation_line
-                SET conclusion = NULL,
-                    exception_details = NULL,
-                    sample_size = NULL
-                WHERE header_id = ?
-            ''', (header_id,))
+                # 설계평가 파일 삭제 (파일시스템)
+                design_upload_dir = os.path.join('static', 'uploads', 'design_evaluations', str(rcm_id), str(header_id))
+                if os.path.exists(design_upload_dir):
+                    try:
+                        shutil.rmtree(design_upload_dir)
+                    except Exception as file_error:
+                        print(f"설계평가 파일 삭제 중 오류 발생: {file_error}")
 
-            # 운영평가 sample만 삭제 (evaluation_type='operation'인 것만)
-            # 설계평가 sample(evaluation_type='design')은 유지
-            conn.execute('''
-                DELETE FROM sb_evaluation_sample
-                WHERE line_id IN (
-                    SELECT line_id FROM sb_evaluation_line WHERE header_id = ?
-                )
-                AND (evaluation_type = 'operation' OR evaluation_type IS NULL)
-            ''', (header_id,))
+                # sample 삭제
+                conn.execute('''
+                    DELETE FROM sb_evaluation_sample
+                    WHERE line_id IN (
+                        SELECT line_id FROM sb_evaluation_line WHERE header_id = ?
+                    )
+                ''', (header_id,))
+
+                # line 삭제
+                conn.execute('DELETE FROM sb_evaluation_line WHERE header_id = ?', (header_id,))
+
+                # header 삭제
+                conn.execute('DELETE FROM sb_evaluation_header WHERE header_id = ?', (header_id,))
+
+            else:
+                # 운영평가 상태 (status >= 2): 설계평가 완료 상태로 되돌림
+
+                # 운영평가 파일 삭제 (파일시스템)
+                operation_upload_dir = os.path.join('static', 'uploads', 'operation_evaluations', str(rcm_id), str(header_id))
+                if os.path.exists(operation_upload_dir):
+                    try:
+                        shutil.rmtree(operation_upload_dir)
+                    except Exception as file_error:
+                        print(f"운영평가 파일 삭제 중 오류 발생: {file_error}")
+
+                # status를 1(설계평가 완료)로 되돌림
+                conn.execute('UPDATE sb_evaluation_header SET status = 1 WHERE header_id = ?', (header_id,))
+
+                # 운영평가 관련 필드만 초기화 (설계평가 필드는 유지)
+                conn.execute('''
+                    UPDATE sb_evaluation_line
+                    SET conclusion = NULL,
+                        operation_comment = NULL,
+                        exception_details = NULL,
+                        sample_size = NULL
+                    WHERE header_id = ?
+                ''', (header_id,))
+
+                # 운영평가 sample만 삭제 (evaluation_type='operation'인 것만)
+                # 설계평가 sample(evaluation_type='design')은 유지
+                conn.execute('''
+                    DELETE FROM sb_evaluation_sample
+                    WHERE line_id IN (
+                        SELECT line_id FROM sb_evaluation_line WHERE header_id = ?
+                    )
+                    AND (evaluation_type = 'operation' OR evaluation_type IS NULL)
+                ''', (header_id,))
 
             conn.commit()
 
