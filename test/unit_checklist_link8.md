@@ -26,3 +26,9 @@
     - Step 4: `assessment_step4_defects.jsp`
     - Step 5: `assessment_step5_improvement.jsp`
     - Step 6: `assessment_step6_report.jsp`
+
+## 6. 회사별 데이터 격리
+- [ ] **test_link8_company_data_isolation**: 사용자 전환 후 본인 회사 내부평가만 조회 가능한지 확인
+  - 우측 상단 사용자명 클릭하여 다른 회사 계정으로 전환
+  - 해당 회사의 내부평가 데이터만 표시되는지 확인
+  - '관리자로 돌아가기' 버튼으로 원래 계정 복귀

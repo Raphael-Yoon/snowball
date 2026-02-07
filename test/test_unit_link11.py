@@ -318,28 +318,28 @@ class Link11UnitTest(PlaywrightTestBase):
         self._do_admin_login()
         self.navigate_to("/link11")
         self.page.wait_for_timeout(2500)
-        
+
         # 카테고리 3 클릭 (인증)
         cat3 = self.page.locator(".category-card", has_text="인증").first
         if cat3.count() > 0:
             cat3.click()
             self.page.wait_for_selector("#questions-view", state="visible", timeout=5000)
             self.page.wait_for_timeout(1500)
-            
+
             # Q15 '예' 선택 트리거
             q15_yes = self.page.locator("#question-Q15 .yes-no-btn.yes, .yes-no-btn.yes").first
             if q15_yes.count() > 0:
                 q15_yes.scroll_into_view_if_needed()
                 q15_yes.click()
                 self.page.wait_for_timeout(1500)
-                
+
                 # 증빙 버튼 클릭
                 btn_ev = self.page.locator(".evidence-upload-btn").first
                 if btn_ev.count() > 0:
                     btn_ev.scroll_into_view_if_needed()
                     btn_ev.click()
                     self.page.wait_for_timeout(1500)
-                    
+
                     # 모달 확인
                     if self.page.locator("#uploadModal").is_visible():
                         result.pass_test("증빙 자료 업로드 모달 노출 확인")
@@ -355,6 +355,65 @@ class Link11UnitTest(PlaywrightTestBase):
                 result.fail_test("인증 여부(Q15) 버튼 또는 일반 YES 버튼을 찾을 수 없음")
         else:
             result.skip_test("인증 카테고리 카드 없음")
+
+    def test_link11_evidence_mime_validation(self, result: UnitTestResult):
+        """5. 파일 업로드 MIME 타입 검증 확인"""
+        import tempfile
+        import requests
+
+        self._do_admin_login()
+
+        # 세션 쿠키 가져오기
+        cookies = self.context.cookies()
+        session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
+
+        # 텍스트 내용으로 .pdf 확장자 파일 생성 (변조된 파일)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.pdf', delete=False) as f:
+            f.write("This is not a real PDF file - just plain text")
+            fake_pdf_path = f.name
+
+        try:
+            # API로 파일 업로드 시도
+            with open(fake_pdf_path, 'rb') as f:
+                files = {'file': ('fake_document.pdf', f, 'application/pdf')}
+                data = {
+                    'question_id': 'Q15',
+                    'answer_id': 'test-answer-id',
+                    'evidence_type': 'test',
+                    'year': '2024'
+                }
+
+                response = requests.post(
+                    f"{self.base_url}/link11/api/evidence",
+                    files=files,
+                    data=data,
+                    cookies=session_cookie,
+                    timeout=10
+                )
+
+            # 응답 확인 (400 Bad Request 또는 에러 메시지 포함)
+            if response.status_code == 400:
+                resp_json = response.json()
+                if 'PDF' in resp_json.get('message', '') or '일치하지 않' in resp_json.get('message', ''):
+                    result.pass_test(f"MIME 타입 검증 확인: {resp_json.get('message', '')[:50]}")
+                else:
+                    result.pass_test(f"파일 업로드 거부됨 (400): {resp_json.get('message', '')[:50]}")
+            elif response.status_code == 401:
+                result.skip_test("로그인 세션이 API에 전달되지 않음 (쿠키 문제)")
+            elif response.status_code == 200:
+                result.fail_test("변조된 파일이 업로드됨 - MIME 검증 실패")
+            else:
+                result.warn_test(f"예상치 못한 응답: {response.status_code}")
+
+        except Exception as e:
+            result.fail_test(f"테스트 중 오류: {str(e)}")
+        finally:
+            # 임시 파일 정리
+            import os
+            try:
+                os.unlink(fake_pdf_path)
+            except:
+                pass
 
     def test_link11_report_preview(self, result: UnitTestResult):
         """5. 리포트 미리보기 확인"""
@@ -515,6 +574,140 @@ class Link11UnitTest(PlaywrightTestBase):
         else:
             result.fail_test(f"수치 업데이트 미반영 (현재 비율: {new_rate}, B합계: {q3_text})")
 
+    def test_link11_validation_negative(self, result: UnitTestResult):
+        """2. 숫자/금액 필드 음수 입력 방지 확인"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2500)
+
+        # 카테고리 1 클릭 (투자)
+        cat1 = self.page.locator(".category-card", has_text="투자").first
+        cat1.click()
+        self.page.wait_for_selector("#questions-view", state="visible")
+        self.page.wait_for_timeout(1000)
+
+        # Q1 '예' 선택
+        q1_selector = self.get_question_selector('Q1')
+        self.page.locator(f"{q1_selector} .yes-no-btn.yes").click()
+        self.page.wait_for_timeout(2000)
+
+        # Q2 입력 필드 대기
+        q2_input = self.get_input_by_display('Q2')
+        q2_input.wait_for(state="visible", timeout=10000)
+
+        # 음수 입력 시도 (-1000)
+        q2_input.fill("-1000")
+        q2_input.blur()
+        self.page.wait_for_timeout(1000)
+
+        # 입력값 확인 (음수가 제거되어야 함)
+        current_val = q2_input.input_value()
+        raw_val = q2_input.get_attribute("data-raw-value") or current_val
+
+        # 음수 기호가 제거되었거나 값이 0 이상이면 성공
+        is_positive = True
+        try:
+            clean_val = str(raw_val).replace(',', '')
+            if clean_val and float(clean_val) < 0:
+                is_positive = False
+        except ValueError:
+            pass
+
+        if is_positive or "-" not in current_val:
+            result.pass_test(f"음수 입력 방지 확인 (입력값: {current_val}, raw: {raw_val})")
+        else:
+            result.fail_test(f"음수 입력이 허용됨 (입력값: {current_val})")
+
+    def test_link11_company_data_isolation(self, result: UnitTestResult):
+        """7. 회사별 데이터 격리 확인 (사용자 전환 테스트)"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2000)
+
+        # 1. 관리자로 접속 시 현재 표시되는 회사명 확인
+        admin_company = self.page.locator(".company-name, .user-company").first
+        admin_company_name = admin_company.inner_text() if admin_company.count() > 0 else ""
+
+        # 대시보드 통계 값 저장 (관리자 상태)
+        admin_inv_ratio = self.page.locator("#dashboard-inv-ratio").inner_text() if self.page.locator("#dashboard-inv-ratio").count() > 0 else ""
+
+        # 2. 우측 상단 사용자명 클릭하여 사용자 전환 메뉴 열기
+        user_dropdown = self.page.locator(".user-name, .navbar .dropdown-toggle, .user-dropdown").first
+        if user_dropdown.count() == 0:
+            result.skip_test("사용자 드롭다운 메뉴를 찾을 수 없음")
+            return
+
+        user_dropdown.click()
+        self.page.wait_for_timeout(1000)
+
+        # 3. 다른 회사 계정 선택 (SK텔레콤 또는 첫 번째 비관리자 계정)
+        switch_options = self.page.locator(".dropdown-menu .dropdown-item, .user-switch-item")
+        target_company = None
+        target_item = None
+
+        for i in range(switch_options.count()):
+            option = switch_options.nth(i)
+            option_text = option.inner_text()
+            # 관리자가 아닌 다른 회사 선택
+            if "관리자" not in option_text and "스노우볼" not in option_text:
+                target_company = option_text.strip()
+                target_item = option
+                break
+
+        if target_item is None:
+            result.skip_test("전환할 다른 회사 계정을 찾을 수 없음")
+            return
+
+        result.add_detail(f"테스트 대상 회사: {target_company}")
+
+        # 4. 다른 회사로 전환
+        target_item.click()
+        self.page.wait_for_timeout(2000)
+
+        # 5. Link11 페이지로 이동 (전환 후 다시 접근)
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2000)
+
+        # 6. 전환 후 회사 정보 확인
+        switched_company = self.page.locator(".company-name, .user-company").first
+        switched_company_name = switched_company.inner_text() if switched_company.count() > 0 else ""
+
+        # 대시보드 통계 값 확인 (전환된 회사)
+        switched_inv_ratio = self.page.locator("#dashboard-inv-ratio").inner_text() if self.page.locator("#dashboard-inv-ratio").count() > 0 else ""
+
+        # 7. 데이터 격리 확인 - 회사명이 변경되었는지 또는 데이터가 다른지 확인
+        data_isolated = False
+        if switched_company_name and admin_company_name != switched_company_name:
+            data_isolated = True
+            result.add_detail(f"회사명 변경 확인: {admin_company_name} → {switched_company_name}")
+        elif admin_inv_ratio != switched_inv_ratio:
+            data_isolated = True
+            result.add_detail(f"통계 데이터 변경 확인: {admin_inv_ratio} → {switched_inv_ratio}")
+
+        # 8. 관리자로 돌아가기
+        user_dropdown2 = self.page.locator(".user-name, .navbar .dropdown-toggle, .user-dropdown").first
+        if user_dropdown2.count() > 0:
+            user_dropdown2.click()
+            self.page.wait_for_timeout(500)
+
+            # '관리자로 돌아가기' 또는 관리자 계정 클릭
+            admin_return = self.page.locator("text=관리자로 돌아가기, text=스노우볼").first
+            if admin_return.count() == 0:
+                admin_return = self.page.locator(".dropdown-item:has-text('관리자'), .dropdown-item:has-text('스노우볼')").first
+
+            if admin_return.count() > 0:
+                admin_return.click()
+                self.page.wait_for_timeout(1500)
+                result.add_detail("관리자로 복귀 완료")
+            else:
+                result.add_detail("⚠️ 관리자 복귀 버튼을 찾을 수 없음 (수동 복귀 필요)")
+
+        # 9. 결과 판정
+        if data_isolated:
+            result.pass_test(f"회사별 데이터 격리 확인 (전환 회사: {target_company})")
+        else:
+            result.warn_test(f"데이터 격리 확인 불가 (동일 데이터가 표시될 수 있음)")
+
     def test_link11_validation_personnel(self, result: UnitTestResult):
         """3. 정보보호 인력 검증 (Total >= IT >= Security hierarchy)"""
         self._do_admin_login()
@@ -643,13 +836,16 @@ def run_tests():
             test_runner.test_link11_dependent_questions,
             test_runner.test_link11_currency_input,
             test_runner.test_link11_validation_b_lt_a,
+            test_runner.test_link11_validation_negative,
             test_runner.test_link11_validation_personnel,
             test_runner.test_link11_auto_calculation,
             test_runner.test_link11_number_input,
             test_runner.test_link11_multi_select,
             test_runner.test_link11_evidence_modal,
+            test_runner.test_link11_evidence_mime_validation,
             test_runner.test_link11_report_preview,
-            test_runner.test_link11_report_download
+            test_runner.test_link11_report_download,
+            test_runner.test_link11_company_data_isolation
         ])
     finally:
         test_runner._update_checklist_result()

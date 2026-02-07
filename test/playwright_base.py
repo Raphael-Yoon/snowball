@@ -11,6 +11,9 @@ Playwright를 활용한 엔드투엔드 테스트의 기본 기능을 제공합�
 import os
 import sys
 import re
+import time
+import subprocess
+import requests
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List
@@ -113,9 +116,75 @@ class PlaywrightTestBase:
         self.page: Optional[Page] = None
         self.results: List[UnitTestResult] = []
 
+        # 서버 관리
+        self.server_process: Optional[subprocess.Popen] = None
+        self.server_was_running: bool = False  # 기존 서버가 실행 중이었는지
+
         # 스크린샷 저장 디렉토리
         self.screenshot_dir = project_root / "test" / "screenshots"
         self.screenshot_dir.mkdir(exist_ok=True)
+
+    def check_server_running(self) -> bool:
+        """서버 실행 상태 확인 및 필요시 시작"""
+        try:
+            response = requests.get(f"{self.base_url}/health", timeout=3)
+            if response.status_code == 200:
+                print(f"✅ 서버 실행 중 ({self.base_url})")
+                self.server_was_running = True
+                return True
+        except:
+            pass
+
+        print(f"⚠️ 서버가 실행 중이지 않습니다. 서버를 시작합니다...")
+        self.server_was_running = False
+        return self._start_server()
+
+    def _start_server(self) -> bool:
+        """서버 백그라운드 시작"""
+        try:
+            self.server_process = subprocess.Popen(
+                [sys.executable, "snowball.py"],
+                cwd=str(project_root),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
+            )
+            print(f"   서버 시작 중... (PID: {self.server_process.pid})")
+
+            for i in range(30):
+                time.sleep(1)
+                try:
+                    response = requests.get(f"{self.base_url}/health", timeout=2)
+                    if response.status_code == 200:
+                        print(f"✅ 서버 시작 완료")
+                        return True
+                except:
+                    print(f"   서버 준비 대기 중... ({i+1}/30)")
+
+            print(f"❌ 서버 시작 시간 초과")
+            return False
+        except Exception as e:
+            print(f"❌ 서버 시작 실패: {e}")
+            return False
+
+    def stop_server(self):
+        """서버 중지 (직접 시작한 경우에만)"""
+        if self.server_process and not self.server_was_running:
+            print(f"\n🛑 서버 중지 중... (PID: {self.server_process.pid})")
+            try:
+                if sys.platform == 'win32':
+                    self.server_process.terminate()
+                else:
+                    self.server_process.terminate()
+                self.server_process.wait(timeout=5)
+                print(f"✅ 서버 중지 완료")
+            except Exception as e:
+                print(f"⚠️ 서버 중지 중 오류: {e}")
+                try:
+                    self.server_process.kill()
+                except:
+                    pass
+            self.server_process = None
 
     def setup(self):
         """테스트 환경 설정"""

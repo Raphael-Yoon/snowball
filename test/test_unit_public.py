@@ -16,9 +16,12 @@ Unit 테스트를 일괄 실행합니다.
 import sys
 import argparse
 import io
+import time
+import subprocess
+import requests
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from collections import OrderedDict
 
 # Windows 콘솔 UTF-8 출력 설정
@@ -97,6 +100,69 @@ class PublicLinkTestRunner:
         self.all_results: Dict[int, List[UnitTestResult]] = {}
         self.start_time = None
         self.end_time = None
+
+        # 서버 관리
+        self.server_process: Optional[subprocess.Popen] = None
+        self.server_was_running: bool = False
+
+    def check_server_running(self) -> bool:
+        """서버 실행 상태 확인 및 필요시 시작"""
+        try:
+            response = requests.get(f"{self.base_url}/health", timeout=3)
+            if response.status_code == 200:
+                print(f"✅ 서버 실행 중 ({self.base_url})")
+                self.server_was_running = True
+                return True
+        except:
+            pass
+
+        print(f"⚠️ 서버가 실행 중이지 않습니다. 서버를 시작합니다...")
+        self.server_was_running = False
+        return self._start_server()
+
+    def _start_server(self) -> bool:
+        """서버 백그라운드 시작"""
+        try:
+            self.server_process = subprocess.Popen(
+                [sys.executable, "snowball.py"],
+                cwd=str(project_root),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
+            )
+            print(f"   서버 시작 중... (PID: {self.server_process.pid})")
+
+            for i in range(30):
+                time.sleep(1)
+                try:
+                    response = requests.get(f"{self.base_url}/health", timeout=2)
+                    if response.status_code == 200:
+                        print(f"✅ 서버 시작 완료")
+                        return True
+                except:
+                    print(f"   서버 준비 대기 중... ({i+1}/30)")
+
+            print(f"❌ 서버 시작 시간 초과")
+            return False
+        except Exception as e:
+            print(f"❌ 서버 시작 실패: {e}")
+            return False
+
+    def stop_server(self):
+        """서버 중지 (직접 시작한 경우에만)"""
+        if self.server_process and not self.server_was_running:
+            print(f"\n🛑 서버 중지 중... (PID: {self.server_process.pid})")
+            try:
+                self.server_process.terminate()
+                self.server_process.wait(timeout=5)
+                print(f"✅ 서버 중지 완료")
+            except Exception as e:
+                print(f"⚠️ 서버 중지 중 오류: {e}")
+                try:
+                    self.server_process.kill()
+                except:
+                    pass
+            self.server_process = None
 
     def get_test_links(self) -> List[int]:
         """테스트할 링크 목록 반환"""
@@ -286,6 +352,11 @@ class PublicLinkTestRunner:
 
     def run_all(self):
         """모든 Public 링크 테스트 실행"""
+        # 서버 확인 및 필요시 시작
+        if not self.check_server_running():
+            print("\n테스트를 중단합니다.")
+            return
+
         self.start_time = datetime.now()
         test_links = self.get_test_links()
 
@@ -297,17 +368,21 @@ class PublicLinkTestRunner:
         print(f"  모드: {'Headless' if self.headless else 'Browser'}")
         print("=" * 80)
 
-        for link_num in test_links:
-            print(f"\n{'─' * 40}")
-            print(f"  Link{link_num} 테스트 시작")
-            print(f"{'─' * 40}")
+        try:
+            for link_num in test_links:
+                print(f"\n{'─' * 40}")
+                print(f"  Link{link_num} 테스트 시작")
+                print(f"{'─' * 40}")
 
-            results = self.run_link_test(link_num)
-            self.all_results[link_num] = results
+                results = self.run_link_test(link_num)
+                self.all_results[link_num] = results
 
-        self.end_time = datetime.now()
-        self.print_summary()
-        self.save_report()
+            self.end_time = datetime.now()
+            self.print_summary()
+            self.save_report()
+        finally:
+            # 직접 시작한 서버만 중지
+            self.stop_server()
 
     def _get_grouped_results(self, link_num: int, results: List[UnitTestResult]) -> Dict[str, Dict]:
         """결과를 그룹별로 정리"""
