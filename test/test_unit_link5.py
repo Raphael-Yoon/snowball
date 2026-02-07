@@ -486,6 +486,80 @@ class Link5RCMTestSuite(PlaywrightTestBase):
     # 4. 삭제 테스트
     # =========================================================================
 
+    def test_link5_company_data_isolation(self, result: UnitTestResult):
+        """회사별 RCM 데이터 격리 확인 (사용자 전환 테스트)"""
+        self._do_admin_login()
+        self._navigate_to_rcm_list()
+        self.page.wait_for_timeout(2000)
+
+        # 1. 관리자로 접속 시 RCM 목록 확인
+        admin_rcm_count = self.page.locator("table tbody tr").count()
+        result.add_detail(f"관리자 RCM 목록: {admin_rcm_count}개")
+
+        # 2. 우측 상단 사용자명 클릭하여 사용자 전환 메뉴 열기
+        user_dropdown = self.page.locator(".user-name, .navbar .dropdown-toggle, .user-dropdown").first
+        if user_dropdown.count() == 0:
+            result.skip_test("사용자 드롭다운 메뉴를 찾을 수 없음")
+            return
+
+        user_dropdown.click()
+        self.page.wait_for_timeout(1000)
+
+        # 3. 다른 회사 계정 선택
+        switch_options = self.page.locator(".dropdown-menu .dropdown-item, .user-switch-item")
+        target_company = None
+        target_item = None
+
+        for i in range(switch_options.count()):
+            option = switch_options.nth(i)
+            option_text = option.inner_text()
+            if "관리자" not in option_text and "스노우볼" not in option_text:
+                target_company = option_text.strip()
+                target_item = option
+                break
+
+        if target_item is None:
+            result.skip_test("전환할 다른 회사 계정을 찾을 수 없음")
+            return
+
+        result.add_detail(f"테스트 대상 회사: {target_company}")
+
+        # 4. 다른 회사로 전환
+        target_item.click()
+        self.page.wait_for_timeout(2000)
+
+        # 5. RCM 목록 페이지로 이동
+        self._navigate_to_rcm_list()
+        self.page.wait_for_timeout(2000)
+
+        # 6. 전환 후 RCM 목록 확인
+        switched_rcm_count = self.page.locator("table tbody tr").count()
+        result.add_detail(f"전환 후 RCM 목록: {switched_rcm_count}개")
+
+        # 7. 데이터 격리 확인
+        data_isolated = admin_rcm_count != switched_rcm_count
+
+        # 8. 관리자로 돌아가기
+        user_dropdown2 = self.page.locator(".user-name, .navbar .dropdown-toggle, .user-dropdown").first
+        if user_dropdown2.count() > 0:
+            user_dropdown2.click()
+            self.page.wait_for_timeout(500)
+
+            admin_return = self.page.locator("text=관리자로 돌아가기").first
+            if admin_return.count() == 0:
+                admin_return = self.page.locator(".dropdown-item:has-text('관리자'), .dropdown-item:has-text('스노우볼')").first
+
+            if admin_return.count() > 0:
+                admin_return.click()
+                self.page.wait_for_timeout(1500)
+                result.add_detail("관리자로 복귀 완료")
+
+        # 9. 결과 판정
+        if data_isolated:
+            result.pass_test(f"회사별 RCM 데이터 격리 확인 (전환 회사: {target_company})")
+        else:
+            result.warn_test(f"데이터 격리 확인 불가 (동일 데이터가 표시될 수 있음)")
+
     def test_rcm_delete(self, result: UnitTestResult):
         """RCM 삭제 수행"""
         self._do_admin_login()

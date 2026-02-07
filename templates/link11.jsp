@@ -1459,11 +1459,12 @@
                         <div class="composition-field" style="display: flex; align-items: center; margin-bottom: 8px; gap: 10px;">
                             <span style="flex: 0 0 100px; font-weight: 500; color: #475569;">${opt}</span>
                             <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
-                                <input type="number" class="number-input rank-input-${q.id}" 
+                                <input type="number" class="number-input rank-input-${q.id}"
                                        data-rank-name="${opt}"
-                                       value="${(currentComp[opt] !== undefined && currentComp[opt] !== null) ? currentComp[opt] : ''}" 
+                                       value="${(currentComp[opt] !== undefined && currentComp[opt] !== null) ? currentComp[opt] : ''}"
                                        oninput="handleCompositionInput('${q.id}')"
                                        placeholder="0"
+                                       min="0"
                                        style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; width: 120px; text-align: right; background: white; font-weight: 600;">
                                 <span class="text-muted">명</span>
                             </div>
@@ -1857,8 +1858,14 @@
 
         // 숫자 입력 처리
         function handleNumberInput(input, questionId) {
-            // 숫자와 소수점만 추출
+            // 숫자와 소수점만 추출 (음수 방지)
             let rawValue = input.value.replace(/[^\d.]/g, '');
+
+            // 음수 방지: 값이 0보다 작으면 0으로 설정
+            if (rawValue && parseFloat(rawValue) < 0) {
+                rawValue = '0';
+                showToast('음수는 입력할 수 없습니다.', 'warning');
+            }
 
             // 소수점이 여러 개 있으면 첫 번째만 유지
             const parts = rawValue.split('.');
@@ -1895,6 +1902,13 @@
         // 통화 입력 처리 (콤마 추가)
         function handleCurrencyInput(input, questionId) {
             let rawValue = input.value.replace(/[^\d]/g, '');
+
+            // 음수 방지: 값이 0보다 작으면 0으로 설정
+            if (rawValue && parseInt(rawValue) < 0) {
+                rawValue = '0';
+                showToast('음수는 입력할 수 없습니다.', 'warning');
+            }
+
             input.dataset.rawValue = rawValue;
 
             // 답변 업데이트

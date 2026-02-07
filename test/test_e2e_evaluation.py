@@ -62,6 +62,8 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
         self.rcm_id = None
 
         self.server_process = None
+        self.server_was_running = False  # 기존 서버가 실행 중이었는지
+        self.skip_server_stop = False    # 외부에서 서버 관리시 True
 
         # 타입별 설정
         self.type_config = {
@@ -137,12 +139,32 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
             response = requests.get(f"{self.base_url}/health", timeout=5)
             if response.status_code == 200:
                 print(f"✅ 서버 실행 중 ({self.base_url})")
+                self.server_was_running = True
                 return True
         except:
             pass
 
         print(f"⚠️ 서버가 실행 중이지 않습니다. 서버를 시작합니다...")
+        self.server_was_running = False
         return self._start_server()
+
+    def stop_server(self):
+        """서버 중지 (직접 시작한 경우에만)"""
+        if self.skip_server_stop:
+            return
+        if self.server_process and not self.server_was_running:
+            print(f"\n🛑 서버 중지 중... (PID: {self.server_process.pid})")
+            try:
+                self.server_process.terminate()
+                self.server_process.wait(timeout=5)
+                print(f"✅ 서버 중지 완료")
+            except Exception as e:
+                print(f"⚠️ 서버 중지 중 오류: {e}")
+                try:
+                    self.server_process.kill()
+                except:
+                    pass
+            self.server_process = None
 
     def _start_server(self):
         """서버 백그라운드 시작"""
@@ -633,7 +655,8 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
         print(f"{self.eval_type.upper()} E2E 통합 테스트")
         print("=" * 80)
 
-        if not self.check_server_running():
+        # server_was_running이 이미 True면 외부에서 서버 상태를 관리하므로 스킵
+        if not self.server_was_running and not self.check_server_running():
             print("\n테스트를 중단합니다.")
             return 1
 
@@ -675,6 +698,9 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
                 print(f"⚠️ Cleanup 중 오류: {e}")
 
             self.teardown()
+
+            # 직접 시작한 서버만 중지
+            self.stop_server()
 
         self._save_result_report()
         return self.print_final_report()
@@ -725,16 +751,51 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
 
 def run_all_types(base_url, headless):
     """모든 타입 순차 실행"""
+    import requests
+
     total_exit_code = 0
-    for eval_type in ["itgc", "elc", "tlc"]:
+    eval_types = ["itgc", "elc", "tlc"]
+    server_was_running_initially = False
+    first_suite = None
+
+    # 먼저 서버 상태 확인
+    try:
+        response = requests.get(f"{base_url}/health", timeout=3)
+        if response.status_code == 200:
+            server_was_running_initially = True
+            print(f"✅ 서버 실행 중 ({base_url})")
+    except:
+        pass
+
+    for i, eval_type in enumerate(eval_types):
         print(f"\n{'='*80}")
         print(f">>> {eval_type.upper()} 테스트 시작")
         print(f"{'='*80}\n")
 
         suite = E2EEvaluationTestSuite(base_url=base_url, headless=headless, eval_type=eval_type)
+
+        # 첫 번째 테스트에서 서버 시작
+        if i == 0:
+            first_suite = suite
+            suite.server_was_running = server_was_running_initially
+        else:
+            # 이후 테스트에서는 서버가 이미 실행 중
+            suite.server_was_running = True
+
+        # 마지막 테스트가 아니면 서버 종료 스킵
+        if i < len(eval_types) - 1:
+            suite.skip_server_stop = True
+
         exit_code = suite.run_all_tests()
         if exit_code != 0:
             total_exit_code = exit_code
+
+    # 마지막 테스트에서 서버 종료 처리됨 (first_suite.server_process 사용)
+    # 단, 첫 번째 스위트에서 시작한 서버 프로세스를 마지막 스위트로 전달해야 함
+    # 현재 구조에서는 첫 번째 스위트만 server_process를 가지므로 별도 처리
+    if first_suite and first_suite.server_process and not server_was_running_initially:
+        first_suite.skip_server_stop = False
+        first_suite.stop_server()
 
     return total_exit_code
 

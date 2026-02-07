@@ -26,6 +26,23 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'disclosure')
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'txt', 'hwp'}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
+# 파일 시그니처 (매직 바이트) - 실제 파일 내용 검증용
+FILE_SIGNATURES = {
+    'pdf': [b'%PDF'],
+    'doc': [b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'],  # OLE Compound Document
+    'docx': [b'PK\x03\x04'],  # ZIP (Office Open XML)
+    'xls': [b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'],  # OLE Compound Document
+    'xlsx': [b'PK\x03\x04'],  # ZIP (Office Open XML)
+    'ppt': [b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'],  # OLE Compound Document
+    'pptx': [b'PK\x03\x04'],  # ZIP (Office Open XML)
+    'jpg': [b'\xff\xd8\xff'],
+    'jpeg': [b'\xff\xd8\xff'],
+    'png': [b'\x89PNG\r\n\x1a\n'],
+    'gif': [b'GIF87a', b'GIF89a'],
+    'hwp': [b'HWP Document File', b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'],  # HWP 5.0+ 또는 OLE
+    'txt': None  # 텍스트 파일은 시그니처 검증 생략
+}
+
 # 업로드 폴더 생성
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -116,9 +133,99 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def validate_file_signature(file_stream, file_ext: str) -> tuple[bool, str]:
+    """
+    파일 시그니처(매직 바이트)를 검증하여 실제 파일 타입 확인
+
+    Args:
+        file_stream: 파일 스트림 객체
+        file_ext: 파일 확장자 (소문자)
+
+    Returns:
+        tuple: (검증 성공 여부, 오류 메시지)
+    """
+    # 텍스트 파일은 시그니처 검증 생략
+    if file_ext == 'txt':
+        return True, ""
+
+    # 알 수 없는 확장자
+    if file_ext not in FILE_SIGNATURES:
+        return True, ""  # 시그니처 목록에 없으면 통과 (확장자 검사는 이미 완료)
+
+    expected_signatures = FILE_SIGNATURES.get(file_ext)
+    if expected_signatures is None:
+        return True, ""
+
+    # 파일 시작 부분 읽기 (최대 20바이트)
+    current_pos = file_stream.tell()
+    file_stream.seek(0)
+    header = file_stream.read(20)
+    file_stream.seek(current_pos)  # 원래 위치로 복원
+
+    if not header:
+        return False, "파일 내용을 읽을 수 없습니다."
+
+    # 시그니처 매칭 확인
+    for signature in expected_signatures:
+        if header.startswith(signature):
+            return True, ""
+
+    return False, f"파일 내용이 {file_ext.upper()} 형식과 일치하지 않습니다. 파일이 손상되었거나 확장자가 변조되었을 수 있습니다."
+
+
 def generate_uuid():
     """UUID 생성"""
     return str(uuid.uuid4())
+
+
+def validate_company_ownership(user_info: dict, requested_company_id: str) -> tuple[bool, str]:
+    """
+    로그인한 사용자가 요청된 회사 데이터에 접근 권한이 있는지 검증
+
+    Args:
+        user_info: 로그인 사용자 정보 딕셔너리
+        requested_company_id: 요청된 company_id
+
+    Returns:
+        tuple: (권한 있음 여부, 오류 메시지)
+    """
+    if not user_info:
+        return False, "로그인 정보가 없습니다."
+
+    user_company = user_info.get('company_name', '')
+
+    # 관리자(admin)는 모든 회사 접근 가능
+    if user_info.get('is_admin') or user_info.get('role') == 'admin':
+        return True, ""
+
+    # 본인 회사 데이터만 접근 가능
+    if requested_company_id and requested_company_id != user_company:
+        return False, f"다른 회사의 데이터에 접근할 수 없습니다."
+
+    return True, ""
+
+
+def get_validated_company_id(user_info: dict, requested_company_id: str = None) -> str:
+    """
+    검증된 company_id 반환 (요청값 무시하고 사용자 소속 회사 반환)
+
+    보안 강화: 클라이언트에서 전달된 company_id를 신뢰하지 않고
+    항상 로그인 사용자의 소속 회사를 사용
+
+    Args:
+        user_info: 로그인 사용자 정보
+        requested_company_id: 클라이언트 요청 company_id (무시됨, 로깅용)
+
+    Returns:
+        str: 사용자 소속 company_id
+    """
+    user_company = user_info.get('company_name', 'default')
+
+    # 요청된 company_id와 다르면 경고 로그
+    if requested_company_id and requested_company_id != user_company:
+        print(f"⚠️ [보안] company_id 불일치 감지: 요청={requested_company_id}, 실제={user_company}")
+
+    return user_company
 
 
 def get_company_name_by_user_id(user_id):
@@ -346,7 +453,8 @@ def save_answer():
 
         question_id = data.get('question_id')
         value = data.get('value')
-        company_id = data.get('company_id', user_info.get('company_name', 'default'))
+        # 보안: 클라이언트 요청 company_id 무시, 로그인 사용자 소속 회사 사용
+        company_id = get_validated_company_id(user_info, data.get('company_id'))
         year = data.get('year', datetime.now().year)
 
         if not question_id:
@@ -356,7 +464,57 @@ def save_answer():
         if isinstance(value, list):
             value = json.dumps(value, ensure_ascii=False)
 
+        # 숫자 필드 음수 방지 검증
+        numeric_fields = [
+            QID.INV_IT_AMOUNT, QID.INV_SEC_GROUP, QID.INV_SEC_DEPRECIATION,
+            QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR, QID.INV_PLAN_AMOUNT,
+            QID.PER_TOTAL_EMPLOYEES, QID.PER_IT_EMPLOYEES, QID.PER_INTERNAL, QID.PER_EXTERNAL
+        ]
+        if question_id in numeric_fields and value is not None:
+            try:
+                num_val = float(str(value).replace(',', ''))
+                if num_val < 0:
+                    return jsonify({'success': False, 'message': '음수는 입력할 수 없습니다.'}), 400
+            except ValueError:
+                pass  # 숫자가 아닌 경우 무시
+
         with get_db() as conn:
+            # 0. 인력 수 계층 검증 (총 임직원 >= IT 인력 >= 보안 인력)
+            personnel_ids = [QID.PER_TOTAL_EMPLOYEES, QID.PER_IT_EMPLOYEES, QID.PER_INTERNAL, QID.PER_EXTERNAL]
+            if question_id in personnel_ids:
+                # 현재 저장된 값들과 새 값을 조합하여 검증
+                cursor = conn.execute('''
+                    SELECT question_id, value FROM sb_disclosure_answers
+                    WHERE question_id IN (?, ?, ?, ?) AND company_id = ? AND year = ? AND deleted_at IS NULL
+                ''', (*personnel_ids, company_id, year))
+                existing_personnel = {row['question_id']: row['value'] for row in cursor.fetchall()}
+
+                # 새 값으로 업데이트
+                existing_personnel[question_id] = value
+
+                try:
+                    total_emp = float(str(existing_personnel.get(QID.PER_TOTAL_EMPLOYEES, 0) or 0).replace(',', ''))
+                    it_emp = float(str(existing_personnel.get(QID.PER_IT_EMPLOYEES, 0) or 0).replace(',', ''))
+                    internal = float(str(existing_personnel.get(QID.PER_INTERNAL, 0) or 0).replace(',', ''))
+                    external = float(str(existing_personnel.get(QID.PER_EXTERNAL, 0) or 0).replace(',', ''))
+                    security_total = internal + external
+
+                    # 검증 1: IT 인력 <= 총 임직원
+                    if total_emp > 0 and it_emp > total_emp:
+                        return jsonify({
+                            'success': False,
+                            'message': f'정보기술부문 인력({int(it_emp)}명)은 총 임직원 수({int(total_emp)}명)를 초과할 수 없습니다.'
+                        }), 400
+
+                    # 검증 2: 보안 인력 <= IT 인력
+                    if it_emp > 0 and security_total > it_emp:
+                        return jsonify({
+                            'success': False,
+                            'message': f'정보보호 전담인력({int(security_total)}명)은 정보기술부문 인력({int(it_emp)}명)을 초과할 수 없습니다.'
+                        }), 400
+                except ValueError:
+                    pass  # 숫자 변환 오류 시 무시
+
             # 1. 정보보호 투자액 검증 (B <= A)
             if question_id == QID.INV_SEC_GROUP:  # Q3: 정보보호부문 투자액
                 cursor = conn.execute(f'SELECT value FROM sb_disclosure_answers WHERE question_id = ? AND company_id = ? AND year = ?', (QID.INV_IT_AMOUNT, company_id, year))
@@ -706,6 +864,14 @@ def upload_evidence():
         if not allowed_file(file.filename):
             return jsonify({'success': False, 'message': '허용되지 않는 파일 형식입니다.'}), 400
 
+        # 파일 확장자 추출
+        file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+
+        # 파일 시그니처(MIME 타입) 검증 - 확장자 변조 방지
+        is_valid, error_msg = validate_file_signature(file.stream, file_ext)
+        if not is_valid:
+            return jsonify({'success': False, 'message': error_msg}), 400
+
         # 파일 크기 확인
         file.seek(0, 2)
         file_size = file.tell()
@@ -1052,7 +1218,8 @@ def create_or_update_session():
         data = request.get_json()
         user_info = get_user_info()
 
-        company_id = data.get('company_id', user_info.get('company_name', 'default'))
+        # 보안: 클라이언트 요청 company_id 무시, 로그인 사용자 소속 회사 사용
+        company_id = get_validated_company_id(user_info, data.get('company_id'))
         year = data.get('year', datetime.now().year)
         status = data.get('status', 'draft')
 
@@ -1271,8 +1438,9 @@ def generate_report():
     try:
         data = request.get_json()
         user_info = get_user_info()
-        
-        company_id = data.get('company_id', user_info.get('company_name', 'default'))
+
+        # 보안: 클라이언트 요청 company_id 무시, 로그인 사용자 소속 회사 사용
+        company_id = get_validated_company_id(user_info, data.get('company_id'))
         year = data.get('year', datetime.now().year)
         format_type = data.get('format', 'json')  # json, pdf, excel
 
@@ -1365,8 +1533,9 @@ def download_report():
     try:
         data = request.get_json()
         user_info = get_user_info()
-        
-        company_id = data.get('company_id', user_info.get('company_name', 'default'))
+
+        # 보안: 클라이언트 요청 company_id 무시, 로그인 사용자 소속 회사 사용
+        company_id = get_validated_company_id(user_info, data.get('company_id'))
         year = data.get('year', datetime.now().year)
         format_type = data.get('format', 'excel')
         from openpyxl import Workbook

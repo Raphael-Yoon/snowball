@@ -301,8 +301,9 @@ h2 {
     left: 0;
     right: 0;
     bottom: 0;
-    background: url("../img/pattern.png") repeat;
-    opacity: 0.1;
+    background: linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.03) 75%);
+    background-size: 20px 20px;
+    opacity: 0.5;
 }
 
 .hero-content {

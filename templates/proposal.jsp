@@ -456,7 +456,7 @@
   </section>
 
   <section class="py-16 md:py-24 bg-[#1a3c4d] text-white relative overflow-hidden">
-    <div class="absolute inset-0 bg-[url('img/pattern.png')] opacity-5"></div>
+    <div class="absolute inset-0 opacity-10" style="background: linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.05) 75%); background-size: 20px 20px;"></div>
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
       <h2 class="text-xl md:text-3xl lg:text-4xl font-bold mb-6 md:mb-8 leading-tight">
         지금 바로 Snowball의 효과를 경험해보세요
