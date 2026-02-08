@@ -9,6 +9,7 @@ progress_data/
 .DS_Store
 logs/
 tmpclaude-*
+deploy.sh
 
 # Database files
 *.db
