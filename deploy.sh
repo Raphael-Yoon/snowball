@@ -4,7 +4,7 @@
 echo "📦 배포 시작..."
 
 # 최신 코드 받기
-git pull origin main
+git pull origin master
 
 # 운영에 불필요한 폴더/파일 삭제
 echo "🧹 불필요한 파일 정리 중..."
