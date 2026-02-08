@@ -14,6 +14,18 @@
 <body>
     {% include 'navi.jsp' %}
 
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+        <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-check-circle me-2"></i><span id="toastMessage"></span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
     <div class="container mt-4">
         <div class="row">
             <div class="col-12">
@@ -439,6 +451,20 @@
         let currentRcmId, currentDesignSession;
         let selectedRcmIdForDesign, selectedRcmNameForDesign;
 
+        // 토스트 메시지 표시 함수
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('successToast');
+            const toastMessage = document.getElementById('toastMessage');
+
+            // 타입에 따라 배경색 변경
+            toast.classList.remove('text-bg-success', 'text-bg-danger', 'text-bg-warning', 'text-bg-info');
+            toast.classList.add('text-bg-' + type);
+
+            toastMessage.textContent = message;
+            const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+            bsToast.show();
+        }
+
         // 설계평가(내부평가) 시작 모달 표시
         function showDesignEvaluationStartModal() {
             // 모달 리셋
@@ -851,14 +877,14 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('평가가 삭제되었습니다.');
-                    location.reload();
+                    showToast('평가가 삭제되었습니다.', 'success');
+                    setTimeout(() => location.reload(), 1500);
                 } else {
-                    alert('삭제 실패: ' + (data.error || '알 수 없는 오류'));
+                    showToast('삭제 실패: ' + (data.error || '알 수 없는 오류'), 'danger');
                 }
             })
             .catch(error => {
-                alert('삭제 중 오류가 발생했습니다: ' + error);
+                showToast('삭제 중 오류가 발생했습니다: ' + error, 'danger');
             });
         }
 

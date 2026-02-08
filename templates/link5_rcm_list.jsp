@@ -14,6 +14,18 @@
 <body>
     {% include 'navi.jsp' %}
 
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+        <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-check-circle me-2"></i><span id="toastMessage"></span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
     <div class="container mt-4">
         <div class="row">
             <div class="col-12">
@@ -369,6 +381,20 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // 토스트 메시지 표시 함수
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('successToast');
+            const toastMessage = document.getElementById('toastMessage');
+
+            // 타입에 따라 배경색 변경
+            toast.classList.remove('text-bg-success', 'text-bg-danger', 'text-bg-warning', 'text-bg-info');
+            toast.classList.add('text-bg-' + type);
+
+            toastMessage.textContent = message;
+            const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+            bsToast.show();
+        }
+
         // Bootstrap 툴팁 초기화
         document.addEventListener('DOMContentLoaded', function() {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -392,13 +418,13 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
-                    location.reload();
+                    showToast(data.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
                 } else {
                     // 진행 중인 평가가 있는 경우
                     if (data.ongoing_operation) {
                         // 운영평가 진행 중 - 삭제 불가
-                        alert('⛔ ' + data.message);
+                        showToast('⛔ ' + data.message, 'danger');
                     } else if (data.ongoing_design && data.require_confirmation) {
                         // 설계평가 진행 중 - 경고 후 재확인
                         if (confirm('⚠️ ' + data.message + '\n\n그래도 삭제하시겠습니까?')) {
@@ -406,13 +432,13 @@
                             deleteRcm(rcmId, rcmName, true);
                         }
                     } else {
-                        alert('오류: ' + data.message);
+                        showToast('오류: ' + data.message, 'danger');
                     }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('RCM 삭제 중 오류가 발생했습니다.');
+                showToast('RCM 삭제 중 오류가 발생했습니다.', 'danger');
             });
         }
 
