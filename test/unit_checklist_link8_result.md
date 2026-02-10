@@ -1,10 +1,10 @@
-<!-- Test Run: 2026-02-06 22:02:21 -->
+<!-- Test Run: 2026-02-10 10:17:37 -->
 # Link8: 내부평가(Internal Assessment) E2E 테스트 시나리오
 
 ## 1. 메인 페이지 (내부평가 현황)
 - [x] ✅ **test_link8_access**: `/internal-assessment` 페이지가 정상적으로 로드되는지 확인 → **통과** (페이지 로드 및 헤더 확인 완료: Dashboard)
-- [x] ✅ **test_link8_company_list**: 사용자에게 할당된 회사 목록 및 카테고리(ITGC, ELC, TLC)별 RCM 카드가 표시되는지 확인 → **통과** (RCM 카드 목록 표시 확인 (12개))
-- [x] ✅ **test_link8_progress_badges**: RCM 카드 내 진행 상태(NOT_STARTED, IN_PROGRESS, COMPLETED) 배지가 정상적으로 표시되는지 확인 → **통과** (상태 배지 확인 완료: 대기, 대기, 대기, 대기, 대기...)
+- [x] ✅ **test_link8_company_list**: 사용자에게 할당된 회사 목록 및 카테고리(ITGC, ELC, TLC)별 RCM 카드가 표시되는지 확인 → **통과** (RCM 카드 목록 표시 확인 (6개))
+- [x] ✅ **test_link8_progress_badges**: RCM 카드 내 진행 상태(NOT_STARTED, IN_PROGRESS, COMPLETED) 배지가 정상적으로 표시되는지 확인 → **통과** (상태 배지 확인 완료: 대기, 대기, 대기, 대기...)
 
 ## 2. 내부평가 상세 페이지
 - [x] ✅ **test_link8_detail_access**: 특정 RCM의 상세 페이지(`/internal-assessment/<rcm_id>`) 진입 확인 → **통과** (상세 페이지 진입 확인: http://localhost:5001/internal-assessment/2/Eval_1770270677)
@@ -27,6 +27,12 @@
     - Step 4: `assessment_step4_defects.jsp`
     - Step 5: `assessment_step5_improvement.jsp`
     - Step 6: `assessment_step6_report.jsp`
+
+## 6. 회사별 데이터 격리
+- [ ] **test_link8_company_data_isolation**: 사용자 전환 후 본인 회사 내부평가만 조회 가능한지 확인
+  - 우측 상단 사용자명 클릭하여 다른 회사 계정으로 전환
+  - 해당 회사의 내부평가 데이터만 표시되는지 확인
+  - '관리자로 돌아가기' 버튼으로 원래 계정 복귀
 
 ---
 ## 테스트 결과 요약

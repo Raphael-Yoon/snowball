@@ -2265,10 +2265,8 @@ def save_rcm_detail_attributes(detail_id):
     """RCM 통제의 attribute 설정 저장"""
     try:
         data = request.get_json()
-        print(f'[DEBUG save_rcm_detail_attributes] Received data: {data}')
         attributes = data.get('attributes', {})
         population_attribute_count = data.get('population_attribute_count', 2)
-        print(f'[DEBUG save_rcm_detail_attributes] detail_id: {detail_id}, population_attribute_count: {population_attribute_count}, attributes: {attributes}')
 
         db = get_db()
         # DatabaseConnection 객체의 _is_mysql 속성 사용
@@ -2300,8 +2298,6 @@ def save_rcm_detail_attributes(detail_id):
                 ''', (*attr_values, population_attribute_count, detail_id))
             db.commit()
 
-        print(f'[link5] Attribute 저장 완료 - detail_id: {detail_id}, attributes: {attributes}, population_attribute_count: {population_attribute_count}')
-
         return jsonify({
             'success': True,
             'message': 'Attribute 설정이 저장되었습니다.'
@@ -2329,8 +2325,6 @@ def update_recommended_sample_size_link5(detail_id):
         data = request.get_json()
         recommended_sample_size = data.get('recommended_sample_size')
 
-        print(f'[link5] Updating sample size - detail_id: {detail_id}, value: {recommended_sample_size}')
-
         # NULL 값 처리
         if recommended_sample_size is not None and recommended_sample_size != '':
             recommended_sample_size = int(recommended_sample_size)
@@ -2340,7 +2334,6 @@ def update_recommended_sample_size_link5(detail_id):
         db = get_db()
         # DatabaseConnection 객체의 _is_mysql 속성 사용
         db_type = 'mysql' if hasattr(db, '_is_mysql') and db._is_mysql else 'sqlite'
-        print(f'[link5] DB type: {db_type}')
 
         with db:
             # detail_id 존재 확인
@@ -2370,8 +2363,6 @@ def update_recommended_sample_size_link5(detail_id):
                     WHERE detail_id = ?
                 ''', (recommended_sample_size, detail_id))
             db.commit()
-
-        print(f'[link5] Sample size updated successfully')
 
         return jsonify({
             'success': True,

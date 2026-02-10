@@ -26,7 +26,6 @@ def is_logged_in():
 @bp_link3.route('/link3')
 def link3():
     """운영평가 테스트 페이지 (Operation Test)"""
-    print("Paper Function")
     user_info = get_user_info()
 
     if is_logged_in():
@@ -49,12 +48,10 @@ def get_content_link3():
 def paper_template_download():
     """운영평가 템플릿 다운로드"""
     form_data = request.form.to_dict()
-    print("Paper Template Download form data:", form_data)
     param1 = form_data.get('param1')
     param2 = form_data.get('param2')
 
     template_path = os.path.join("static", "Design_Template.xlsx")
-    print('output = ', template_path)
 
     if os.path.exists(template_path):
         return send_file(template_path, as_attachment=True)

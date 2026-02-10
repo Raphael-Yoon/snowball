@@ -259,14 +259,14 @@ class Link5RCMTestSuite(PlaywrightTestBase):
         """메인 화면에서 RCM 메뉴 클릭하여 목록으로 이동"""
         print("    → RCM 메뉴 클릭...")
         # RCM 카드의 "자세히 보기" 링크 클릭
-        rcm_link = self.page.locator("a.feature-link[href='/user/rcm']")
+        rcm_link = self.page.locator("a.feature-link[href='/rcm']")
         if rcm_link.count() > 0:
             rcm_link.click()
             self.page.wait_for_load_state("networkidle")
             print("    → RCM 목록 페이지 도착")
         else:
             # 직접 URL로 이동 (fallback)
-            self.page.goto(f"{self.base_url}/user/rcm")
+            self.page.goto(f"{self.base_url}/rcm")
             self.page.wait_for_load_state("networkidle")
 
     def _click_rcm_upload_button(self):
@@ -324,7 +324,7 @@ class Link5RCMTestSuite(PlaywrightTestBase):
                 return
 
             # 목록 페이지로 이동했으면 업로드된 RCM 확인
-            if "/user/rcm" in self.page.url or "/link5/rcm" in self.page.url:
+            if "/rcm" in self.page.url or "/link5/rcm" in self.page.url:
                 if self.page.locator(f"text={self.test_rcm_name}").count() > 0:
                     self.uploaded_rcm_name = self.test_rcm_name
                     result.pass_test("정상 업로드 후 목록에서 확인됨")
@@ -341,7 +341,7 @@ class Link5RCMTestSuite(PlaywrightTestBase):
                 return
 
             # 업로드 페이지에 머물러 있으면 수동으로 목록 확인
-            self.page.goto(f"{self.base_url}/user/rcm")
+            self.page.goto(f"{self.base_url}/rcm")
             self.page.wait_for_load_state("networkidle")
             if self.page.locator(f"text={self.test_rcm_name}").count() > 0:
                 self.uploaded_rcm_name = self.test_rcm_name
@@ -598,7 +598,7 @@ class Link5RCMTestSuite(PlaywrightTestBase):
                 print(f"    → 토스트 메시지: {toast_text[:50]}")
 
             # 페이지 새로고침 후 목록에서 확인
-            self.page.goto(f"{self.base_url}/user/rcm")
+            self.page.goto(f"{self.base_url}/rcm")
             self.page.wait_for_load_state("networkidle")
 
             if self.page.locator(f"tr:has-text('{rcm_to_delete}')").count() == 0:

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from pathlib import Path
 import os
+import traceback
 
 # 작업 디렉토리를 이 파일이 위치한 디렉토리(snowball)로 강제 변경
 # 이렇게 하면 어디서 실행하든 상대 경로가 올바르게 해석됨
@@ -16,16 +17,8 @@ env_path = _APP_DIR / '.env'
 load_dotenv(dotenv_path=env_path)
 
 from logger_config import setup_logging, get_logger
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
-from io import BytesIO
-from openpyxl import load_workbook
 from snowball_link1 import bp_link1
+from snowball_link1_1 import bp_link1_1
 from snowball_link2 import bp_link2
 from snowball_link3 import bp_link3
 from snowball_link4 import bp_link4
@@ -37,15 +30,8 @@ from snowball_link9 import bp_link9
 from snowball_link10 import bp_link10
 from snowball_link11 import bp_link11
 from snowball_admin import admin_bp
-from auth import send_otp, verify_otp, login_required, admin_required, get_current_user, get_db, log_user_activity, get_user_activity_logs, get_activity_log_count, check_ai_review_limit, increment_ai_review_count, get_ai_review_status, create_rcm, get_user_rcms, get_rcm_details, save_rcm_details, grant_rcm_access, get_all_rcms, save_design_evaluation, get_design_evaluations, save_operation_evaluation, get_operation_evaluations, find_user_by_email
-from snowball_mail import get_gmail_credentials, send_gmail, send_gmail_with_attachment
-from snowball_drive import append_to_work_log, get_work_log, append_to_work_log_docs, get_work_log_docs
-
-import base64
-import pickle
-import uuid
-import json
-import re
+from auth import send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, find_user_by_email
+from snowball_drive import get_work_log, append_to_work_log_docs
 
 app = Flask(__name__)
 
@@ -86,6 +72,7 @@ csrf = CSRFProtect(app)
 
 # CSRF 제외할 엔드포인트 (임시 - 향후 템플릿에 CSRF 토큰 추가 후 제거)
 # csrf.exempt(bp_link1)  # CSRF 보호 적용 완료
+csrf.exempt(bp_link1_1)
 csrf.exempt(bp_link2)
 csrf.exempt(bp_link3)
 csrf.exempt(bp_link4)
@@ -119,12 +106,6 @@ def inject_globals():
     return {
         'is_production': is_production
     }
-
-@app.before_request
-def before_request():
-    """모든 요청 전에 실행되는 함수"""
-    # 필요시 추가 처리를 위한 함수
-    pass
 
 def is_logged_in():
     """로그인 상태 확인 함수"""
@@ -180,7 +161,6 @@ def index():
 @csrf.exempt
 def login():
     try:
-        from datetime import datetime  # datetime import 추가
         print("로그인 페이지 접근 시작")
         action = None
         if request.method == 'POST':
@@ -191,39 +171,35 @@ def login():
             action = None
         
         if action == 'admin_login':
-            # 관리자 로그인 (IP 제한 없음)
+            # 관리자 로그인
             client_ip = request.environ.get('REMOTE_ADDR', '')
             server_port = request.environ.get('SERVER_PORT', '')
 
-            # IP 제한 제거 - 어느 주소에서든 관리자 로그인 가능
-            if True:
-                with get_db() as conn:
-                    user = conn.execute(
-                        'SELECT * FROM sb_user WHERE user_email = %s AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
-                        ('snowball2727@naver.com',)
-                    ).fetchone()
+            with get_db() as conn:
+                user = conn.execute(
+                    'SELECT * FROM sb_user WHERE user_email = %s AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
+                    ('snowball2727@naver.com',)
+                ).fetchone()
 
-                    if user:
-                        # SQLite Row 객체를 딕셔너리로 변환
-                        user_dict = dict(user)
+                if user:
+                    user_dict = dict(user)
 
-                        session['user_id'] = user_dict['user_id']
-                        session['user_email'] = user_dict['user_email']
-                        session['user_info'] = {
-                            'user_id': user_dict['user_id'],
-                            'user_name': user_dict['user_name'],
-                            'user_email': user_dict['user_email'],
-                            'company_name': user_dict.get('company_name', ''),
-                            'phone_number': user_dict.get('phone_number', ''),
-                            'admin_flag': user_dict.get('admin_flag', 'N')
-                        }
-                        from datetime import datetime
-                        session['last_activity'] = datetime.now().isoformat()
+                    session['user_id'] = user_dict['user_id']
+                    session['user_email'] = user_dict['user_email']
+                    session['user_info'] = {
+                        'user_id': user_dict['user_id'],
+                        'user_name': user_dict['user_name'],
+                        'user_email': user_dict['user_email'],
+                        'company_name': user_dict.get('company_name', ''),
+                        'phone_number': user_dict.get('phone_number', ''),
+                        'admin_flag': user_dict.get('admin_flag', 'N')
+                    }
+                    session['last_activity'] = datetime.now().isoformat()
 
-                        print(f"관리자 로그인 성공: {user_dict['user_email']} (admin_flag: {user_dict.get('admin_flag', 'N')}) from {client_ip}:{server_port}")
-                        return redirect(url_for('index'))
-                    else:
-                        return render_template('login.jsp', error="관리자 계정을 찾을 수 없습니다.", remote_addr=request.remote_addr)
+                    print(f"관리자 로그인 성공: {user_dict['user_email']} (admin_flag: {user_dict.get('admin_flag', 'N')}) from {client_ip}:{server_port}")
+                    return redirect(url_for('index'))
+                else:
+                    return render_template('login.jsp', error="관리자 계정을 찾을 수 없습니다.", remote_addr=request.remote_addr)
         
         elif action == 'send_otp':
             # OTP 발송 요청 (이메일만 지원)
@@ -351,7 +327,6 @@ def login():
         
     except Exception as e:
         print(f"로그인 페이지 오류: {e}")
-        import traceback
         traceback.print_exc()
         return f"로그인 페이지 오류가 발생했습니다: {str(e)}", 500
 
@@ -385,10 +360,6 @@ def health_check():
     except Exception as e:
         return {'status': 'error', 'message': str(e)}, 500
 
-@app.route('/test_simple')
-def test_simple():
-    return "Hello World"
-
 @app.route('/clear_session', methods=['POST'])
 def clear_session():
     """브라우저 종료 시 세션 해제 엔드포인트"""
@@ -400,7 +371,6 @@ def clear_session():
 
 @app.errorhandler(Exception)
 def handle_exception(e):
-    import traceback
     logger.error(f"Unhandled Exception: {traceback.format_exc()}")
     return "Internal Server Error: check logs", 500
 
@@ -408,34 +378,10 @@ def main():
     app.run(host='0.0.0.0', debug=True, port=5001, use_reloader=False)
     #app.run(host='127.0.0.1', debug=False, port=8001)
 
-@app.route('/link0')   
-def link0():
-    print("Reload")
-    return render_template('link0.jsp')
-
 @app.route('/proposal')
 def proposal():
     """Snowball 제안서 페이지"""
     return render_template('proposal.jsp')
-
-# === 사용자 전용 페이지 ===
-@app.route('/user/rcm')
-@login_required
-def user_rcm():
-    """사용자 RCM 조회 페이지 - link5로 리디렉션"""
-    return redirect(url_for('link5.user_rcm'))
-
-@app.route('/user/rcm/<int:rcm_id>/view')
-@login_required
-def user_rcm_view_old(rcm_id):
-    """사용자 RCM 상세 보기 - 구버전 호환용 (세션에 저장 후 리다이렉트)"""
-    return redirect(url_for('link5.select_rcm', rcm_id=rcm_id))
-
-@app.route('/user/rcm/view')
-@login_required
-def user_rcm_view():
-    """사용자 RCM 상세 보기 - link5로 리다이렉션"""
-    return redirect(url_for('link5.user_rcm_view'))
 
 @app.route('/user/design-evaluation', methods=['GET', 'POST'])
 @login_required
@@ -517,7 +463,6 @@ def upload_control_sample():
                 })
         
         # 업로드 디렉토리 생성
-        import os
         upload_dir = f"uploads/rcm_{rcm_id}/control_{control_code}"
         os.makedirs(upload_dir, exist_ok=True)
         
@@ -527,8 +472,6 @@ def upload_control_sample():
             if file and file.filename:
                 # 안전한 파일명 생성
                 import uuid
-                from werkzeug.utils import secure_filename
-                
                 file_ext = os.path.splitext(file.filename)[1]
                 safe_filename = f"{uuid.uuid4()}{file_ext}"
                 file_path = os.path.join(upload_dir, safe_filename)
@@ -593,27 +536,6 @@ def user_operation_evaluation():
     else:
         # GET 요청 - 레거시 지원
         return redirect(url_for('link7.user_operation_evaluation'))
-
-@app.route('/user/internal-assessment')
-@login_required
-def user_internal_assessment():
-    """내부평가 페이지 - link8로 리디렉션"""
-    return redirect(url_for('link8.internal_assessment'))
-
-# === API 엔드포인트 ===
-@app.route('/api/user/rcm-status')
-@login_required
-def api_user_rcm_status():
-    """사용자 RCM 현황 조회 API"""
-    from snowball_link5 import user_rcm_status
-    return user_rcm_status()
-
-@app.route('/api/user/rcm-list')
-@login_required
-def api_user_rcm_list():
-    """사용자 RCM 목록 조회 API"""
-    from snowball_link5 import user_rcm_list
-    return user_rcm_list()
 
 @app.route('/api/rcm/update_controls', methods=['POST'])
 @login_required
@@ -693,7 +615,6 @@ def api_rcm_update_controls():
         })
 
     except Exception as e:
-        import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'업데이트 중 오류가 발생했습니다: {str(e)}'}), 500
 
@@ -788,6 +709,7 @@ def check_operation_evaluation(control_type):
 
 
 app.register_blueprint(bp_link1)
+app.register_blueprint(bp_link1_1)
 app.register_blueprint(bp_link2)
 app.register_blueprint(bp_link3)
 app.register_blueprint(bp_link4)

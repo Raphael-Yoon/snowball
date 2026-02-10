@@ -104,7 +104,6 @@ def get_link4_content(content_type):
 @bp_link4.route('/link4')
 def link4():
     """영상자료 페이지"""
-    print("Video Function")
     user_info = get_user_info()
 
     # 로그인한 사용자만 활동 로그 기록

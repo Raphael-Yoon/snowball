@@ -4,7 +4,7 @@ import os
 from io import BytesIO
 from openpyxl import load_workbook
 from snowball_mail import send_gmail_with_attachment
-from auth import log_user_activity, login_required
+from auth import log_user_activity
 
 # Blueprint 생성
 bp_link1 = Blueprint('link1', __name__)
@@ -33,17 +33,6 @@ def generate_and_send_rcm_excel(form_data, save_local_path=None):
 
     save_local_path: 테스트용 - 이 경로가 지정되면 파일을 로컬에도 저장
     """
-    # 파라미터 출력
-    print("=== RCM Generate 파라미터 ===")
-    print(f"param1 (email): {form_data.get('param1', 'N/A')}")
-    print(f"param2 (system_name): {form_data.get('param2', 'N/A')}")
-    print(f"param_cloud (cloud_type): {form_data.get('param_cloud', 'N/A')}")
-    print(f"param3 (system_type): {form_data.get('param3', 'N/A')}")
-    print(f"param4 (os_type): {form_data.get('param4', 'N/A')}")
-    print(f"param5 (db_type): {form_data.get('param5', 'N/A')}")
-    print(f"use_os_tool: {form_data.get('use_os_tool', 'N')}")
-    print(f"use_db_tool: {form_data.get('use_db_tool', 'N')}")
-    print("=============================")
     
     # 파일명 생성: 입력받은 파일명(param2)_RCM_YYMMDD.xlsx
     base_name = form_data.get('param2', 'output')
@@ -69,39 +58,23 @@ def generate_and_send_rcm_excel(form_data, save_local_path=None):
             section_col = ws[f'BR{row_num}'].value  # B컬럼 (Section)
             value_col = ws[f'BS{row_num}'].value    # C컬럼 (Value)
 
-            # 디버깅: APP 섹션의 값들 출력
-            if section_col == 'APP':
-                print(f"Row {row_num}: section='{section_col}', value='{value_col}', param3='{form_data.get('param3')}'")
-
             # B컬럼이 Common인 경우는 무조건 유지
             if section_col == 'Common':
                 continue
 
             # B컬럼이 Cloud인 경우 param_cloud와 비교
             elif section_col == 'Cloud':
-                # value_col이 '공통'인 경우는 무조건 유지
                 if value_col == '공통':
-                    print(f"Row {row_num}: Cloud + 공통 → 유지")
                     continue
-                # value_col이 공통이 아닌 경우 param_cloud와 일치할 때만 유지
                 elif value_col != form_data.get('param_cloud'):
-                    print(f"Row {row_num}: Cloud + {value_col} != {form_data.get('param_cloud')} → 삭제")
                     rows_to_delete.append(row_num)
-                else:
-                    print(f"Row {row_num}: Cloud + {value_col} == {form_data.get('param_cloud')} → 유지")
 
             # B컬럼이 APP인 경우
             elif section_col == 'APP':
-                # value_col이 '공통'인 경우는 무조건 유지
                 if value_col == '공통':
-                    print(f"Row {row_num}: APP + 공통 → 유지")
                     continue
-                # value_col이 공통이 아닌 경우 param3와 일치할 때만 유지
                 elif value_col != form_data.get('param3'):
-                    print(f"Row {row_num}: APP + {value_col} != {form_data.get('param3')} → 삭제")
                     rows_to_delete.append(row_num)
-                else:
-                    print(f"Row {row_num}: APP + {value_col} == {form_data.get('param3')} → 유지")
 
             # B컬럼이 OS인 경우 param4와 비교
             elif section_col == 'OS':
@@ -116,24 +89,16 @@ def generate_and_send_rcm_excel(form_data, save_local_path=None):
             # B컬럼이 OS_Tool인 경우 - use_os_tool이 'Y'가 아니면 삭제
             elif section_col == 'OS_Tool':
                 if use_os_tool != 'Y':
-                    print(f"Row {row_num}: OS_Tool → OS Tool 미사용으로 삭제")
                     rows_to_delete.append(row_num)
-                else:
-                    print(f"Row {row_num}: OS_Tool → OS Tool 사용으로 유지")
 
             # B컬럼이 DB_Tool인 경우 - use_db_tool이 'Y'가 아니면 삭제
             elif section_col == 'DB_Tool':
                 if use_db_tool != 'Y':
-                    print(f"Row {row_num}: DB_Tool → DB Tool 미사용으로 삭제")
                     rows_to_delete.append(row_num)
-                else:
-                    print(f"Row {row_num}: DB_Tool → DB Tool 사용으로 유지")
         
         # 역순으로 행 삭제 (인덱스 변화 방지)
         for row_num in sorted(rows_to_delete, reverse=True):
             ws.delete_rows(row_num)
-        
-        print(f"필터링 완료: {len(rows_to_delete)}개 행 삭제됨")
         # B, C 열 삭제
         ws.delete_cols(70, 2)
         # 커서를 B2 셀로 이동
@@ -150,8 +115,7 @@ def generate_and_send_rcm_excel(form_data, save_local_path=None):
         os.makedirs(os.path.dirname(save_local_path), exist_ok=True)
         with open(save_local_path, 'wb') as f:
             f.write(excel_stream.read())
-        excel_stream.seek(0)  # 스트림 위치 초기화
-        print(f"[TEST] RCM 파일 로컬 저장: {save_local_path}")
+        excel_stream.seek(0)
 
     # 이메일 전송
     user_email = form_data.get('param1')
@@ -178,7 +142,6 @@ def generate_and_send_rcm_excel(form_data, save_local_path=None):
 @bp_link1.route('/link1')
 def link1():
     """RCM 자동생성 페이지"""
-    print("RCM Function")
     user_info = get_user_info()
     users = user_info['user_name'] if user_info else "Guest"
     # 로그인된 사용자의 이메일 주소 자동 입력
