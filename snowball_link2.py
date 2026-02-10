@@ -13,7 +13,7 @@ import threading
 import time
 from requests.exceptions import RequestException
 import socket
-from flask import Blueprint, render_template, request, session, redirect, url_for, jsonify, flash
+from flask import Blueprint, render_template, request, session, redirect, url_for, jsonify
 from auth import log_user_activity, login_required, increment_ai_review_count
 from snowball_mail import send_gmail_with_attachment
 
@@ -62,7 +62,6 @@ def reset_interview_session():
         session['answer'] = [''] * question_count
         session['textarea_answer'] = [''] * question_count
     
-    print("인터뷰 세션이 초기화되었습니다 (로그인 세션 보존)")
 
 # 시작할 질문 번호 설정 (1부터 시작)
 START_QUESTION = 0
@@ -1367,8 +1366,6 @@ def get_ai_review(content, control_number=None, answers=None):
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        print(f"[DEBUG] OpenAI API Error: {str(e)}")
-        print(f"[DEBUG] Traceback: {error_details}")
         return {
             'review_result': f"AI 검토 중 오류 발생: {str(e)}\n\n상세 에러:\n{error_details[:500]}",
             'conclusion': "검토 불가",
@@ -2231,16 +2228,12 @@ def test_ai_review_feature():
 
 @bp_link2.route('/link2', methods=['GET', 'POST'])
 def link2():
-    print("DEBUG: Inside link2 route")
-
     user_info = get_user_info()
     # Interview 기능 시작 시에만 로그 기록 (GET 요청이고 reset=1 파라미터가 있거나 최초 진입 시)
     if is_logged_in() and request.method == 'GET':
         if request.args.get('reset') == '1' or 'question_index' not in session:
-            print("DEBUG: Logging user activity")
             log_user_activity(user_info, 'FEATURE_START', 'Interview 기능 시작', '/link2',
                              request.remote_addr, request.headers.get('User-Agent'))
-            print("DEBUG: Logged user activity")
 
     if request.method == 'GET':
         # 쿼리 파라미터로 reset이 있을 때만 인터뷰 세션 초기화 (로그인 세션은 보존)
@@ -2282,7 +2275,6 @@ def link2():
             # 필터링된 목록에 없으면 원본에서 가져오기 (혹시 모를 상황 대비)
             current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
 
-        print(f"DEBUG: Rendering link2.jsp with index={current_filtered_index}, actual={current_question.get('index', -1)+1}")
         return render_template('link2.jsp',
                              question=current_question,
                              question_count=len(filtered_questions),
@@ -2341,14 +2333,10 @@ def link2():
 
         # 마지막 질문 제출 시 AI 검토 선택 페이지로 이동
         if next_filtered_index >= len(filtered_questions):
-            print('interview completed - redirecting to AI review selection page')
-            print(f'Current question_index: {question_index}, question_count: {question_count}')
-
             # AI 검토 선택 페이지로 리디렉션
             return redirect(url_for('link2.ai_review_selection'))
 
         session['question_index'] = next_question_index
-        print(f"goto {session['question_index']}")
 
         if next_question_index >= question_count:
             return redirect(url_for('index'))
@@ -2400,7 +2388,6 @@ def paper_request():
     Deprecated: 이 라우트는 더 이상 사용되지 않습니다.
     기존 코드와의 호환성을 위해 유지되고 있습니다.
     """
-    print("Paper Request called (Deprecated)")
     # Link2로 리다이렉트
     return redirect(url_for('link2.link2'))
 
@@ -2443,11 +2430,9 @@ def update_session_email():
         else:
             return jsonify({'success': False, 'message': '세션 정보를 찾을 수 없습니다.'})
         
-        print(f"이메일 업데이트 완료: {new_email}")
         return jsonify({'success': True, 'message': '이메일이 성공적으로 변경되었습니다.'})
-        
+
     except Exception as e:
-        print(f"이메일 업데이트 오류: {e}")
         return jsonify({'success': False, 'message': '서버 오류가 발생했습니다.'})
 
 @bp_link2.route('/process_with_ai_option', methods=['POST'])
@@ -2463,9 +2448,7 @@ def process_with_ai_option():
     
     # 세션에 AI 검토 옵션 저장
     session['enable_ai_review'] = enable_ai_review
-    
-    print(f"User selected AI review: {enable_ai_review}")
-    
+
     # processing 페이지로 리디렉션
     return redirect(url_for('link2.processing'))
 
@@ -2495,10 +2478,7 @@ def get_progress():
     """진행률 상태 조회 엔드포인트"""
     task_id = request.args.get('task_id')
     if not task_id:
-        print("Error: No task_id provided in get_progress")
         return jsonify({'error': 'No task_id provided'}), 400
-    
-    print(f"GET /get_progress called for task_id: {task_id}")
     status = get_progress_status(task_id)
     return jsonify(status)
 
@@ -2534,7 +2514,6 @@ def process_interview():
         
         enable_ai_review = session.get('enable_ai_review', False)
         
-        print(f"Processing interview for {user_email} (Task ID: {task_id})")
         progress_callback(15, "ITGC 설계평가 문서 생성을 시작합니다...")
         
         # 스킵된 질문들의 답변을 최종적으로 공란으로 처리
@@ -2557,16 +2536,13 @@ def process_interview():
             status['current_task'] = "처리가 완료되었습니다!"
             status['is_processing'] = False
             set_progress_status(task_id, status)
-            print(f"Mail sent successfully to {returned_email}")
             return jsonify({'success': True, 'email': returned_email})
         else:
             reset_progress(task_id)
-            print(f"Mail send failed: {error}")
             return jsonify({'success': False, 'error': error})
-            
+
     except Exception as e:
         reset_progress(task_id)
-        print(f"Error in process_interview: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == "__main__":

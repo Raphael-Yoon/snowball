@@ -250,7 +250,7 @@ class Link6DesignTestSuite(PlaywrightTestBase):
             page = self.page
 
             # RCM 목록 페이지로 이동
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state("networkidle")
 
             # RCM 업로드 버튼 클릭
@@ -314,7 +314,7 @@ class Link6DesignTestSuite(PlaywrightTestBase):
                     return True
 
             # 목록 페이지로 이동하여 확인
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state("networkidle")
             page.wait_for_timeout(1000)
 
@@ -354,7 +354,7 @@ class Link6DesignTestSuite(PlaywrightTestBase):
                 self._cleanup_evaluation_session()
 
             # RCM 목록 페이지로 이동
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state("networkidle")
 
             # 테스트용 RCM 찾기
@@ -387,7 +387,7 @@ class Link6DesignTestSuite(PlaywrightTestBase):
                 return
 
             # 삭제 확인
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state("networkidle")
 
             if page.locator(f"tr:has-text('{self.rcm_name}')").count() == 0:

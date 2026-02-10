@@ -70,7 +70,6 @@ def internal_assessment():
 
         # 해당 RCM의 평가 세션 조회 (통합 테이블)
         # user_id 필터 제거 - 관리자도 모든 RCM의 평가 세션을 볼 수 있어야 함
-        print(f"[DEBUG] Querying sessions for rcm_id={rcm['rcm_id']}")
         cursor = db.execute('''
             SELECT DISTINCT
                 evaluation_name,
@@ -85,7 +84,6 @@ def internal_assessment():
         ''', (rcm['rcm_id'],))
 
         sessions = cursor.fetchall()
-        print(f"[DEBUG] Found {len(sessions)} sessions for rcm_id={rcm['rcm_id']}")
 
         if sessions:
             for session_data in sessions:

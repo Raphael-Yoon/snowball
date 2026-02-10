@@ -262,7 +262,7 @@ class Link7OperationTestSuite(PlaywrightTestBase):
             page = self.page
 
             # RCM 목록 페이지로 이동
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state("networkidle")
 
             # RCM 업로드 버튼 클릭
@@ -310,7 +310,7 @@ class Link7OperationTestSuite(PlaywrightTestBase):
                 return True
 
             # 목록 페이지로 이동하여 확인
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state("networkidle")
             page.wait_for_timeout(1000)
 
@@ -466,7 +466,7 @@ class Link7OperationTestSuite(PlaywrightTestBase):
             page = self.page
 
             # RCM ID를 가져오기 위해 RCM 목록 페이지로 이동
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state('networkidle')
 
             # RCM ID 추출
@@ -646,7 +646,7 @@ class Link7OperationTestSuite(PlaywrightTestBase):
             page = self.page
 
             # RCM 목록 페이지로 이동
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state("networkidle")
             page.wait_for_timeout(1000)
 
@@ -683,7 +683,7 @@ class Link7OperationTestSuite(PlaywrightTestBase):
                     return False
 
             # 삭제 확인
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state("networkidle")
 
             if page.locator(f"tr:has-text('{self.rcm_name}')").count() == 0:

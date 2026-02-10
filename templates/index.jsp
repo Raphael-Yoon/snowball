@@ -88,7 +88,7 @@
                             <h5 class="feature-title text-center"><i class="fas fa-chart-pie me-2"></i>Dashboard</h5>
                             <p class="feature-description">ELC, TLC, ITGC 평가 결과를 통합 조회하고 종합 리포트를 생성합니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="/user/internal-assessment" class="feature-link" data-bs-toggle="tooltip"
+                                <a href="/internal-assessment" class="feature-link" data-bs-toggle="tooltip"
                                     data-bs-placement="top" data-bs-html="true"
                                     title="<div>• ELC, TLC, ITGC 통합 결과 조회<br>• 통제 현황 종합 분석<br>• 자동 리포트 생성<br>• 트렌드 분석 및 인사이트</div>">자세히
                                     보기</a>
@@ -105,7 +105,7 @@
                             <h5 class="feature-title text-center"><i class="fas fa-database me-2"></i>RCM</h5>
                             <p class="feature-description">위험통제매트릭스(RCM) 데이터를 조회하고 관리할 수 있습니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="/user/rcm" class="feature-link" data-bs-toggle="tooltip"
+                                <a href="/rcm" class="feature-link" data-bs-toggle="tooltip"
                                     data-bs-placement="top" data-bs-html="true"
                                     title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• 통제항목별 상세 정보 확인<br>• 카테고리별 RCM 관리 (ELC/TLC/ITGC)<br>• 엑셀 업로드 및 다운로드 지원</div>">자세히
                                     보기</a>
@@ -206,6 +206,23 @@
                                     <a href="/link1" class="feature-link" data-bs-toggle="tooltip"
                                         data-bs-placement="top" data-bs-html="true"
                                         title="<div>• 회사 정보 입력으로 맞춤형 RCM 템플릿 생성<br>• 회사 규모와 업종에 따른 통제 항목 구성<br>• 엑셀 파일로 즉시 다운로드 가능<br>• 이메일 발송으로 편리한 공유</div>">자세히
+                                        보기</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- AI RCM Builder 추가 -->
+                    <div class="col-lg-3 col-md-6">
+                        <div class="feature-card border-primary">
+                            <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="AI RCM Builder">
+                            <div class="card-body p-4">
+                                <span class="badge bg-primary mb-2">New</span>
+                                <h5 class="feature-title text-center">AI RCM Builder</h5>
+                                <p class="feature-description">AI를 통해 시스템 환경에 최적화된 기술적 통제 항목을 자동으로 생성합니다.</p>
+                                <div class="text-center">
+                                    <a href="/link1_1" class="feature-link" data-bs-toggle="tooltip"
+                                        data-bs-placement="top" data-bs-html="true"
+                                        title="<div>• 시스템/OS/DB 환경별 지능형 통제 매핑<br>• 기술적 증적(Technical Objects) 자동 제안<br>• 자체개발/패키지 등 서비스 유형별 맞춤 구성<br>• 자동/수동 편집 및 엑셀 다운로드</div>">자세히
                                         보기</a>
                                 </div>
                             </div>
@@ -322,7 +339,7 @@
                                 </h5>
                                 <p class="feature-description">ELC, TLC, ITGC 평가 결과를 통합 조회하고 종합 리포트를 생성합니다.</p>
                                 <div class="text-center mt-auto">
-                                    <a href="/user/internal-assessment" class="feature-link" data-bs-toggle="tooltip"
+                                    <a href="/internal-assessment" class="feature-link" data-bs-toggle="tooltip"
                                         data-bs-placement="top" data-bs-html="true"
                                         title="<div>• ELC, TLC, ITGC 통합 결과 조회<br>• 통제 현황 종합 분석<br>• 자동 리포트 생성<br>• 트렌드 분석 및 인사이트</div>">자세히
                                         보기</a>
@@ -339,7 +356,7 @@
                                 <h5 class="feature-title text-center"><i class="fas fa-database me-2"></i>RCM</h5>
                                 <p class="feature-description">위험통제매트릭스(RCM) 데이터를 조회하고 관리할 수 있습니다.</p>
                                 <div class="text-center mt-auto">
-                                    <a href="/user/rcm" class="feature-link" data-bs-toggle="tooltip"
+                                    <a href="/rcm" class="feature-link" data-bs-toggle="tooltip"
                                         data-bs-placement="top" data-bs-html="true"
                                         title="<div>• 위험통제매트릭스(RCM) 데이터 조회<br>• 통제항목별 상세 정보 확인<br>• 카테고리별 RCM 관리 (ELC/TLC/ITGC)<br>• 엑셀 업로드 및 다운로드 지원</div>">자세히
                                         보기</a>
@@ -452,7 +469,7 @@
         // 빠른 접근 모달 표시
         function showQuickAccess() {
             if (window.isLoggedIn) {
-                fetch('/api/user/rcm-list')
+                fetch('/api/rcm-list')
                     .then(response => response.json())
                     .then(data => {
                         if (data.success && data.rcms.length > 0) {

@@ -483,8 +483,6 @@ def user_operation_evaluation_rcm():
     rcm_id = session.get('current_operation_rcm_id')
     design_evaluation_session = session.get('current_design_evaluation_session')
 
-    print(f"[DEBUG] RCM ID: {rcm_id}, Session: {design_evaluation_session}")
-
     if not rcm_id:
         flash('RCM 정보가 없습니다. 다시 선택해주세요.', 'error')
         return redirect(url_for('link7.user_operation_evaluation'))
@@ -493,7 +491,6 @@ def user_operation_evaluation_rcm():
         return redirect(url_for('link7.user_operation_evaluation'))
 
     # 사용자가 해당 RCM에 접근 권한이 있는지 확인
-    print("[DEBUG] Checking user permissions...")
     user_rcms = get_user_rcms(user_info['user_id'])
     rcm_ids = [rcm['rcm_id'] for rcm in user_rcms]
 
@@ -503,7 +500,6 @@ def user_operation_evaluation_rcm():
 
 
     # 해당 설계평가 세션이 완료되었는지 확인
-    print("[DEBUG] Checking completed sessions...")
 
     # 통합 테이블 사용 (sb_evaluation_header) - ELC, TLC, ITGC 모두
     # status >= 2이면 운영평가 가능
@@ -574,7 +570,6 @@ def user_operation_evaluation_rcm():
                 conn.commit()
 
     # RCM 정보 조회
-    print("[DEBUG] Fetching RCM info...")
     rcm_info = None
     for rcm in user_rcms:
         if rcm['rcm_id'] == rcm_id:
@@ -582,18 +577,9 @@ def user_operation_evaluation_rcm():
             break
     
     # RCM 핵심통제 데이터 조회 (운영평가는 핵심통제이면서 설계평가가 '적정'인 통제만 대상)
-    print("[DEBUG] Fetching key RCM details...")
-    try:
-        rcm_details = get_key_rcm_details(rcm_id, user_info['user_id'], design_evaluation_session)
-        print(f"[DEBUG] rcm_details count: {len(rcm_details) if rcm_details else 0}")
-    except Exception as e:
-        print(f"[DEBUG] Error fetching key RCM details: {e}")
-        import traceback
-        traceback.print_exc()
-        raise e
+    rcm_details = get_key_rcm_details(rcm_id, user_info['user_id'], design_evaluation_session)
     
     # 매핑 정보 조회
-    print("[DEBUG] Fetching mappings...")
     from auth import get_rcm_detail_mappings
     rcm_mappings_list = get_rcm_detail_mappings(rcm_id)
     # control_code를 키로 하는 딕셔너리로 변환
@@ -605,7 +591,6 @@ def user_operation_evaluation_rcm():
         return redirect(url_for('link7.user_operation_evaluation'))
 
     # 각 통제 코드에 대한 config 정보 미리 로드
-    print("[DEBUG] Loading control configs...")
     control_configs = {}
     for detail in rcm_details:
         control_configs[detail['control_code']] = get_control_config(detail['control_code'])
@@ -614,7 +599,6 @@ def user_operation_evaluation_rcm():
     operation_evaluation_session = f"OP_{design_evaluation_session}"
 
     # 운영평가 Header/Line 데이터 동기화 (설계평가 결과 변경 반영)
-    print("[DEBUG] Syncing operation evaluation data...")
     sync_messages = []
     operation_header = None
 
@@ -653,18 +637,11 @@ def user_operation_evaluation_rcm():
                 flash('설계평가 정보를 찾을 수 없습니다.', 'error')
                 return redirect(url_for('link7.user_operation_evaluation'))
     except Exception as e:
-        print(f"[DEBUG] Sync error: {e}")
-        import traceback
-        traceback.print_exc()
         flash(f"운영평가 데이터 동기화 중 오류 발생: {str(e)}", 'error')
 
     # 기존 운영평가 내역 불러오기 (Header-Line 구조)
-    print("[DEBUG] Loading existing evaluations...")
-    print(f"[DEBUG] get_operation_evaluations 호출 파라미터: rcm_id={rcm_id}, user_id={user_info['user_id']}, operation_evaluation_session={operation_evaluation_session}, design_evaluation_session={design_evaluation_session}")
     try:
         evaluations = get_operation_evaluations(rcm_id, user_info['user_id'], operation_evaluation_session, design_evaluation_session)
-
-        print(f'[snowball_link7] Total evaluations: {len(evaluations)}')
 
         # 평가가 완료된 통제(conclusion 값이 있는 경우) 또는 샘플이 업로드된 통제를 control_code를 키로 하는 딕셔너리로 변환
         # 중복이 있는 경우 가장 최신(last_updated 또는 evaluation_date 기준) 레코드만 사용
@@ -673,8 +650,6 @@ def user_operation_evaluation_rcm():
             # line_id가 있거나, conclusion이 있거나, 샘플이 있으면 포함
             if eval.get('line_id') or eval.get('conclusion') or (eval.get('sample_lines') and len(eval.get('sample_lines', [])) > 0):
                 control_code = eval['control_code']
-                sample_lines_count = len(eval.get('sample_lines', []))
-                print(f'[snowball_link7] {control_code}: samples={sample_lines_count}, line_id={eval.get("line_id")}, conclusion={eval.get("conclusion")}')
 
                 # 기존에 없거나, 더 최신 데이터인 경우만 업데이트
                 if control_code not in evaluated_controls:
@@ -686,12 +661,7 @@ def user_operation_evaluation_rcm():
                     if new_date and existing_date and new_date > existing_date:
                         evaluated_controls[control_code] = eval
 
-        print(f'[snowball_link7] evaluated_controls keys: {list(evaluated_controls.keys())}')
-
     except Exception as e:
-        print(f'[snowball_link7] Error loading evaluations: {e}')
-        import traceback
-        traceback.print_exc()
         evaluated_controls = {}
 
     log_user_activity(user_info, 'PAGE_ACCESS', 'RCM 운영평가', '/operation-evaluation/rcm',
@@ -716,15 +686,9 @@ def user_operation_evaluation_rcm():
 @login_required
 def save_operation_evaluation_api():
     """운영평가 결과 저장 API"""
-    print("=" * 50)
-    print("운영평가 저장 API 호출됨")
-    print("=" * 50)
-
     user_info = get_user_info()
-    print(f"사용자 정보: {user_info}")
 
     # JSON과 FormData 모두 처리
-    print(f"Content-Type: {request.content_type}")
     if request.content_type and 'multipart/form-data' in request.content_type:
         # FormData로 전송된 경우
         data = request.form.to_dict()
@@ -760,13 +724,7 @@ def save_operation_evaluation_api():
         control_code = data.get('control_code')
         evaluation_data = data.get('evaluation_data')
 
-    print(f"rcm_id: {rcm_id}")
-    print(f"design_evaluation_session: {design_evaluation_session}")
-    print(f"control_code: {control_code}")
-    print(f"evaluation_data: {evaluation_data}")
-
     if not all([rcm_id, design_evaluation_session, control_code, evaluation_data]):
-        print("필수 데이터 누락!")
         return jsonify({
             'success': False,
             'message': '필수 데이터가 누락되었습니다.'
@@ -774,10 +732,8 @@ def save_operation_evaluation_api():
 
     # 운영평가 세션명 생성
     operation_evaluation_session = f"OP_{design_evaluation_session}"
-    print(f"operation_evaluation_session: {operation_evaluation_session}")
 
     try:
-        print("권한 확인 시작...")
         # 사용자가 해당 RCM에 접근 권한이 있는지 확인
         with get_db() as conn:
             access_check = conn.execute('''
@@ -817,46 +773,30 @@ def save_operation_evaluation_api():
         # 표본 크기 유효성 검사 (no_occurrence가 아니고, 설계평가 대체가 아닌 경우에만)
         is_no_occurrence = evaluation_data.get('no_occurrence', False)
         use_design_evaluation = evaluation_data.get('use_design_evaluation', False)
-        print(f"[DEBUG 표본수 검증] control_code={control_code}")
-        print(f"[DEBUG 표본수 검증] is_no_occurrence={is_no_occurrence}, use_design_evaluation={use_design_evaluation}, recommended_size={recommended_size}")
         if not is_no_occurrence and not use_design_evaluation and recommended_size > 0:
             submitted_sample_size = evaluation_data.get('sample_size')
-            print(f"[DEBUG 표본수 검증] submitted_sample_size (원본)={submitted_sample_size}, type={type(submitted_sample_size)}")
             if submitted_sample_size is not None:
                 submitted_sample_size = int(submitted_sample_size)
-                print(f"[DEBUG 표본수 검증] submitted_sample_size (int변환)={submitted_sample_size}, recommended_size={recommended_size}")
-                print(f"[DEBUG 표본수 검증] 비교 결과: {submitted_sample_size} < {recommended_size} = {submitted_sample_size < recommended_size}")
                 if submitted_sample_size < recommended_size:
-                    print(f"[DEBUG 표본수 검증] ❌ 검증 실패! 에러 반환")
                     return jsonify({
                         'success': False,
                         'message': f'표본 크기({submitted_sample_size})는 권장 표본수({recommended_size})보다 작을 수 없습니다.'
                     })
-                else:
-                    print(f"[DEBUG 표본수 검증] ✅ 검증 통과")
-        else:
-            print(f"[DEBUG 표본수 검증] 표본수 검증 건너뜀")
 
-        print("DB 저장 시작...")
         # 운영평가 결과 저장 (Header-Line 구조)
         save_operation_evaluation(rcm_id, control_code, user_info['user_id'], operation_evaluation_session, design_evaluation_session, evaluation_data)
-        print("DB 저장 완료!")
 
         # 활동 로그 기록
         log_user_activity(user_info, 'OPERATION_EVALUATION', f'운영평가 저장 - {control_code}',
                          f'/api/operation-evaluation/save',
                          request.remote_addr, request.headers.get('User-Agent'))
 
-        print("저장 성공 응답 반환")
         return jsonify({
             'success': True,
             'message': '운영평가 결과가 저장되었습니다.'
         })
         
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"운영평가 저장 오류: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'저장 중 오류가 발생했습니다: {str(e)}'
@@ -2233,8 +2173,6 @@ def upload_general_population():
     if not file.filename:
         return jsonify({'success': False, 'error': '파일을 선택해주세요.'})
 
-    print(f"[upload_general_population] 원본 파일명: {file.filename}")
-
     # 파라미터 받기
     control_code = request.form.get('control_code')
     rcm_id = request.form.get('rcm_id')
@@ -2269,23 +2207,18 @@ def upload_general_population():
         if not os.path.splitext(filename)[1]:
             filename = filename + file_ext
 
-        print(f"[upload_general_population] 원본: {original_filename}, 변환후: {filename}")
-
         # 파일 확장자 확인
         if not filename.lower().endswith(('.xlsx', '.xlsm')):
             return jsonify({'success': False, 'error': '.xlsx 또는 .xlsm 형식의 파일만 지원됩니다. (.xls 파일은 Excel에서 .xlsx로 변환 후 업로드해주세요)'})
 
         filepath = os.path.join(upload_folder, f"{user_info['user_id']}_{control_code}_{filename}")
         file.save(filepath)
-        print(f"[upload_general_population] 파일 저장 완료: {filepath}")
 
         # 엑셀 파일 읽기 (openpyxl 사용)
         try:
             wb = load_workbook(filepath, read_only=True)
             ws = wb.active
-            print(f"[upload_general_population] 엑셀 파일 로드 성공")
         except Exception as excel_error:
-            print(f"[upload_general_population] 엑셀 파일 읽기 실패: {excel_error}")
             return jsonify({'success': False, 'error': f'엑셀 파일을 읽을 수 없습니다. 파일이 손상되었거나 암호로 보호되어 있을 수 있습니다. ({str(excel_error)})'})
 
 
@@ -2370,11 +2303,8 @@ def upload_general_population():
                 # SQLite용 last_insert_rowid() 사용
                 line_id = conn.execute('SELECT last_insert_rowid() as id').fetchone()['id']
 
-            print(f"[upload_general_population] line_id: {line_id}, 샘플 수: {len(samples)}")
-
             # 샘플 데이터 저장 (attribute0에 번호, attribute1에 설명 저장)
             for idx, sample in enumerate(samples, 1):
-                print(f"[upload_general_population] 샘플 #{idx} 저장 중: {sample['number']}, {sample['description'][:30]}...")
                 conn.execute('''
                     INSERT INTO sb_evaluation_sample
                     (line_id, sample_number, evaluation_type, attribute0, attribute1)
@@ -2382,7 +2312,6 @@ def upload_general_population():
                 ''', (line_id, idx, 'operation', sample['number'], sample['description']))
 
             conn.commit()
-            print(f"[upload_general_population] DB 커밋 완료")
 
             # 저장된 샘플 데이터 조회하여 sample_lines 형식으로 반환
             sample_lines = []
@@ -2403,8 +2332,6 @@ def upload_general_population():
                     if attr_val is not None:
                         attributes[f'attribute{i}'] = attr_val
 
-                print(f"[upload_general_population] Sample #{sample['sample_number']} attributes: {attributes}")
-
                 sample_lines.append({
                     'sample_number': sample['sample_number'],
                     'evidence': sample['evidence'] or '',
@@ -2412,8 +2339,6 @@ def upload_general_population():
                     'mitigation': sample['mitigation'] or '',
                     'attributes': attributes if attributes else None
                 })
-
-            print(f"[upload_general_population] 반환할 sample_lines: {json.dumps(sample_lines, ensure_ascii=False, indent=2)}")
 
             # RCM detail에서 attribute 정의 조회
             rcm_detail = conn.execute('''
@@ -2425,8 +2350,6 @@ def upload_general_population():
             ''', (rcm_id, control_code)).fetchone()
 
             population_attr_count = rcm_detail['population_attribute_count'] if rcm_detail and rcm_detail['population_attribute_count'] else 2
-            print(f"[upload_general_population] RCM detail population_attribute_count: {population_attr_count}")
-            print(f"[upload_general_population] RCM detail attributes: attribute0={rcm_detail['attribute0'] if rcm_detail else 'N/A'}, attribute1={rcm_detail['attribute1'] if rcm_detail else 'N/A'}, attribute2={rcm_detail['attribute2'] if rcm_detail else 'N/A'}, attribute3={rcm_detail['attribute3'] if rcm_detail else 'N/A'}")
 
             # 샘플 데이터를 확인하여 실제 사용된 attribute 찾기
             used_attributes = set()
@@ -2434,8 +2357,6 @@ def upload_general_population():
                 for i in range(10):
                     if sample[f'attribute{i}'] is not None:
                         used_attributes.add(i)
-
-            print(f"[upload_general_population] 사용된 attributes: {sorted(used_attributes)}")
 
             # attribute 정의 생성 (RCM detail에 정의된 모든 attributes 반환)
             attributes = []
@@ -2458,8 +2379,6 @@ def upload_general_population():
                     'name': attr_name,
                     'type': attr_type
                 })
-
-            print(f"[upload_general_population] attributes 생성 (population_count={population_attr_count}): {attributes}")
 
         return jsonify({
             'success': True,
@@ -2491,10 +2410,6 @@ def save_attributes():
         return jsonify({'success': False, 'error': '필수 데이터가 누락되었습니다.'})
 
     try:
-        # Attribute 설정을 로그로 출력 (실제 구현은 DB 스키마에 따라 조정 필요)
-        attribute_info = json.dumps(attributes, ensure_ascii=False)
-        print(f"[save_attributes] line_id: {line_id}, attributes: {attribute_info}")
-
         # 성공 응답
         return jsonify({
             'success': True,
@@ -2532,9 +2447,8 @@ def reset_population_upload():
                     filepath = os.path.join(upload_folder, filename)
                     try:
                         os.remove(filepath)
-                        print(f"[reset_population_upload] 파일 삭제: {filepath}")
-                    except Exception as file_error:
-                        print(f"[reset_population_upload] 파일 삭제 실패: {filepath}, {file_error}")
+                    except Exception:
+                        pass
 
         # 2. DB에서 표본 데이터 삭제
         if line_id:
@@ -2546,7 +2460,6 @@ def reset_population_upload():
                 conn.execute('DELETE FROM sb_evaluation_line WHERE line_id = %s', (line_id,))
 
                 conn.commit()
-                print(f"[reset_population_upload] DB 데이터 삭제 완료: line_id={line_id}")
 
         log_user_activity(user_info, 'DATA_DELETE', '모집단 업로드 초기화',
                          f'/api/operation-evaluation/reset-population (control: {control_code})',
@@ -2590,9 +2503,6 @@ def download_operation_evaluation():
     # 자동통제 여부 확인
     is_auto_control = (evaluation_session == 'AUTO')
 
-    print(f"[DEBUG download_operation_evaluation] rcm_id={rcm_id}, evaluation_session={evaluation_session}, design_evaluation_session={design_evaluation_session}, control_code={control_code}")
-    print(f"[DEBUG download_operation_evaluation] is_auto_control={is_auto_control}")
-
     try:
         # 템플릿 파일 경로
         template_path = os.path.join(os.path.dirname(__file__), 'paper_templates', 'Template_Manual.xlsx')
@@ -2620,7 +2530,6 @@ def download_operation_evaluation():
             # 자동통제인 경우에도 저장된 운영평가 데이터가 있으면 사용
             if is_auto_control:
                 # 먼저 저장된 운영평가 데이터 찾기 (design_evaluation_session으로 연결)
-                print(f"[DEBUG] 자동통제 조회 - rcm_id={rcm_id}, evaluation_name={design_evaluation_session}, control_code={control_code}")
                 evaluation = conn.execute("""
                     SELECT
                         l.line_id,
@@ -2651,7 +2560,6 @@ def download_operation_evaluation():
                       AND l.control_code = %s
                       AND l.conclusion IS NOT NULL
                 """, (rcm_id, design_evaluation_session, control_code)).fetchone()
-                print(f"[DEBUG] 자동통제 조회 결과: {evaluation is not None}")
 
                 # 저장된 데이터가 없으면 RCM 정보만 가져오기
                 if not evaluation:
@@ -2680,7 +2588,6 @@ def download_operation_evaluation():
                         WHERE d.rcm_id = %s AND d.control_code = %s
                     """, (rcm_id, control_code)).fetchone()
             else:
-                print(f"[DEBUG] 수동통제 조회 - rcm_id={rcm_id}, evaluation_name={design_evaluation_session}, control_code={control_code}")
                 evaluation = conn.execute("""
                     SELECT
                         l.line_id,
@@ -2711,7 +2618,6 @@ def download_operation_evaluation():
                       AND l.control_code = %s
                       AND l.conclusion IS NOT NULL
                 """, (rcm_id, design_evaluation_session, control_code)).fetchone()
-                print(f"[DEBUG] 조회 결과: {evaluation is not None}")
 
             # 설계평가 결과 조회 (design_comment, evaluation_evidence 및 line_id 가져오기)
             design_evaluation = conn.execute("""
@@ -2770,11 +2676,6 @@ def download_operation_evaluation():
                     """, ('operation', op_line_result['line_id'])).fetchall()
 
                     operation_image_files = [img['file_path'] for img in op_images]
-                    print(f"[DEBUG] 운영평가 이미지 파일 수: {len(operation_image_files)}")
-                    for img_file in operation_image_files:
-                        print(f"[DEBUG]   - {img_file}")
-                else:
-                    print(f"[DEBUG] 운영평가 line을 찾을 수 없음 (rcm_id={rcm_id}, evaluation_name={design_evaluation_session}, control_code={control_code})")
 
         if not evaluation:
             flash('다운로드할 운영평가 결과가 없습니다.', 'warning')
@@ -2862,7 +2763,6 @@ def download_operation_evaluation():
         # 자동통제는 표본수가 0이지만 설계평가 데이터 1건을 표시해야 함
         if is_auto_control and sample_size == 0:
             sample_size = 1
-            print(f"[DEBUG] 자동통제 - sample_size를 0에서 1로 변경")
 
         # 모집단 attribute 개수와 증빙 attribute 개수 계산
         evidence_attributes = []
@@ -2873,16 +2773,6 @@ def download_operation_evaluation():
                 evidence_attributes.append((i, attr_name))
 
         evidence_count = len(evidence_attributes)
-
-        # 디버그: attribute 정보 출력
-        print(f"[DEBUG] Control: {control_code}")
-        print(f"[DEBUG] population_count: {population_count}")
-        print(f"[DEBUG] Population attributes:")
-        for i in range(population_count):
-            print(f"  attribute{i}: {eval_dict.get(f'attribute{i}')}")
-        print(f"[DEBUG] Evidence attributes:")
-        for i, name in evidence_attributes:
-            print(f"  attribute{i}: {name}")
 
         # 템플릿 구조:
         # - C~L(3~12): Attribute0~9 (10개)
@@ -2915,10 +2805,8 @@ def download_operation_evaluation():
 
         # 사용하지 않는 attribute 컬럼 삭제 (current_col부터 12번까지)
         # 13번(M)은 결론, 14번(N)은 천고사항/비고 - 템플릿 그대로 유지
-        print(f"[DEBUG] Attributes end at column: {current_col - 1}")
         if current_col <= 12:
             cols_to_delete = 12 - current_col + 1
-            print(f"[DEBUG] Deleting unused attribute columns from {current_col} to 12 (count: {cols_to_delete})")
             testing_table.delete_cols(current_col, cols_to_delete)
 
             # 컬럼 삭제 후 3번 행의 "Detailed Testing Table" 병합 복원
@@ -2927,31 +2815,25 @@ def download_operation_evaluation():
             from openpyxl.utils import get_column_letter
             merge_range = f'B3:{get_column_letter(last_col)}3'
             testing_table.merge_cells(merge_range)
-            print(f"[DEBUG] Re-merged row 3: {merge_range}")
 
             # 삭제 후 결론 컬럼 위치는 current_col이 됨 (M열이 앞으로 당겨짐)
             conclusion_col = current_col
         else:
             # attribute가 10개 모두 사용되는 경우
             conclusion_col = 13  # M열
-            print(f"[DEBUG] All attribute columns used, conclusion at column 13")
 
         # 자동통제인 경우 처리
-        print(f"[DEBUG] is_auto_control={is_auto_control}, population_count={population_count}, evidence_attributes_count={len(evidence_attributes)}")
         if is_auto_control:
             # attribute가 하나도 없으면 Testing Table 전체 삭제
             if population_count == 0 and len(evidence_attributes) == 0:
-                print(f"[DEBUG] 자동통제 - attribute 없음, Testing Table 전체 삭제")
                 # Testing Table 시트 전체를 삭제하는 대신, 필요한 행만 남기고 나머지 삭제
                 # 1~2행(설명), 3행(제목) 유지, 4행 이후 삭제
                 testing_table.delete_rows(3, 100)  # 3번 행부터 100개 행 삭제
             else:
-                print(f"[DEBUG] 자동통제 - 설계평가 샘플 데이터에서 증빙 값 조회")
                 # 설계평가 샘플 데이터 조회 (sb_evaluation_sample에서)
                 evidence_data = {}
                 if design_eval_dict.get('line_id'):
                     design_line_id = design_eval_dict['line_id']
-                    print(f"[DEBUG] 설계평가 line_id: {design_line_id}")
 
                     with get_db() as conn:
                         design_sample = conn.execute("""
@@ -2964,9 +2846,6 @@ def download_operation_evaluation():
 
                         if design_sample:
                             evidence_data = dict(design_sample)
-                            print(f"[DEBUG] 조회된 설계평가 샘플 데이터: {evidence_data}")
-                        else:
-                            print(f"[DEBUG] 설계평가 샘플 데이터 없음")
 
                 # 5번 행에 설계평가 증빙 값 표시
                 testing_table.cell(row=5, column=2, value=1)  # No.
@@ -2979,7 +2858,6 @@ def download_operation_evaluation():
                     attr_key = f'attribute{i}'
                     # 자동통제의 경우 모집단은 빈 값 또는 설계평가 데이터에서 가져오기
                     attr_value = evidence_data.get(attr_key, '')
-                    print(f"[DEBUG] 자동통제 모집단 {attr_key} ({eval_dict.get(attr_key)}) = '{attr_value}' -> 컬럼 {col}")
                     testing_table.cell(row=5, column=col, value=attr_value)
                     col += 1
 
@@ -2987,13 +2865,11 @@ def download_operation_evaluation():
                 for i, attr_name in evidence_attributes:
                     attr_key = f'attribute{i}'
                     attr_value = evidence_data.get(attr_key, '')
-                    print(f"[DEBUG] 자동통제 증빙 {attr_key} ({attr_name}) = '{attr_value}' -> 컬럼 {col}")
                     testing_table.cell(row=5, column=col, value=attr_value)
                     col += 1
 
                 # 결론 컬럼
                 conclusion_value = 'Effective' if eval_dict.get('conclusion') == 'effective' else 'See Comments'
-                print(f"[DEBUG] 결론 '{conclusion_value}' -> 컬럼 {conclusion_col}")
                 testing_table.cell(row=5, column=conclusion_col, value=conclusion_value)
 
         # B열에 순번 작성 (1, 2, 3, ...)
@@ -3004,18 +2880,15 @@ def download_operation_evaluation():
         # 샘플 데이터 입력 (5행부터) - 자동통제는 건너뜀
         if line_id and not is_auto_control:
             samples = get_operation_evaluation_samples(line_id)
-            print(f"[DEBUG] Retrieved {len(samples) if samples else 0} samples for line_id={line_id}")
             if samples:
                 for row_idx, sample in enumerate(samples, start=5):
                     sample_attributes = sample.get('attributes', {})
-                    print(f"[DEBUG] Sample #{row_idx-4} attributes: {sample_attributes}")
 
                     # 모집단 데이터 (C열부터)
                     col = 3
                     for i in range(population_count):
                         attr_key = f'attribute{i}'
                         attr_value = sample_attributes.get(attr_key, '')
-                        print(f"[DEBUG] Writing population attr{i}={attr_value} to row={row_idx}, col={col}")
                         testing_table.cell(row=row_idx, column=col, value=attr_value)
                         col += 1
 
@@ -3023,7 +2896,6 @@ def download_operation_evaluation():
                     for i, attr_name in evidence_attributes:
                         attr_key = f'attribute{i}'
                         attr_value = sample_attributes.get(attr_key, '')
-                        print(f"[DEBUG] Writing evidence attr{i}={attr_value} to row={row_idx}, col={col}")
                         testing_table.cell(row=row_idx, column=col, value=attr_value)
                         col += 1
 
@@ -3150,7 +3022,6 @@ def download_operation_evaluation():
             if population_files:
                 # 가장 최근 파일 사용
                 population_file = max(population_files, key=os.path.getmtime)
-                print(f"[DEBUG] 모집단 파일 발견: {population_file}")
 
                 try:
                     # 모집단 파일 읽기
@@ -3171,11 +3042,8 @@ def download_operation_evaluation():
                             row_idx += 1
 
                     pop_wb.close()
-                    print(f"[DEBUG] 모집단 데이터 복사 완료: {row_idx - 2}개 행")
-                except Exception as e:
-                    print(f"[ERROR] 모집단 파일 읽기 실패: {e}")
-            else:
-                print(f"[DEBUG] 모집단 파일을 찾을 수 없음: {population_file_pattern}")
+                except Exception:
+                    pass
         elif recommended_sample_size != 0 and 'Population' in wb.sheetnames:
             # 표본수가 0이 아닌 경우: Population 시트 삭제
             wb.remove(wb['Population'])

@@ -34,9 +34,6 @@ def user_design_evaluation_rcm():
         evaluation_type = request.form.get('evaluation_type', 'ITGC')  # 기본값 ITGC
         evaluation_session = request.form.get('session')  # 평가 세션
 
-        # 디버깅: POST 파라미터 확인
-        print(f"[DEBUG POST] rcm_id={rcm_id}, evaluation_type={evaluation_type}, session={evaluation_session}")
-
         if not rcm_id:
             flash('RCM 정보가 없습니다.', 'error')
             return redirect(url_for('link6.user_design_evaluation'))
@@ -50,9 +47,6 @@ def user_design_evaluation_rcm():
 
             if rcm_category and rcm_category['control_category']:
                 evaluation_type = rcm_category['control_category']
-                print(f"[DEBUG POST] RCM의 실제 control_category: {evaluation_type}")
-            else:
-                print(f"[DEBUG POST] RCM에 control_category가 없음, 기본값 사용: {evaluation_type}")
 
         # 세션에 저장
         session['current_design_rcm_id'] = int(rcm_id)
@@ -130,15 +124,8 @@ def user_design_evaluation_rcm():
     # ITGC, ELC, TLC는 해당 카테고리만 보여줌
     control_category = evaluation_type if evaluation_type in ['ITGC', 'ELC', 'TLC'] else None
 
-    # 디버깅: 파라미터 확인
-    print(f"[DEBUG] request.method={request.method}, evaluation_type={evaluation_type}")
-    print(f"[DEBUG] rcm_id={rcm_id}, evaluation_session={evaluation_session}, control_category={control_category}")
-
     # RCM 세부 데이터 조회 (evaluation_session이 있으면 해당 세션의 데이터만 조회)
     rcm_details = get_rcm_details(rcm_id, control_category=control_category, evaluation_session=evaluation_session)
-
-    # 디버깅: 조회 결과 확인
-    print(f"[DEBUG] rcm_details 개수: {len(rcm_details)}")
 
     # 매핑 정보 조회
     rcm_mappings = get_rcm_detail_mappings(rcm_id)
@@ -701,7 +688,6 @@ def load_evaluation_data_api(rcm_id):
                                 })
                                 images_found = True
                 except Exception as e:
-                    print(f"[DEBUG] DB 이미지 조회 실패 - control_code: {control_code}, header_id: {current_header_id}, error: {e}")
                     import traceback
                     traceback.print_exc()
 
@@ -746,7 +732,6 @@ def load_evaluation_data_api(rcm_id):
         if evaluations and evaluation_session and not header_id:
             actual_header_id = evaluations[0].get('header_id')
             response_data['header_id'] = actual_header_id
-            print(f"[DEBUG] API Response - header_id: {actual_header_id}")
 
         # header의 status 정보도 포함
         try:
@@ -773,18 +758,8 @@ def load_evaluation_data_api(rcm_id):
                 else:
                     response_data['header_status'] = 0
                     response_data['header_completed_date'] = None
-                    print(f"[DEBUG] API Response - header_completed_date: None (no result found)")
         except Exception as e:
             response_data['header_completed_date'] = None
-            print(f"[DEBUG] API Response - Error getting completed_date: {e}")
-
-        # 평가 데이터 개수 로그
-        print(f"[DEBUG] API Response - Total evaluations: {len(evaluation_dict)}")
-        print(f"[DEBUG] API Response - Control codes: {list(evaluation_dict.keys())}")
-
-        # 첫 3개 평가 데이터 샘플 로그
-        for i, (code, data) in enumerate(list(evaluation_dict.items())[:3]):
-            print(f"[DEBUG] Sample {i+1} - {code}: evaluation_date={data.get('evaluation_date')}, adequacy={data.get('description_adequacy')}, effectiveness={data.get('overall_effectiveness')}")
 
         return jsonify(response_data)
         
@@ -1058,10 +1033,7 @@ def cancel_design_evaluation_api():
                 WHERE rcm_id = %s AND evaluation_name = %s
             ''', (rcm_id, evaluation_session)).fetchone()
 
-            print(f"[DEBUG] Cancel API 호출됨 - rcm_id: {rcm_id}, evaluation_session: {evaluation_session}")
-
             if not header:
-                print(f"[DEBUG] 평가 세션을 찾을 수 없음")
                 return jsonify({
                     'success': False,
                     'message': '해당 평가 세션을 찾을 수 없습니다.'
@@ -1069,7 +1041,6 @@ def cancel_design_evaluation_api():
 
             header_dict = dict(header)
             current_status = header_dict.get('status', 0)
-            print(f"[DEBUG] 현재 status: {current_status}, header_id: {header_dict['header_id']}")
 
             from datetime import datetime
             current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -1082,13 +1053,10 @@ def cancel_design_evaluation_api():
                 else:
                     message = '설계평가 완료가 취소되었습니다. 설계평가 진행중 상태로 되돌렸습니다.'
             else:
-                print(f"[DEBUG] 취소할 수 없는 상태 - current_status: {current_status}")
                 return jsonify({
                     'success': False,
                     'message': '취소할 수 있는 상태가 아닙니다.'
                 })
-
-            print(f"[DEBUG] status 업데이트 시도 - {current_status} -> {new_status}")
 
             conn.execute('''
                 UPDATE sb_evaluation_header
@@ -1097,7 +1065,6 @@ def cancel_design_evaluation_api():
             ''', (new_status, current_time, header_dict['header_id']))
 
             conn.commit()
-            print(f"[DEBUG] status 업데이트 완료 및 커밋됨")
 
         # 활동 로그 기록
         log_activity_message = f'설계평가 완료 취소 - {evaluation_session}' if new_status == 0 else f'운영평가 시작 취소 - {evaluation_session}'
@@ -1301,9 +1268,8 @@ def download_evaluation_excel(rcm_id):
         if original_file_path:
             try:
                 workbook = load_workbook(original_file_path)
-                print(f"[DEBUG] Loaded original RCM: {original_file_path}")
             except Exception as e:
-                print(f"[DEBUG] Error loading original RCM: {e}")
+                pass
 
         # Fallback: 원본 파일이 없거나 로드 실패 시 시스템 템플릿 사용
         if not workbook:
@@ -1311,7 +1277,6 @@ def download_evaluation_excel(rcm_id):
             if os.path.exists(fallback_template):
                 try:
                     workbook = load_workbook(fallback_template)
-                    print(f"[DEBUG] Original RCM missing/failed. Using fallback: {fallback_template}")
                 except Exception as e:
                     return jsonify({'success': False, 'message': f'템플릿 로드 실패: {str(e)}'}), 500
             else:
@@ -1788,7 +1753,6 @@ def elc_design_evaluation():
                 # 설계평가 완료 정보 추가 (템플릿에서 "설계평가 기반" 칼럼에 표시)
                 op_dict['design_completed_count'] = status_info['design_completed_count']
                 op_dict['design_total_count'] = status_info['design_total_count']
-                print(f"[DEBUG] 운영평가 세션 추가: {session_dict['evaluation_name']}, 설계평가 완료: {status_info['design_completed_count']}/{status_info['design_total_count']}")
                 operation_list.append(op_dict)
 
         rcm['design_sessions'] = design_list
@@ -2644,7 +2608,6 @@ def delete_design_evaluation_image(image_id):
 
     try:
         user_info = get_user_info()
-        print(f"[DELETE IMAGE] User info: user_id={user_info.get('user_id')}, admin_flag={user_info.get('admin_flag')}")
 
         with get_db() as conn:
             # 이미지 정보 조회 (권한 확인용)
@@ -2657,36 +2620,26 @@ def delete_design_evaluation_image(image_id):
             ''', (image_id,)).fetchone()
 
             if not image_info:
-                print(f"[DELETE IMAGE] Image not found: image_id={image_id}")
                 return jsonify({'success': False, 'message': '이미지를 찾을 수 없습니다.'})
-
-            print(f"[DELETE IMAGE] Image found: rcm_id={image_info['rcm_id']}, file_path={image_info['file_path']}")
 
             # 권한 확인 (관리자이거나 해당 RCM에 접근 권한이 있는지)
             if user_info.get('admin_flag') != 'Y':
-                print(f"[DELETE IMAGE] Not admin, checking RCM access...")
                 access_check = conn.execute('''
                     SELECT permission_type FROM sb_user_rcm
                     WHERE user_id = %s AND rcm_id = %s AND is_active = 'Y'
                 ''', (user_info['user_id'], image_info['rcm_id'])).fetchone()
 
                 if not access_check:
-                    print(f"[DELETE IMAGE] No access: user_id={user_info['user_id']}, rcm_id={image_info['rcm_id']}")
                     return jsonify({'success': False, 'message': '삭제 권한이 없습니다.'})
-                else:
-                    print(f"[DELETE IMAGE] Access granted via sb_user_rcm")
-            else:
-                print(f"[DELETE IMAGE] Admin access granted")
 
             # 파일 삭제
             file_path = image_info['file_path']
             if os.path.exists(file_path):
                 try:
                     os.remove(file_path)
-                    print(f"[DELETE IMAGE] File deleted: {file_path}")
-                except Exception as e:
-                    print(f"[DELETE IMAGE] File deletion failed: {e}")
+                except Exception:
                     # 파일 삭제 실패해도 DB 레코드는 삭제 진행
+                    pass
 
             # DB 레코드 삭제
             conn.execute('''
@@ -2694,8 +2647,6 @@ def delete_design_evaluation_image(image_id):
                 WHERE image_id = %s
             ''', (image_id,))
             conn.commit()
-
-            print(f"[DELETE IMAGE] Image deleted - image_id: {image_id}, user: {user_info['user_name']}")
 
             return jsonify({'success': True, 'message': '이미지가 삭제되었습니다.'})
 

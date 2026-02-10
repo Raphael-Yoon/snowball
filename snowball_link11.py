@@ -1393,8 +1393,6 @@ def _update_session_progress(conn, company_id, year, user_id=None):
         # 진행률 계산
         completion_rate = round((answered / total) * 100) if total > 0 else 0
 
-        print(f"[DEBUG] 진행률 계산: answered={answered}, total={total}, rate={completion_rate}%")
-
         # 세션 존재 여부 확인
         cursor = conn.execute('''
             SELECT id FROM sb_disclosure_sessions

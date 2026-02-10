@@ -252,7 +252,7 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
         page = self.page
         config = self._get_config()
 
-        page.goto(f"{self.base_url}/user/rcm")
+        page.goto(f"{self.base_url}/rcm")
         page.wait_for_load_state("networkidle")
 
         upload_btn = page.locator("a:has-text('RCM 업로드')")
@@ -272,7 +272,7 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
         page.click("button[type='submit']")
         page.wait_for_timeout(5000)
 
-        page.goto(f"{self.base_url}/user/rcm")
+        page.goto(f"{self.base_url}/rcm")
         page.wait_for_load_state("networkidle")
 
         if page.locator(f"text={self.rcm_name}").count() > 0:
@@ -284,7 +284,7 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
         """[RCM] 목록 표시 확인"""
         page = self.page
 
-        page.goto(f"{self.base_url}/user/rcm")
+        page.goto(f"{self.base_url}/rcm")
         page.wait_for_load_state("networkidle")
 
         if page.locator(f"text={self.rcm_name}").count() > 0:
@@ -549,7 +549,7 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
         try:
             page = self.page
 
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state("networkidle")
 
             rcm_row = page.locator(f"tr:has-text('{self.rcm_name}')")
@@ -616,7 +616,7 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
         print("    → RCM 삭제 중...")
         try:
             page = self.page
-            page.goto(f"{self.base_url}/user/rcm")
+            page.goto(f"{self.base_url}/rcm")
             page.wait_for_load_state("networkidle")
 
             delete_btn = page.locator(f"tr:has-text('{self.rcm_name}') button.btn-outline-danger")
