@@ -85,6 +85,32 @@
 				margin-bottom: 1rem;
 			}
 			@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+			
+			/* 클라우드 환경에 따른 제외 통제 스타일 */
+			.excluded-control {
+				background-color: #f8f9fa !important;
+				color: #adb5bd !important;
+			}
+			.excluded-control .fw-bold { color: #adb5bd !important; }
+			.excluded-control select { 
+				background-color: #e9ecef !important; 
+				color: #adb5bd !important;
+				border-color: #dee2e6 !important;
+			}
+			.cloud-badge {
+				font-size: 0.65rem;
+				padding: 0.15rem 0.5rem;
+				background: #f0f4ff;
+				color: #3f51b5;
+				border: 1px solid #d1d9ff;
+				border-radius: 12px;
+				margin-left: 8px;
+				display: inline-flex;
+				align-items: center;
+				white-space: nowrap;
+				font-weight: 600;
+				letter-spacing: -0.02em;
+			}
 		</style>
 	</head>
 	<body class="bg-light" style="padding-bottom: 80px;">
@@ -109,7 +135,7 @@
 									</div>
 									<div class="col-md-6 mb-3">
 										<label class="form-label fw-bold">시스템 유형</label>
-										<select class="form-select" id="system_type" name="system_type" required>
+										<select class="form-select" id="system_type" name="system_type" required onchange="handleSystemTypeChange()">
 											<option value="In-house">In-house (자체개발)</option>
 											<option value="Package-Modifiable">Package - Modifiable (SAP, Oracle ERP 등)</option>
 											<option value="Package-Non-modifiable">Package - Non-modifiable (더존, 영림원 등)</option>
@@ -118,32 +144,45 @@
 								</div>
 								
 								<div class="row">
-									<div class="col-md-4 mb-3">
-										<label class="form-label fw-bold">주요 SW</label>
-										<select class="form-select" id="software" name="software">
-											<option value="SAP">SAP</option>
-											<option value="ORACLE">Oracle ERP</option>
-											<option value="DOUZONE">더존</option>
-											<option value="YOUNG">영림원</option>
-											<option value="CUSTOM">Custom/Java/Next.js</option>
-											<option value="ETC">기타</option>
+									<div class="col-md-3 mb-3">
+										<label class="form-label fw-bold">Cloud 환경</label>
+										<select class="form-select" id="cloud_env" name="cloud_env" onchange="handleCloudEnvChange()">
+											<option value="None">미사용 (On-Premise)</option>
+											<option value="IaaS">IaaS (EC2, GCE 등)</option>
+											<option value="PaaS">PaaS (RDS, Managed DB 등)</option>
+											<option value="SaaS">SaaS (Salesforce, ERP 등)</option>
 										</select>
 									</div>
-									<div class="col-md-4 mb-3">
+									<div class="col-md-3 mb-3">
 										<label class="form-label fw-bold">OS</label>
 										<select class="form-select" id="os" name="os">
-											<option value="LINUX">Linux (RHEL/Ubuntu)</option>
+											<option value="RHEL">Linux (RHEL/CentOS)</option>
+											<option value="UBUNTU">Linux (Ubuntu/Debian)</option>
 											<option value="WINDOWS">Windows Server</option>
 											<option value="UNIX">Unix (AIX/HP-UX)</option>
+											<option value="N/A">N/A (SaaS/PaaS)</option>
 										</select>
 									</div>
-									<div class="col-md-4 mb-3">
+									<div class="col-md-3 mb-3">
 										<label class="form-label fw-bold">DB</label>
 										<select class="form-select" id="db" name="db">
 											<option value="ORACLE">Oracle DB</option>
+											<option value="TIBERO">Tibero (Tmax)</option>
 											<option value="MSSQL">MS-SQL</option>
 											<option value="MYSQL">MySQL/MariaDB</option>
 											<option value="POSTGRES">PostgreSQL</option>
+											<option value="NOSQL">NoSQL (MongoDB 등)</option>
+											<option value="N/A">N/A (SaaS)</option>
+										</select>
+									</div>
+									<div class="col-md-3 mb-3">
+										<label class="form-label fw-bold">주요 SW</label>
+										<select class="form-select" id="software" name="software">
+											<option value="SAP">SAP ERP</option>
+											<option value="ORACLE">Oracle ERP</option>
+											<option value="DOUZONE">더존 (iU/iCUBE)</option>
+											<option value="YOUNG">영림원 (K-System)</option>
+											<option value="ETC">기타 / 자체개발</option>
 										</select>
 									</div>
 								</div>
@@ -160,47 +199,94 @@
 					<!-- 2. RCM Table Section -->
 					<div class="rcm-table-container">
 						<div class="d-flex justify-content-between align-items-center mb-3">
-							<h5 class="mb-0 fw-bold">ITGC Risk Control Matrix (목록)</h5>
+							<h5 class="mb-0 fw-bold">ITGC Risk Control Matrix ({{ master_controls|length }}개 통제항목)</h5>
 							<div>
-								<span class="badge mode-auto me-2">AI 자동 생성됨</span>
-								<span class="badge mode-manual">수동 수정 가능</span>
+								<span class="badge bg-info me-2">총 {{ master_controls|length }}개</span>
+								<button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target=".detail-row">
+									<i class="fas fa-eye me-1"></i>상세 펼치기/접기
+								</button>
 							</div>
 						</div>
-						
+
 						<div class="table-responsive">
-							<table class="table align-middle">
-								<thead class="table-light">
+							<table class="table table-hover align-middle" id="rcm-table">
+								<thead class="table-primary text-center">
 									<tr>
-										<th style="width: 100px;">ID</th>
-										<th style="width: 200px;">통제 항목</th>
-										<th>통제 활동 & 테스트 절차 (AI Mapping)</th>
-										<th style="width: 120px;">설계 방식</th>
+										<th style="width: 70px;">ID</th>
+										<th style="width: auto;" class="text-start ps-4">통제 항목</th>
+										<th style="width: 110px;">구분</th>
+										<th style="width: 110px;">주기</th>
+										<th style="width: 110px;">성격</th>
 									</tr>
 								</thead>
 								<tbody id="rcm-tbody">
 									{% for control in master_controls %}
-									<tr class="control-row" data-id="{{ control.id }}" data-name="{{ control.name }}" data-objective="{{ control.objective }}">
-										<td class="fw-bold">{{ control.id }}</td>
-										<td>
-											<div class="fw-bold">{{ control.name }}</div>
-											<small class="text-muted">{{ control.category }}</small>
+									<tr class="control-row" data-id="{{ control.id }}">
+										<td class="fw-bold text-center text-primary" style="font-size: 0.9rem;">{{ control.id }}</td>
+										<td class="ps-4">
+											<div class="d-flex align-items-center mb-1">
+												<span class="fw-bold me-2">{{ control.name }}</span>
+												<span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.7rem; font-weight: 500;">{{ control.category }}</span>
+											</div>
+											<div class="text-muted" style="font-size: 0.8rem; line-height: 1.2;">{{ control.objective }}</div>
 										</td>
-										<td>
-											<div class="content-wrapper" id="content-{{ control.id }}">
-												<div class="readonly-content mb-2" id="readonly-activity-{{ control.id }}">분석 전입니다. 상단에서 AI 분석을 시작하세요.</div>
-												<div class="readonly-content text-muted small" id="readonly-procedure-{{ control.id }}"></div>
-												
-												<!-- Manual Edit Fields (Hidden by default) -->
-												<div class="manual-edit d-none" id="manual-{{ control.id }}">
-													<label class="small fw-bold">통제 활동</label>
-													<textarea class="editable-content mb-2" id="edit-activity-{{ control.id }}"></textarea>
-													<label class="small fw-bold">테스트 절차</label>
-													<textarea class="editable-content" id="edit-procedure-{{ control.id }}"></textarea>
-												</div>
+										<td class="px-2">
+											<select class="form-select form-select-sm border-light-subtle" id="type-{{ control.id }}" onchange="handleTypeChange('{{ control.id }}')">
+												<option value="Auto" {{ 'selected' if control.type == 'Auto' else '' }}>자동</option>
+												<option value="Manual" {{ 'selected' if control.type == 'Manual' else '' }}>수동</option>
+											</select>
+										</td>
+										<td class="px-2">
+											<select class="form-select form-select-sm border-light-subtle" id="freq-{{ control.id }}"
+												onchange="updatePopulationByFrequency('{{ control.id }}')"
+												{{ 'disabled' if control.type == 'Auto' else '' }}>
+												<option value="연" {{ 'selected' if control.frequency == '연' else '' }}>연</option>
+												<option value="분기" {{ 'selected' if control.frequency == '분기' else '' }}>분기</option>
+												<option value="월" {{ 'selected' if control.frequency == '월' else '' }}>월</option>
+												<option value="주" {{ 'selected' if control.frequency == '주' else '' }}>주</option>
+												<option value="일" {{ 'selected' if control.frequency == '일' else '' }}>일</option>
+												<option value="수시" {{ 'selected' if control.frequency == '수시' else '' }}>수시</option>
+												<option value="기타" {{ 'selected' if control.frequency == '기타' else '' }}>기타</option>
+											</select>
+										</td>
+										<td class="px-2">
+											<div class="d-flex align-items-center">
+												<select class="form-select form-select-sm border-light-subtle" id="method-{{ control.id }}" {{ 'disabled' if control.type == 'Auto' else '' }}>
+													<option value="예방" {{ 'selected' if control.method == '예방' else '' }}>예방</option>
+													<option value="적발" {{ 'selected' if control.method == '적발' else '' }}>적발</option>
+												</select>
+												<!-- Hidden fields for logic -->
+												<input type="hidden" id="population-{{ control.id }}">
+												<input type="hidden" id="sample-{{ control.id }}">
 											</div>
 										</td>
-										<td class="text-center">
-											<span class="mode-badge mode-auto" id="badge-{{ control.id }}" onclick="toggleMode('{{ control.id }}')">Auto</span>
+									</tr>
+									<!-- 상세 정보 행 (접기/펼치기) -->
+									<tr class="detail-row collapse" id="detail-{{ control.id }}">
+										<td colspan="5" class="bg-light p-3">
+											<div class="row">
+												<div class="col-md-5">
+													<div class="mb-2">
+														<span class="badge bg-danger me-1">{{ control.risk_code }}</span>
+														<strong>Risk 설명</strong>
+													</div>
+													<p class="small text-muted mb-0">{{ control.risk_description }}</p>
+												</div>
+												<div class="col-md-7 border-start">
+													<div class="mb-3">
+														<div class="mb-2"><strong><i class="fas fa-shield-alt me-1"></i>통제 활동</strong></div>
+														<p class="small mb-0 text-dark" id="activity-detail-{{ control.id }}" style="white-space: pre-wrap;">{{ control.control_description }}</p>
+													</div>
+													
+													<div class="pt-3 border-top">
+														<div class="mb-2"><strong><i class="fas fa-clipboard-check me-1"></i>테스트 절차</strong></div>
+														<div class="small text-muted bg-white p-2 border rounded" id="test-proc-detail-{{ control.id }}"
+															style="white-space: pre-wrap;"
+															data-auto="{{ control.test_procedure_auto }}"
+															data-manual="{{ control.test_procedure_manual }}">{{ control.test_procedure_auto if control.type == 'Auto' else control.test_procedure_manual }}</div>
+													</div>
+												</div>
+											</div>
 										</td>
 									</tr>
 									{% endfor %}
@@ -234,39 +320,210 @@
 			// CSRF 토큰 설정
 			const csrfToken = "{{ csrf_token() }}";
 			
-			// 모드 전환 함수 (Auto <-> Manual)
-			function toggleMode(id) {
-				const badge = document.getElementById(`badge-${id}`);
-				const isAuto = badge.classList.contains('mode-auto');
-				const manualDiv = document.getElementById(`manual-${id}`);
-				const roActivity = id.startsWith('readonly-activity-') ? document.getElementById(id) : document.getElementById(`readonly-activity-${id}`);
-				const roProcedure = document.getElementById(`readonly-procedure-${id}`);
+			// 시스템 유형 변경 시 핸들러
+			function handleSystemTypeChange() {
+				const systemType = document.getElementById('system_type').value;
+				const softwareSelect = document.getElementById('software');
 				
-				if (isAuto) {
-					// Switch to Manual
-					badge.classList.remove('mode-auto');
-					badge.classList.add('mode-manual');
-					badge.innerText = 'Manual';
-					manualDiv.classList.remove('d-none');
-					roActivity.classList.add('d-none');
-					roProcedure.classList.add('d-none');
-					
-					// Sync manual textareas with last known AI content if empty
-					const editAct = document.getElementById(`edit-activity-${id}`);
-					const editProc = document.getElementById(`edit-procedure-${id}`);
-					if (!editAct.value) editAct.value = roActivity.innerText;
-					if (!editProc.value) editProc.value = roProcedure.innerText;
+				if (systemType === 'In-house') {
+					softwareSelect.value = 'ETC';
+					softwareSelect.disabled = true;
 				} else {
-					// Switch to Auto
-					badge.classList.remove('mode-manual');
-					badge.classList.add('mode-auto');
-					badge.innerText = 'Auto';
-					manualDiv.classList.add('d-none');
-					roActivity.classList.remove('d-none');
-					roProcedure.classList.remove('d-none');
+					softwareSelect.disabled = false;
 				}
 			}
 
+			// Cloud 환경 변경 시 핸들러
+			function handleCloudEnvChange() {
+				const cloudEnv = document.getElementById('cloud_env').value;
+				const osSelect = document.getElementById('os');
+				const dbSelect = document.getElementById('db');
+
+				if (cloudEnv === 'SaaS') {
+					osSelect.value = 'N/A';
+					dbSelect.value = 'N/A';
+					osSelect.disabled = true;
+					dbSelect.disabled = true;
+				} else if (cloudEnv === 'PaaS') {
+					osSelect.value = 'N/A';
+					osSelect.disabled = true;
+					dbSelect.disabled = false;
+					if (dbSelect.value === 'N/A') dbSelect.value = 'ORACLE';
+				} else {
+					osSelect.disabled = false;
+					dbSelect.disabled = false;
+					if (osSelect.value === 'N/A') osSelect.value = 'RHEL';
+					if (dbSelect.value === 'N/A') dbSelect.value = 'ORACLE';
+				}
+
+				// 통제 항목 행 비활성화 시각화
+				const allRows = document.querySelectorAll('.control-row');
+				allRows.forEach(row => {
+					const id = row.dataset.id;
+					let isExcluded = false;
+
+					// 1. 모든 Cloud 환경에서 데이터센터(CO06)는 CSP 책임
+					if (cloudEnv !== 'None' && id === 'CO06') isExcluded = true;
+
+					// 2. SaaS/PaaS에서는 OS 통제(APD09-APD11, PC06) 제외
+					if ((cloudEnv === 'SaaS' || cloudEnv === 'PaaS') && 
+						(['APD09', 'APD10', 'APD11', 'PC06'].includes(id))) isExcluded = true;
+
+					// 3. SaaS에서는 DB 통제(APD12-APD14, PC07) 및 프로그램 변경 통제(PC01-PC05) 제외
+					if (cloudEnv === 'SaaS' && 
+						(['APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 'PC07'].includes(id))) isExcluded = true;
+
+					const targetContainer = row.cells[1].querySelector('.d-flex');
+					const testProcDetail = document.getElementById(`test-proc-detail-${id}`);
+					
+					if (isExcluded) {
+						row.classList.add('excluded-control');
+						row.querySelectorAll('select').forEach(s => s.disabled = true);
+						
+						if (targetContainer && !targetContainer.querySelector('.cloud-badge')) {
+							const badge = document.createElement('span');
+							badge.className = 'cloud-badge';
+							badge.innerHTML = '<i class="fas fa-cloud me-1"></i>CSP Managed';
+							targetContainer.appendChild(badge);
+						}
+
+						// 테스트 절차를 SOC 리포트용으로 변경
+						if (testProcDetail) {
+							// 기존값 백업 (최초 1회)
+							if (!testProcDetail.dataset.origManual) {
+								testProcDetail.dataset.origManual = testProcDetail.dataset.manual;
+								testProcDetail.dataset.origAuto = testProcDetail.dataset.auto;
+							}
+							const cloudMsg = "[CSP Managed] 본 통제는 클라우드 서비스 제공자의 책임 영역에 해당하므로, 당해년도 CSP의 SOC 1/2 Type II 리포트 상의 물리적/환경적 보안 적정성 검토 결과로 갈음함.";
+							testProcDetail.textContent = cloudMsg;
+							// 엑셀 전송용 데이터셋도 임시 변경
+							testProcDetail.dataset.manual = cloudMsg;
+							testProcDetail.dataset.auto = cloudMsg;
+						}
+					} else {
+						row.classList.remove('excluded-control');
+						if (targetContainer) {
+							const badge = targetContainer.querySelector('.cloud-badge');
+							if (badge) badge.remove();
+						}
+
+						// 백업된 기존 절차 복구
+						if (testProcDetail && testProcDetail.dataset.origManual) {
+							testProcDetail.dataset.manual = testProcDetail.dataset.origManual;
+							testProcDetail.dataset.auto = testProcDetail.dataset.origAuto;
+						}
+
+						// 원래 로직(자동/수동)에 따라 활성화 여부 및 텍스트 재결정
+						handleTypeChange(id); 
+					}
+				});
+			}
+			
+			// 주기별 모집단 기준
+			const FREQUENCY_POPULATION = {
+				'연': 1,
+				'분기': 4,
+				'월': 12,
+				'주': 52,
+				'일': 250,
+				'수시': 0,
+				'기타': 0
+			};
+
+			// 주기 변경 시 모집단 자동 설정
+			function updatePopulationByFrequency(id) {
+				const freqSelect = document.getElementById(`freq-${id}`);
+				const populationInput = document.getElementById(`population-${id}`);
+				const freq = freqSelect ? freqSelect.value : '수시';
+				populationInput.value = FREQUENCY_POPULATION[freq] || 0;
+				calculateSample(id);
+			}
+
+			// 주기별 표본수 기준
+			const FREQUENCY_SAMPLE = {
+				'연': 1,
+				'분기': 2,
+				'월': 2,
+				'주': 5,
+				'일': 20,
+				'수시': 25,
+				'기타': 0
+			};
+
+			// 표본 수 계산
+			function calculateSample(id) {
+				const sampleInput = document.getElementById(`sample-${id}`);
+				const typeSelect = document.getElementById(`type-${id}`);
+				const freqSelect = document.getElementById(`freq-${id}`);
+				
+				const type = typeSelect ? typeSelect.value : 'Manual';
+				const freq = freqSelect ? freqSelect.value : '수시';
+
+				// 자동통제이거나 주기가 '기타'인 경우 표본수는 0
+				if (type === 'Auto' || freq === '기타') {
+					sampleInput.value = 0;
+					return;
+				}
+
+				// 주기별 고정 표본수
+				const sampleSize = FREQUENCY_SAMPLE[freq] || 0;
+				sampleInput.value = sampleSize;
+			}
+
+			// 자동/수동 변경 시 핸들러
+			function handleTypeChange(id) {
+				const typeSelect = document.getElementById(`type-${id}`);
+				const freqSelect = document.getElementById(`freq-${id}`);
+				const methodSelect = document.getElementById(`method-${id}`);
+				const testProcDetail = document.getElementById(`test-proc-detail-${id}`);
+				const otherOption = freqSelect.querySelector('option[value="기타"]');
+
+				if (typeSelect.value === 'Auto') {
+					// 자동통제일 때 '기타' 옵션을 보이고 선택
+					if (otherOption) otherOption.style.display = '';
+					freqSelect.value = '기타';
+					methodSelect.value = '예방';
+					freqSelect.disabled = true;
+					methodSelect.disabled = true;
+					// 자동 테스트 절차로 변경
+					if (testProcDetail) {
+						testProcDetail.textContent = testProcDetail.dataset.auto;
+					}
+				} else {
+					// 수동통제일 때 '기타' 옵션을 감춤
+					if (otherOption) otherOption.style.display = 'none';
+					freqSelect.disabled = false;
+					methodSelect.disabled = false;
+					
+					// 현재 주기가 '기타'라면 수동통제의 기본값인 '수시'로 변경
+					if (freqSelect.value === '기타') {
+						freqSelect.value = '수시';
+					}
+
+					// 수동 테스트 절차로 변경
+					if (testProcDetail) {
+						testProcDetail.textContent = testProcDetail.dataset.manual;
+					}
+				}
+				// 자동/수동 변경 시 모집단 및 표본수 재계산
+				updatePopulationByFrequency(id);
+			}
+
+			// 페이지 로드 시 상태 초기화
+			document.addEventListener('DOMContentLoaded', function() {
+				// 시스템 유형 및 SW 상태 초기화
+				handleSystemTypeChange();
+				// Cloud 환경 초기화
+				handleCloudEnvChange();
+
+				const rows = document.querySelectorAll('.control-row');
+				rows.forEach(row => {
+					const id = row.dataset.id;
+					// 초기 로드 시 자동/수동 로직을 한 번 실행하여 값과 활성화 상태를 맞춤
+					handleTypeChange(id);
+				});
+			});
+			
 			// AI 분석 실행
 			document.getElementById('btn-generate-ai').addEventListener('click', async function() {
 				const form = document.getElementById('system-form');
@@ -312,58 +569,67 @@
 			function updateRcmTable(data) {
 				data.forEach(item => {
 					const id = item.id;
-					const roActivity = document.getElementById(`readonly-activity-${id}`);
-					const roProcedure = document.getElementById(`readonly-procedure-${id}`);
-					const editAct = document.getElementById(`edit-activity-${id}`);
-					const editProc = document.getElementById(`edit-procedure-${id}`);
+					const typeSelect = document.getElementById(`type-${id}`);
+					const activityDetail = document.getElementById(`activity-detail-${id}`);
+					const testProcDetail = document.getElementById(`test-proc-detail-${id}`);
 					
-					if (roActivity) {
-						roActivity.innerText = item.activity;
-						roActivity.classList.remove('text-muted');
+					if (activityDetail) {
+						activityDetail.innerText = item.activity;
 					}
-					if (roProcedure) roProcedure.innerText = "테스트 절차: " + item.procedure;
 					
-					// Update edit areas too
-					if (editAct) editAct.value = item.activity;
-					if (editProc) editProc.value = item.procedure;
+					if (testProcDetail) {
+						// AI가 생성한 절차를 데이터셋에 저장
+						const currentType = typeSelect ? typeSelect.value : 'Manual';
+						if (currentType === 'Auto') {
+							testProcDetail.dataset.auto = item.procedure;
+							testProcDetail.textContent = item.procedure; // 즉시 반영
+						} else {
+							testProcDetail.dataset.manual = item.procedure;
+							testProcDetail.textContent = item.procedure; // 즉시 반영
+						}
+					}
 				});
 			}
 
-			// 엑셀 다운로드
+			// 엑셀 다운로드 - 화면에서 수정한 값만 전달 (나머지는 서버의 마스터 데이터 사용)
 			document.getElementById('btn-export-excel').addEventListener('click', async function() {
 				const rows = document.querySelectorAll('.control-row');
 				const rcm_data = [];
-				
+
 				rows.forEach(row => {
 					const id = row.dataset.id;
-					const badge = document.getElementById(`badge-${id}`);
-					const isManual = badge.classList.contains('mode-manual');
-					
-					let activity, procedure;
-					if (isManual) {
-						activity = document.getElementById(`edit-activity-${id}`).value;
-						procedure = document.getElementById(`edit-procedure-${id}`).value;
-					} else {
-						activity = document.getElementById(`readonly-activity-${id}`).innerText;
-						procedure = document.getElementById(`readonly-procedure-${id}`).innerText.replace("테스트 절차: ", "");
+					const typeSelect = document.getElementById(`type-${id}`);
+					const freqSelect = document.getElementById(`freq-${id}`);
+					const methodSelect = document.getElementById(`method-${id}`);
+					const activityDetail = document.getElementById(`activity-detail-${id}`);
+					const testProcDetail = document.getElementById(`test-proc-detail-${id}`);
+
+					if (typeSelect && freqSelect && methodSelect) {
+						rcm_data.push({
+							id: id,
+							type: typeSelect.value === 'Auto' ? '자동' : '수동',
+							frequency: freqSelect.value,
+							method: methodSelect.value,
+							activity: activityDetail ? activityDetail.textContent : '',
+							procedure: testProcDetail ? testProcDetail.textContent : ''
+						});
 					}
-					
-					rcm_data.push({
-						id: id,
-						name: row.dataset.name,
-						objective: row.dataset.objective,
-						activity: activity,
-						procedure: procedure
-					});
 				});
-				
+
+				const systemName = document.getElementById('system_name').value || 'ITGC';
+				const cloudEnv = document.getElementById('cloud_env').value;
+
 				const payload = {
-					system_info: {
-						system_name: document.getElementById('system_name').value
+					system_info: { 
+						system_name: systemName,
+						cloud_env: cloudEnv
 					},
 					rcm_data: rcm_data
 				};
-				
+
+				this.disabled = true;
+				this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>생성 중...';
+
 				try {
 					const response = await fetch('/api/rcm/export_excel', {
 						method: 'POST',
@@ -373,28 +639,34 @@
 						},
 						body: JSON.stringify(payload)
 					});
-					
+
 					const result = await response.json();
 					if (result.success) {
-						// Base64를 Blob으로 변환하여 파일 다운로드
+						// Base64 -> Blob 변환 및 다운로드
 						const byteCharacters = atob(result.file_data);
-						const byteNumbers = new Array(byteCharacters.length);
+						const byteArray = new Uint8Array(byteCharacters.length);
 						for (let i = 0; i < byteCharacters.length; i++) {
-							byteNumbers[i] = byteCharacters.charCodeAt(i);
+							byteArray[i] = byteCharacters.charCodeAt(i);
 						}
-						const byteArray = new Uint8Array(byteNumbers);
-						const blob = new Blob([byteArray], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-						
+						const blob = new Blob([byteArray], {
+							type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+						});
+
 						const link = document.createElement('a');
 						link.href = window.URL.createObjectURL(blob);
 						link.download = result.filename;
+						document.body.appendChild(link);
 						link.click();
+						document.body.removeChild(link);
 					} else {
-						alert("엑셀 생성 오류: " + result.message);
+						alert("엑셀 생성 오류: " + (result.message || '알 수 없는 오류'));
 					}
 				} catch (error) {
-					console.error(error);
-					alert("다운로드 중 오류가 발생했습니다.");
+					console.error('Excel export error:', error);
+					alert("다운로드 중 오류가 발생했습니다: " + error.message);
+				} finally {
+					this.disabled = false;
+					this.innerHTML = '<i class="fas fa-file-excel me-1"></i>최종 RCM 엑셀 다운로드';
 				}
 			});
 		</script>
