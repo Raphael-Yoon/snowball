@@ -317,7 +317,7 @@ SW_POPULATION_TEMPLATES = {
         "APD01": {"population": "SU01 권한 변경 이력", "completeness": "T-Code SUIM에서 테스트 기간 내 권한 변경 건 조회\n[Query] SUIM > 사용자 > 권한 변경 이력\n\n[버전별 참고]\n• ECC 6.0: T-Code SUIM, USH04 테이블\n• S/4HANA: Fiori App 'Display Authorization Changes' 또는 SUIM\n• S/4HANA Cloud: IAM 앱 > Security Audit Log"},
         "APD02": {"population": "SU01 부서이동자 권한 변경 이력", "completeness": "인사시스템 전배자 목록과 SU01 권한 변경 이력 대사\n\n[버전별 참고]\n• ECC 6.0: PA20/PA30 인사정보와 SU01 대사\n• S/4HANA: Employee Central 또는 PA 데이터와 SU01 대사\n• S/4HANA Cloud: Workforce Person Integration 데이터 활용"},
         "APD03": {"population": "SU01 퇴사자 계정 삭제 이력", "completeness": "인사시스템 퇴사자 목록과 SU01 계정 삭제 이력 대사\n\n[버전별 참고]\n• ECC 6.0: USR02 테이블의 USTYP, UFLAG 필드 확인\n• S/4HANA: 동일 + Fiori 'Manage Users' 앱\n• S/4HANA Cloud: IAS(Identity Authentication Service) 연동 확인"},
-        "APD07": {"population": "SE16N 직접 변경 로그", "completeness": "SM21에서 테스트 기간 내 Table 직접 변경 이력 조회\n\n[버전별 참고]\n• ECC 6.0: SM21, STAD, ST03N\n• S/4HANA: SAL (Security Audit Log) 강화, HANA SQL Trace\n• S/4HANA Cloud: CSP 영역으로 직접 변경 원천 차단"},
+        "APD07": {"population": "Table 로그(DBTABLOG) 및 SE16N 직접 변경 로그", "completeness": "T-Code: SCU3 및 SE16N 편집 로그 조회\n\n[버전별 참고]\n• ECC 6.0: DBTABLOG(rec/client 설정 필수), SE16N_CD_HDR/DATA\n• S/4HANA: 동일 + SAL (Security Audit Log) 내 Table Access 감사\n• S/4HANA Cloud: CSP 영역으로 직접 변경 원천 차단"},
         "PC01": {"population": "E070 테이블 조회 결과 (당기 전체 TR 목록)", "completeness": "SE16에서 E070 테이블의 AS4DATE(생성일) 기준 당기분 추출\n\n[버전별 참고]\n• ECC 6.0: STMS, SE01, E070/E071 테이블\n• S/4HANA: CTS+ 또는 gCTS(Git-enabled CTS) 사용 가능\n• S/4HANA Cloud: SAP Cloud Transport Management 전용"},
         "PC02": {"population": "E070 테이블 조회 결과 (테스트 대상 TR)", "completeness": "E070 목록 중 커스터마이징(K/W) TR에 대한 테스트 문서 대사\n\n[버전별 참고]\n• ECC 6.0: SPRO 커스터마이징 TR\n• S/4HANA: Fiori 'Custom Fields and Logic' 앱 변경 포함\n• S/4HANA Cloud: Key User Extensibility 변경 이력"},
         "PC03": {"population": "E070 테이블 조회 결과 (운영 이관 TR)", "completeness": "STMS 이관 로그와 E070 테이블의 이관 승인 상태 대사\n\n[버전별 참고]\n• ECC 6.0: STMS QA 승인 로그\n• S/4HANA: STMS 또는 CTS+ 이관 로그\n• S/4HANA Cloud: Cloud Transport Management 승인 이력"},
@@ -330,7 +330,7 @@ SW_POPULATION_TEMPLATES = {
         "PD04": {"population": "SI 프로젝트 교육 수행 건", "completeness": "교육 수행 결과 또는 매뉴얼 배포 이력 조회\n\n[버전별 참고]\n• S/4HANA Cloud: SAP Enable Now 활용 권장"},
         "CO05": {"population": "시스템 장애 발생 건", "completeness": "월간 유지보수 보고서 또는 장애 접수 시스템 조회\n\n[버전별 참고]\n• ECC 6.0: ST22 Dump 분석, SM21 시스템 로그\n• S/4HANA: SAP Solution Manager 또는 Cloud ALM\n• S/4HANA Cloud: SAP for Me 인시던트 관리"},
         "APD04": {"population": "T-Code: SUIM (권한 보유자 분석)", "completeness": "[자동통제 확인방법]\nT-Code: SUIM > 사용자별 권한 분석 > 주요 권한(SAP_ALL, SAP_NEW) 보유자 추출\n[Query] Transaction SUIM > Users by Complex Selection Criteria\n\n[버전별 참고]\n• ECC 6.0: SUIM 동일\n• S/4HANA: Fiori App 'IAM Information System' 추가 활용 가능"},
-        "APD05": {"population": "T-Code: SU01, SUIM (관리자 권한 보유자)", "completeness": "[자동통제 확인방법]\nT-Code: SUIM > S_USER_GRP 권한 보유자 조회\n관리자 계정: SAP*, DDIC, EARLYWATCH 계정 활성화 여부 확인\nT-Code: SU01 > User Lock Status 조회\n\n[버전별 참고]\n• ECC 6.0: SAP*, DDIC 계정 잠금 상태 확인\n• S/4HANA: 동일 + Fiori 'Manage Users' 앱에서 관리자 확인\n• S/4HANA Cloud: 표준 관리자 계정 없음, BTP Admin 권한 확인"},
+        "APD05": {"population": "T-Code: SU01, SUIM (관리자 권한 보유자)", "completeness": "[자동통제 확인방법]\nT-Code: SUIM > 권한/프로파일별 사용자 조회 > SAP_ALL, SAP_NEW 프로파일 보유자\nS_USER_ADMIN, S_ADMI_FCD 권한 보유자 추출\n관리자 계정: SAP*, DDIC 계정 활성화 여부 확인\nT-Code: SU01 > User Lock Status 조회\n\n[버전별 참고]\n• ECC 6.0: SAP*, DDIC 계정 잠금 상태 확인\n• S/4HANA: 동일 + Fiori 'Manage Users' 앱에서 관리자 확인\n• S/4HANA Cloud: 표준 관리자 계정 없음, BTP Admin 권한 확인"},
         "APD06": {"population": "T-Code: RSPARAM, RZ11 (패스워드 정책)", "completeness": "[자동통제 확인방법]\nT-Code: RSPARAM > login/* 파라미터 조회\n- login/min_password_lng: 최소 길이\n- login/password_expiration_time: 만료 기간\n- login/fails_to_user_lock: 잠금 임계값\nT-Code: RZ11 > 파라미터 상세 설정 확인\n\n[버전별 참고]\n• ECC 6.0: 위 T-Code 동일\n• S/4HANA: Fiori App 'Maintain Password Rules' 추가 확인"},
         "PC04": {"population": "T-Code: SCC4, SE06 (변경 옵션 설정)", "completeness": "[자동통제 확인방법]\nT-Code: SCC4 > 클라이언트 설정 > 변경 및 이관 옵션\n- Production: 변경 불가 (Not Modifiable)\nT-Code: SE06 > 시스템 변경 옵션 > 운영계 설정 확인\n\n[버전별 참고]\n• ECC 6.0: SCC4, SE06 동일\n• S/4HANA: SCC4, SE06 동일 + Software Component 설정\n• S/4HANA Cloud: 운영계 변경 원천 차단 (CSP 관리)"},
         "PC05": {"population": "T-Code: STMS (이관 권한 보유자)", "completeness": "[자동통제 확인방법]\nT-Code: STMS > Overview > Systems > Import Queue 권한자\nT-Code: SUIM > S_CTS_ADMI, S_TRANSPRT 권한 보유자 조회\n\n[버전별 참고]\n• ECC 6.0: STMS 권한자\n• S/4HANA: STMS 또는 gCTS 권한자\n• S/4HANA Cloud: Cloud Transport Management 권한자 (BTP)"},
@@ -493,7 +493,7 @@ DB_POPULATION_TEMPLATES = {
     },
     "MYSQL": {
         "APD08": {"population": "DB 직접 변경 권한 보유자", "completeness": "mysql.db에서 Insert/Update/Delete_priv 권한자 조회\n[Query] SELECT User, Host, Db, Insert_priv, Update_priv, Delete_priv FROM mysql.db WHERE Insert_priv='Y' OR Update_priv='Y' OR Delete_priv='Y'\n\n[버전별 참고]\n• MySQL 5.7: mysql.db, mysql.user 테이블\n• MySQL 8.0: 역할 기반 권한 관리 도입\n• MySQL 8.0.30+: 동적 권한 확장"},
-        "APD12": {"population": "DB 계정 생성/변경 이력", "completeness": "mysql.user에서 Create_time 기준 계정 조회\n[Query] SELECT User, Host, Create_time FROM mysql.user\n\n[버전별 참고]\n• MySQL 5.7: mysql.user 기본 조회\n• MySQL 8.0: account_locked, password_expired 필드 추가\n• MySQL 8.0+: CREATE USER ... FAILED_LOGIN_ATTEMPTS 옵션"},
+        "APD12": {"population": "DB 계정 생성/변경 이력", "completeness": "감사로그(Audit Log) 또는 mysql.user의 password_last_changed 기준 조회\n[Query] SELECT User, Host, password_last_changed FROM mysql.user\n(※ MySQL은 mysql.user 테이블에 Create_time을 저장하지 않으므로 감사로그 확인 필수)\n\n[버전별 참고]\n• MySQL 5.7: mysql.user 기본 조회\n• MySQL 8.0: audit_log 플러그인 또는 General Log 활용\n• MySQL 8.0+: CREATE USER ... FAILED_LOGIN_ATTEMPTS 옵션"},
         "APD13": {"population": "DB 패스워드 정책 설정", "completeness": "validate_password 플러그인 설정 확인\n[Query] SHOW VARIABLES LIKE 'validate_password%'\n\n[버전별 참고]\n• MySQL 5.7: validate_password 플러그인\n• MySQL 8.0: validate_password 컴포넌트 (기본 활성화)\n• MySQL 8.0+: password_history, password_reuse_interval 추가"},
         "APD14": {"population": "root 및 SUPER 권한 보유자", "completeness": "mysql.user에서 Super_priv='Y' 계정 조회\n[Query] SELECT User, Host FROM mysql.user WHERE Super_priv='Y'\n\n[버전별 참고]\n• MySQL 5.7: SUPER 권한\n• MySQL 8.0: SUPER 권한 세분화 (CONNECTION_ADMIN 등)\n• MySQL 8.0+: 동적 권한으로 SUPER 대체 권장"},
         "PC07": {"population": "DB 패치/업데이트 이력", "completeness": "SELECT VERSION() 또는 패키지 업데이트 이력 조회\n[Query] SELECT VERSION()\n\n[버전별 참고]\n• MySQL 5.7: Innovation/LTS 릴리스 구분 없음\n• MySQL 8.0: 분기별 릴리스\n• MySQL 8.0 LTS: 장기 지원 버전 (8.0.34+)"},
@@ -504,6 +504,13 @@ DB_POPULATION_TEMPLATES = {
         "APD13": {"population": "DB 패스워드 정책 설정", "completeness": "pg_hba.conf 및 passwordcheck 모듈 설정 확인\n[Query] SHOW password_encryption\n\n[버전별 참고]\n• PostgreSQL 12/13: md5 또는 scram-sha-256\n• PostgreSQL 14+: scram-sha-256 기본 권장\n• PostgreSQL 15+: passwordcheck 모듈 강화"},
         "APD14": {"population": "superuser 권한 보유자", "completeness": "pg_roles에서 rolsuper=true 계정 조회\n[Query] SELECT rolname FROM pg_roles WHERE rolsuper=true\n\n[버전별 참고]\n• PostgreSQL 전버전: superuser 개념 동일\n• PostgreSQL 15+: pg_read_all_data 등 사전정의 역할 확장"},
         "PC07": {"population": "DB 패치/업데이트 이력", "completeness": "SELECT version() 또는 패키지 업데이트 이력 조회\n[Query] SELECT version()\n\n[버전별 참고]\n• PostgreSQL 12-16: 연간 메이저 릴리스\n• 마이너 릴리스: 분기별 보안 패치"},
+    },
+    "HANA": {
+        "APD08": {"population": "DB 직접 변경 권한 보유자", "completeness": "SYS.GRANTED_PRIVILEGES에서 DML 권한자 조회\n[Query] SELECT * FROM SYS.GRANTED_PRIVILEGES WHERE PRIVILEGE IN ('INSERT','UPDATE','DELETE')\n\n[버전별 참고]\n• HANA 1.0: Studio 기반 조회\n• HANA 2.0: Cockpit 및 System Views 활용\n• HANA Cloud: Managed DB Policy 적용"},
+        "APD12": {"population": "DB 계정 생성/변경 이력", "completeness": "SYS.USERS에서 생성/변경된 계정 조회\n[Query] SELECT USER_NAME, CREATE_TIME, USER_DEACTIVATED FROM SYS.USERS WHERE CREATE_TIME BETWEEN '시작일' AND '종료일'\n\n[버전별 참고]\n• HANA 전버전: SYS.USERS 시스템 뷰 사용"},
+        "APD13": {"population": "DB 패스워드 정책 설정", "completeness": "SYS.USER_PARAMETERS에서 PASSWORD 관련 설정 확인\n[Query] SELECT * FROM SYS.USER_PARAMETERS WHERE PARAMETER LIKE 'PASSWORD%'\n\n[버전별 참고]\n• HANA 2.0: 'Password Policy' 메뉴에서 시각적 확인 가능"},
+        "APD14": {"population": "시스템 관리자 권한 보유자", "completeness": "SYS.GRANTED_ROLES에서 CONTENT_ADMIN, USER_ADMIN 등 역할 조회\n[Query] SELECT * FROM SYS.GRANTED_ROLES WHERE ROLE_NAME IN ('CONTENT_ADMIN', 'USER_ADMIN')\n\n[버전별 참고]\n• HANA 전버전: SYSTEM 계정 및 관리자 역할 보유자 확인"},
+        "PC07": {"population": "DB 패치/업데이트 이력", "completeness": "HANA 버전에 따른 패치 이력 확인\n[Query] SELECT * FROM SYS.M_DATABASE\n\n[버전별 참고]\n• HANA 2.0: SPS (Support Package Stack) 업데이트 이력"},
     },
     "NOSQL": {
         "APD08": {"population": "DB 직접 변경 권한 보유자", "completeness": "MongoDB: db.getUsers() 또는 역할 기반 접근 제어 설정 확인\n[Query] db.getUsers() 또는 db.getRoles()\n\n[버전별 참고]\n• MongoDB 4.x: RBAC 기본\n• MongoDB 5.x: 필드 레벨 암호화 강화\n• MongoDB 6.x/7.x: Queryable Encryption"},
@@ -798,6 +805,9 @@ def api_rcm_export_excel():
         activity = override.get('activity', control.get('control_description', ''))
         ws.cell(row=row_idx, column=6, value=activity)
 
+        # 테스트 절차 초기화 및 설정 (UI 선택값 우선)
+        procedure = override.get('procedure', '')
+
         # 7. 구분 / 8. 주기 / 9. 성격 (UI 선택값 우선)
         selected_type = override.get('type', control.get('type', ''))
         selected_freq = override.get('frequency', control.get('frequency', ''))
@@ -819,11 +829,25 @@ def api_rcm_export_excel():
         completeness = ""
         pop_count = 0
         
+        # 통제 ID에 따라 기본 템플릿 조회 (모집단/완전성 템플릿)
+        template = None
+        if ctrl_id in ['APD01', 'APD02', 'APD03', 'APD04', 'APD05', 'APD06', 'APD07', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 'CO01', 'CO02', 'ST01', 'ST02', 'ST03', 'PD01', 'PD02', 'PD03', 'PD04', 'CO05']:
+            template = SW_POPULATION_TEMPLATES.get(sw, {}).get(ctrl_id)
+        elif ctrl_id in ['APD09', 'APD10', 'APD11', 'PC06']:
+            template = OS_POPULATION_TEMPLATES.get(os_type, {}).get(ctrl_id)
+        elif ctrl_id in ['APD08', 'APD12', 'APD13', 'APD14', 'PC07']:
+            template = DB_POPULATION_TEMPLATES.get(db_type, {}).get(ctrl_id)
+
         # 주기에 따른 기본 설정
         if selected_freq in pop_names:
             pop_name = pop_names[selected_freq]
             pop_count = FREQUENCY_POPULATION.get(selected_freq, 0)
-            if pop_count > 0:
+            
+            # 템플릿 정보가 있으면 기술적 정보를 완전성에 결합
+            if template:
+                pop_name = template.get('population', pop_name)
+                completeness = f"{template.get('completeness', '')}\n\n[결과] {pop_name}이므로 {pop_count}건을 완전성 있는 것으로 확인함"
+            elif pop_count > 0:
                 completeness = f"{pop_name}이므로 {pop_count}건을 완전성 있는 것으로 확인함"
         elif selected_freq == '수시':
             # APD02, APD03 수동 설정 시 예외 처리 (사용자 요청 사항)
@@ -834,16 +858,7 @@ def api_rcm_export_excel():
                 pop_name = "퇴사자리스트"
                 completeness = "인사시스템 상의 퇴사자 명단과 계정 비활성화 내역 전수 대사"
             else:
-                # 일반적인 수시 통제인 경우 템플릿 찾기
-                template = None
-                # 통제 ID에 따라 도메인(sw/os/db) 결정
-                if ctrl_id in ['APD01', 'APD02', 'APD03', 'APD07', 'PC01', 'PC02', 'PC03', 'CO01', 'ST03', 'PD01', 'PD02', 'PD03', 'PD04', 'CO05']:
-                    template = SW_POPULATION_TEMPLATES.get(sw, {}).get(ctrl_id)
-                elif ctrl_id in ['APD09', 'APD10', 'APD11', 'PC06']:
-                    template = OS_POPULATION_TEMPLATES.get(os_type, {}).get(ctrl_id)
-                elif ctrl_id in ['APD08', 'APD12', 'APD13', 'APD14', 'PC07']:
-                    template = DB_POPULATION_TEMPLATES.get(db_type, {}).get(ctrl_id)
-                
+                # 일반적인 수시 통제인 경우 템플릿 사용
                 if template:
                     pop_name = template.get('population', '수시 발생 건')
                     completeness = template.get('completeness', '전수 대사 또는 샘플 테스트를 통해 완전성 확인')
@@ -855,22 +870,13 @@ def api_rcm_export_excel():
         # 자동통제이거나 주기가 '기타'인 경우
         if selected_type in ['Auto', '자동'] or selected_freq == '기타':
             # 자동통제의 경우 템플릿에서 조회 화면 정보 가져오기
-            template = None
-            if ctrl_id in ['APD01', 'APD02', 'APD03', 'APD04', 'APD05', 'APD06', 'APD07', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 'CO01', 'CO02', 'ST01', 'ST02', 'ST03', 'PD01', 'PD02', 'PD03', 'PD04', 'CO05']:
-                template = SW_POPULATION_TEMPLATES.get(sw, {}).get(ctrl_id)
-            elif ctrl_id in ['APD09', 'APD10', 'APD11', 'PC06']:
-                template = OS_POPULATION_TEMPLATES.get(os_type, {}).get(ctrl_id)
-            elif ctrl_id in ['APD08', 'APD12', 'APD13', 'APD14', 'PC07']:
-                template = DB_POPULATION_TEMPLATES.get(db_type, {}).get(ctrl_id)
-            
             if template:
                 pop_name = template.get('population', 'N/A')
-                # 자동통제일 경우 완전성 확인은 '제외'로 표시
-                completeness = "제외 (자동통제)"
             else:
                 pop_name = "N/A"
-                completeness = "제외 (자동통제)"
             
+            # 자동통제일 경우 완전성 확인은 '제외'로 표시
+            completeness = "제외 (자동통제)"
             pop_count = 0
             sample_count = 0
         else:
@@ -888,7 +894,7 @@ def api_rcm_export_excel():
             pop_count = 0
             completeness = "SOC 1/2 Type II 리포트로 갈음"
             sample_count = 0
-            if not override.get('procedure'):
+            if not procedure:
                 procedure = "[CSP Managed] 본 통제는 클라우드 서비스 제공자의 책임 영역에 해당하므로, 당해년도 CSP의 SOC 1/2 Type II 리포트 상의 물리적/환경적 보안 적정성 검토 결과로 갈음함."
 
         ws.cell(row=row_idx, column=10, value=pop_name)

@@ -62,30 +62,6 @@
 				justify-content: flex-end;
 				gap: 1rem;
 			}
-			.ai-loading-overlay {
-				position: fixed;
-				top: 0;
-				left: 0;
-				width: 100%;
-				height: 100%;
-				background: rgba(255,255,255,0.7);
-				display: none;
-				justify-content: center;
-				align-items: center;
-				z-index: 2000;
-				flex-direction: column;
-			}
-			.spinner {
-				width: 50px;
-				height: 50px;
-				border: 5px solid #f3f3f3;
-				border-top: 5px solid #3498db;
-				border-radius: 50%;
-				animation: spin 1s linear infinite;
-				margin-bottom: 1rem;
-			}
-			@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-			
 			/* 클라우드 환경에 따른 제외 통제 스타일 */
 			.excluded-control {
 				background-color: #f8f9fa !important;
@@ -137,14 +113,14 @@
 										<label class="form-label fw-bold">시스템 유형</label>
 										<select class="form-select" id="system_type" name="system_type" required onchange="handleSystemTypeChange()">
 											<option value="In-house">In-house (자체개발)</option>
-											<option value="Package-Modifiable">Package - Modifiable (SAP, Oracle ERP 등)</option>
-											<option value="Package-Non-modifiable">Package - Non-modifiable (더존, 영림원 등)</option>
+											<option value="Package-Modifiable">Package - Modifiable (소스 수정 가능)</option>
+											<option value="Package-Non-modifiable">Package - Non-modifiable (소스 수정 불가)</option>
 										</select>
 									</div>
 								</div>
 								
 								<div class="row">
-									<div class="col-md-3 mb-3">
+									<div class="col-3 mb-3">
 										<label class="form-label fw-bold">Cloud 환경</label>
 										<select class="form-select" id="cloud_env" name="cloud_env" onchange="handleCloudEnvChange()">
 											<option value="None">미사용 (On-Premise)</option>
@@ -153,8 +129,8 @@
 											<option value="SaaS">SaaS (Salesforce, ERP 등)</option>
 										</select>
 									</div>
-									<div class="col-md-3 mb-3">
-										<label class="form-label fw-bold">주요 SW</label>
+									<div class="col-3 mb-3">
+										<label class="form-label fw-bold">Application</label>
 										<select class="form-select" id="software" name="software" onchange="handleSoftwareChange()">
 											<option value="SAP">SAP ERP</option>
 											<option value="ORACLE">Oracle ERP</option>
@@ -162,9 +138,11 @@
 											<option value="YOUNG">영림원 ERP</option>
 											<option value="ETC">기타 / 자체개발</option>
 										</select>
+										<input type="text" class="form-control mt-1" id="software_custom" name="software_custom"
+											placeholder="패키지명 입력 (예: Workday, MS Dynamics)" style="display:none;">
 									</div>
-									<div class="col-md-3 mb-3">
-										<label class="form-label fw-bold">SW 버전</label>
+									<div class="col-3 mb-3" id="sw_version_group">
+										<label class="form-label fw-bold">Version</label>
 										<select class="form-select" id="sw_version" name="sw_version">
 											<!-- SAP versions (default) -->
 											<option value="ECC">ECC 6.0</option>
@@ -172,7 +150,9 @@
 											<option value="S4CLOUD">S/4HANA Cloud</option>
 										</select>
 									</div>
-									<div class="col-md-3 mb-3">
+								</div>
+								<div class="row">
+									<div class="col-3 mb-3">
 										<label class="form-label fw-bold">OS</label>
 										<select class="form-select" id="os" name="os" onchange="handleOsChange()">
 											<option value="RHEL">Linux (RHEL/CentOS)</option>
@@ -182,9 +162,7 @@
 											<option value="N/A">N/A (SaaS/PaaS)</option>
 										</select>
 									</div>
-								</div>
-								<div class="row">
-									<div class="col-md-3 mb-3">
+									<div class="col-3 mb-3">
 										<label class="form-label fw-bold">OS 버전</label>
 										<select class="form-select" id="os_version" name="os_version">
 											<!-- RHEL versions (default) -->
@@ -193,7 +171,7 @@
 											<option value="RHEL9">RHEL 9.x / Rocky 9</option>
 										</select>
 									</div>
-									<div class="col-md-3 mb-3">
+									<div class="col-3 mb-3">
 										<label class="form-label fw-bold">DB</label>
 										<select class="form-select" id="db" name="db" onchange="handleDbChange()">
 											<option value="ORACLE">Oracle DB</option>
@@ -205,7 +183,7 @@
 											<option value="N/A">N/A (SaaS)</option>
 										</select>
 									</div>
-									<div class="col-md-3 mb-3">
+									<div class="col-3 mb-3">
 										<label class="form-label fw-bold">DB 버전</label>
 										<select class="form-select" id="db_version" name="db_version">
 											<!-- Oracle versions (default) -->
@@ -215,17 +193,6 @@
 											<option value="21C">Oracle 21c</option>
 										</select>
 									</div>
-									<div class="col-md-3 mb-3 d-flex align-items-end">
-										<button type="button" class="btn btn-outline-secondary w-100" onclick="resetVersions()">
-											<i class="fas fa-undo me-1"></i>기본값 복원
-										</button>
-									</div>
-								</div>
-								
-								<div class="text-end mt-2">
-									<button type="button" class="btn btn-primary btn-lg" id="btn-generate-ai">
-										<i class="fas fa-magic me-2"></i>AI 통제 분석 시작
-									</button>
 								</div>
 							</form>
 						</div>
@@ -380,12 +347,6 @@
 		</div>
 		
 		<!-- Loading Overlay -->
-		<div class="ai-loading-overlay" id="loading-overlay">
-			<div class="spinner"></div>
-			<h5 class="fw-bold">AI가 시스템 환경을 분석 중입니다...</h5>
-			<p class="text-muted">기술적 증적(Technical Objects) 매핑 중 (약 10~20초 소요)</p>
-		</div>
-
 		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 		<script>
 			// 클립보드 복사 함수
@@ -421,6 +382,7 @@
 			function handleSystemTypeChange() {
 				const systemType = document.getElementById('system_type').value;
 				const softwareSelect = document.getElementById('software');
+				const customInput = document.getElementById('software_custom');
 				const etcOption = softwareSelect.querySelector('option[value="ETC"]');
 				const sapOption = softwareSelect.querySelector('option[value="SAP"]');
 				const oracleOption = softwareSelect.querySelector('option[value="ORACLE"]');
@@ -428,38 +390,31 @@
 				const youngOption = softwareSelect.querySelector('option[value="YOUNG"]');
 
 				if (systemType === 'In-house') {
-					// 자체개발: ETC만 표시
+					// 자체개발: ETC만 표시, 커스텀 입력 숨김
 					softwareSelect.value = 'ETC';
 					softwareSelect.disabled = true;
-					if (etcOption) etcOption.style.display = '';
+					customInput.style.display = 'none';
+					if (etcOption) { etcOption.style.display = ''; etcOption.textContent = '자체개발 시스템'; }
 					if (sapOption) sapOption.style.display = 'none';
 					if (oracleOption) oracleOption.style.display = 'none';
 					if (douzoneOption) douzoneOption.style.display = 'none';
 					if (youngOption) youngOption.style.display = 'none';
-				} else if (systemType === 'Package-Modifiable') {
-					// Package Modifiable: SAP, Oracle만 표시
+				} else {
+					// Package (Modifiable / Non-modifiable): 모든 SW 선택 가능 + 기타 입력
 					softwareSelect.disabled = false;
-					if (etcOption) etcOption.style.display = 'none';
+					if (etcOption) { etcOption.style.display = ''; etcOption.textContent = '기타 패키지'; }
 					if (sapOption) sapOption.style.display = '';
 					if (oracleOption) oracleOption.style.display = '';
-					if (douzoneOption) douzoneOption.style.display = 'none';
-					if (youngOption) youngOption.style.display = 'none';
-					if (softwareSelect.value === 'ETC' || softwareSelect.value === 'DOUZONE' || softwareSelect.value === 'YOUNG') {
-						softwareSelect.value = 'SAP';
-					}
-				} else {
-					// Package Non-modifiable: 더존, 영림원만 표시
-					softwareSelect.disabled = false;
-					if (etcOption) etcOption.style.display = 'none';
-					if (sapOption) sapOption.style.display = 'none';
-					if (oracleOption) oracleOption.style.display = 'none';
 					if (douzoneOption) douzoneOption.style.display = '';
 					if (youngOption) youngOption.style.display = '';
-					if (softwareSelect.value === 'ETC' || softwareSelect.value === 'SAP' || softwareSelect.value === 'ORACLE') {
+					// 유형별 기본 SW 설정
+					if (systemType === 'Package-Modifiable') {
+						softwareSelect.value = 'SAP';
+					} else if (systemType === 'Package-Non-modifiable') {
 						softwareSelect.value = 'DOUZONE';
 					}
 				}
-				// SW 변경에 따른 버전 갱신
+				// SW 변경에 따른 버전 갱신 및 커스텀 입력 표시/숨김
 				handleSoftwareChange();
 			}
 
@@ -644,6 +599,7 @@
 			function handleSoftwareChange() {
 				const sw = document.getElementById('software').value;
 				const versionSelect = document.getElementById('sw_version');
+				const customInput = document.getElementById('software_custom');
 				const options = SW_VERSION_OPTIONS[sw] || [];
 
 				versionSelect.innerHTML = '';
@@ -653,6 +609,20 @@
 					option.textContent = opt.text;
 					versionSelect.appendChild(option);
 				});
+
+				// 자체개발: Version 영역 전체 숨김, 기타 패키지: 커스텀 입력 표시
+				const systemType = document.getElementById('system_type').value;
+				const versionGroup = document.getElementById('sw_version_group');
+				if (systemType === 'In-house') {
+					customInput.style.display = 'none';
+					versionGroup.style.display = 'none';
+				} else if (sw === 'ETC') {
+					customInput.style.display = '';
+					versionGroup.style.display = 'none';
+				} else {
+					customInput.style.display = 'none';
+					versionGroup.style.display = '';
+				}
 
 				// SAP S/4HANA 선택 시 DB를 HANA로 자동 변경
 				if (sw === 'SAP' && versionSelect.value.includes('S4')) {
@@ -897,6 +867,113 @@
 				'APD08': 'db', 'APD12': 'db', 'APD13': 'db', 'APD14': 'db', 'PC07': 'db'
 			};
 
+			// 버전 value → completeness 텍스트 내 버전명 매핑
+			// 주의: 포함 관계가 있는 경우(예: S/4HANA vs S/4HANA Cloud) exclude 패턴으로 구분
+			const VERSION_LABEL_MAP = {
+				// SW - SAP
+				'ECC': {labels: ['ECC 6.0', 'ECC'], exclude: []},
+				'S4HANA': {labels: ['S/4HANA'], exclude: ['S/4HANA Cloud']},
+				'S4CLOUD': {labels: ['S/4HANA Cloud'], exclude: []},
+				// SW - ORACLE
+				'R12': {labels: ['R12'], exclude: []},
+				'FUSION': {labels: ['Fusion Cloud'], exclude: []},
+				'JDE': {labels: ['JDE', 'JD Edwards'], exclude: []},
+				// SW - DOUZONE
+				'ICUBE': {labels: ['iCUBE'], exclude: []},
+				'IU': {labels: ['iU', 'iU ERP'], exclude: []},
+				'WEHAGO': {labels: ['WEHAGO'], exclude: []},
+				'AMARANTH': {labels: ['Amaranth'], exclude: []},
+				// SW - YOUNG
+				'KSYSTEM': {labels: ['K-System'], exclude: ['K-System Plus']},
+				'KSYSTEMPLUS': {labels: ['K-System Plus'], exclude: []},
+				'SYSTEVER': {labels: ['SystemEver'], exclude: []},
+				// OS - RHEL
+				'RHEL7': {labels: ['RHEL 7'], exclude: []},
+				'RHEL8': {labels: ['RHEL 8'], exclude: []},
+				'RHEL9': {labels: ['RHEL 9'], exclude: []},
+				// OS - UBUNTU
+				'U1804': {labels: ['Ubuntu 18.04'], exclude: []},
+				'U2004': {labels: ['Ubuntu 20.04'], exclude: []},
+				'U2204': {labels: ['Ubuntu 22.04'], exclude: []},
+				// OS - WINDOWS
+				'W2016': {labels: ['Server 2016'], exclude: []},
+				'W2019': {labels: ['Server 2019'], exclude: []},
+				'W2022': {labels: ['Server 2022'], exclude: []},
+				// OS - UNIX
+				'AIX73': {labels: ['AIX 7.3', 'AIX'], exclude: []},
+				'AIX72': {labels: ['AIX 7.2', 'AIX'], exclude: []},
+				'HPUX': {labels: ['HP-UX'], exclude: []},
+				// DB - ORACLE
+				'11G': {labels: ['11g'], exclude: []},
+				'12C': {labels: ['12c'], exclude: []},
+				'19C': {labels: ['19c'], exclude: []},
+				'21C': {labels: ['21c'], exclude: []},
+				// DB - TIBERO
+				'T6': {labels: ['Tibero 6'], exclude: []},
+				'T7': {labels: ['Tibero 7'], exclude: []},
+				// DB - MSSQL
+				'SQL2017': {labels: ['SQL Server 2017'], exclude: []},
+				'SQL2019': {labels: ['SQL Server 2019'], exclude: []},
+				'SQL2022': {labels: ['SQL Server 2022'], exclude: []},
+				// DB - MYSQL
+				'MY8': {labels: ['MySQL 8'], exclude: []},
+				'MARIA10': {labels: ['MariaDB 10'], exclude: []},
+				// DB - POSTGRES
+				'PG13': {labels: ['PostgreSQL 13'], exclude: []},
+				'PG14': {labels: ['PostgreSQL 14'], exclude: []},
+				'PG15': {labels: ['PostgreSQL 15'], exclude: []},
+				// DB - HANA
+				'HANA2': {labels: ['HANA 2.0', 'HANA 2'], exclude: ['HANA Cloud']},
+				'HANACLOUD': {labels: ['HANA Cloud'], exclude: []},
+				// N/A
+				'NA': {labels: [], exclude: []},
+			};
+
+			// completeness 텍스트에서 선택된 버전에 해당하는 정보만 필터링
+			function filterCompletenessByVersion(text, domain) {
+				if (!text || !text.includes('[버전별 참고]')) return text;
+
+				// 현재 선택된 버전 value 가져오기
+				let versionValue;
+				if (domain === 'sw') versionValue = document.getElementById('sw_version').value;
+				else if (domain === 'os') versionValue = document.getElementById('os_version').value;
+				else if (domain === 'db') versionValue = document.getElementById('db_version').value;
+
+				if (!versionValue) return text;
+
+				const mapping = VERSION_LABEL_MAP[versionValue];
+				if (!mapping || mapping.labels.length === 0) return text;
+
+				// [버전별 참고] 이전/이후 분리
+				const splitIdx = text.indexOf('[버전별 참고]');
+				const baseText = text.substring(0, splitIdx).trim();
+				const versionSection = text.substring(splitIdx + '[버전별 참고]'.length);
+
+				// • 로 시작하는 라인에서 매칭되는 버전만 필터링
+				const lines = versionSection.split('\n');
+				const matchedLines = lines.filter(line => {
+					const trimmed = line.trim();
+					if (!trimmed.startsWith('•')) return false;
+
+					// exclude 패턴에 해당하면 제외 (예: S/4HANA Cloud 라인은 S4HANA 선택 시 제외)
+					if (mapping.exclude.length > 0) {
+						for (const ex of mapping.exclude) {
+							if (trimmed.includes(ex)) return false;
+						}
+					}
+
+					// labels 중 하나라도 포함되면 매칭
+					return mapping.labels.some(label => trimmed.includes(label));
+				});
+
+				if (matchedLines.length > 0) {
+					return baseText + '\n\n[버전별 참고]\n' + matchedLines.join('\n');
+				}
+
+				// 매칭되는 라인이 없으면 base 텍스트만 반환
+				return baseText;
+			}
+
 			// 현재 선택된 시스템 환경에서 템플릿 가져오기
 			function getPopulationTemplate(controlId) {
 				const domain = CONTROL_DOMAIN[controlId];
@@ -913,6 +990,14 @@
 					template = populationTemplates.os[os][controlId];
 				} else if (domain === 'db' && populationTemplates.db[db]) {
 					template = populationTemplates.db[db][controlId];
+				}
+
+				// 버전 필터링 적용
+				if (template) {
+					return {
+						population: template.population,
+						completeness: filterCompletenessByVersion(template.completeness, domain)
+					};
 				}
 				return template;
 			}
@@ -1059,73 +1144,6 @@
 				});
 			}
 			
-			// AI 분석 실행
-			document.getElementById('btn-generate-ai').addEventListener('click', async function() {
-				const form = document.getElementById('system-form');
-				if (!form.checkValidity()) {
-					form.reportValidity();
-					return;
-				}
-				
-				const systemData = {
-					system_name: document.getElementById('system_name').value,
-					system_type: document.getElementById('system_type').value,
-					software: document.getElementById('software').value,
-					os: document.getElementById('os').value,
-					db: document.getElementById('db').value
-				};
-				
-				document.getElementById('loading-overlay').style.display = 'flex';
-				
-				try {
-					const response = await fetch('/api/rcm/ai_generate', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-							'X-CSRFToken': csrfToken
-						},
-						body: JSON.stringify(systemData)
-					});
-					
-					const result = await response.json();
-					if (result.success) {
-						updateRcmTable(result.data);
-					} else {
-						alert("AI 분석 오류: " + result.message);
-					}
-				} catch (error) {
-					console.error(error);
-					alert("시스템 오류가 발생했습니다.");
-				} finally {
-					document.getElementById('loading-overlay').style.display = 'none';
-				}
-			});
-			
-			function updateRcmTable(data) {
-				data.forEach(item => {
-					const id = item.id;
-					const typeSelect = document.getElementById(`type-${id}`);
-					const activityDetail = document.getElementById(`activity-detail-${id}`);
-					const testProcDetail = document.getElementById(`test-proc-detail-${id}`);
-					
-					if (activityDetail) {
-						activityDetail.innerText = item.activity;
-					}
-					
-					if (testProcDetail) {
-						// AI가 생성한 절차를 데이터셋에 저장
-						const currentType = typeSelect ? typeSelect.value : 'Manual';
-						if (currentType === 'Auto') {
-							testProcDetail.dataset.auto = item.procedure;
-							testProcDetail.textContent = item.procedure; // 즉시 반영
-						} else {
-							testProcDetail.dataset.manual = item.procedure;
-							testProcDetail.textContent = item.procedure; // 즉시 반영
-						}
-					}
-				});
-			}
-
 			// 엑셀 다운로드 - 화면에서 수정한 값만 전달 (나머지는 서버의 마스터 데이터 사용)
 			document.getElementById('btn-export-excel').addEventListener('click', async function() {
 				const rows = document.querySelectorAll('.control-row');
@@ -1153,15 +1171,17 @@
 
 				const systemName = document.getElementById('system_name').value || 'ITGC';
 				const cloudEnv = document.getElementById('cloud_env').value;
-				const software = document.getElementById('software').value;
+				const softwareKey = document.getElementById('software').value;
+				const softwareCustom = document.getElementById('software_custom').value;
 				const osType = document.getElementById('os').value;
 				const dbType = document.getElementById('db').value;
 
 				const payload = {
-					system_info: { 
+					system_info: {
 						system_name: systemName,
 						cloud_env: cloudEnv,
-						software: software,
+						software: softwareKey === 'ETC' && softwareCustom ? softwareCustom : softwareKey,
+						software_key: softwareKey,
 						os: osType,
 						db: dbType
 					},
