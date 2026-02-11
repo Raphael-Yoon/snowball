@@ -154,8 +154,27 @@
 										</select>
 									</div>
 									<div class="col-md-3 mb-3">
+										<label class="form-label fw-bold">주요 SW</label>
+										<select class="form-select" id="software" name="software" onchange="handleSoftwareChange()">
+											<option value="SAP">SAP ERP</option>
+											<option value="ORACLE">Oracle ERP</option>
+											<option value="DOUZONE">더존 ERP</option>
+											<option value="YOUNG">영림원 ERP</option>
+											<option value="ETC">기타 / 자체개발</option>
+										</select>
+									</div>
+									<div class="col-md-3 mb-3">
+										<label class="form-label fw-bold">SW 버전</label>
+										<select class="form-select" id="sw_version" name="sw_version">
+											<!-- SAP versions (default) -->
+											<option value="ECC">ECC 6.0</option>
+											<option value="S4HANA">S/4HANA</option>
+											<option value="S4CLOUD">S/4HANA Cloud</option>
+										</select>
+									</div>
+									<div class="col-md-3 mb-3">
 										<label class="form-label fw-bold">OS</label>
-										<select class="form-select" id="os" name="os">
+										<select class="form-select" id="os" name="os" onchange="handleOsChange()">
 											<option value="RHEL">Linux (RHEL/CentOS)</option>
 											<option value="UBUNTU">Linux (Ubuntu/Debian)</option>
 											<option value="WINDOWS">Windows Server</option>
@@ -163,27 +182,43 @@
 											<option value="N/A">N/A (SaaS/PaaS)</option>
 										</select>
 									</div>
+								</div>
+								<div class="row">
+									<div class="col-md-3 mb-3">
+										<label class="form-label fw-bold">OS 버전</label>
+										<select class="form-select" id="os_version" name="os_version">
+											<!-- RHEL versions (default) -->
+											<option value="RHEL8">RHEL 8.x / CentOS 8</option>
+											<option value="RHEL7">RHEL 7.x / CentOS 7</option>
+											<option value="RHEL9">RHEL 9.x / Rocky 9</option>
+										</select>
+									</div>
 									<div class="col-md-3 mb-3">
 										<label class="form-label fw-bold">DB</label>
-										<select class="form-select" id="db" name="db">
+										<select class="form-select" id="db" name="db" onchange="handleDbChange()">
 											<option value="ORACLE">Oracle DB</option>
 											<option value="TIBERO">Tibero (Tmax)</option>
 											<option value="MSSQL">MS-SQL</option>
 											<option value="MYSQL">MySQL/MariaDB</option>
 											<option value="POSTGRES">PostgreSQL</option>
-											<option value="NOSQL">NoSQL (MongoDB 등)</option>
+											<option value="HANA">SAP HANA</option>
 											<option value="N/A">N/A (SaaS)</option>
 										</select>
 									</div>
 									<div class="col-md-3 mb-3">
-										<label class="form-label fw-bold">주요 SW</label>
-										<select class="form-select" id="software" name="software">
-											<option value="SAP">SAP ERP</option>
-											<option value="ORACLE">Oracle ERP</option>
-											<option value="DOUZONE">더존 (iU/iCUBE)</option>
-											<option value="YOUNG">영림원 (K-System)</option>
-											<option value="ETC">기타 / 자체개발</option>
+										<label class="form-label fw-bold">DB 버전</label>
+										<select class="form-select" id="db_version" name="db_version">
+											<!-- Oracle versions (default) -->
+											<option value="19C">Oracle 19c</option>
+											<option value="12C">Oracle 12c</option>
+											<option value="11G">Oracle 11g</option>
+											<option value="21C">Oracle 21c</option>
 										</select>
+									</div>
+									<div class="col-md-3 mb-3 d-flex align-items-end">
+										<button type="button" class="btn btn-outline-secondary w-100" onclick="resetVersions()">
+											<i class="fas fa-undo me-1"></i>기본값 복원
+										</button>
 									</div>
 								</div>
 								
@@ -274,12 +309,48 @@
 												</div>
 												<div class="col-md-7 border-start">
 													<div class="mb-3">
-														<div class="mb-2"><strong><i class="fas fa-shield-alt me-1"></i>통제 활동</strong></div>
+														<div class="d-flex justify-content-between align-items-center mb-2">
+															<strong><i class="fas fa-shield-alt me-1"></i>통제 활동</strong>
+															<button class="btn btn-sm btn-link text-decoration-none p-0" onclick="copyToClipboard('activity-detail-{{ control.id }}')">
+																<i class="far fa-copy me-1"></i>복사
+															</button>
+														</div>
 														<p class="small mb-0 text-dark" id="activity-detail-{{ control.id }}" style="white-space: pre-wrap;">{{ control.control_description }}</p>
 													</div>
-													
+
+													<!-- 모집단 / 모집단 완전성 / 표본수 -->
+													<div class="pt-3 border-top mb-3">
+														<div class="mb-2"><strong><i class="fas fa-database me-1"></i>모집단 정보</strong></div>
+														<div class="row small mb-2">
+															<div class="col-md-6">
+																<span class="text-muted">모집단:</span>
+																<span class="fw-bold ms-1" id="population-name-{{ control.id }}">-</span>
+															</div>
+															<div class="col-md-2">
+																<span class="text-muted">수량:</span>
+																<span class="fw-bold ms-1" id="population-count-{{ control.id }}">-</span>
+															</div>
+															<div class="col-md-2">
+																<span class="text-muted">표본수:</span>
+																<span class="fw-bold ms-1 text-primary" id="sample-count-{{ control.id }}">-</span>
+															</div>
+															<div class="col-md-2">
+																<span class="text-muted">완전성:</span>
+																<span class="fw-bold ms-1 text-success" id="completeness-{{ control.id }}">-</span>
+															</div>
+														</div>
+														<!-- 완전성 상세 (테이블명, 쿼리, 메뉴경로 등) -->
+														<div class="small text-muted bg-light p-2 border rounded" id="completeness-detail-{{ control.id }}"
+															style="white-space: pre-wrap; display: none;"></div>
+													</div>
+
 													<div class="pt-3 border-top">
-														<div class="mb-2"><strong><i class="fas fa-clipboard-check me-1"></i>테스트 절차</strong></div>
+														<div class="d-flex justify-content-between align-items-center mb-2">
+															<strong><i class="fas fa-clipboard-check me-1"></i>테스트 절차</strong>
+															<button class="btn btn-sm btn-link text-decoration-none p-0" onclick="copyToClipboard('test-proc-detail-{{ control.id }}')">
+																<i class="far fa-copy me-1"></i>복사
+															</button>
+														</div>
 														<div class="small text-muted bg-white p-2 border rounded" id="test-proc-detail-{{ control.id }}"
 															style="white-space: pre-wrap;"
 															data-auto="{{ control.test_procedure_auto }}"
@@ -317,6 +388,32 @@
 
 		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 		<script>
+			// 클립보드 복사 함수
+			function copyToClipboard(elementId) {
+				const element = document.getElementById(elementId);
+				const text = element.innerText;
+				
+				navigator.clipboard.writeText(text).then(() => {
+					// 성공 시 피드백 (간단한 alert 또는 토스트)
+					const toastContainer = document.createElement('div');
+					toastContainer.style.position = 'fixed';
+					toastContainer.style.bottom = '100px';
+					toastContainer.style.left = '50%';
+					toastContainer.style.transform = 'translateX(-50%)';
+					toastContainer.style.background = 'rgba(0,0,0,0.7)';
+					toastContainer.style.color = 'white';
+					toastContainer.style.padding = '0.5rem 1rem';
+					toastContainer.style.borderRadius = '20px';
+					toastContainer.style.zIndex = '3000';
+					toastContainer.innerText = '클립보드에 복사되었습니다.';
+					
+					document.body.appendChild(toastContainer);
+					setTimeout(() => toastContainer.remove(), 2000);
+				}).catch(err => {
+					console.error('Failed to copy: ', err);
+				});
+			}
+
 			// CSRF 토큰 설정
 			const csrfToken = "{{ csrf_token() }}";
 			
@@ -324,13 +421,46 @@
 			function handleSystemTypeChange() {
 				const systemType = document.getElementById('system_type').value;
 				const softwareSelect = document.getElementById('software');
-				
+				const etcOption = softwareSelect.querySelector('option[value="ETC"]');
+				const sapOption = softwareSelect.querySelector('option[value="SAP"]');
+				const oracleOption = softwareSelect.querySelector('option[value="ORACLE"]');
+				const douzoneOption = softwareSelect.querySelector('option[value="DOUZONE"]');
+				const youngOption = softwareSelect.querySelector('option[value="YOUNG"]');
+
 				if (systemType === 'In-house') {
+					// 자체개발: ETC만 표시
 					softwareSelect.value = 'ETC';
 					softwareSelect.disabled = true;
-				} else {
+					if (etcOption) etcOption.style.display = '';
+					if (sapOption) sapOption.style.display = 'none';
+					if (oracleOption) oracleOption.style.display = 'none';
+					if (douzoneOption) douzoneOption.style.display = 'none';
+					if (youngOption) youngOption.style.display = 'none';
+				} else if (systemType === 'Package-Modifiable') {
+					// Package Modifiable: SAP, Oracle만 표시
 					softwareSelect.disabled = false;
+					if (etcOption) etcOption.style.display = 'none';
+					if (sapOption) sapOption.style.display = '';
+					if (oracleOption) oracleOption.style.display = '';
+					if (douzoneOption) douzoneOption.style.display = 'none';
+					if (youngOption) youngOption.style.display = 'none';
+					if (softwareSelect.value === 'ETC' || softwareSelect.value === 'DOUZONE' || softwareSelect.value === 'YOUNG') {
+						softwareSelect.value = 'SAP';
+					}
+				} else {
+					// Package Non-modifiable: 더존, 영림원만 표시
+					softwareSelect.disabled = false;
+					if (etcOption) etcOption.style.display = 'none';
+					if (sapOption) sapOption.style.display = 'none';
+					if (oracleOption) oracleOption.style.display = 'none';
+					if (douzoneOption) douzoneOption.style.display = '';
+					if (youngOption) youngOption.style.display = '';
+					if (softwareSelect.value === 'ETC' || softwareSelect.value === 'SAP' || softwareSelect.value === 'ORACLE') {
+						softwareSelect.value = 'DOUZONE';
+					}
 				}
+				// SW 변경에 따른 버전 갱신
+				handleSoftwareChange();
 			}
 
 			// Cloud 환경 변경 시 핸들러
@@ -418,7 +548,168 @@
 					}
 				});
 			}
-			
+
+			// SW 버전 옵션 정의
+			const SW_VERSION_OPTIONS = {
+				'SAP': [
+					{value: 'ECC', text: 'ECC 6.0'},
+					{value: 'S4HANA', text: 'S/4HANA (On-Premise)'},
+					{value: 'S4CLOUD', text: 'S/4HANA Cloud'}
+				],
+				'ORACLE': [
+					{value: 'R12', text: 'E-Business Suite R12'},
+					{value: 'FUSION', text: 'Oracle Fusion Cloud'},
+					{value: 'JDE', text: 'JD Edwards'}
+				],
+				'DOUZONE': [
+					{value: 'ICUBE', text: 'iCUBE'},
+					{value: 'IU', text: 'iU ERP'},
+					{value: 'WEHAGO', text: 'WEHAGO (Cloud)'},
+					{value: 'AMARANTH', text: 'Amaranth 10'}
+				],
+				'YOUNG': [
+					{value: 'KSYSTEM', text: 'K-System (Standard)'},
+					{value: 'KSYSTEMPLUS', text: 'K-System Plus'},
+					{value: 'SYSTEVER', text: 'SystemEver (Cloud)'}
+				],
+				'ETC': [
+					{value: 'CUSTOM', text: '자체개발 시스템'},
+					{value: 'OTHER', text: '기타 패키지'}
+				]
+			};
+
+			// OS 버전 옵션 정의
+			const OS_VERSION_OPTIONS = {
+				'RHEL': [
+					{value: 'RHEL9', text: 'RHEL 9.x / Rocky 9'},
+					{value: 'RHEL8', text: 'RHEL 8.x / CentOS 8'},
+					{value: 'RHEL7', text: 'RHEL 7.x / CentOS 7'}
+				],
+				'UBUNTU': [
+					{value: 'U2204', text: 'Ubuntu 22.04 LTS'},
+					{value: 'U2004', text: 'Ubuntu 20.04 LTS'},
+					{value: 'U1804', text: 'Ubuntu 18.04 LTS'}
+				],
+				'WINDOWS': [
+					{value: 'W2022', text: 'Windows Server 2022'},
+					{value: 'W2019', text: 'Windows Server 2019'},
+					{value: 'W2016', text: 'Windows Server 2016'}
+				],
+				'UNIX': [
+					{value: 'AIX73', text: 'AIX 7.3'},
+					{value: 'AIX72', text: 'AIX 7.2'},
+					{value: 'HPUX', text: 'HP-UX 11i v3'}
+				],
+				'N/A': [
+					{value: 'NA', text: 'N/A (CSP Managed)'}
+				]
+			};
+
+			// DB 버전 옵션 정의
+			const DB_VERSION_OPTIONS = {
+				'ORACLE': [
+					{value: '19C', text: 'Oracle 19c'},
+					{value: '21C', text: 'Oracle 21c'},
+					{value: '12C', text: 'Oracle 12c'},
+					{value: '11G', text: 'Oracle 11g'}
+				],
+				'TIBERO': [
+					{value: 'T7', text: 'Tibero 7'},
+					{value: 'T6', text: 'Tibero 6'}
+				],
+				'MSSQL': [
+					{value: 'SQL2022', text: 'SQL Server 2022'},
+					{value: 'SQL2019', text: 'SQL Server 2019'},
+					{value: 'SQL2017', text: 'SQL Server 2017'}
+				],
+				'MYSQL': [
+					{value: 'MY8', text: 'MySQL 8.x'},
+					{value: 'MARIA10', text: 'MariaDB 10.x'}
+				],
+				'POSTGRES': [
+					{value: 'PG15', text: 'PostgreSQL 15'},
+					{value: 'PG14', text: 'PostgreSQL 14'},
+					{value: 'PG13', text: 'PostgreSQL 13'}
+				],
+				'HANA': [
+					{value: 'HANA2', text: 'SAP HANA 2.0'},
+					{value: 'HANACLOUD', text: 'SAP HANA Cloud'}
+				],
+				'N/A': [
+					{value: 'NA', text: 'N/A (CSP Managed)'}
+				]
+			};
+
+			// SW 변경 시 버전 옵션 갱신
+			function handleSoftwareChange() {
+				const sw = document.getElementById('software').value;
+				const versionSelect = document.getElementById('sw_version');
+				const options = SW_VERSION_OPTIONS[sw] || [];
+
+				versionSelect.innerHTML = '';
+				options.forEach(opt => {
+					const option = document.createElement('option');
+					option.value = opt.value;
+					option.textContent = opt.text;
+					versionSelect.appendChild(option);
+				});
+
+				// SAP S/4HANA 선택 시 DB를 HANA로 자동 변경
+				if (sw === 'SAP' && versionSelect.value.includes('S4')) {
+					const dbSelect = document.getElementById('db');
+					if (dbSelect.value !== 'HANA') {
+						dbSelect.value = 'HANA';
+						handleDbChange();
+					}
+				}
+
+				refreshAllPopulations();
+			}
+
+			// OS 변경 시 버전 옵션 갱신
+			function handleOsChange() {
+				const os = document.getElementById('os').value;
+				const versionSelect = document.getElementById('os_version');
+				const options = OS_VERSION_OPTIONS[os] || [];
+
+				versionSelect.innerHTML = '';
+				options.forEach(opt => {
+					const option = document.createElement('option');
+					option.value = opt.value;
+					option.textContent = opt.text;
+					versionSelect.appendChild(option);
+				});
+
+				refreshAllPopulations();
+			}
+
+			// DB 변경 시 버전 옵션 갱신
+			function handleDbChange() {
+				const db = document.getElementById('db').value;
+				const versionSelect = document.getElementById('db_version');
+				const options = DB_VERSION_OPTIONS[db] || [];
+
+				versionSelect.innerHTML = '';
+				options.forEach(opt => {
+					const option = document.createElement('option');
+					option.value = opt.value;
+					option.textContent = opt.text;
+					versionSelect.appendChild(option);
+				});
+
+				refreshAllPopulations();
+			}
+
+			// 기본값 복원
+			function resetVersions() {
+				document.getElementById('software').value = 'SAP';
+				document.getElementById('os').value = 'RHEL';
+				document.getElementById('db').value = 'ORACLE';
+				handleSoftwareChange();
+				handleOsChange();
+				handleDbChange();
+			}
+
 			// 주기별 모집단 기준
 			const FREQUENCY_POPULATION = {
 				'연': 1,
@@ -430,13 +721,128 @@
 				'기타': 0
 			};
 
+			// 주기별 모집단명
+			const FREQUENCY_POPULATION_NAME = {
+				'연': '연간 모니터링 문서',
+				'분기': '분기별 모니터링 문서',
+				'월': '월별 모니터링 문서',
+				'주': '주별 모니터링 문서',
+				'일': '일별 모니터링 문서',
+				'수시': '수시 발생 건',
+				'기타': '-'
+			};
+
 			// 주기 변경 시 모집단 자동 설정
 			function updatePopulationByFrequency(id) {
 				const freqSelect = document.getElementById(`freq-${id}`);
 				const populationInput = document.getElementById(`population-${id}`);
 				const freq = freqSelect ? freqSelect.value : '수시';
-				populationInput.value = FREQUENCY_POPULATION[freq] || 0;
+				const popCount = FREQUENCY_POPULATION[freq] || 0;
+				populationInput.value = popCount;
 				calculateSample(id);
+
+				// 화면에 모집단 정보 표시
+				updatePopulationDisplay(id, freq, popCount);
+			}
+
+			// 모집단 정보 화면 업데이트
+			function updatePopulationDisplay(id, freq, popCount) {
+				const typeSelect = document.getElementById(`type-${id}`);
+				const isAuto = typeSelect && typeSelect.value === 'Auto';
+
+				const popNameEl = document.getElementById(`population-name-${id}`);
+				const popCountEl = document.getElementById(`population-count-${id}`);
+				const sampleCountEl = document.getElementById(`sample-count-${id}`);
+				const completenessEl = document.getElementById(`completeness-${id}`);
+				const completenessDetailEl = document.getElementById(`completeness-detail-${id}`);
+
+				let popName = FREQUENCY_POPULATION_NAME[freq] || '-';
+				let completenessText = '';
+				let completenessDetail = '';
+				const sampleCount = isAuto || freq === '기타' ? 0 : (FREQUENCY_SAMPLE[freq] || 0);
+
+				// 자동통제일 경우 - 시스템별 조회 방법 표시
+				if (isAuto) {
+					const template = getPopulationTemplate(id);
+					if (template) {
+						popName = template.population;
+						completenessText = '자동통제';
+						completenessDetail = template.completeness;
+					} else {
+						popName = "N/A (자동통제)";
+						completenessText = '자동통제';
+						completenessDetail = '자동통제이므로 모집단 완전성 확인 대상에서 제외함\n시스템별 확인 방법은 시스템 선택 후 확인';
+					}
+				}
+				// 수시 통제일 경우 템플릿에서 모집단/완전성 가져오기
+				else if (freq === '수시') {
+					// APD02, APD03 수동 설정 시 예외 처리 (사용자 요청 사항)
+					if (!isAuto && id === 'APD02') {
+						popName = "부서이동자리스트";
+						completenessText = '✓ 확인';
+						completenessDetail = "인사시스템 상의 부서이동자 명단과 권한 회수 내역 전수 대사";
+					} else if (!isAuto && id === 'APD03') {
+						popName = "퇴사자리스트";
+						completenessText = '✓ 확인';
+						completenessDetail = "인사시스템 상의 퇴사자 명단과 계정 비활성화 내역 전수 대사";
+					} else {
+						const template = getPopulationTemplate(id);
+						if (template) {
+							popName = template.population;
+							completenessText = '✓ 확인';
+							completenessDetail = template.completeness;
+						} else {
+							completenessText = '확인 필요';
+							completenessDetail = '수시 발생 건이므로 모집단 완전성을 별도로 확인해야 함';
+						}
+					}
+				} else if (popCount > 0 && popName !== '-') {
+					completenessText = '✓ 확인';
+					completenessDetail = `${popName}이므로 ${popCount}건을 완전성 있는 것으로 확인함`;
+				} else {
+					completenessText = '-';
+					completenessDetail = '';
+				}
+
+				if (popNameEl) popNameEl.textContent = popName;
+				if (popCountEl) popCountEl.textContent = isAuto ? 'N/A' : (popCount > 0 ? `${popCount}건` : (freq === '수시' ? '조회 필요' : '-'));
+				if (sampleCountEl) sampleCountEl.textContent = sampleCount > 0 ? `${sampleCount}건` : 'N/A';
+
+				if (completenessEl) {
+					completenessEl.textContent = completenessText;
+				}
+
+				// 완전성 상세 표시 (테이블명, 쿼리, 메뉴경로 등)
+				if (completenessDetailEl) {
+					if (completenessDetail) {
+						completenessDetailEl.innerHTML = formatCompletenessDetail(completenessDetail);
+						completenessDetailEl.style.display = 'block';
+					} else {
+						completenessDetailEl.style.display = 'none';
+					}
+				}
+			}
+
+			// 완전성 상세 정보 포맷팅 (쿼리, 메뉴 등 하이라이트)
+			function formatCompletenessDetail(text) {
+				if (!text) return '';
+				// [자동통제 확인방법] 헤더 하이라이트
+				let formatted = text.replace(/\[자동통제 확인방법\]/g, '<span class="badge bg-warning text-dark me-1">자동통제 확인방법</span>');
+				// [버전별 참고] 헤더 하이라이트
+				formatted = formatted.replace(/\[버전별 참고\]/g, '<br><span class="badge bg-info me-1 mt-2">버전별 참고</span>');
+				// [Query] 부분 하이라이트
+				formatted = formatted.replace(/\[Query\]/g, '<span class="badge bg-primary me-1">Query</span>');
+				// [메뉴] 부분 하이라이트
+				formatted = formatted.replace(/\[메뉴\]/g, '<span class="badge bg-success me-1">메뉴</span>');
+				// SQL 키워드 강조 (SELECT, FROM, WHERE, BETWEEN, AND, OR)
+				formatted = formatted.replace(/\b(SELECT|FROM|WHERE|BETWEEN|AND|OR)\b/g, '<span class="text-primary fw-bold">$1</span>');
+				// 테이블명 (대문자+언더스코어 패턴) 강조
+				formatted = formatted.replace(/\b(TB[A-Z_]+|TBSM_[A-Z_]+|FND_[A-Z_]+)\b/g, '<span class="text-danger fw-bold">$1</span>');
+				// T-Code 강조
+				formatted = formatted.replace(/T-Code:\s*([A-Z0-9]+)/g, 'T-Code: <span class="badge bg-secondary">$1</span>');
+				// 버전명 강조 (• 로 시작하는 라인의 버전명)
+				formatted = formatted.replace(/•\s*([\w\-\/\s]+):/g, '• <strong class="text-info">$1</strong>:');
+				return formatted;
 			}
 
 			// 주기별 표본수 기준
@@ -449,6 +855,85 @@
 				'수시': 25,
 				'기타': 0
 			};
+
+			// 모집단/완전성 템플릿 (서버에서 로드)
+			let populationTemplates = {
+				sw: {},
+				os: {},
+				db: {}
+			};
+
+			// 템플릿 로드
+			async function loadPopulationTemplates() {
+				try {
+					const response = await fetch('/api/rcm/population_templates');
+					const result = await response.json();
+					if (result.success) {
+						populationTemplates.sw = result.sw_templates;
+						populationTemplates.os = result.os_templates;
+						populationTemplates.db = result.db_templates;
+						console.log('모집단 템플릿 로드 완료');
+					}
+				} catch (error) {
+					console.error('템플릿 로드 실패:', error);
+				}
+			}
+
+			// 통제별 관련 영역 매핑
+			const CONTROL_DOMAIN = {
+				// SW 관련 통제 (수동)
+				'APD01': 'sw', 'APD02': 'sw', 'APD03': 'sw', 'APD07': 'sw',
+				'PC01': 'sw', 'PC02': 'sw', 'PC03': 'sw',
+				'CO01': 'sw', 'ST03': 'sw',
+				'PD01': 'sw', 'PD02': 'sw', 'PD03': 'sw', 'PD04': 'sw', 'CO05': 'sw',
+				// SW 관련 통제 (자동)
+				'APD04': 'sw', 'APD05': 'sw', 'APD06': 'sw',
+				'PC04': 'sw', 'PC05': 'sw',
+				'CO02': 'sw', 'CO03': 'sw', 'CO04': 'sw',
+				'ST01': 'sw', 'ST02': 'sw',
+				// OS 관련 통제
+				'APD09': 'os', 'APD10': 'os', 'APD11': 'os', 'PC06': 'os',
+				// DB 관련 통제
+				'APD08': 'db', 'APD12': 'db', 'APD13': 'db', 'APD14': 'db', 'PC07': 'db'
+			};
+
+			// 현재 선택된 시스템 환경에서 템플릿 가져오기
+			function getPopulationTemplate(controlId) {
+				const domain = CONTROL_DOMAIN[controlId];
+				if (!domain) return null;
+
+				const sw = document.getElementById('software').value;
+				const os = document.getElementById('os').value;
+				const db = document.getElementById('db').value;
+
+				let template = null;
+				if (domain === 'sw' && populationTemplates.sw[sw]) {
+					template = populationTemplates.sw[sw][controlId];
+				} else if (domain === 'os' && populationTemplates.os[os]) {
+					template = populationTemplates.os[os][controlId];
+				} else if (domain === 'db' && populationTemplates.db[db]) {
+					template = populationTemplates.db[db][controlId];
+				}
+				return template;
+			}
+
+			// 시스템 환경 변경 시 모든 통제의 모집단 정보 갱신 (자동통제 + 수시통제)
+			function refreshAllPopulations() {
+				const rows = document.querySelectorAll('.control-row');
+				rows.forEach(row => {
+					const id = row.dataset.id;
+					const typeSelect = document.getElementById(`type-${id}`);
+					const freqSelect = document.getElementById(`freq-${id}`);
+					const isAuto = typeSelect && typeSelect.value === 'Auto';
+					const freq = freqSelect ? freqSelect.value : '수시';
+
+					// 자동통제이거나 수시 통제인 경우 갱신
+					if (isAuto || freq === '수시') {
+						const popCount = FREQUENCY_POPULATION[freq] || 0;
+						updatePopulationDisplay(id, freq, popCount);
+					}
+				});
+			}
 
 			// 표본 수 계산
 			function calculateSample(id) {
@@ -510,11 +995,18 @@
 			}
 
 			// 페이지 로드 시 상태 초기화
-			document.addEventListener('DOMContentLoaded', function() {
+			document.addEventListener('DOMContentLoaded', async function() {
+				// 모집단 템플릿 로드
+				await loadPopulationTemplates();
+
 				// 시스템 유형 및 SW 상태 초기화
 				handleSystemTypeChange();
 				// Cloud 환경 초기화
 				handleCloudEnvChange();
+				// 버전 선택 초기화
+				handleSoftwareChange();
+				handleOsChange();
+				handleDbChange();
 
 				const rows = document.querySelectorAll('.control-row');
 				rows.forEach(row => {
@@ -522,7 +1014,50 @@
 					// 초기 로드 시 자동/수동 로직을 한 번 실행하여 값과 활성화 상태를 맞춤
 					handleTypeChange(id);
 				});
+
+				// 초기 로드 후 모든 자동통제/수시통제의 모집단 정보 갱신
+				refreshAllPopulations();
+
+				// SW/OS/DB 변경 시 정보 갱신 (이미 onchange에서 처리)
+				// 버전 변경 시에도 모집단 정보 갱신
+				['sw_version', 'os_version', 'db_version'].forEach(selectId => {
+					const selectEl = document.getElementById(selectId);
+					if (selectEl) {
+						selectEl.addEventListener('change', () => {
+							refreshAllPopulations();
+							refreshAllProcedures();
+						});
+					}
+				});
 			});
+
+			// 모든 절차를 마스터(범용) 값으로 초기화
+			function refreshAllProcedures() {
+				// AI 분석 결과가 이미 적용된 경우 사용자에게 알림 (선택 사항)
+				console.log('시스템 환경 변경으로 인해 기술 절차를 범용 값으로 초기화합니다.');
+				
+				const rows = document.querySelectorAll('.control-row');
+				rows.forEach(row => {
+					const id = row.dataset.id;
+					const typeSelect = document.getElementById(`type-${id}`);
+					const testProcDetail = document.getElementById(`test-proc-detail-${id}`);
+					
+					if (testProcDetail) {
+						// 백업된 오리지널(범용) 데이터로 복구
+						const origAuto = testProcDetail.dataset.origAuto || testProcDetail.dataset.auto;
+						const origManual = testProcDetail.dataset.origManual || testProcDetail.dataset.manual;
+						
+						// 현재 타입에 맞춰 표시
+						if (typeSelect && typeSelect.value === 'Auto') {
+							testProcDetail.textContent = origAuto;
+							testProcDetail.dataset.auto = origAuto; // AI 결과 덮어쓰기 방지 (초기화)
+						} else {
+							testProcDetail.textContent = origManual;
+							testProcDetail.dataset.manual = origManual; // AI 결과 덮어쓰기 방지 (초기화)
+						}
+					}
+				});
+			}
 			
 			// AI 분석 실행
 			document.getElementById('btn-generate-ai').addEventListener('click', async function() {
@@ -618,11 +1153,17 @@
 
 				const systemName = document.getElementById('system_name').value || 'ITGC';
 				const cloudEnv = document.getElementById('cloud_env').value;
+				const software = document.getElementById('software').value;
+				const osType = document.getElementById('os').value;
+				const dbType = document.getElementById('db').value;
 
 				const payload = {
 					system_info: { 
 						system_name: systemName,
-						cloud_env: cloudEnv
+						cloud_env: cloudEnv,
+						software: software,
+						os: osType,
+						db: dbType
 					},
 					rcm_data: rcm_data
 				};

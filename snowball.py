@@ -35,7 +35,6 @@ from snowball_drive import get_work_log, append_to_work_log_docs
 
 app = Flask(__name__)
 
-
 # 로깅 초기화
 setup_logging()
 logger = get_logger('main')
