@@ -2,13 +2,10 @@ from flask import Blueprint, request, render_template, session, url_for, jsonify
 from datetime import datetime
 import os
 import json
-import time
 from io import BytesIO
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
 from auth import log_user_activity, login_required
-from openai import OpenAI
-from google import genai
 from snowball_mail import send_gmail_with_attachment
 
 # Blueprint 생성
@@ -546,168 +543,6 @@ def get_user_info():
     return None
 
 # ================================
-# AI 엔진: 통제 활동 자동 생성
-# ================================
-def generate_ai_rcm_content(system_info):
-    """
-    AI를 사용하여 시스템 환경에 맞는 통제 활동 및 기술적 증적 생성
-    """
-    api_key = os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        return {"error": "API Key not found"}
-
-    client = OpenAI(api_key=api_key)
-    
-    # 컨텍스트 요약
-    context = (
-        f"시스템명: {system_info.get('system_name')}, "
-        f"유형: {system_info.get('system_type')}, "
-        f"SW: {system_info.get('software')}, "
-        f"OS: {system_info.get('os')}, "
-        f"DB: {system_info.get('db')}"
-    )
-
-    prompt = f"""당신은 IT 감사 및 ITGC 전문가입니다.
-다음 시스템 환경에 대해 주어진 ITGC 통제 항목별 '통제 활동'과 '테스트 절차'를 생성하십시오.
-
-[시스템 환경]
-{context}
-
-[작성 지침]
-1. 각 통제 항목에 대해 해당 기술 스택에 적합한 '기술적 증적(Technical Objects)'을 명시하십시오.
-   - 예: SAP -> SU01, PFCG, STAD, SE16
-   - 예: Oracle ERP -> FND_USER, FND_RESPONSIBILITY, AD_APPL_TOP
-   - 예: DB가 Oracle일 경우 → DBA_USERS, DBA_TAB_PRIVS, Audit Trail
-   - 예: Linux일 경우 → /etc/passwd, sudoers, syslog
-2. 시스템 유형(System Type)에 따라 다음 통제 범위를 적용하십시오:
-   - In-house (자체개발): 개발 및 변경관리(SDLC) 전체 통제 항목을 상세히 포함.
-   - Package-Modifiable: 패키지 표준 기능 + 커스터마이징 영역에 대한 변경 통제 포함.
-   - Package-Non-modifiable: 운영 및 권한 통제 위주로 작성하고, 개발/변경 통제는 제외하거나 최소화.
-3. 응답은 반드시 아래 JSON 형식으로만 작성하십시오.
-
-[JSON 형식]
-{{
-  "controls": [
-    {{
-      "id": "APD01",
-      "activity": "통제 활동 내용...",
-      "procedure": "테스트 절차 내용..."
-    }},
-    ...
-  ]
-}}
-"""
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "당신은 IT 전문 감사인이며 정확한 기술 용어를 사용합니다."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={ "type": "json_object" },
-            temperature=0.0
-        )
-        return json.loads(response.choices[0].message.content)
-    except Exception as e:
-        return {"error": str(e)}
-
-# ================================
-# AI 엔진: Gemini를 통한 통제 활동 자동 생성
-# ================================
-def generate_gemini_rcm_content(system_info):
-    """
-    Google Gemini AI를 사용하여 시스템 환경에 맞는 통제 활동 및 기술적 증적 생성
-    """
-    api_key = os.getenv('GEMINI_API_KEY')
-    if not api_key:
-        return {"error": "Gemini API Key not found"}
-
-    # 컨텍스트 요약
-    context = (
-        f"시스템명: {system_info.get('system_name')}, "
-        f"유형: {system_info.get('system_type')}, "
-        f"SW: {system_info.get('software')}, "
-        f"OS: {system_info.get('os')}, "
-        f"DB: {system_info.get('db')}"
-    )
-
-    prompt = f"""당신은 IT 감사 및 ITGC 전문가입니다.
-다음 시스템 환경에 대해 주어진 ITGC 통제 항목별 '통제 활동'과 '테스트 절차'를 생성하십시오.
-
-[시스템 환경]
-{context}
-
-[작성 지침]
-1. 각 통제 항목에 대해 해당 기술 스택에 적합한 '기술적 증적(Technical Objects)'을 명시하십시오.
-   - 예: SAP -> SU01, PFCG, STAD, SE16
-   - 예: Oracle ERP -> FND_USER, FND_RESPONSIBILITY, AD_APPL_TOP
-   - 예: DB가 Oracle일 경우 → DBA_USERS, DBA_TAB_PRIVS, Audit Trail
-   - 예: Linux일 경우 → /etc/passwd, sudoers, syslog
-2. 시스템 유형(System Type)에 따라 다음 통제 범위를 적용하십시오:
-   - In-house (자체개발): 개발 및 변경관리(SDLC) 전체 통제 항목을 상세히 포함.
-   - Package-Modifiable: 패키지 표준 기능 + 커스터마이징 영역에 대한 변경 통제 포함.
-   - Package-Non-modifiable: 운영 및 권한 통제 위주로 작성하고, 개발/변경 통제는 제외하거나 최소화.
-3. 응답은 반드시 아래 JSON 형식으로만 작성하십시오. 다른 텍스트 없이 순수 JSON만 반환하세요.
-
-[JSON 형식]
-{{
-  "controls": [
-    {{
-      "id": "APD01",
-      "activity": "통제 활동 내용...",
-      "procedure": "테스트 절차 내용..."
-    }}
-  ]
-}}
-"""
-
-    try:
-        client = genai.Client(api_key=api_key)
-        model_id = 'gemini-2.0-flash'
-
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                response = client.models.generate_content(
-                    model=model_id,
-                    contents=prompt
-                )
-
-                # 응답 텍스트에서 JSON 추출
-                response_text = response.text.strip()
-
-                # ```json ... ``` 형식으로 감싸져 있을 경우 처리
-                if response_text.startswith('```'):
-                    lines = response_text.split('\n')
-                    # 첫 줄(```json)과 마지막 줄(```) 제거
-                    json_lines = []
-                    in_json = False
-                    for line in lines:
-                        if line.startswith('```') and not in_json:
-                            in_json = True
-                            continue
-                        elif line.startswith('```') and in_json:
-                            break
-                        elif in_json:
-                            json_lines.append(line)
-                    response_text = '\n'.join(json_lines)
-
-                return json.loads(response_text)
-
-            except Exception as e:
-                err_msg = str(e)
-                if ("429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg) and attempt < max_retries - 1:
-                    wait_time = (attempt + 1) * 5
-                    print(f"Gemini AI 분석 제한 발생 (시도 {attempt+1}/{max_retries}). {wait_time}초 후 재시도합니다...")
-                    time.sleep(wait_time)
-                    continue
-                raise e
-
-    except Exception as e:
-        return {"error": str(e)}
-
-# ================================
 # Blueprint 라우트
 # ================================
 
@@ -724,25 +559,6 @@ def link1():
                          user_info=user_info,
                          user_email=user_email,
                          master_controls=MASTER_ITGC_CONTROLS)
-
-@bp_link1.route('/api/rcm/ai_generate', methods=['POST'])
-@login_required
-def api_rcm_ai_generate():
-    """AI를 통한 RCM 내용 생성 API (Gemini 기본 사용)"""
-    data = request.json
-
-    # Gemini를 기본으로 사용, 실패 시 OpenAI로 fallback
-    result = generate_gemini_rcm_content(data)
-
-    if "error" in result:
-        # Gemini 실패 시 OpenAI로 재시도
-        print(f"Gemini 실패: {result['error']}, OpenAI로 재시도...")
-        result = generate_ai_rcm_content(data)
-
-        if "error" in result:
-            return jsonify({"success": False, "message": result["error"]}), 500
-
-    return jsonify({"success": True, "data": result["controls"]})
 
 @bp_link1.route('/api/rcm/population_templates', methods=['GET'])
 def api_get_population_templates():
