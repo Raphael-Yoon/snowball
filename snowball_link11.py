@@ -691,6 +691,24 @@ def delete_answer(question_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+def _get_all_dependent_question_ids(conn, question_ids):
+    """재귀적으로 모든 하위 질문 ID를 수집"""
+    all_ids = list(question_ids)
+
+    for q_id in question_ids:
+        cursor = conn.execute('''
+            SELECT dependent_question_ids FROM sb_disclosure_questions WHERE id = ?
+        ''', (q_id,))
+        row = cursor.fetchone()
+
+        if row and row['dependent_question_ids']:
+            try:
+                child_ids = json.loads(row['dependent_question_ids'])
+                if child_ids:
+                    all_ids.extend(_get_all_dependent_question_ids(conn, child_ids))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
     return all_ids
 
 

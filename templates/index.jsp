@@ -195,7 +195,7 @@
                 <h2 class="section-title"><i class="fas fa-globe me-2"></i>Public</h2>
                 <div class="row g-4 justify-content-center">
                     {% endif %}
-                    <!-- Public 3개 카드 -->
+                    <!-- RCM 생성 -->
                     <div class="col-lg-3 col-md-6">
                         <div class="feature-card">
                             <img src="{{ url_for('static', filename='img/rcm.jpg')}}" class="feature-img" alt="RCM">
@@ -206,23 +206,6 @@
                                     <a href="/link1" class="feature-link" data-bs-toggle="tooltip"
                                         data-bs-placement="top" data-bs-html="true"
                                         title="<div>• 회사 정보 입력으로 맞춤형 RCM 템플릿 생성<br>• 회사 규모와 업종에 따른 통제 항목 구성<br>• 엑셀 파일로 즉시 다운로드 가능<br>• 이메일 발송으로 편리한 공유</div>">자세히
-                                        보기</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- AI RCM Builder 추가 -->
-                    <div class="col-lg-3 col-md-6">
-                        <div class="feature-card border-primary">
-                            <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="AI RCM Builder">
-                            <div class="card-body p-4">
-                                <span class="badge bg-primary mb-2">New</span>
-                                <h5 class="feature-title text-center">AI RCM Builder</h5>
-                                <p class="feature-description">AI를 통해 시스템 환경에 최적화된 기술적 통제 항목을 자동으로 생성합니다.</p>
-                                <div class="text-center">
-                                    <a href="/link1_1" class="feature-link" data-bs-toggle="tooltip"
-                                        data-bs-placement="top" data-bs-html="true"
-                                        title="<div>• 시스템/OS/DB 환경별 지능형 통제 매핑<br>• 기술적 증적(Technical Objects) 자동 제안<br>• 자체개발/패키지 등 서비스 유형별 맞춤 구성<br>• 자동/수동 편집 및 엑셀 다운로드</div>">자세히
                                         보기</a>
                                 </div>
                             </div>
