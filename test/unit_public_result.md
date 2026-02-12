@@ -1,14 +1,14 @@
 # Public 기능 통합 Unit 테스트 결과
 
-- 실행 시간: 2026-02-07 18:44:39
-- 소요 시간: 19.9초
-- 모드: Headless
+- 실행 시간: 2026-02-12 13:16:51
+- 소요 시간: 17.4초
+- 모드: Browser
 
 ## 테스트 대상
 
 | Link | 설명 | Public |
 |------|------|--------|
-| Link1 | RCM 자동생성 | O |
+| Link1 | RCM 생성 | O |
 | Link2 | 인터뷰/설계평가 | O |
 | Link3 | 조서 템플릿 | O |
 | Link4 | 컨텐츠 | O |
@@ -18,13 +18,14 @@
 
 ## 요약 (그룹별)
 
-### ✅ Link1 (9/9)
+### ✅ Link1 (10/10)
 
 | 그룹 | 결과 | 상태 |
 |------|------|------|
 | 1번 | 2/2 | ✅ |
-| 2번 | 3/3 | ✅ |
-| 3번 | 4/4 | ✅ |
+| 2번 | 2/2 | ✅ |
+| 3번 | 3/3 | ✅ |
+| 4번 | 3/3 | ✅ |
 
 ## 상세 결과
 
@@ -34,30 +35,36 @@
 
 | 테스트 | 상태 | 메시지 |
 |--------|------|--------|
-| test_link1_access_guest | ✅ | 테스트 통과 |
-| test_link1_access_logged_in | ✅ | 로그인 사용자 이메일 자동 입력 확인: snowball2727@naver.com |
+| test_link1_page_access | ✅ | 페이지 접근 및 기본 요소 확인 완료 |
+| test_link1_form_elements | ✅ | 모든 폼 요소 확인 완료 |
 
-#### 2번 (3/3)
-
-| 테스트 | 상태 | 메시지 |
-|--------|------|--------|
-| test_rcm_form_fields | ✅ | test_link1_access_guest 에서 확인됨 |
-| test_rcm_validation_email | ✅ | 잘못된 이메일 형식에서 폼 제출 방지됨 (HTML5 검증) |
-| test_rcm_validation_system_name | ✅ | 시스템명 필수 입력 검증 동작 확인 |
-
-#### 3번 (4/4)
+#### 2번 (2/2)
 
 | 테스트 | 상태 | 메시지 |
 |--------|------|--------|
-| test_rcm_tool_filtering | ✅ | 테스트 통과 |
-| test_rcm_generate_logic_common | ✅ | Common 섹션 포함 확인 - 총 21개 항목 |
-| test_rcm_generate_logic_cloud | ✅ | Cloud(AWS) 필터링 적용됨 - 파일 생성 확인 |
-| test_rcm_generate_logic_infra | ✅ | OS(Linux)/DB(Oracle) 필터링 적용됨 - 21개 항목 |
+| test_link1_os_version_toggle | ✅ | OS 선택에 따른 UI 변화 확인 완료 |
+| test_link1_cloud_env_toggle | ✅ | Cloud 환경 선택에 따른 UI 변화 확인 완료 |
+
+#### 3번 (3/3)
+
+| 테스트 | 상태 | 메시지 |
+|--------|------|--------|
+| test_link1_control_table | ✅ | 통제 테이블 확인 완료 |
+| test_link1_toggle_detail | ✅ | 상세 펼치기/접기 기능 확인 완료 |
+| test_link1_type_change_monitoring | ✅ | 자동→수동 변경 시 모니터링 명칭 변경 확인 |
+
+#### 4번 (3/3)
+
+| 테스트 | 상태 | 메시지 |
+|--------|------|--------|
+| test_link1_population_templates_api | ✅ | 모집단 템플릿 API 정상 동작 |
+| test_link1_email_input | ✅ | 이메일 입력 및 발송 버튼 확인 완료 |
+| test_link1_export_email_validation | ✅ | 이메일 미입력 시 발송 방지 동작 확인 |
 
 ---
 
 ## 전체 요약
 
-- 총 테스트: 9
-- 통과: 9 (100.0%)
+- 총 테스트: 10
+- 통과: 10 (100.0%)
 - 실패: 0 (0.0%)

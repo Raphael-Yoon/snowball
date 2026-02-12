@@ -923,15 +923,6 @@
 
     <!-- 토스트 컨테이너 (Bootstrap) -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
-        <div id="saveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <i class="fas fa-info-circle me-2 toast-icon"></i>
-                <strong class="me-auto toast-title">알림</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body">
-            </div>
-        </div>
     </div>
 
     <!-- 스크립트 -->
@@ -939,7 +930,7 @@
     <script>
         // 질문 ID 상수 (백엔드 QID 클래스와 동기화)
         const QID = {
-            // 1. 정보보호 투자 현황 (8개)
+            // 1. 정보보호 투자 현황 (9개)
             INV_HAS_INVESTMENT: "Q1",    // 정보보호 투자 발생 여부
             INV_IT_AMOUNT: "Q2",         // 정보기술부문 투자액 A
             INV_SEC_GROUP: "Q3",         // 정보보호부문 투자액 B Group
@@ -948,15 +939,17 @@
             INV_SEC_LABOR: "Q6",         // 인건비
             INV_FUTURE_PLAN: "Q7",       // 향후 투자 계획
             INV_FUTURE_AMOUNT: "Q8",     // 예정 투자액
+            INV_MAIN_ITEMS: "Q27",       // 주요 투자 항목
 
-            // 2. 정보보호 인력 현황 (7개)
+            // 2. 정보보호 인력 현황 (8개)
             PER_HAS_TEAM: "Q9",          // 전담 부서/인력 여부
             PER_TOTAL_EMP: "Q10",        // 총 임직원 수
-            PER_IT_EMP: "Q28",           // 정보기술부문 인력 수 C (신규)
+            PER_IT_EMP: "Q28",           // 정보기술부문 인력 수 C
             PER_INTERNAL: "Q11",         // 내부 전담인력 수 D1
             PER_EXTERNAL: "Q12",         // 외주 전담인력 수 D2
             PER_HAS_CISO: "Q13",         // CISO/CPO 지정 여부
             PER_CISO_DETAIL: "Q14",      // CISO/CPO 상세 현황
+            PER_CISO_ACTIVITY: "Q29",    // CISO/CPO 활동내역
 
             // 3. 정보보호 인증 (2개)
             CERT_HAS_CERT: "Q15",        // 인증 보유 여부
@@ -981,6 +974,8 @@
         let companyName = '{{ user_info.company_name if user_info else "default" }}';
         let questions = [];
         let answers = {};
+        let isSaving = false; // 중복 저장 방지 플래그
+        let toastCounter = 0; // 토스트 고유 ID 카운터
 
         // 보안 솔루션 용어 툴팁 매핑
         const securityTerms = {
@@ -1406,15 +1401,17 @@
                     break;
 
                 case 'number':
+                    // 0도 유효한 값이므로 null/undefined/빈문자열만 체크
+                    const hasNumValue = currentValue !== null && currentValue !== undefined && currentValue !== '';
                     if (q.text.includes('(원)')) {
                         // 금액 관련 필드 (천 단위 콤마 + 원 단위 표시)
-                        const formattedVal = currentValue ? formatCurrency(currentValue) : '';
+                        const formattedVal = hasNumValue ? formatCurrency(currentValue) : '';
                         answerHtml = `
                             <div class="currency-input-wrapper" style="position: relative;">
                                 <input type="text" class="currency-input" id="input-${q.id}"
                                        placeholder="금액을 입력하세요"
                                        value="${formattedVal}"
-                                       data-raw-value="${currentValue}"
+                                       data-raw-value="${hasNumValue ? currentValue : ''}"
                                        oninput="handleCurrencyInput(this, '${q.id}')"
                                        onblur="formatCurrencyOnBlur(this)"
                                        style="padding-right: 40px;">
@@ -1423,14 +1420,13 @@
                         `;
                     } else {
                         // 일반 숫자 (인원 수, 횟수 등)
-                        // Q4-17 (사고 건수) 등은 일반 숫자 처리
                         answerHtml = `
                             <input type="text" class="number-input" id="input-${q.id}"
                                    placeholder="숫자를 입력하세요"
-                                   value="${currentValue ? formatNumber(currentValue) : ''}"
-                                   data-raw-value="${currentValue}"
+                                   value="${hasNumValue ? formatNumber(currentValue) : ''}"
+                                   data-raw-value="${hasNumValue ? currentValue : ''}"
                                    oninput="handleNumberInput(this, '${q.id}')"
-                                   onblur="formatNumberOnBlur(this)">
+                                   onblur="formatNumberOnBlur(this, '${q.id}')">
                         `;
                     }
                     break;
@@ -1610,7 +1606,7 @@
             buttons.forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
 
-            updateAnswer(questionId, value, true);
+            updateAnswer(questionId, value);
 
             if (question && question.dependent_question_ids) {
                 if (value === 'YES') {
@@ -1727,7 +1723,7 @@
             el.querySelector('i').className = 'fas fa-check-circle';
 
             // 옵션 선택은 즉시 저장
-            updateAnswer(questionId, value, true);
+            updateAnswer(questionId, value);
         }
 
         // 체크박스 토글
@@ -1752,20 +1748,10 @@
             updateAnswer(questionId, selectedValues);
         }
 
-        let autoSaveTimer;
-        // 답변 업데이트 (immediate가 true이면 즉시 DB 저장, 아니면 디바운스 적용)
-        function updateAnswer(questionId, value, immediate = false) {
+        // 답변 업데이트 (메모리에만 저장, DB 저장은 명시적 버튼 클릭 시에만)
+        function updateAnswer(questionId, value) {
             answers[questionId] = value;
-
-            if (immediate) {
-                saveOneAnswer(questionId, value);
-            } else {
-                // 입력 중에는 1초 후 자동 저장
-                clearTimeout(autoSaveTimer);
-                autoSaveTimer = setTimeout(() => {
-                    saveOneAnswer(questionId, value);
-                }, 1000);
-            }
+            // 자동 저장 제거 - '임시 저장' 또는 '저장 후 다음' 버튼 클릭 시에만 저장됨
         }
 
         // 개별 답변 DB 저장 및 진행률 갱신
@@ -1878,24 +1864,28 @@
             // 답변 업데이트 (raw value 사용)
             updateAnswer(questionId, rawValue);
 
-            // 인력 관련 질문인 경우 검증 (C, D1, D2 등 입력 시)
-            const personnelRelatedItems = [QID.PER_TOTAL_EMP, QID.PER_IT_EMP, QID.PER_INTERNAL, QID.PER_EXTERNAL];
-            if (personnelRelatedItems.includes(questionId)) {
-                calculatePersonnelValidation();
-            }
-
-            // 정보보호 투자액 하위 항목인 경우 상위 합계 계산 및 검증
+            // 정보보호 투자액 하위 항목인 경우 상위 합계 계산
             const securitySubItems = [QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR];
             if (securitySubItems.includes(questionId)) {
                 calculateSecurityInvestmentSum();
             }
         }
 
-        // blur 시 숫자 포맷팅 적용
-        function formatNumberOnBlur(input) {
+        // blur 시 숫자 포맷팅 및 검증 적용
+        let personnelValidationTimer = null;
+        function formatNumberOnBlur(input, questionId) {
             const rawValue = input.dataset.rawValue || input.value.replace(/[^\d.]/g, '');
             if (rawValue) {
                 input.value = formatNumber(rawValue);
+            }
+
+            // 인력 관련 질문인 경우 focus-out 시점에 검증 (debounce 적용)
+            const personnelRelatedItems = [QID.PER_TOTAL_EMP, QID.PER_IT_EMP, QID.PER_INTERNAL, QID.PER_EXTERNAL];
+            if (questionId && personnelRelatedItems.includes(questionId)) {
+                clearTimeout(personnelValidationTimer);
+                personnelValidationTimer = setTimeout(() => {
+                    calculatePersonnelValidation();
+                }, 100);
             }
         }
 
@@ -1934,6 +1924,7 @@
         }
 
         // 정보보호 투자액 합계 자동 계산 (Group = 감가상각비 + 서비스비용 + 인건비)
+        let lastInvestmentToastTime = 0;  // 투자액 검증 토스트 쿨다운
         function calculateSecurityInvestmentSum() {
             const v1 = parseFloat(document.getElementById(`input-${QID.INV_SEC_DEPRECIATION}`)?.dataset.rawValue || 0) || 0;
             const v2 = parseFloat(document.getElementById(`input-${QID.INV_SEC_SERVICE}`)?.dataset.rawValue || 0) || 0;
@@ -1948,10 +1939,7 @@
             // 검증: 정보보호 투자액(B)이 정보기술 투자액(A)보다 클 수 없음
             if (sum > totalIt && totalIt > 0) {
                 console.error(`[투자액 검증 실패] 정보보호 투자액(${sum.toLocaleString()})이 정보기술 투자액(${totalIt.toLocaleString()})을 초과했습니다.`);
-                
-                // 경고 메시지 표시
-                alert(`⚠️ 투자액 오류\n\n정보보호 투자액(B): ${sum.toLocaleString()}원\n정보기술 투자액(A): ${totalIt.toLocaleString()}원\n\n정보보호 투자액은 정보기술 투자액을 초과할 수 없습니다.\n입력한 금액을 다시 확인해주세요.`);
-                
+
                 // 입력 필드 강조 표시
                 [QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR].forEach(qid => {
                     const input = document.getElementById(`input-${qid}`);
@@ -1960,15 +1948,19 @@
                         input.style.backgroundColor = '#fef2f2';
                     }
                 });
-                
+
                 if (totalItInput) {
                     totalItInput.style.borderColor = '#ef4444';
                     totalItInput.style.backgroundColor = '#fef2f2';
                 }
-                
-                // 에러 토스트 표시
-                showToast('정보보호 투자액이 정보기술 투자액을 초과했습니다.', 'error');
-                
+
+                // 에러 토스트 표시 (중복 방지 ID 지정)
+                const now = Date.now();
+                if ((now - lastInvestmentToastTime) > 3000) {
+                    lastInvestmentToastTime = now;
+                    showToast(`정보보호 투자액(${sum.toLocaleString()}원)이 정보기술 투자액(${totalIt.toLocaleString()}원)을 초과했습니다.`, 'error', 'inv-err');
+                }
+
                 return; // 저장하지 않음
             } else {
                 // 정상인 경우 강조 표시 제거
@@ -1988,9 +1980,6 @@
 
             // 로컬 상태 업데이트
             answers[QID.INV_SEC_GROUP] = sum;
-
-            // DB 저장 (Group 타입이라도 통계 및 보고서용으로 값이 필요함)
-            saveOneAnswer(QID.INV_SEC_GROUP, sum);
 
             // 화면에 입력칸 또는 디스플레이가 있으면 업데이트
             const secGroupInput = document.getElementById(`input-${QID.INV_SEC_GROUP}`);
@@ -2050,6 +2039,7 @@
         }
 
         // 정보보호 인력 검증 (총 임직원 >= IT 인력(C) >= 정보보호 인력(D1+D2))
+        let lastPersonnelToastTime = 0;  // 마지막 토스트 표시 시간
         function calculatePersonnelValidation() {
             const totalEmpInput = document.getElementById(`input-${QID.PER_TOTAL_EMP}`);
             const itEmpInput = document.getElementById(`input-${QID.PER_IT_EMP}`);
@@ -2062,17 +2052,25 @@
             const external = parseFloat(externalInput?.dataset.rawValue || externalInput?.value || '0') || 0;
 
             const securityPersonnel = internal + external;
+            const now = Date.now();
+            const canShowToast = (now - lastPersonnelToastTime) > 3000;  // 3초 쿨다운
 
             // 1차 검증: 정보기술부문 인력(C)이 총 임직원 수보다 클 수 없음
             if (itEmp > totalEmp && totalEmp > 0) {
-                alert(`⚠️ 인력 수 오류\n\n정보기술부문 인력(C): ${itEmp}명\n총 임직원 수: ${totalEmp}명\n\n정보기술부문 인력은 총 임직원 수를 초과할 수 없습니다.`);
+                if (canShowToast) {
+                    lastPersonnelToastTime = now;
+                    showToast(`정보기술부문 인력(${itEmp}명)은 총 임직원 수(${totalEmp}명)를 초과할 수 없습니다.`, 'error', 'per-err');
+                }
                 if (itEmpInput) itEmpInput.style.borderColor = '#ef4444';
                 return;
             }
 
             // 2차 검증: 정보보호 전담인력(D1+D2)이 정보기술부문 인력(C)을 초과할 수 없음
             if (securityPersonnel > itEmp && itEmp > 0) {
-                alert(`⚠️ 인력 수 오류\n\n정보보호 인력(내부+외주): ${securityPersonnel}명\n정보기술부문 인력(C): ${itEmp}명\n\n정보보호 전담인력은 정보기술부문 인력(C)을 초과할 수 없습니다.`);
+                if (canShowToast) {
+                    lastPersonnelToastTime = now;
+                    showToast(`정보보호 인력(${securityPersonnel}명)은 정보기술부문 인력(${itEmp}명)을 초과할 수 없습니다.`, 'error', 'per-err');
+                }
                 if (internalInput) internalInput.style.borderColor = '#ef4444';
                 if (externalInput) externalInput.style.borderColor = '#ef4444';
                 return;
@@ -2135,58 +2133,80 @@
             }
         }
 
-        // 토스트 메시지 표시 (Bootstrap 방식)
-        function showToast(message, type = 'info') {
-            const toastEl = document.getElementById('saveToast');
-            const toastBody = toastEl.querySelector('.toast-body');
-            const toastHeader = toastEl.querySelector('.toast-header');
-            const toastIcon = toastEl.querySelector('.toast-icon');
-            const toastTitle = toastEl.querySelector('.toast-title');
+        // 토스트 메시지 표시 (ID가 지정되면 유효성/상세 상태 업데이트 지원)
+        function showToast(message, type = 'info', fixedId = null) {
+            const container = document.querySelector('.toast-container');
+            if (!container) return;
 
-            // 메시지 설정
-            toastBody.textContent = message;
+            const trimmedMsg = message.trim();
+            const existingToastEl = fixedId ? document.getElementById(fixedId) : null;
 
-            // 타입에 따른 스타일 및 아이콘 설정
-            toastHeader.className = 'toast-header';
-            toastIcon.className = 'me-2 toast-icon';
-
-            if (type === 'success') {
-                toastHeader.classList.add('bg-success', 'text-white');
-                toastIcon.classList.add('fas', 'fa-check-circle');
-                toastTitle.textContent = '성공';
-            } else if (type === 'error') {
-                toastHeader.classList.add('bg-danger', 'text-white');
-                toastIcon.classList.add('fas', 'fa-exclamation-circle');
-                toastTitle.textContent = '오류';
-            } else if (type === 'warning') {
-                toastHeader.classList.add('bg-warning');
-                toastIcon.classList.add('fas', 'fa-exclamation-triangle');
-                toastTitle.textContent = '경고';
-            } else {
-                toastHeader.classList.add('bg-info', 'text-white');
-                toastIcon.classList.add('fas', 'fa-info-circle');
-                toastTitle.textContent = '알림';
+            if (existingToastEl) {
+                // 1. 기존 토스트가 이미 있으면 내용과 스타일만 업데이트 (깜빡임 방지 및 상태 전환)
+                const body = existingToastEl.querySelector('.toast-body');
+                const header = existingToastEl.querySelector('.toast-header');
+                
+                if (body) body.textContent = trimmedMsg;
+                if (header) {
+                    header.className = 'toast-header'; // 클래스 초기화
+                    if (type === 'success') header.classList.add('bg-success', 'text-white');
+                    else if (type === 'error') header.classList.add('bg-danger', 'text-white');
+                    else if (type === 'warning') header.classList.add('bg-warning');
+                    else header.classList.add('bg-info', 'text-white');
+                }
+                
+                // 다시 표시 (진행 중인 토스트 시간 연장)
+                bootstrap.Toast.getOrCreateInstance(existingToastEl).show();
+                return;
             }
 
-            // 토스트 표시
-            const toast = new bootstrap.Toast(toastEl, {
-                autohide: true,
-                delay: 3000
-            });
+            // 2. ID가 없는 경우 본문 내용으로 중복 체크
+            if (!fixedId) {
+                const existingToasts = container.querySelectorAll('.toast-body');
+                for (const t of existingToasts) {
+                    if (t.textContent.trim() === trimmedMsg) return;
+                }
+            }
+
+            // 3. 새 토스트 생성
+            const toastId = fixedId || ('toast-' + (++toastCounter));
+            const toastHtml = `
+                <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="toast-header">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong class="me-auto">알림</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                    <div class="toast-body">${trimmedMsg}</div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', toastHtml);
+            const toastEl = document.getElementById(toastId);
+            const toastHeader = toastEl.querySelector('.toast-header');
+
+            if (type === 'success') toastHeader.classList.add('bg-success', 'text-white');
+            else if (type === 'error') toastHeader.classList.add('bg-danger', 'text-white');
+            else if (type === 'warning') toastHeader.classList.add('bg-warning');
+            else toastHeader.classList.add('bg-info', 'text-white');
+
+            const toast = new bootstrap.Toast(toastEl, { autohide: true, delay: 3000 });
             toast.show();
+            toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
         }
 
         // 답변 저장
         async function saveAnswers() {
             {% if not is_logged_in %}
             showToast('로그인이 필요합니다.', 'warning');
-            return false;
+            return { success: false, message: '로그인이 필요합니다.' };
             {% endif %}
 
             try {
+                let errors = [];
                 for (const [questionId, value] of Object.entries(answers)) {
                     if (value !== undefined && value !== '' && value !== null) {
-                        await fetch('/link11/api/answers', {
+                        const response = await fetch('/link11/api/answers', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -2195,24 +2215,90 @@
                                 year: currentYear
                             })
                         });
+                        const data = await response.json();
+                        if (!data.success) {
+                            errors.push(data.message || '저장 실패');
+                        }
                     }
                 }
-                return true;
+                if (errors.length > 0) {
+                    return { success: false, message: errors[0] };  // 첫 번째 오류 반환
+                }
+                return { success: true };
             } catch (error) {
                 console.error('저장 오류:', error);
+                return { success: false, message: '저장 중 오류가 발생했습니다.' };
+            }
+        }
+
+        // 저장 전 전체 유효성 검사
+        function validateBeforeSave() {
+            // 1. 투자액 검증 (B <= A)
+            // 현재 화면에 있는 입력 필드 값 기준 (Answers 객체보다 입력 필드가 최신일 수 있으므로)
+            const itAmountInput = document.getElementById(`input-${QID.INV_IT_AMOUNT}`);
+            const itAmount = parseFloat(itAmountInput?.dataset.rawValue || itAmountInput?.value?.replace(/,/g, '') || 0) || 0;
+            
+            const v1 = parseFloat(document.getElementById(`input-${QID.INV_SEC_DEPRECIATION}`)?.dataset.rawValue || 0) || 0;
+            const v2 = parseFloat(document.getElementById(`input-${QID.INV_SEC_SERVICE}`)?.dataset.rawValue || 0) || 0;
+            const v3 = parseFloat(document.getElementById(`input-${QID.INV_SEC_LABOR}`)?.dataset.rawValue || 0) || 0;
+            const securityAmount = v1 + v2 + v3;
+
+            if (itAmount > 0 && securityAmount > itAmount) {
+                showToast(`정보보호 투자액(${securityAmount.toLocaleString()}원)이 정보기술 투자액(${itAmount.toLocaleString()}원)을 초과했습니다.`, 'error', 'inv-err');
                 return false;
             }
+
+            // 2. 인력 검증 (C <= Total, D <= C)
+            const totalEmpInput = document.getElementById(`input-${QID.PER_TOTAL_EMP}`);
+            const itEmpInput = document.getElementById(`input-${QID.PER_IT_EMP}`);
+            const internalInput = document.getElementById(`input-${QID.PER_INTERNAL}`);
+            const externalInput = document.getElementById(`input-${QID.PER_EXTERNAL}`);
+
+            const totalEmp = parseFloat(totalEmpInput?.dataset.rawValue || totalEmpInput?.value?.replace(/,/g, '') || 0) || 0;
+            const itEmp = parseFloat(itEmpInput?.dataset.rawValue || itEmpInput?.value?.replace(/,/g, '') || 0) || 0;
+            const internal = parseFloat(internalInput?.dataset.rawValue || internalInput?.value?.replace(/,/g, '') || 0) || 0;
+            const external = parseFloat(externalInput?.dataset.rawValue || externalInput?.value?.replace(/,/g, '') || 0) || 0;
+            const securityPersonnel = internal + external;
+
+            if (totalEmp > 0 && itEmp > totalEmp) {
+                showToast(`정보기술부문 인력(${itEmp}명)은 총 임직원 수(${totalEmp}명)를 초과할 수 없습니다.`, 'error', 'per-err');
+                return false;
+            }
+            if (itEmp > 0 && securityPersonnel > itEmp) {
+                showToast(`정보보호 인력(${securityPersonnel}명)은 정보기술부문 인력(${itEmp}명)을 초과할 수 없습니다.`, 'error', 'per-err');
+                return false;
+            }
+
+            return true;
         }
 
         // 임시 저장
         async function saveDraft() {
-            showToast('저장 중입니다...', 'info');
-            const success = await saveAnswers();
-            if (success) {
-                showToast('임시 저장되었습니다.', 'success');
-                loadProgress();
-            } else {
-                showToast('저장 중 오류가 발생했습니다.', 'error');
+            if (isSaving) return;
+            isSaving = true;
+
+            try {
+                // 실시간 검증 타이머 취소
+                clearTimeout(personnelValidationTimer);
+                
+                if (!validateBeforeSave()) {
+                    isSaving = false;
+                    return;
+                }
+
+                showToast('저장 중입니다...', 'info', 'save-status');
+                const result = await saveAnswers();
+                if (result.success) {
+                    showToast('임시 저장되었습니다.', 'success', 'save-status');
+                    loadProgress();
+                } else {
+                    showToast(result.message || '저장 중 오류가 발생했습니다.', 'error', 'save-status');
+                }
+            } catch (error) {
+                console.error('SaveDraft API error:', error);
+                showToast('저장 중 알 수 없는 오류가 발생했습니다.', 'error', 'save-status');
+            } finally {
+                isSaving = false;
             }
         }
 
@@ -2265,14 +2351,32 @@
 
         // 저장 후 다음 카테고리를 이동
         async function saveAndNext() {
-            showToast('저장 중입니다...', 'info');
-            const success = await saveAnswers();
-            if (success) {
-                showToast('저장되었습니다.', 'success');
-                loadProgress();
-                goToNextCategory();
-            } else {
-                showToast('저장 중 오류가 발생했습니다.', 'error');
+            if (isSaving) return;
+            isSaving = true;
+
+            try {
+                // 실시간 검증 타이머 취소
+                clearTimeout(personnelValidationTimer);
+
+                if (!validateBeforeSave()) {
+                    isSaving = false;
+                    return;
+                }
+
+                showToast('저장 중입니다...', 'info', 'save-status');
+                const result = await saveAnswers();
+                if (result.success) {
+                    showToast('저장되었습니다.', 'success', 'save-status');
+                    loadProgress();
+                    goToNextCategory();
+                } else {
+                    showToast(result.message || '저장 중 오류가 발생했습니다.', 'error', 'save-status');
+                }
+            } catch (error) {
+                console.error('SaveAndNext API error:', error);
+                showToast('저장 중 알 수 없는 오류가 발생했습니다.', 'error', 'save-status');
+            } finally {
+                isSaving = false;
             }
         }
 

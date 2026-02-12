@@ -18,7 +18,6 @@ load_dotenv(dotenv_path=env_path)
 
 from logger_config import setup_logging, get_logger
 from snowball_link1 import bp_link1
-from snowball_link1_1 import bp_link1_1
 from snowball_link2 import bp_link2
 from snowball_link3 import bp_link3
 from snowball_link4 import bp_link4
@@ -71,7 +70,6 @@ csrf = CSRFProtect(app)
 
 # CSRF 제외할 엔드포인트 (임시 - 향후 템플릿에 CSRF 토큰 추가 후 제거)
 # csrf.exempt(bp_link1)  # CSRF 보호 적용 완료
-csrf.exempt(bp_link1_1)
 csrf.exempt(bp_link2)
 csrf.exempt(bp_link3)
 csrf.exempt(bp_link4)
@@ -376,11 +374,6 @@ def handle_exception(e):
 def main():
     app.run(host='0.0.0.0', debug=True, port=5001, use_reloader=False)
     #app.run(host='127.0.0.1', debug=False, port=8001)
-
-@app.route('/proposal')
-def proposal():
-    """Snowball 제안서 페이지"""
-    return render_template('proposal.jsp')
 
 @app.route('/user/design-evaluation', methods=['GET', 'POST'])
 @login_required
@@ -708,7 +701,6 @@ def check_operation_evaluation(control_type):
 
 
 app.register_blueprint(bp_link1)
-app.register_blueprint(bp_link1_1)
 app.register_blueprint(bp_link2)
 app.register_blueprint(bp_link3)
 app.register_blueprint(bp_link4)

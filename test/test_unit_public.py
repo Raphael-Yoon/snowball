@@ -41,11 +41,10 @@ PUBLIC_LINKS = [1, 2, 3, 4, 9, 10, 11]
 # 각 Link별 테스트 그룹 정의 (체크리스트 기준)
 LINK_TEST_GROUPS = {
     1: OrderedDict([
-        ("1번", ["test_link1_access_guest", "test_link1_access_logged_in"]),
-        ("2번", ["test_rcm_form_fields", "test_rcm_validation_email", "test_rcm_validation_system_name"]),
-        ("3번", ["test_rcm_generate_logic_common", "test_rcm_generate_logic_cloud",
-                 "test_rcm_generate_logic_infra", "test_rcm_tool_filtering"]),
-        ("4번", ["test_rcm_mail_send_success"]),
+        ("1번", ["test_link1_page_access", "test_link1_form_elements"]),
+        ("2번", ["test_link1_os_version_toggle", "test_link1_cloud_env_toggle"]),
+        ("3번", ["test_link1_control_table", "test_link1_toggle_detail", "test_link1_type_change_monitoring"]),
+        ("4번", ["test_link1_population_templates_api", "test_link1_email_input", "test_link1_export_email_validation"]),
     ]),
     2: OrderedDict([
         ("1번", ["test_link2_access_guest", "test_link2_access_logged_in"]),
@@ -196,16 +195,17 @@ class PublicLinkTestRunner:
                 runner = Link1UnitTest(base_url=self.base_url, headless=self.headless)
                 runner.setup()
                 try:
-                    runner.run_category("Link1: RCM 자동생성", [
-                        runner.test_link1_access_guest,
-                        runner.test_link1_access_logged_in,
-                        runner.test_rcm_form_fields,
-                        runner.test_rcm_validation_email,
-                        runner.test_rcm_validation_system_name,
-                        runner.test_rcm_tool_filtering,
-                        runner.test_rcm_generate_logic_common,
-                        runner.test_rcm_generate_logic_cloud,
-                        runner.test_rcm_generate_logic_infra,
+                    runner.run_category("Link1: RCM 생성", [
+                        runner.test_link1_page_access,
+                        runner.test_link1_form_elements,
+                        runner.test_link1_os_version_toggle,
+                        runner.test_link1_cloud_env_toggle,
+                        runner.test_link1_control_table,
+                        runner.test_link1_toggle_detail,
+                        runner.test_link1_type_change_monitoring,
+                        runner.test_link1_population_templates_api,
+                        runner.test_link1_email_input,
+                        runner.test_link1_export_email_validation,
                     ])
                     results = runner.results
                 finally:
@@ -461,7 +461,7 @@ class PublicLinkTestRunner:
             f.write("## 테스트 대상\n\n")
             f.write("| Link | 설명 | Public |\n")
             f.write("|------|------|--------|\n")
-            f.write("| Link1 | RCM 자동생성 | O |\n")
+            f.write("| Link1 | RCM 생성 | O |\n")
             f.write("| Link2 | 인터뷰/설계평가 | O |\n")
             f.write("| Link3 | 조서 템플릿 | O |\n")
             f.write("| Link4 | 컨텐츠 | O |\n")
