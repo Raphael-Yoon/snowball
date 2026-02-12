@@ -468,22 +468,29 @@
 				const cloudEnv = document.getElementById('cloud_env').value;
 				const osSelect = document.getElementById('os');
 				const dbSelect = document.getElementById('db');
+				const osVersionGroup = document.getElementById('os_version_group');
 
 				if (cloudEnv === 'SaaS') {
 					osSelect.value = 'N/A';
 					dbSelect.value = 'N/A';
 					osSelect.disabled = true;
 					dbSelect.disabled = true;
+					// OS가 N/A이면 버전도 숨김
+					if (osVersionGroup) osVersionGroup.style.display = 'none';
 				} else if (cloudEnv === 'PaaS') {
 					osSelect.value = 'N/A';
 					osSelect.disabled = true;
 					dbSelect.disabled = false;
 					if (dbSelect.value === 'N/A') dbSelect.value = 'ORACLE';
+					// OS가 N/A이면 버전도 숨김
+					if (osVersionGroup) osVersionGroup.style.display = 'none';
 				} else {
 					osSelect.disabled = false;
 					dbSelect.disabled = false;
 					if (osSelect.value === 'N/A') osSelect.value = 'LINUX';
 					if (dbSelect.value === 'N/A') dbSelect.value = 'ORACLE';
+					// OS 변경에 따라 버전 표시/숨김 처리
+					handleOsChange();
 				}
 
 				// 통제 항목 행 비활성화 시각화

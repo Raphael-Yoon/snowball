@@ -1,3 +1,7 @@
+# IDE / editor
+.claude/
+.vscode/
+
 # etc
 *.env
 *.pickle
