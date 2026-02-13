@@ -120,83 +120,143 @@
 						</div>
 						<div class="card-body">
 							<form id="system-form">
-								<div class="row">
-									<div class="col-md-6 mb-3">
-										<label class="form-label fw-bold">시스템 명칭</label>
-										<input type="text" class="form-control" id="system_name" name="system_name" required placeholder="예: SAP ERP, 사내 인사시스템">
+								<!-- 그룹 1: 기본 정보 -->
+								<div class="mb-4">
+									<h6 class="text-muted mb-3 border-bottom pb-2"><i class="fas fa-info-circle me-2"></i>기본 정보</h6>
+									<div class="row">
+										<div class="col-md-6 mb-3">
+											<label class="form-label fw-bold">시스템 명칭</label>
+											<input type="text" class="form-control" id="system_name" name="system_name" required placeholder="예: SAP ERP, 사내 인사시스템">
+										</div>
+										<div class="col-md-6 mb-3">
+											<label class="form-label fw-bold">Cloud 환경</label>
+											<select class="form-select" id="cloud_env" name="cloud_env" onchange="handleCloudEnvChange()">
+												<option value="None">미사용 (On-Premise)</option>
+												<option value="IaaS">IaaS (EC2, GCE 등)</option>
+												<option value="PaaS">PaaS (RDS, Managed DB 등)</option>
+												<option value="SaaS">SaaS (Salesforce, ERP 등)</option>
+											</select>
+										</div>
 									</div>
-									<div class="col-md-6 mb-3">
-										<label class="form-label fw-bold">시스템 유형</label>
-										<select class="form-select" id="system_type" name="system_type" required onchange="handleSystemTypeChange()">
-											<option value="In-house">In-house (자체개발)</option>
-											<option value="Package-Modifiable">Package - Modifiable (소스 수정 가능)</option>
-											<option value="Package-Non-modifiable">Package - Non-modifiable (소스 수정 불가)</option>
-										</select>
+									<div class="row">
+										<div class="col-md-4 mb-3">
+											<label class="form-label fw-bold">시스템 유형</label>
+											<select class="form-select" id="system_type" name="system_type" required onchange="handleSystemTypeChange()">
+												<option value="In-house">In-house (자체개발)</option>
+												<option value="Package">Package (패키지)</option>
+											</select>
+										</div>
+										<div class="col-md-4 mb-3">
+											<label class="form-label fw-bold">Application</label>
+											<select class="form-select" id="software" name="software" onchange="handleSoftwareChange()">
+												<option value="SAP">SAP ERP</option>
+												<option value="ORACLE">Oracle ERP</option>
+												<option value="DOUZONE">더존 ERP</option>
+												<option value="YOUNG">영림원 ERP</option>
+												<option value="ETC">기타 / 자체개발</option>
+											</select>
+											<input type="text" class="form-control mt-1" id="software_custom" name="software_custom"
+												placeholder="패키지명 입력 (예: Workday, MS Dynamics)" style="display:none;">
+											<small id="sw_modifiable_badge" class="mt-1 d-none"></small>
+										</div>
+										<div class="col-md-4 mb-3" id="sw_version_group">
+											<label class="form-label fw-bold">Version</label>
+											<select class="form-select" id="sw_version" name="sw_version">
+												<!-- SAP versions (default) -->
+												<option value="ECC">ECC 6.0</option>
+												<option value="S4HANA">S/4HANA</option>
+												<option value="S4CLOUD">S/4HANA Cloud</option>
+											</select>
+										</div>
 									</div>
 								</div>
-								
-								<div class="row">
-									<div class="col-3 mb-3">
-										<label class="form-label fw-bold">Cloud 환경</label>
-										<select class="form-select" id="cloud_env" name="cloud_env" onchange="handleCloudEnvChange()">
-											<option value="None">미사용 (On-Premise)</option>
-											<option value="IaaS">IaaS (EC2, GCE 등)</option>
-											<option value="PaaS">PaaS (RDS, Managed DB 등)</option>
-											<option value="SaaS">SaaS (Salesforce, ERP 등)</option>
-										</select>
-									</div>
-									<div class="col-3 mb-3">
-										<label class="form-label fw-bold">Application</label>
-										<select class="form-select" id="software" name="software" onchange="handleSoftwareChange()">
-											<option value="SAP">SAP ERP</option>
-											<option value="ORACLE">Oracle ERP</option>
-											<option value="DOUZONE">더존 ERP</option>
-											<option value="YOUNG">영림원 ERP</option>
-											<option value="ETC">기타 / 자체개발</option>
-										</select>
-										<input type="text" class="form-control mt-1" id="software_custom" name="software_custom"
-											placeholder="패키지명 입력 (예: Workday, MS Dynamics)" style="display:none;">
-									</div>
-									<div class="col-3 mb-3" id="sw_version_group">
-										<label class="form-label fw-bold">Version</label>
-										<select class="form-select" id="sw_version" name="sw_version">
-											<!-- SAP versions (default) -->
-											<option value="ECC">ECC 6.0</option>
-											<option value="S4HANA">S/4HANA</option>
-											<option value="S4CLOUD">S/4HANA Cloud</option>
-										</select>
+
+								<!-- 그룹 2: 인프라 (OS/DB) -->
+								<div class="mb-4">
+									<h6 class="text-muted mb-3 border-bottom pb-2"><i class="fas fa-hdd me-2"></i>인프라</h6>
+									<div class="row">
+										<div class="col-md-4 mb-3">
+											<label class="form-label fw-bold">OS</label>
+											<select class="form-select" id="os" name="os" onchange="handleOsChange()">
+												<option value="LINUX">Linux</option>
+												<option value="WINDOWS">Windows Server</option>
+												<option value="UNIX">Unix (AIX/HP-UX/Solaris)</option>
+												<option value="ETC">기타 (OS/2, z/OS 등)</option>
+												<option value="N/A" hidden>N/A (CSP Managed)</option>
+											</select>
+										</div>
+										<div class="col-md-4 mb-3" id="os_version_group">
+											<label class="form-label fw-bold">Linux 배포판</label>
+											<select class="form-select" id="os_version" name="os_version">
+												<option value="RHEL">RHEL / CentOS / Rocky</option>
+												<option value="UBUNTU">Ubuntu / Debian</option>
+											</select>
+										</div>
+										<div class="col-md-4 mb-3">
+											<label class="form-label fw-bold">DB</label>
+											<select class="form-select" id="db" name="db" onchange="handleDbChange()">
+												<option value="ORACLE">Oracle DB</option>
+												<option value="TIBERO">Tibero (Tmax)</option>
+												<option value="MSSQL">MS-SQL</option>
+												<option value="MYSQL">MySQL/MariaDB</option>
+												<option value="POSTGRES">PostgreSQL</option>
+												<option value="HANA">SAP HANA</option>
+												<option value="ETC">기타 (DB2, Sybase 등)</option>
+												<option value="N/A" hidden>N/A (CSP Managed)</option>
+											</select>
+										</div>
 									</div>
 								</div>
-								<div class="row">
-									<div class="col-3 mb-3">
-										<label class="form-label fw-bold">OS</label>
-										<select class="form-select" id="os" name="os" onchange="handleOsChange()">
-											<option value="LINUX">Linux</option>
-											<option value="WINDOWS">Windows Server</option>
-											<option value="UNIX">Unix (AIX/HP-UX/Solaris)</option>
-											<option value="ETC">기타 (OS/2, z/OS 등)</option>
-											<option value="N/A" hidden>N/A (CSP Managed)</option>
-										</select>
-									</div>
-									<div class="col-3 mb-3" id="os_version_group">
-										<label class="form-label fw-bold">Linux 배포판</label>
-										<select class="form-select" id="os_version" name="os_version">
-											<option value="RHEL">RHEL / CentOS / Rocky</option>
-											<option value="UBUNTU">Ubuntu / Debian</option>
-										</select>
-									</div>
-									<div class="col-3 mb-3">
-										<label class="form-label fw-bold">DB</label>
-										<select class="form-select" id="db" name="db" onchange="handleDbChange()">
-											<option value="ORACLE">Oracle DB</option>
-											<option value="TIBERO">Tibero (Tmax)</option>
-											<option value="MSSQL">MS-SQL</option>
-											<option value="MYSQL">MySQL/MariaDB</option>
-											<option value="POSTGRES">PostgreSQL</option>
-											<option value="HANA">SAP HANA</option>
-											<option value="ETC">기타 (DB2, Sybase 등)</option>
-											<option value="N/A" hidden>N/A (CSP Managed)</option>
-										</select>
+
+								<!-- 그룹 3: Tool -->
+								<div class="mb-2">
+									<h6 class="text-muted mb-3 border-bottom pb-2"><i class="fas fa-tools me-2"></i>Tool</h6>
+									<div class="row">
+										<div class="col-md-3 mb-3">
+											<label class="form-label fw-bold">OS 접근제어</label>
+											<select class="form-select" id="os_tool" name="os_tool" onchange="handleOsToolChange()">
+												<option value="NONE">미사용 (OS 직접 관리)</option>
+												<option value="HIWARE">하이웨어 SAC</option>
+												<option value="NETAND">넷앤드</option>
+												<option value="CYBERARK">CyberArk PAM</option>
+												<option value="SECUREGUARD">시큐어가드</option>
+												<option value="ETC">기타</option>
+											</select>
+										</div>
+										<div class="col-md-3 mb-3">
+											<label class="form-label fw-bold">DB 접근제어</label>
+											<select class="form-select" id="db_tool" name="db_tool" onchange="handleDbToolChange()">
+												<option value="NONE">미사용 (DB 직접 관리)</option>
+												<option value="CHAKRA">Chakra Max (웨어밸리)</option>
+												<option value="DBSAFER">DBSafer (피앤피시큐어)</option>
+												<option value="PETRA">Petra (신시웨이)</option>
+												<option value="GUARDIUM">IBM Guardium</option>
+												<option value="ETC">기타</option>
+											</select>
+										</div>
+										<div class="col-md-3 mb-3">
+											<label class="form-label fw-bold">배포 Tool</label>
+											<select class="form-select" id="deploy_tool" name="deploy_tool" onchange="handleDeployToolChange()">
+												<option value="NONE">미사용 (수동 배포)</option>
+												<option value="JENKINS">Jenkins</option>
+												<option value="GITLAB">GitLab CI/CD</option>
+												<option value="AZURE">Azure DevOps</option>
+												<option value="AWS">AWS CodePipeline</option>
+												<option value="BAMBOO">Atlassian Bamboo</option>
+												<option value="ETC">기타</option>
+											</select>
+										</div>
+										<div class="col-md-3 mb-3">
+											<label class="form-label fw-bold">배치 스케줄러</label>
+											<select class="form-select" id="batch_tool" name="batch_tool" onchange="handleBatchToolChange()">
+												<option value="NONE">미사용 (OS Cron/Task)</option>
+												<option value="CONTROLM">Control-M (BMC)</option>
+												<option value="AUTOSYS">Autosys (Broadcom)</option>
+												<option value="TWS">Tivoli Workload Scheduler</option>
+												<option value="RUNDECK">Rundeck</option>
+												<option value="ETC">기타</option>
+											</select>
+										</div>
 									</div>
 								</div>
 							</form>
@@ -423,6 +483,23 @@
 			// CSRF 토큰 설정
 			const csrfToken = "{{ csrf_token() }}";
 			
+			// Application별 소스 수정 가능 여부 매핑
+			const SW_MODIFIABLE = {
+				'SAP': true,       // ABAP 커스터마이징 가능
+				'ORACLE': true,    // PL/SQL 커스터마이징 가능
+				'DOUZONE': false,  // 벤더 관리, 소스 수정 불가
+				'YOUNG': false,    // 벤더 관리, 소스 수정 불가
+				'ETC': null        // In-house면 자체개발, Package면 사용자 입력에 따라 결정
+			};
+
+			// 현재 선택된 Application이 수정 가능한지 반환
+			function isModifiable() {
+				const systemType = document.getElementById('system_type').value;
+				if (systemType === 'In-house') return true; // 자체개발은 항상 수정 가능
+				const sw = document.getElementById('software').value;
+				return SW_MODIFIABLE[sw] !== false; // null이면 true로 처리 (기타 패키지는 수정 가능으로 간주)
+			}
+
 			// 시스템 유형 변경 시 핸들러
 			function handleSystemTypeChange() {
 				const systemType = document.getElementById('system_type').value;
@@ -445,19 +522,15 @@
 					if (douzoneOption) douzoneOption.style.display = 'none';
 					if (youngOption) youngOption.style.display = 'none';
 				} else {
-					// Package (Modifiable / Non-modifiable): 모든 SW 선택 가능 + 기타 입력
+					// Package: 모든 SW 선택 가능 + 기타 입력
 					softwareSelect.disabled = false;
 					if (etcOption) { etcOption.style.display = ''; etcOption.textContent = '기타 패키지'; }
 					if (sapOption) sapOption.style.display = '';
 					if (oracleOption) oracleOption.style.display = '';
 					if (douzoneOption) douzoneOption.style.display = '';
 					if (youngOption) youngOption.style.display = '';
-					// 유형별 기본 SW 설정
-					if (systemType === 'Package-Modifiable') {
-						softwareSelect.value = 'SAP';
-					} else if (systemType === 'Package-Non-modifiable') {
-						softwareSelect.value = 'DOUZONE';
-					}
+					// Package 선택 시 기본 Application: SAP
+					softwareSelect.value = 'SAP';
 				}
 				// SW 변경에 따른 버전 갱신 및 커스텀 입력 표시/숨김
 				handleSoftwareChange();
@@ -629,7 +702,23 @@
 					}
 				}
 
+				// 수정가능 여부 뱃지 업데이트
+				updateModifiableBadge();
+
 				refreshAllPopulations();
+			}
+
+			// Application 수정가능 여부 뱃지 표시
+			function updateModifiableBadge() {
+				const badge = document.getElementById('sw_modifiable_badge');
+				const systemType = document.getElementById('system_type').value;
+				if (systemType === 'In-house') {
+					badge.className = 'mt-1 d-none';
+					return;
+				}
+				const modifiable = isModifiable();
+				badge.className = 'mt-1 d-inline-block badge ' + (modifiable ? 'bg-primary' : 'bg-warning text-dark');
+				badge.textContent = modifiable ? '소스 수정 가능' : '소스 수정 불가 (벤더 관리)';
 			}
 
 			// OS 변경 시 배포판 선택 표시/숨김
@@ -649,6 +738,34 @@
 
 			// DB 변경 시 처리
 			function handleDbChange() {
+				refreshAllPopulations();
+			}
+
+			// OS 접근제어 Tool 변경 시 처리
+			function handleOsToolChange() {
+				const osTool = document.getElementById('os_tool').value;
+				console.log('OS Tool changed:', osTool);
+				refreshAllPopulations();
+			}
+
+			// DB 접근제어 Tool 변경 시 처리
+			function handleDbToolChange() {
+				const dbTool = document.getElementById('db_tool').value;
+				console.log('DB Tool changed:', dbTool);
+				refreshAllPopulations();
+			}
+
+			// 배포 Tool 변경 시 처리
+			function handleDeployToolChange() {
+				const deployTool = document.getElementById('deploy_tool').value;
+				console.log('Deploy Tool changed:', deployTool);
+				refreshAllPopulations();
+			}
+
+			// 배치 스케줄러 Tool 변경 시 처리
+			function handleBatchToolChange() {
+				const batchTool = document.getElementById('batch_tool').value;
+				console.log('Batch Tool changed:', batchTool);
 				refreshAllPopulations();
 			}
 
@@ -773,6 +890,18 @@
 						completenessDetailEl.style.display = 'none';
 					}
 				}
+
+				// Tool 템플릿에서 테스트 절차가 있으면 업데이트
+				const template = getPopulationTemplate(id);
+				const testProcEl = document.getElementById(`test-proc-detail-${id}`);
+				if (testProcEl && template) {
+					const procedure = isAuto ?
+						(template.test_procedure_auto || testProcEl.dataset.auto) :
+						(template.test_procedure_manual || testProcEl.dataset.manual);
+					if (procedure) {
+						testProcEl.textContent = procedure;
+					}
+				}
 			}
 
 			// 완전성 상세 정보 포맷팅 (쿼리, 메뉴 등 하이라이트)
@@ -814,7 +943,11 @@
 			let populationTemplates = {
 				sw: {},
 				os: {},
-				db: {}
+				db: {},
+				os_tool: {},
+				db_tool: {},
+				deploy_tool: {},
+				batch_tool: {}
 			};
 
 			// 템플릿 로드
@@ -826,7 +959,11 @@
 						populationTemplates.sw = result.sw_templates;
 						populationTemplates.os = result.os_templates;
 						populationTemplates.db = result.db_templates;
-						console.log('모집단 템플릿 로드 완료');
+						populationTemplates.os_tool = result.os_tool_templates || {};
+						populationTemplates.db_tool = result.db_tool_templates || {};
+						populationTemplates.deploy_tool = result.deploy_tool_templates || {};
+						populationTemplates.batch_tool = result.batch_tool_templates || {};
+						console.log('모집단 템플릿 로드 완료 (Tool 템플릿 포함)');
 					}
 				} catch (error) {
 					console.error('템플릿 로드 실패:', error);
@@ -837,18 +974,20 @@
 			const CONTROL_DOMAIN = {
 				// SW 관련 통제 (수동)
 				'APD01': 'sw', 'APD02': 'sw', 'APD03': 'sw', 'APD07': 'sw',
-				'PC01': 'sw', 'PC02': 'sw', 'PC03': 'sw',
-				'CO01': 'sw', 'ST03': 'sw',
+				'ST03': 'sw',
 				'PD01': 'sw', 'PD02': 'sw', 'PD03': 'sw', 'PD04': 'sw', 'CO05': 'sw',
 				// SW 관련 통제 (자동)
 				'APD04': 'sw', 'APD05': 'sw', 'APD06': 'sw',
-				'PC04': 'sw', 'PC05': 'sw',
-				'CO02': 'sw', 'CO03': 'sw', 'CO04': 'sw',
+				'CO03': 'sw', 'CO04': 'sw',
 				'ST01': 'sw', 'ST02': 'sw',
 				// OS 관련 통제
 				'APD09': 'os', 'APD10': 'os', 'APD11': 'os', 'PC06': 'os',
 				// DB 관련 통제
-				'APD08': 'db', 'APD12': 'db', 'APD13': 'db', 'APD14': 'db', 'PC07': 'db'
+				'APD08': 'db', 'APD12': 'db', 'APD13': 'db', 'APD14': 'db', 'PC07': 'db',
+				// 배포 Tool 관련 통제 (프로그램 변경 관리)
+				'PC01': 'deploy', 'PC02': 'deploy', 'PC03': 'deploy', 'PC04': 'deploy', 'PC05': 'deploy',
+				// 배치 Tool 관련 통제 (Batch Schedule)
+				'CO01': 'batch', 'CO02': 'batch'
 			};
 
 			// 버전 value → completeness 텍스트 내 버전명 매핑
@@ -1007,21 +1146,83 @@
 				const sw = document.getElementById('software').value;
 				const os = document.getElementById('os').value;
 				const db = document.getElementById('db').value;
+				const osTool = document.getElementById('os_tool').value;
+				const dbTool = document.getElementById('db_tool').value;
+				const deployTool = document.getElementById('deploy_tool').value;
+				const batchTool = document.getElementById('batch_tool').value;
 
 				let template = null;
+
 				if (domain === 'sw' && populationTemplates.sw[sw]) {
 					template = populationTemplates.sw[sw][controlId];
-				} else if (domain === 'os' && populationTemplates.os[os]) {
-					template = populationTemplates.os[os][controlId];
-				} else if (domain === 'db' && populationTemplates.db[db]) {
-					template = populationTemplates.db[db][controlId];
+				} else if (domain === 'os') {
+					// OS Tool이 선택된 경우 Tool 템플릿 우선 적용
+					if (osTool !== 'NONE' && populationTemplates.os_tool[osTool] && populationTemplates.os_tool[osTool][controlId]) {
+						template = populationTemplates.os_tool[osTool][controlId];
+						console.log(`OS Tool 템플릿 적용: ${osTool} - ${controlId}`);
+					} else if (populationTemplates.os[os]) {
+						template = populationTemplates.os[os][controlId];
+					}
+				} else if (domain === 'db') {
+					// DB Tool이 선택된 경우 Tool 템플릿 우선 적용
+					if (dbTool !== 'NONE' && populationTemplates.db_tool[dbTool] && populationTemplates.db_tool[dbTool][controlId]) {
+						template = populationTemplates.db_tool[dbTool][controlId];
+						console.log(`DB Tool 템플릿 적용: ${dbTool} - ${controlId}`);
+					} else if (populationTemplates.db[db]) {
+						template = populationTemplates.db[db][controlId];
+					}
+				} else if (domain === 'deploy') {
+					// 배포 Tool이 선택된 경우 Tool 템플릿 적용
+					if (deployTool !== 'NONE' && populationTemplates.deploy_tool[deployTool] && populationTemplates.deploy_tool[deployTool][controlId]) {
+						template = populationTemplates.deploy_tool[deployTool][controlId];
+						console.log(`Deploy Tool 템플릿 적용: ${deployTool} - ${controlId}`);
+					} else if (populationTemplates.sw[sw]) {
+						// Tool 미사용 시 SW 템플릿 사용
+						template = populationTemplates.sw[sw][controlId];
+					}
+				} else if (domain === 'batch') {
+					// 배치 Tool이 선택된 경우 Tool 템플릿 적용
+					if (batchTool !== 'NONE' && populationTemplates.batch_tool[batchTool] && populationTemplates.batch_tool[batchTool][controlId]) {
+						template = populationTemplates.batch_tool[batchTool][controlId];
+						console.log(`Batch Tool 템플릿 적용: ${batchTool} - ${controlId}`);
+					} else if (populationTemplates.sw[sw]) {
+						// Tool 미사용 시 SW 템플릿 사용
+						template = populationTemplates.sw[sw][controlId];
+					}
 				}
 
 				// 버전 필터링 적용
 				if (template) {
+					let completenessText = filterCompletenessByVersion(template.completeness, domain);
+
+					// Package 시스템의 변경관리(PC01~PC05) 보충 문구 적용
+					const systemType = document.getElementById('system_type').value;
+					if (systemType === 'Package' && controlId.startsWith('PC0') && ['PC01','PC02','PC03','PC04','PC05'].includes(controlId)) {
+						const modifiable = isModifiable();
+						if (modifiable) {
+							const supplements = {
+								'PC01': '\n\n[소스 수정 가능 Package]\n자체 커스터마이징 건과 벤더 패치를 모두 포함하여 변경 이력 확인.',
+								'PC02': '\n\n[소스 수정 가능 Package]\n자체 개발 건은 단위/통합 테스트, 벤더 패치는 별도 검증 후 적용.',
+								'PC03': '\n\n[소스 수정 가능 Package]\n자체 개발 건과 벤더 패치 모두 이관 승인 프로세스 준수 확인.'
+							};
+							if (supplements[controlId]) completenessText += supplements[controlId];
+						} else {
+							const supplements = {
+								'PC01': '\n\n[소스 수정 불가 Package]\n프로그램 변경은 벤더 패치/업데이트만 해당. 당기 벤더 패치 적용 이력을 모집단으로 확인.',
+								'PC02': '\n\n[소스 수정 불가 Package]\n벤더 패치 적용 전 테스트서버 검증 수행 여부 확인.',
+								'PC03': '\n\n[소스 수정 불가 Package]\n벤더 패치 이관 시 승인 프로세스 준수 여부 확인.',
+								'PC04': '\n\n[소스 수정 불가 Package]\n운영계 직접 변경 원천 차단. 변경 제한 설정 활성화 확인.',
+								'PC05': '\n\n[소스 수정 불가 Package]\n이관 권한은 벤더 엔지니어 또는 지정 관리자로 제한.'
+							};
+							if (supplements[controlId]) completenessText += supplements[controlId];
+						}
+					}
+
 					return {
 						population: template.population,
-						completeness: filterCompletenessByVersion(template.completeness, domain)
+						completeness: completenessText,
+						test_procedure_manual: template.test_procedure_manual || null,
+						test_procedure_auto: template.test_procedure_auto || null
 					};
 				}
 				return template;
@@ -1262,10 +1463,13 @@
 				const osType = document.getElementById('os').value;
 				const dbType = document.getElementById('db').value;
 
+				const systemType = document.getElementById('system_type').value;
+
 				const payload = {
 					user_email: userEmail,
 					system_info: {
 						system_name: systemName,
+						system_type: systemType,
 						cloud_env: cloudEnv,
 						software: softwareKey === 'ETC' && softwareCustom ? softwareCustom : softwareKey,
 						software_key: softwareKey,
