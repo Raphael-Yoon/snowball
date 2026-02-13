@@ -290,7 +290,7 @@
                                 <h5 class="feature-title text-center">서비스 문의</h5>
                                 <p class="feature-description">문의사항이나 지원이 필요하시면 언제든지 연락주세요.</p>
                                 <div class="text-center mt-auto">
-                                    <a href="/contact" class="feature-link" data-bs-toggle="tooltip"
+                                    <a href="/link9" class="feature-link" data-bs-toggle="tooltip"
                                         data-bs-placement="top" data-bs-html="true"
                                         title="<div>• 내부통제 시스템 사용 문의<br>• 기술적 지원 및 전문 상담<br>• 최적의 솔루션 제안<br>• 24/7 고객 지원 서비스</div>">자세히
                                         보기</a>
@@ -322,7 +322,7 @@
                                 </h5>
                                 <p class="feature-description">ELC, TLC, ITGC 평가 결과를 통합 조회하고 종합 리포트를 생성합니다.</p>
                                 <div class="text-center mt-auto">
-                                    <a href="/internal-assessment" class="feature-link" data-bs-toggle="tooltip"
+                                    <a href="/link8" class="feature-link" data-bs-toggle="tooltip"
                                         data-bs-placement="top" data-bs-html="true"
                                         title="<div>• ELC, TLC, ITGC 통합 결과 조회<br>• 통제 현황 종합 분석<br>• 자동 리포트 생성<br>• 트렌드 분석 및 인사이트</div>">자세히
                                         보기</a>
@@ -424,7 +424,7 @@
     <!-- Contact Us 바로가기 -->
     <section class="py-2" style="display: none;">
         <div class="container text-center">
-            <a href="/contact" class="btn btn-outline-primary btn-lg">
+            <a href="/link9" class="btn btn-outline-primary btn-lg">
                 <i class="fas fa-envelope me-1"></i>Contact Us
             </a>
         </div>

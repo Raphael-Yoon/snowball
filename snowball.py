@@ -402,7 +402,7 @@ def user_design_evaluation():
             return redirect(url_for('link6.user_design_evaluation_rcm'))
 
         flash('잘못된 요청입니다.', 'danger')
-        return redirect(url_for('link8.internal_assessment'))
+        return redirect(url_for('link8.link8'))
     else:
         # GET 요청 - rcm_id가 있으면 해당 RCM으로 설계평가 시작 모달 표시
         rcm_id = request.args.get('rcm_id')
@@ -524,7 +524,7 @@ def user_operation_evaluation():
             return redirect(url_for('link7.user_operation_evaluation_rcm'))
 
         flash('잘못된 요청입니다.', 'danger')
-        return redirect(url_for('link8.internal_assessment'))
+        return redirect(url_for('link8.link8'))
     else:
         # GET 요청 - 레거시 지원
         return redirect(url_for('link7.user_operation_evaluation'))

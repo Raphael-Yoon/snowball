@@ -26,7 +26,7 @@
                     {% if is_logged_in %}
                     <!-- 로그인 상태: 주요 메뉴 직접 표시 -->
                     <li class="nav-item">
-                        <a href="{{ url_for('link8.internal_assessment') }}" class="nav-link">
+                        <a href="{{ url_for('link8.link8') }}" class="nav-link">
                             <i class="fas fa-chart-pie me-1"></i>Dashboard
                         </a>
                     </li>
@@ -56,7 +56,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ url_for('link9.contact') }}" class="nav-link">
+                        <a href="{{ url_for('link9.link9') }}" class="nav-link">
                             <i class="fas fa-envelope me-1"></i>서비스 문의
                         </a>
                     </li>
@@ -121,7 +121,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ url_for('link9.contact') }}" class="nav-link">
+                        <a href="{{ url_for('link9.link9') }}" class="nav-link">
                             <i class="fas fa-envelope me-1"></i>서비스 문의
                         </a>
                     </li>

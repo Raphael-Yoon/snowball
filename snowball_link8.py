@@ -23,9 +23,9 @@ def is_logged_in():
 bp_link8 = Blueprint('link8', __name__)
 
 # 내부평가 메인 페이지
-@bp_link8.route('/internal-assessment')
+@bp_link8.route('/link8')
 @login_required
-def internal_assessment():
+def link8():
     """내부평가 메인 페이지 - 회사별 카테고리별(ITGC/ELC/TLC) 진행 현황 표시"""
     user_info = get_user_info()
 
@@ -133,20 +133,20 @@ def internal_assessment():
     # 회사별 데이터를 리스트로 변환
     companies_list = list(companies.values())
 
-    log_user_activity(user_info, 'PAGE_ACCESS', '내부평가 메인 페이지', '/internal-assessment',
+    log_user_activity(user_info, 'PAGE_ACCESS', '내부평가 메인 페이지', '/link8',
                      request.remote_addr, request.headers.get('User-Agent'),
                      {'company_count': len(companies_list)})
 
-    return render_template('internal_assessment_main.jsp',
+    return render_template('link8.jsp',
                          companies=companies_list,
                          is_logged_in=is_logged_in(),
                          user_info=user_info)
 
 # 특정 RCM의 내부평가 상세 페이지 (세션별)
-@bp_link8.route('/internal-assessment/<int:rcm_id>')
-@bp_link8.route('/internal-assessment/<int:rcm_id>/<evaluation_session>')
+@bp_link8.route('/link8/<int:rcm_id>')
+@bp_link8.route('/link8/<int:rcm_id>/<evaluation_session>')
 @login_required
-def assessment_detail(rcm_id, evaluation_session='DEFAULT'):
+def link8_detail(rcm_id, evaluation_session='DEFAULT'):
     """특정 RCM의 특정 설계평가 세션에 대한 내부평가 상세 페이지"""
     user_info = get_user_info()
 
@@ -156,7 +156,7 @@ def assessment_detail(rcm_id, evaluation_session='DEFAULT'):
 
     if not rcm_info:
         flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
-        return redirect(url_for('link8.internal_assessment'))
+        return redirect(url_for('link8.link8'))
 
     # 내부평가 진행 상황 조회 (세션별)
     progress = get_assessment_progress(rcm_id, user_info['user_id'], evaluation_session)
@@ -165,11 +165,11 @@ def assessment_detail(rcm_id, evaluation_session='DEFAULT'):
     assessment_data = get_assessment_data(rcm_id, user_info['user_id'], evaluation_session)
 
     log_user_activity(user_info, 'PAGE_ACCESS', '내부평가 상세 페이지',
-                     f'/internal-assessment/{rcm_id}/{evaluation_session}',
+                     f'/link8/{rcm_id}/{evaluation_session}',
                      request.remote_addr, request.headers.get('User-Agent'),
                      {'rcm_id': rcm_id, 'evaluation_session': evaluation_session})
 
-    return render_template('assessment_detail.jsp',
+    return render_template('link8_detail.jsp',
                          rcm_info=rcm_info,
                          evaluation_name=evaluation_session,
                          progress=progress,
@@ -178,9 +178,9 @@ def assessment_detail(rcm_id, evaluation_session='DEFAULT'):
                          user_info=user_info)
 
 # API: 내부평가 상세 정보 (JSON)
-@bp_link8.route('/internal-assessment/api/detail/<int:rcm_id>/<evaluation_session>')
+@bp_link8.route('/link8/api/detail/<int:rcm_id>/<evaluation_session>')
 @login_required
-def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
+def link8_detail_api(rcm_id, evaluation_session='DEFAULT'):
     """내부평가 상세 정보를 JSON으로 반환하는 API"""
     user_info = get_user_info()
 
@@ -346,10 +346,10 @@ def assessment_detail_api(rcm_id, evaluation_session='DEFAULT'):
     })
 
 # 내부평가 단계별 페이지
-@bp_link8.route('/internal-assessment/<int:rcm_id>/step/<int:step>')
-@bp_link8.route('/internal-assessment/<int:rcm_id>/<evaluation_session>/step/<int:step>')
+@bp_link8.route('/link8/<int:rcm_id>/step/<int:step>')
+@bp_link8.route('/link8/<int:rcm_id>/<evaluation_session>/step/<int:step>')
 @login_required
-def assessment_step(rcm_id, step, evaluation_session='DEFAULT'):
+def link8_step(rcm_id, step, evaluation_session='DEFAULT'):
     """내부평가 단계별 페이지"""
     user_info = get_user_info()
     
@@ -359,12 +359,12 @@ def assessment_step(rcm_id, step, evaluation_session='DEFAULT'):
     
     if not rcm_info:
         flash('해당 RCM에 대한 접근 권한이 없습니다.', 'error')
-        return redirect(url_for('link8.internal_assessment'))
+        return redirect(url_for('link8.link8'))
 
     # 단계 유효성 검사 (1-6단계)
     if step < 1 or step > 6:
         flash('유효하지 않은 평가 단계입니다.', 'error')
-        return redirect(url_for('link8.assessment_detail', rcm_id=rcm_id))
+        return redirect(url_for('link8.link8_detail', rcm_id=rcm_id))
     
     # 해당 단계의 데이터 조회
     step_data = get_step_data(rcm_id, user_info['user_id'], step, evaluation_session)
@@ -379,10 +379,10 @@ def assessment_step(rcm_id, step, evaluation_session='DEFAULT'):
         # 6: 'assessment_step6_report.jsp'
     }
     
-    template = step_templates.get(step, 'assessment_step_generic.jsp')
+    template = step_templates.get(step, 'link8_step_generic.jsp')
     
     log_user_activity(user_info, 'PAGE_ACCESS', f'내부평가 {step}단계', 
-                     f'/internal-assessment/{rcm_id}/{evaluation_session}/step/{step}', 
+                     f'/link8/{rcm_id}/{evaluation_session}/step/{step}', 
                      request.remote_addr, request.headers.get('User-Agent'),
                      {'rcm_id': rcm_id, 'step': step, 'evaluation_session': evaluation_session})
     
@@ -395,9 +395,9 @@ def assessment_step(rcm_id, step, evaluation_session='DEFAULT'):
                          user_info=user_info)
 
 # API: 내부평가 진행 상황 저장
-@bp_link8.route('/api/internal-assessment/<int:rcm_id>/progress', methods=['POST'])
+@bp_link8.route('/api/link8/<int:rcm_id>/progress', methods=['POST'])
 @login_required
-def save_assessment_progress(rcm_id):
+def save_link8_progress(rcm_id):
     """내부평가 진행 상황 저장 (세션별)"""
     try:
         user_info = get_user_info()
@@ -444,7 +444,7 @@ def save_assessment_progress(rcm_id):
         db.commit()
         
         log_user_activity(user_info, 'DATA_SAVE', f'내부평가 {step}단계 저장', 
-                         f'/api/internal-assessment/{rcm_id}/progress',
+                         f'/api/link8/{rcm_id}/progress',
                          request.remote_addr, request.headers.get('User-Agent'),
                          {'rcm_id': rcm_id, 'step': step, 'status': status})
         
