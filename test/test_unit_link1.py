@@ -69,7 +69,11 @@ class Link1UnitTest(PlaywrightTestBase):
             "#software": "Application",
             "#os": "OS",
             "#db": "DB",
-            "#cloud_env": "Cloud 환경"
+            "#cloud_env": "Cloud 환경",
+            "#os_tool": "OS 접근제어",
+            "#db_tool": "DB 접근제어",
+            "#deploy_tool": "배포 Tool",
+            "#batch_tool": "배치 스케줄러"
         }
 
         missing_elements = []
@@ -243,15 +247,28 @@ class Link1UnitTest(PlaywrightTestBase):
             if response.status == 200:
                 data = response.json()
 
-                # sw_templates, os_templates, db_templates 존재 확인
-                if data.get("success") and "sw_templates" in data and "os_templates" in data and "db_templates" in data:
+                # 기본 템플릿 확인 (sw, os, db)
+                required_keys = ["sw_templates", "os_templates", "db_templates"]
+                # Tool 템플릿 확인 (os_tool, db_tool, deploy_tool, batch_tool)
+                tool_keys = ["os_tool_templates", "db_tool_templates", "deploy_tool_templates", "batch_tool_templates"]
+
+                all_keys = required_keys + tool_keys
+                missing_keys = [k for k in all_keys if k not in data]
+
+                if data.get("success") and not missing_keys:
                     sw_count = len(data["sw_templates"])
                     os_count = len(data["os_templates"])
                     db_count = len(data["db_templates"])
-                    result.add_detail(f"템플릿 개수 - SW: {sw_count}, OS: {os_count}, DB: {db_count}")
+                    os_tool_count = len(data["os_tool_templates"])
+                    db_tool_count = len(data["db_tool_templates"])
+                    deploy_tool_count = len(data["deploy_tool_templates"])
+                    batch_tool_count = len(data["batch_tool_templates"])
+
+                    result.add_detail(f"기본 템플릿 - SW: {sw_count}, OS: {os_count}, DB: {db_count}")
+                    result.add_detail(f"Tool 템플릿 - OS Tool: {os_tool_count}, DB Tool: {db_tool_count}, Deploy: {deploy_tool_count}, Batch: {batch_tool_count}")
                     result.pass_test("모집단 템플릿 API 정상 동작")
                 else:
-                    result.fail_test(f"템플릿 데이터 구조 불일치: {list(data.keys())}")
+                    result.fail_test(f"템플릿 데이터 구조 불일치 (누락: {missing_keys})")
             else:
                 result.fail_test(f"API 응답 오류: {response.status}")
 

@@ -309,6 +309,31 @@ MASTER_ITGC_CONTROLS = [
 # 수시 통제용 모집단/완전성 템플릿 (SW/OS/DB별)
 # ================================
 
+# Application별 소스 수정 가능 여부 매핑
+SW_MODIFIABLE = {
+    'SAP': True,       # ABAP 커스터마이징 가능
+    'ORACLE': True,    # PL/SQL 커스터마이징 가능
+    'DOUZONE': False,  # 벤더 관리, 소스 수정 불가
+    'YOUNG': False,    # 벤더 관리, 소스 수정 불가
+    'ETC': True        # 기본값은 수정 가능 (In-house 또는 기타)
+}
+
+# 수정 불가 패키지용 변경관리 보충 문구 (PC01~PC05)
+NON_MODIFIABLE_PC_SUPPLEMENTS = {
+    "PC01": "\n\n[소스 수정 불가 Package 참고]\n본 시스템은 소스 수정이 불가한 Package 솔루션으로, 프로그램 변경은 벤더를 통한 패치/업데이트만 해당됨.\n당기 벤더 패치 적용 이력을 모집단으로 확인함.",
+    "PC02": "\n\n[소스 수정 불가 Package 참고]\n벤더 패치 적용 전 테스트서버(DEV/STG) 검증이 수행되었는지 확인.\n고객사 자체 개발 변경은 발생하지 않으므로, 벤더 제공 패치 노트 및 테스트 결과를 확인함.",
+    "PC03": "\n\n[소스 수정 불가 Package 참고]\n벤더 패치의 운영 이관은 벤더 엔지니어 또는 시스템 관리자가 수행.\n이관 승인 프로세스(변경요청서, 승인권자 결재)가 준수되었는지 확인함.",
+    "PC04": "\n\n[소스 수정 불가 Package 참고]\n본 시스템은 소스 수정 불가 Package로 운영계 직접 변경이 원천적으로 차단됨.\n시스템 설정에서 운영환경 변경 제한 설정이 활성화되어 있는지 확인함.",
+    "PC05": "\n\n[소스 수정 불가 Package 참고]\n이관 권한은 벤더 엔지니어 또는 지정된 시스템 관리자로 제한.\n패치 적용 권한 보유자가 최소한으로 유지되는지 확인함."
+}
+
+# 수정 가능 패키지용 변경관리 보충 문구 (PC01~PC05)
+MODIFIABLE_PC_SUPPLEMENTS = {
+    "PC01": "\n\n[소스 수정 가능 Package 참고]\n본 시스템은 커스터마이징이 가능한 Package로, 자체 개발/수정 건과 벤더 패치를 모두 포함하여 변경 이력을 확인함.",
+    "PC02": "\n\n[소스 수정 가능 Package 참고]\n자체 커스터마이징 건은 개발/테스트 환경에서 단위/통합 테스트를 수행하고, 벤더 패치는 별도 검증 후 적용함.",
+    "PC03": "\n\n[소스 수정 가능 Package 참고]\n자체 개발 건과 벤더 패치 모두 이관 승인 프로세스를 준수하여 운영 환경에 반영되었는지 확인함."
+}
+
 # SW(Application)별 템플릿 - APD01~03, APD07, PC01~03, CO01, ST03, PD01~04, CO05
 SW_POPULATION_TEMPLATES = {
     "SAP": {
@@ -536,6 +561,489 @@ DB_POPULATION_TEMPLATES = {
     },
 }
 
+# ================================
+# OS 접근제어 Tool 템플릿
+# ================================
+OS_TOOL_TEMPLATES = {
+    "NONE": {},  # 미사용 시 기존 OS 템플릿 사용
+    "HIWARE": {
+        "APD09": {
+            "population": "하이웨어 SAC 접근권한 신청/승인 이력",
+            "completeness": "하이웨어 관리콘솔에서 권한 신청 이력 전수 조회\n\n[조회 경로]\n• 관리콘솔 > 권한관리 > 신청이력\n• 테스트 기간 내 신청/승인 건 필터링",
+            "test_procedure_manual": "1. 하이웨어 SAC 관리콘솔 접속\n2. 권한관리 > 신청이력 메뉴 진입\n3. 테스트 기간 내 신청/승인 이력 조회\n4. 샘플 선정 후 승인권자의 승인 여부 확인",
+            "test_procedure_auto": "1. 하이웨어 SAC의 자동 승인 워크플로우 설정 확인\n2. 샘플 1건 추출하여 시스템에 의한 자동 승인 후 권한 부여 여부 확인"
+        },
+        "APD10": {
+            "population": "하이웨어 SAC 패스워드 정책 설정",
+            "completeness": "하이웨어 관리콘솔에서 패스워드 정책 확인\n\n[조회 경로]\n• 관리콘솔 > 정책관리 > 패스워드 정책",
+            "test_procedure_auto": "1. 하이웨어 SAC 관리콘솔 > 정책관리 > 패스워드 정책 메뉴 진입\n2. 최소 길이(8자리 이상), 복잡성(문자/숫자/특수문자) 설정 확인"
+        },
+        "APD11": {
+            "population": "하이웨어 SAC 관리자 권한 보유자",
+            "completeness": "하이웨어 관리콘솔에서 관리자 계정 목록 조회\n\n[조회 경로]\n• 관리콘솔 > 사용자관리 > 관리자 목록",
+            "test_procedure_auto": "1. 하이웨어 SAC 관리콘솔 > 사용자관리 메뉴 진입\n2. 관리자(Admin) 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    },
+    "NETAND": {
+        "APD09": {
+            "population": "넷앤드 접근권한 신청/승인 이력",
+            "completeness": "넷앤드 관리콘솔에서 권한 신청 이력 전수 조회\n\n[조회 경로]\n• 관리콘솔 > 접근권한 > 신청이력",
+            "test_procedure_manual": "1. 넷앤드 관리콘솔 접속\n2. 접근권한 > 신청이력 메뉴 진입\n3. 테스트 기간 내 신청/승인 이력 조회\n4. 샘플 선정 후 승인권자의 승인 여부 확인",
+            "test_procedure_auto": "1. 넷앤드의 자동 승인 워크플로우 설정 확인\n2. 샘플 1건 추출하여 자동 승인 후 권한 부여 여부 확인"
+        },
+        "APD10": {
+            "population": "넷앤드 패스워드 정책 설정",
+            "completeness": "넷앤드 관리콘솔에서 패스워드 정책 확인\n\n[조회 경로]\n• 관리콘솔 > 보안정책 > 패스워드",
+            "test_procedure_auto": "1. 넷앤드 관리콘솔 > 보안정책 > 패스워드 메뉴 진입\n2. 최소 길이, 복잡성 설정 확인"
+        },
+        "APD11": {
+            "population": "넷앤드 관리자 권한 보유자",
+            "completeness": "넷앤드 관리콘솔에서 관리자 계정 목록 조회\n\n[조회 경로]\n• 관리콘솔 > 사용자 > 관리자",
+            "test_procedure_auto": "1. 넷앤드 관리콘솔 > 사용자 메뉴 진입\n2. 관리자 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    },
+    "CYBERARK": {
+        "APD09": {
+            "population": "CyberArk PAM 접근권한 요청/승인 이력",
+            "completeness": "CyberArk PVWA에서 권한 요청 이력 조회\n\n[조회 경로]\n• PVWA > Reports > Privileged Access Requests",
+            "test_procedure_manual": "1. CyberArk PVWA 콘솔 접속\n2. Reports > Privileged Access Requests 메뉴 진입\n3. 테스트 기간 내 요청/승인 이력 조회\n4. 샘플 선정 후 승인권자의 승인 여부 확인",
+            "test_procedure_auto": "1. CyberArk의 자동 승인 워크플로우(Dual Control) 설정 확인\n2. 샘플 1건 추출하여 승인 프로세스 정상 동작 여부 확인"
+        },
+        "APD10": {
+            "population": "CyberArk PAM 패스워드 정책 설정",
+            "completeness": "CyberArk에서 Master Policy 설정 확인\n\n[조회 경로]\n• PVWA > Administration > Platform Management",
+            "test_procedure_auto": "1. CyberArk PVWA > Administration > Platform Management 진입\n2. Password Policy 설정(길이, 복잡성, 주기적 변경) 확인"
+        },
+        "APD11": {
+            "population": "CyberArk PAM Vault Admin 권한 보유자",
+            "completeness": "CyberArk에서 Vault Admin 그룹 멤버 조회\n\n[조회 경로]\n• PrivateArk Client > Tools > Administrative Tools > Users and Groups",
+            "test_procedure_auto": "1. PrivateArk Client에서 Vault Admins 그룹 멤버 목록 추출\n2. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    },
+    "SECUREGUARD": {
+        "APD09": {
+            "population": "시큐어가드 접근권한 신청/승인 이력",
+            "completeness": "시큐어가드 관리콘솔에서 권한 신청 이력 조회\n\n[조회 경로]\n• 관리콘솔 > 권한관리 > 신청내역",
+            "test_procedure_manual": "1. 시큐어가드 관리콘솔 접속\n2. 권한관리 > 신청내역 메뉴 진입\n3. 테스트 기간 내 신청/승인 이력 조회\n4. 샘플 선정 후 승인권자의 승인 여부 확인",
+            "test_procedure_auto": "1. 시큐어가드의 자동 승인 워크플로우 설정 확인\n2. 샘플 1건 추출하여 자동 승인 후 권한 부여 여부 확인"
+        },
+        "APD10": {
+            "population": "시큐어가드 패스워드 정책 설정",
+            "completeness": "시큐어가드 관리콘솔에서 패스워드 정책 확인\n\n[조회 경로]\n• 관리콘솔 > 정책설정 > 인증정책",
+            "test_procedure_auto": "1. 시큐어가드 관리콘솔 > 정책설정 > 인증정책 메뉴 진입\n2. 최소 길이, 복잡성 설정 확인"
+        },
+        "APD11": {
+            "population": "시큐어가드 관리자 권한 보유자",
+            "completeness": "시큐어가드 관리콘솔에서 관리자 계정 목록 조회\n\n[조회 경로]\n• 관리콘솔 > 사용자관리 > 관리자",
+            "test_procedure_auto": "1. 시큐어가드 관리콘솔 > 사용자관리 메뉴 진입\n2. 관리자 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    },
+    "ETC": {
+        "APD09": {
+            "population": "OS 접근제어 Tool 권한 신청/승인 이력",
+            "completeness": "OS 접근제어 Tool 관리콘솔에서 권한 신청 이력 조회\n\n[일반 가이드]\n• 관리콘솔 > 권한관리 메뉴에서 신청/승인 이력 조회",
+            "test_procedure_manual": "1. OS 접근제어 Tool 관리콘솔 접속\n2. 권한관리 메뉴에서 신청/승인 이력 조회\n3. 샘플 선정 후 승인권자의 승인 여부 확인",
+            "test_procedure_auto": "1. OS 접근제어 Tool의 자동 승인 워크플로우 설정 확인\n2. 샘플 1건 추출하여 자동 승인 후 권한 부여 여부 확인"
+        },
+        "APD10": {
+            "population": "OS 접근제어 Tool 패스워드 정책 설정",
+            "completeness": "OS 접근제어 Tool에서 패스워드 정책 확인\n\n[일반 가이드]\n• 관리콘솔 > 정책관리 메뉴에서 패스워드 정책 확인",
+            "test_procedure_auto": "1. OS 접근제어 Tool 관리콘솔에서 패스워드 정책 설정 확인\n2. 최소 길이, 복잡성 설정 확인"
+        },
+        "APD11": {
+            "population": "OS 접근제어 Tool 관리자 권한 보유자",
+            "completeness": "OS 접근제어 Tool에서 관리자 계정 목록 조회\n\n[일반 가이드]\n• 관리콘솔 > 사용자관리 메뉴에서 관리자 목록 조회",
+            "test_procedure_auto": "1. OS 접근제어 Tool 관리콘솔에서 관리자 권한 보유자 목록 추출\n2. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    }
+}
+
+# ================================
+# DB 접근제어 Tool 템플릿
+# ================================
+DB_TOOL_TEMPLATES = {
+    "NONE": {},  # 미사용 시 기존 DB 템플릿 사용
+    "CHAKRA": {
+        "APD08": {
+            "population": "Chakra Max 데이터 변경 권한 보유자",
+            "completeness": "Chakra Max에서 DML 권한 보유자 목록 조회\n\n[조회 경로]\n• 관리콘솔 > 사용자관리 > 권한현황\n• INSERT/UPDATE/DELETE 권한 보유자 필터링",
+            "test_procedure_auto": "1. Chakra Max 관리콘솔 > 사용자관리 > 권한현황 메뉴 진입\n2. DML 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        },
+        "APD12": {
+            "population": "Chakra Max 접근권한 신청/승인 이력",
+            "completeness": "Chakra Max 감사로그에서 권한변경 이력 전수 조회\n\n[조회 경로]\n• 관리콘솔 > 감사 > 권한변경이력\n• 테스트 기간 내 신청/승인 건 필터링",
+            "test_procedure_manual": "1. Chakra Max 관리콘솔 접속\n2. 감사 > 권한변경이력 메뉴 진입\n3. 조회조건: 테스트 기간, 권한유형=신규부여\n4. 샘플 선정 후 승인권자의 승인 여부 확인",
+            "test_procedure_auto": "1. Chakra Max의 자동 승인 워크플로우 설정 확인\n2. 샘플 1건 추출하여 자동 승인 후 권한 부여 여부 확인"
+        },
+        "APD13": {
+            "population": "Chakra Max 패스워드 정책 설정",
+            "completeness": "Chakra Max에서 패스워드 정책 확인\n\n[조회 경로]\n• 관리콘솔 > 정책관리 > 패스워드 정책",
+            "test_procedure_auto": "1. Chakra Max 관리콘솔 > 정책관리 > 패스워드 정책 메뉴 진입\n2. 최소 길이(8자리 이상), 복잡성(문자/숫자/특수문자) 설정 확인"
+        },
+        "APD14": {
+            "population": "Chakra Max Super Admin 권한 보유자",
+            "completeness": "Chakra Max에서 관리자 계정 목록 조회\n\n[조회 경로]\n• 관리콘솔 > 사용자관리 > 관리자 목록",
+            "test_procedure_auto": "1. Chakra Max 관리콘솔 > 사용자관리 메뉴 진입\n2. Super Admin 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    },
+    "DBSAFER": {
+        "APD08": {
+            "population": "DBSafer 데이터 변경 권한 보유자",
+            "completeness": "DBSafer에서 DML 권한 보유자 목록 조회\n\n[조회 경로]\n• 관리콘솔 > 계정관리 > 권한현황",
+            "test_procedure_auto": "1. DBSafer 관리콘솔 > 계정관리 > 권한현황 메뉴 진입\n2. DML 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        },
+        "APD12": {
+            "population": "DBSafer 접근권한 신청/승인 이력",
+            "completeness": "DBSafer에서 권한변경 이력 조회\n\n[조회 경로]\n• 관리콘솔 > 감사로그 > 권한변경\n• 테스트 기간 내 신청/승인 건 필터링",
+            "test_procedure_manual": "1. DBSafer 관리콘솔 접속\n2. 감사로그 > 권한변경 메뉴 진입\n3. 테스트 기간 내 신청/승인 이력 조회\n4. 샘플 선정 후 승인권자의 승인 여부 확인",
+            "test_procedure_auto": "1. DBSafer의 자동 승인 워크플로우 설정 확인\n2. 샘플 1건 추출하여 자동 승인 후 권한 부여 여부 확인"
+        },
+        "APD13": {
+            "population": "DBSafer 패스워드 정책 설정",
+            "completeness": "DBSafer에서 패스워드 정책 확인\n\n[조회 경로]\n• 관리콘솔 > 정책관리 > 인증정책",
+            "test_procedure_auto": "1. DBSafer 관리콘솔 > 정책관리 > 인증정책 메뉴 진입\n2. 최소 길이, 복잡성 설정 확인"
+        },
+        "APD14": {
+            "population": "DBSafer 관리자 권한 보유자",
+            "completeness": "DBSafer에서 관리자 계정 목록 조회\n\n[조회 경로]\n• 관리콘솔 > 계정관리 > 관리자",
+            "test_procedure_auto": "1. DBSafer 관리콘솔 > 계정관리 메뉴 진입\n2. 관리자 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    },
+    "PETRA": {
+        "APD08": {
+            "population": "Petra 데이터 변경 권한 보유자",
+            "completeness": "Petra에서 DML 권한 보유자 목록 조회\n\n[조회 경로]\n• Petra Manager > 사용자 > 권한관리",
+            "test_procedure_auto": "1. Petra Manager > 사용자 > 권한관리 메뉴 진입\n2. DML 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        },
+        "APD12": {
+            "population": "Petra 접근권한 신청/승인 이력",
+            "completeness": "Petra에서 권한변경 이력 조회\n\n[조회 경로]\n• Petra Manager > 감사 > 권한이력",
+            "test_procedure_manual": "1. Petra Manager 접속\n2. 감사 > 권한이력 메뉴 진입\n3. 테스트 기간 내 신청/승인 이력 조회\n4. 샘플 선정 후 승인권자의 승인 여부 확인",
+            "test_procedure_auto": "1. Petra의 자동 승인 워크플로우 설정 확인\n2. 샘플 1건 추출하여 자동 승인 후 권한 부여 여부 확인"
+        },
+        "APD13": {
+            "population": "Petra 패스워드 정책 설정",
+            "completeness": "Petra에서 패스워드 정책 확인\n\n[조회 경로]\n• Petra Manager > 설정 > 보안정책",
+            "test_procedure_auto": "1. Petra Manager > 설정 > 보안정책 메뉴 진입\n2. 최소 길이, 복잡성 설정 확인"
+        },
+        "APD14": {
+            "population": "Petra 관리자 권한 보유자",
+            "completeness": "Petra에서 관리자 계정 목록 조회\n\n[조회 경로]\n• Petra Manager > 사용자 > 관리자",
+            "test_procedure_auto": "1. Petra Manager > 사용자 메뉴 진입\n2. 관리자 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    },
+    "GUARDIUM": {
+        "APD08": {
+            "population": "Guardium 데이터 변경 권한 보유자",
+            "completeness": "Guardium에서 DML 권한 보유자 목록 조회\n\n[조회 경로]\n• Guardium Console > Access Management > Privileged Users",
+            "test_procedure_auto": "1. Guardium Console > Access Management > Privileged Users 진입\n2. DML 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        },
+        "APD12": {
+            "population": "Guardium 접근권한 신청/승인 이력",
+            "completeness": "Guardium에서 권한변경 이력 조회\n\n[조회 경로]\n• Guardium Console > Reports > Access Rights Changes",
+            "test_procedure_manual": "1. Guardium Console 접속\n2. Reports > Access Rights Changes 메뉴 진입\n3. 테스트 기간 내 신청/승인 이력 조회\n4. 샘플 선정 후 승인권자의 승인 여부 확인",
+            "test_procedure_auto": "1. Guardium의 Policy 기반 자동 승인 설정 확인\n2. 샘플 1건 추출하여 승인 프로세스 정상 동작 여부 확인"
+        },
+        "APD13": {
+            "population": "Guardium 패스워드 정책 설정",
+            "completeness": "Guardium에서 패스워드 정책 확인\n\n[조회 경로]\n• Guardium Console > Setup > Authentication Policy",
+            "test_procedure_auto": "1. Guardium Console > Setup > Authentication Policy 진입\n2. 최소 길이, 복잡성 설정 확인"
+        },
+        "APD14": {
+            "population": "Guardium Admin 권한 보유자",
+            "completeness": "Guardium에서 Admin 계정 목록 조회\n\n[조회 경로]\n• Guardium Console > Access Management > Administrators",
+            "test_procedure_auto": "1. Guardium Console > Access Management > Administrators 진입\n2. Admin 권한 보유자 목록 추출\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    },
+    "ETC": {
+        "APD08": {
+            "population": "DB 접근제어 Tool 데이터 변경 권한 보유자",
+            "completeness": "DB 접근제어 Tool에서 DML 권한 보유자 목록 조회\n\n[일반 가이드]\n• 관리콘솔 > 사용자관리 메뉴에서 권한 현황 조회",
+            "test_procedure_auto": "1. DB 접근제어 Tool 관리콘솔에서 DML 권한 보유자 목록 추출\n2. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        },
+        "APD12": {
+            "population": "DB 접근제어 Tool 접근권한 신청/승인 이력",
+            "completeness": "DB 접근제어 Tool에서 권한변경 이력 조회\n\n[일반 가이드]\n• 관리콘솔 > 감사로그 메뉴에서 권한변경 이력 조회",
+            "test_procedure_manual": "1. DB 접근제어 Tool 관리콘솔 접속\n2. 감사로그 > 권한변경 메뉴 진입\n3. 테스트 기간 내 신청/승인 이력 조회\n4. 샘플 선정 후 승인권자의 승인 여부 확인",
+            "test_procedure_auto": "1. DB 접근제어 Tool의 자동 승인 워크플로우 설정 확인\n2. 샘플 1건 추출하여 자동 승인 후 권한 부여 여부 확인"
+        },
+        "APD13": {
+            "population": "DB 접근제어 Tool 패스워드 정책 설정",
+            "completeness": "DB 접근제어 Tool에서 패스워드 정책 확인\n\n[일반 가이드]\n• 관리콘솔 > 정책관리 메뉴에서 패스워드 정책 확인",
+            "test_procedure_auto": "1. DB 접근제어 Tool 관리콘솔에서 패스워드 정책 설정 확인\n2. 최소 길이, 복잡성 설정 확인"
+        },
+        "APD14": {
+            "population": "DB 접근제어 Tool 관리자 권한 보유자",
+            "completeness": "DB 접근제어 Tool에서 관리자 계정 목록 조회\n\n[일반 가이드]\n• 관리콘솔 > 사용자관리 메뉴에서 관리자 목록 조회",
+            "test_procedure_auto": "1. DB 접근제어 Tool 관리콘솔에서 관리자 권한 보유자 목록 추출\n2. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    }
+}
+
+# ================================
+# 배포 Tool 템플릿 (CI/CD)
+# ================================
+DEPLOY_TOOL_TEMPLATES = {
+    "NONE": {},  # 미사용 시 기존 SW 템플릿 사용
+    "JENKINS": {
+        "PC01": {
+            "population": "Jenkins 변경요청 이력",
+            "completeness": "Jenkins에서 Build/Deploy 요청 이력 전수 조회\n\n[조회 경로]\n• Jenkins > Build History\n• 테스트 기간 내 Build 건 필터링",
+            "test_procedure_manual": "1. Jenkins 콘솔 접속\n2. Build History에서 테스트 기간 내 배포 이력 조회\n3. 각 Build의 요청자 및 승인 여부 확인\n4. Jira/GitLab 연동된 경우 SR 연결 확인",
+            "test_procedure_auto": "1. Jenkins Pipeline 승인 단계(Approval Stage) 설정 확인\n2. 샘플 1건 추출하여 자동 승인 프로세스 동작 확인"
+        },
+        "PC02": {
+            "population": "Jenkins 테스트 수행 이력",
+            "completeness": "Jenkins에서 자동화 테스트 수행 결과 조회\n\n[조회 경로]\n• Jenkins > Test Results\n• Pipeline Stage별 테스트 결과",
+            "test_procedure_manual": "1. Jenkins 콘솔에서 테스트 기간 내 Build 이력 조회\n2. 각 Build의 Test Stage 수행 결과 확인\n3. 테스트 실패 시 후속 조치 이력 확인",
+            "test_procedure_auto": "1. Jenkins Pipeline의 Test Stage 설정 확인\n2. 테스트 실패 시 배포 차단 로직 확인"
+        },
+        "PC03": {
+            "population": "Jenkins 이관 승인 이력",
+            "completeness": "Jenkins에서 Production 배포 승인 이력 조회\n\n[조회 경로]\n• Jenkins > Deploy History\n• Production 환경 배포 건 필터링",
+            "test_procedure_manual": "1. Jenkins 콘솔에서 Production 배포 이력 조회\n2. 배포 전 승인(Approval) 단계 수행 여부 확인\n3. 승인권자 정보 및 승인 시점 확인",
+            "test_procedure_auto": "1. Jenkins Pipeline의 Production Deploy Stage 승인 설정 확인\n2. 승인 없이 배포 불가 로직 확인"
+        },
+        "PC04": {
+            "population": "Jenkins 환경 분리 설정",
+            "completeness": "Jenkins에서 DEV/STG/PRD 환경 분리 설정 확인\n\n[조회 경로]\n• Jenkins > Manage Jenkins > Configure System\n• Pipeline별 환경 설정",
+            "test_procedure_auto": "1. Jenkins에서 환경별(DEV/STG/PRD) Pipeline 분리 설정 확인\n2. 각 환경별 접속 정보(서버 IP, 인증정보) 분리 여부 확인"
+        },
+        "PC05": {
+            "population": "Jenkins 배포 권한 보유자",
+            "completeness": "Jenkins에서 Production 배포 권한 보유자 목록 조회\n\n[조회 경로]\n• Jenkins > Manage Jenkins > Configure Global Security\n• Role-Based Access Control 설정",
+            "test_procedure_auto": "1. Jenkins 권한 관리 설정에서 배포 권한 보유자 목록 추출\n2. 개발자와 배포 담당자 권한 분리 여부 확인\n3. 해당 인원의 부서, 직책, 직무 적절성 검토"
+        }
+    },
+    "GITLAB": {
+        "PC01": {
+            "population": "GitLab Merge Request 이력",
+            "completeness": "GitLab에서 Merge Request 이력 전수 조회\n\n[조회 경로]\n• GitLab > Project > Merge Requests\n• 테스트 기간 내 Merged 건 필터링",
+            "test_procedure_manual": "1. GitLab 콘솔에서 Merge Request 이력 조회\n2. 각 MR의 요청자 및 승인자(Approver) 확인\n3. 연결된 Issue/Jira 티켓 확인",
+            "test_procedure_auto": "1. GitLab Merge Request 승인 규칙(Approval Rules) 설정 확인\n2. 필수 승인자 지정 및 최소 승인 수 확인"
+        },
+        "PC02": {
+            "population": "GitLab CI/CD Pipeline 테스트 이력",
+            "completeness": "GitLab CI/CD에서 테스트 수행 결과 조회\n\n[조회 경로]\n• GitLab > Project > CI/CD > Pipelines\n• Test Stage 결과",
+            "test_procedure_manual": "1. GitLab CI/CD Pipeline에서 테스트 기간 내 이력 조회\n2. 각 Pipeline의 Test Job 수행 결과 확인\n3. 테스트 실패 시 후속 조치 이력 확인",
+            "test_procedure_auto": "1. .gitlab-ci.yml의 Test Stage 설정 확인\n2. 테스트 실패 시 Pipeline 차단 로직 확인"
+        },
+        "PC03": {
+            "population": "GitLab 배포 승인 이력",
+            "completeness": "GitLab에서 Production 배포 승인 이력 조회\n\n[조회 경로]\n• GitLab > Project > Deployments\n• Production 환경 배포 건",
+            "test_procedure_manual": "1. GitLab Deployments에서 Production 배포 이력 조회\n2. Protected Environment 승인 여부 확인\n3. 승인권자 정보 및 승인 시점 확인",
+            "test_procedure_auto": "1. GitLab Protected Environments 설정 확인\n2. Required Approvals 설정 확인"
+        },
+        "PC04": {
+            "population": "GitLab 환경 분리 설정",
+            "completeness": "GitLab에서 환경별 분리 설정 확인\n\n[조회 경로]\n• GitLab > Project > Settings > CI/CD > Variables\n• Environment-specific variables",
+            "test_procedure_auto": "1. GitLab CI/CD Variables에서 환경별 변수 분리 설정 확인\n2. Protected Branches 설정으로 main/master 보호 확인"
+        },
+        "PC05": {
+            "population": "GitLab 배포 권한 보유자",
+            "completeness": "GitLab에서 Production 배포 권한 보유자 목록 조회\n\n[조회 경로]\n• GitLab > Project > Settings > CI/CD > Protected environments\n• 배포 가능 사용자/그룹",
+            "test_procedure_auto": "1. GitLab Protected Environments에서 배포 권한자 목록 추출\n2. 개발자와 배포 담당자 역할 분리 여부 확인"
+        }
+    },
+    "AZURE": {
+        "PC01": {
+            "population": "Azure DevOps Pull Request 이력",
+            "completeness": "Azure DevOps에서 Pull Request 이력 조회\n\n[조회 경로]\n• Azure DevOps > Repos > Pull Requests\n• Completed 상태 필터링",
+            "test_procedure_manual": "1. Azure DevOps에서 Pull Request 이력 조회\n2. 각 PR의 요청자 및 승인자(Reviewer) 확인\n3. 연결된 Work Item 확인",
+            "test_procedure_auto": "1. Branch Policy의 Required Reviewers 설정 확인\n2. 최소 승인자 수 및 필수 승인자 지정 확인"
+        },
+        "PC02": {
+            "population": "Azure DevOps Pipeline 테스트 이력",
+            "completeness": "Azure DevOps Pipeline에서 테스트 수행 결과 조회\n\n[조회 경로]\n• Azure DevOps > Pipelines > Runs\n• Test Results 탭",
+            "test_procedure_manual": "1. Azure DevOps Pipeline Runs에서 테스트 이력 조회\n2. 각 Run의 Test 결과 확인\n3. 테스트 실패 시 후속 조치 이력 확인",
+            "test_procedure_auto": "1. Pipeline YAML의 Test Task 설정 확인\n2. 테스트 실패 시 Pipeline 차단 로직 확인"
+        },
+        "PC03": {
+            "population": "Azure DevOps Release 승인 이력",
+            "completeness": "Azure DevOps에서 Release 승인 이력 조회\n\n[조회 경로]\n• Azure DevOps > Pipelines > Releases\n• Production Stage 승인 이력",
+            "test_procedure_manual": "1. Azure DevOps Releases에서 Production 배포 이력 조회\n2. Pre-deployment Approval 수행 여부 확인\n3. 승인권자 정보 및 승인 시점 확인",
+            "test_procedure_auto": "1. Release Pipeline의 Pre-deployment Approval 설정 확인\n2. 승인 없이 배포 불가 로직 확인"
+        },
+        "PC04": {
+            "population": "Azure DevOps 환경 분리 설정",
+            "completeness": "Azure DevOps에서 환경별 분리 설정 확인\n\n[조회 경로]\n• Azure DevOps > Pipelines > Environments\n• Variable Groups",
+            "test_procedure_auto": "1. Azure DevOps Environments에서 DEV/STG/PRD 환경 분리 확인\n2. 환경별 Variable Groups 분리 설정 확인"
+        },
+        "PC05": {
+            "population": "Azure DevOps 배포 권한 보유자",
+            "completeness": "Azure DevOps에서 Production 배포 권한 보유자 목록 조회\n\n[조회 경로]\n• Azure DevOps > Pipelines > Environments > Security\n• 배포 가능 사용자/그룹",
+            "test_procedure_auto": "1. Production Environment Security 설정에서 배포 권한자 목록 추출\n2. 개발자와 배포 담당자 역할 분리 여부 확인"
+        }
+    },
+    "AWS": {
+        "PC01": {
+            "population": "AWS CodePipeline 실행 이력",
+            "completeness": "AWS CodePipeline에서 실행 이력 조회\n\n[조회 경로]\n• AWS Console > CodePipeline > Pipeline History\n• 테스트 기간 내 실행 건",
+            "test_procedure_manual": "1. AWS CodePipeline History에서 실행 이력 조회\n2. 각 실행의 Source(CodeCommit/GitHub) 변경 내역 확인\n3. 변경 요청 승인 여부 확인",
+            "test_procedure_auto": "1. CodePipeline Manual Approval Stage 설정 확인\n2. SNS 알림 및 승인 프로세스 확인"
+        },
+        "PC02": {
+            "population": "AWS CodeBuild 테스트 이력",
+            "completeness": "AWS CodeBuild에서 테스트 수행 결과 조회\n\n[조회 경로]\n• AWS Console > CodeBuild > Build History\n• Build Reports",
+            "test_procedure_manual": "1. AWS CodeBuild History에서 빌드 이력 조회\n2. 각 빌드의 테스트 수행 결과 확인\n3. 테스트 실패 시 후속 조치 이력 확인",
+            "test_procedure_auto": "1. buildspec.yml의 Test Phase 설정 확인\n2. 테스트 실패 시 Pipeline 차단 로직 확인"
+        },
+        "PC03": {
+            "population": "AWS CodePipeline 승인 이력",
+            "completeness": "AWS CodePipeline에서 Manual Approval 이력 조회\n\n[조회 경로]\n• AWS Console > CodePipeline > Pipeline Details\n• Approval Action 이력",
+            "test_procedure_manual": "1. CodePipeline에서 Manual Approval Stage 이력 조회\n2. 승인자 및 승인 시점 확인\n3. 승인 코멘트 내용 검토",
+            "test_procedure_auto": "1. Production Stage의 Manual Approval Action 설정 확인\n2. IAM 권한으로 승인 가능자 제한 설정 확인"
+        },
+        "PC04": {
+            "population": "AWS 환경 분리 설정",
+            "completeness": "AWS에서 Account/VPC 환경 분리 설정 확인\n\n[조회 경로]\n• AWS Organizations > Accounts\n• VPC 분리 현황",
+            "test_procedure_auto": "1. DEV/STG/PRD 환경이 별도 AWS Account 또는 VPC로 분리되어 있는지 확인\n2. Cross-account 접근 제어 설정 확인"
+        },
+        "PC05": {
+            "population": "AWS CodePipeline 배포 권한 보유자",
+            "completeness": "AWS IAM에서 CodePipeline 배포 권한 보유자 목록 조회\n\n[조회 경로]\n• AWS IAM > Policies\n• codepipeline:* 권한 보유자",
+            "test_procedure_auto": "1. IAM에서 CodePipeline 관련 권한 보유자 목록 추출\n2. 개발자와 배포 담당자 권한 분리 여부 확인"
+        }
+    },
+    "BAMBOO": {
+        "PC01": {
+            "population": "Bamboo Build 요청 이력",
+            "completeness": "Bamboo에서 Build 요청 이력 조회\n\n[조회 경로]\n• Bamboo > All Builds\n• 테스트 기간 내 Build 건",
+            "test_procedure_manual": "1. Bamboo에서 Build 이력 조회\n2. 각 Build의 요청자 및 연결된 Jira 이슈 확인\n3. 변경 요청 승인 여부 확인",
+            "test_procedure_auto": "1. Bamboo Plan의 Manual Stage 설정 확인\n2. 자동 트리거 및 승인 프로세스 확인"
+        },
+        "PC02": {
+            "population": "Bamboo 테스트 수행 이력",
+            "completeness": "Bamboo에서 테스트 수행 결과 조회\n\n[조회 경로]\n• Bamboo > Build Results > Tests\n• Test Task 결과",
+            "test_procedure_manual": "1. Bamboo Build Results에서 테스트 이력 조회\n2. 각 Build의 Test Task 수행 결과 확인",
+            "test_procedure_auto": "1. Bamboo Plan의 Test Task 설정 확인\n2. 테스트 실패 시 Build 차단 로직 확인"
+        },
+        "PC03": {
+            "population": "Bamboo Deployment 승인 이력",
+            "completeness": "Bamboo에서 Deployment 승인 이력 조회\n\n[조회 경로]\n• Bamboo > Deployments > Release\n• Production 환경 배포 건",
+            "test_procedure_manual": "1. Bamboo Deployments에서 Production 배포 이력 조회\n2. Manual Stage 승인 여부 확인\n3. 승인권자 정보 및 승인 시점 확인",
+            "test_procedure_auto": "1. Deployment Project의 Manual Approval 설정 확인\n2. 승인 없이 배포 불가 로직 확인"
+        },
+        "PC04": {
+            "population": "Bamboo 환경 분리 설정",
+            "completeness": "Bamboo에서 환경별 분리 설정 확인\n\n[조회 경로]\n• Bamboo > Deployment Projects > Environments\n• 환경별 Agent 설정",
+            "test_procedure_auto": "1. Bamboo Deployment Environments에서 DEV/STG/PRD 환경 분리 확인\n2. 환경별 Variables 분리 설정 확인"
+        },
+        "PC05": {
+            "population": "Bamboo 배포 권한 보유자",
+            "completeness": "Bamboo에서 Production 배포 권한 보유자 목록 조회\n\n[조회 경로]\n• Bamboo > Deployment Projects > Permissions\n• Production Environment 권한자",
+            "test_procedure_auto": "1. Bamboo Deployment Permissions에서 배포 권한자 목록 추출\n2. 개발자와 배포 담당자 권한 분리 여부 확인"
+        }
+    },
+    "ETC": {
+        "PC01": {
+            "population": "배포 Tool 변경요청 이력",
+            "completeness": "배포 Tool에서 변경요청 이력 조회\n\n[일반 가이드]\n• 배포 Tool > Build/Deploy History\n• 테스트 기간 내 배포 건 조회",
+            "test_procedure_manual": "1. 배포 Tool에서 배포 이력 조회\n2. 각 배포의 요청자 및 승인 여부 확인",
+            "test_procedure_auto": "1. 배포 Tool의 승인 프로세스 설정 확인\n2. 자동 승인 워크플로우 동작 확인"
+        },
+        "PC02": {
+            "population": "배포 Tool 테스트 수행 이력",
+            "completeness": "배포 Tool에서 테스트 수행 결과 조회\n\n[일반 가이드]\n• 배포 Tool > Test Results\n• 테스트 Stage 결과",
+            "test_procedure_manual": "1. 배포 Tool에서 테스트 이력 조회\n2. 각 배포의 테스트 수행 결과 확인",
+            "test_procedure_auto": "1. 배포 Tool의 테스트 Stage 설정 확인\n2. 테스트 실패 시 배포 차단 로직 확인"
+        },
+        "PC03": {
+            "population": "배포 Tool 이관 승인 이력",
+            "completeness": "배포 Tool에서 Production 배포 승인 이력 조회\n\n[일반 가이드]\n• 배포 Tool > Deploy History\n• Production 환경 배포 건",
+            "test_procedure_manual": "1. 배포 Tool에서 Production 배포 이력 조회\n2. 배포 전 승인 단계 수행 여부 확인",
+            "test_procedure_auto": "1. 배포 Tool의 Production 승인 설정 확인\n2. 승인 없이 배포 불가 로직 확인"
+        },
+        "PC04": {
+            "population": "배포 Tool 환경 분리 설정",
+            "completeness": "배포 Tool에서 환경별 분리 설정 확인\n\n[일반 가이드]\n• 배포 Tool > Environment Settings\n• DEV/STG/PRD 환경 설정",
+            "test_procedure_auto": "1. 배포 Tool에서 환경별 분리 설정 확인\n2. 환경별 접속 정보 분리 여부 확인"
+        },
+        "PC05": {
+            "population": "배포 Tool 배포 권한 보유자",
+            "completeness": "배포 Tool에서 Production 배포 권한 보유자 목록 조회\n\n[일반 가이드]\n• 배포 Tool > User Management\n• 배포 권한 보유자 목록",
+            "test_procedure_auto": "1. 배포 Tool에서 배포 권한 보유자 목록 추출\n2. 개발자와 배포 담당자 권한 분리 여부 확인"
+        }
+    }
+}
+
+# ================================
+# 배치 스케줄러 Tool 템플릿
+# ================================
+BATCH_TOOL_TEMPLATES = {
+    "NONE": {},  # 미사용 시 기존 SW 템플릿 사용
+    "CONTROLM": {
+        "CO01": {
+            "population": "Control-M Job 등록/변경 이력",
+            "completeness": "Control-M에서 Job 등록/변경 이력 전수 조회\n\n[조회 경로]\n• Control-M/EM > Job Definition History\n• 테스트 기간 내 변경 건 필터링",
+            "test_procedure_manual": "1. Control-M Enterprise Manager 접속\n2. Job Definition History에서 테스트 기간 내 등록/변경 이력 조회\n3. 각 변경 건의 요청자 및 승인자 확인\n4. 변경 요청서(RFC)와 실제 변경 내용 일치 여부 확인",
+            "test_procedure_auto": "1. Control-M의 Job 등록/변경 시 자동 승인 워크플로우 설정 확인\n2. 승인 없이 Job 등록/변경 불가 로직 확인"
+        },
+        "CO02": {
+            "population": "Control-M Job 실행 결과",
+            "completeness": "Control-M에서 Job 실행 결과 조회\n\n[조회 경로]\n• Control-M/EM > Active Jobs\n• History Server > Job Run History",
+            "test_procedure_manual": "1. Control-M History Server에서 Job 실행 이력 조회\n2. 실패 Job 발생 시 Alert 및 후속 조치 이력 확인\n3. Job 실행 결과 모니터링 담당자 지정 여부 확인",
+            "test_procedure_auto": "1. Control-M의 자동 Alert 설정 확인\n2. Job 실패 시 자동 재실행 또는 알림 로직 확인"
+        }
+    },
+    "AUTOSYS": {
+        "CO01": {
+            "population": "Autosys Job 등록/변경 이력",
+            "completeness": "Autosys에서 Job 등록/변경 이력 전수 조회\n\n[조회 경로]\n• Autosys WCC > Job Activity Console\n• Job Definition 변경 이력",
+            "test_procedure_manual": "1. Autosys Workload Control Center 접속\n2. Job Activity Console에서 테스트 기간 내 등록/변경 이력 조회\n3. 각 변경 건의 요청자 및 승인자 확인\n4. JIL 파일 변경 이력과 승인 내역 대사",
+            "test_procedure_auto": "1. Autosys의 Job 등록/변경 시 승인 프로세스 설정 확인\n2. 승인 없이 Job 변경 불가 로직 확인"
+        },
+        "CO02": {
+            "population": "Autosys Job 실행 결과",
+            "completeness": "Autosys에서 Job 실행 결과 조회\n\n[조회 경로]\n• Autosys WCC > Job Run Monitor\n• Event History",
+            "test_procedure_manual": "1. Autosys Job Run Monitor에서 실행 이력 조회\n2. 실패 Job 발생 시 Alert 및 후속 조치 이력 확인\n3. Job 실행 결과 모니터링 담당자 지정 여부 확인",
+            "test_procedure_auto": "1. Autosys의 자동 Alert 설정 확인\n2. Job 실패 시 자동 재실행 또는 알림 로직 확인"
+        }
+    },
+    "TWS": {
+        "CO01": {
+            "population": "TWS Job 등록/변경 이력",
+            "completeness": "Tivoli Workload Scheduler에서 Job 등록/변경 이력 조회\n\n[조회 경로]\n• TWS Dynamic Workload Console\n• Job Definition 변경 이력",
+            "test_procedure_manual": "1. TWS Dynamic Workload Console 접속\n2. Job Definition 변경 이력 조회\n3. 각 변경 건의 요청자 및 승인자 확인",
+            "test_procedure_auto": "1. TWS의 Job 등록/변경 시 승인 프로세스 설정 확인\n2. 승인 없이 Job 변경 불가 로직 확인"
+        },
+        "CO02": {
+            "population": "TWS Job 실행 결과",
+            "completeness": "Tivoli Workload Scheduler에서 Job 실행 결과 조회\n\n[조회 경로]\n• TWS Dynamic Workload Console > Job Monitoring\n• Job Stream History",
+            "test_procedure_manual": "1. TWS Job Monitoring에서 실행 이력 조회\n2. 실패 Job 발생 시 Alert 및 후속 조치 이력 확인",
+            "test_procedure_auto": "1. TWS의 자동 Alert 설정 확인\n2. Job 실패 시 자동 재실행 또는 알림 로직 확인"
+        }
+    },
+    "RUNDECK": {
+        "CO01": {
+            "population": "Rundeck Job 등록/변경 이력",
+            "completeness": "Rundeck에서 Job 등록/변경 이력 조회\n\n[조회 경로]\n• Rundeck > Jobs > Activity\n• Job Definition 변경 History",
+            "test_procedure_manual": "1. Rundeck 콘솔 접속\n2. Jobs > Activity에서 테스트 기간 내 Job 등록/변경 이력 조회\n3. 각 변경 건의 요청자 및 승인자 확인",
+            "test_procedure_auto": "1. Rundeck ACL Policy에서 Job 수정 권한 설정 확인\n2. 승인 없이 Job 변경 불가 로직 확인"
+        },
+        "CO02": {
+            "population": "Rundeck Job 실행 결과",
+            "completeness": "Rundeck에서 Job 실행 결과 조회\n\n[조회 경로]\n• Rundeck > Activity > Executions\n• Job Execution History",
+            "test_procedure_manual": "1. Rundeck Activity에서 Job 실행 이력 조회\n2. 실패 Job 발생 시 Alert 및 후속 조치 이력 확인",
+            "test_procedure_auto": "1. Rundeck Notification 설정 확인\n2. Job 실패 시 자동 알림 로직 확인"
+        }
+    },
+    "ETC": {
+        "CO01": {
+            "population": "배치 스케줄러 Job 등록/변경 이력",
+            "completeness": "배치 스케줄러에서 Job 등록/변경 이력 조회\n\n[일반 가이드]\n• 배치 스케줄러 관리 콘솔 > Job 변경 이력\n• 테스트 기간 내 변경 건 조회",
+            "test_procedure_manual": "1. 배치 스케줄러 관리 콘솔 접속\n2. Job 등록/변경 이력 조회\n3. 각 변경 건의 요청자 및 승인자 확인",
+            "test_procedure_auto": "1. 배치 스케줄러의 Job 변경 승인 프로세스 설정 확인\n2. 승인 없이 Job 변경 불가 로직 확인"
+        },
+        "CO02": {
+            "population": "배치 스케줄러 Job 실행 결과",
+            "completeness": "배치 스케줄러에서 Job 실행 결과 조회\n\n[일반 가이드]\n• 배치 스케줄러 관리 콘솔 > Job 실행 이력\n• 실패 Job 조회",
+            "test_procedure_manual": "1. 배치 스케줄러에서 Job 실행 이력 조회\n2. 실패 Job 발생 시 Alert 및 후속 조치 이력 확인",
+            "test_procedure_auto": "1. 배치 스케줄러의 자동 Alert 설정 확인\n2. Job 실패 시 알림 로직 확인"
+        }
+    }
+}
+
 def get_user_info():
     """현재 로그인한 사용자 정보 반환"""
     if 'user_id' in session:
@@ -567,7 +1075,11 @@ def api_get_population_templates():
         "success": True,
         "sw_templates": SW_POPULATION_TEMPLATES,
         "os_templates": OS_POPULATION_TEMPLATES,
-        "db_templates": DB_POPULATION_TEMPLATES
+        "db_templates": DB_POPULATION_TEMPLATES,
+        "os_tool_templates": OS_TOOL_TEMPLATES,
+        "db_tool_templates": DB_TOOL_TEMPLATES,
+        "deploy_tool_templates": DEPLOY_TOOL_TEMPLATES,
+        "batch_tool_templates": BATCH_TOOL_TEMPLATES
     })
 
 # 주기별 모집단/표본수 기준 (백엔드 계산용)
@@ -650,6 +1162,10 @@ def api_rcm_export_excel():
         sw = system_info.get('software', 'ETC')
         os_type = system_info.get('os', 'RHEL')
         db_type = system_info.get('db', 'ORACLE')
+
+        # Application 수정 가능 여부 판단
+        system_type = system_info.get('system_type', 'In-house')
+        is_modifiable = SW_MODIFIABLE.get(sw, True) if system_type == 'Package' else True
         
         pop_name = ""
         completeness = ""
@@ -707,6 +1223,15 @@ def api_rcm_export_excel():
             sample_count = 0
         else:
             sample_count = FREQUENCY_SAMPLE.get(selected_freq, 0)
+
+        # Package 시스템의 변경관리(PC01~PC05) 보충 문구 적용
+        if system_type == 'Package' and ctrl_id in ['PC01', 'PC02', 'PC03', 'PC04', 'PC05']:
+            if is_modifiable:
+                supplement = MODIFIABLE_PC_SUPPLEMENTS.get(ctrl_id, '')
+            else:
+                supplement = NON_MODIFIABLE_PC_SUPPLEMENTS.get(ctrl_id, '')
+            if supplement and completeness:
+                completeness += supplement
 
         # 시스템 제외 통제 처리 (Cloud Managed)
         cloud_env = system_info.get('cloud_env', 'None')
