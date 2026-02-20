@@ -97,6 +97,7 @@ class PublicLinkTestRunner:
         self.target_links = target_links or PUBLIC_LINKS
         self.skip_links = skip_links or []
         self.all_results: Dict[int, List[UnitTestResult]] = {}
+        self.extra_results: Dict[str, List[UnitTestResult]] = {}
         self.start_time = None
         self.end_time = None
 
@@ -350,8 +351,73 @@ class PublicLinkTestRunner:
 
         return results
 
+    def run_extra_tests(self):
+        """Auth, Admin, Common API, Backup 추가 모듈 테스트 실행"""
+        import importlib
+
+        browser_modules = [
+            ('auth',       'test.test_unit_auth',       'AuthUnitTest',      'Auth: 인증/세션',
+             ['test_auth_login_page_security', 'test_auth_otp_process_mocked',
+              'test_auth_otp_limit_check', 'test_auth_session_cookie_security']),
+            ('admin',      'test.test_unit_admin',      'AdminUnitTest',     'Admin: 관리자 기능',
+             ['test_admin_no_access_without_login', 'test_admin_no_access_wrong_user',
+              'test_admin_dashboard_elements', 'test_admin_add_user_mutation', 'test_admin_logs_filtering']),
+            ('common_api', 'test.test_unit_common_api', 'CommonApiUnitTest', 'Common API',
+             ['test_common_health_check', 'test_common_index_guest', 'test_common_index_logged_in',
+              'test_common_index_cards', 'test_common_clear_session', 'test_common_404_handling']),
+        ]
+
+        for key, module_path, class_name, category, test_names in browser_modules:
+            print(f"\n{'─' * 40}")
+            print(f"  {category} 테스트 시작")
+            print(f"{'─' * 40}")
+            try:
+                mod = importlib.import_module(module_path)
+                cls = getattr(mod, class_name)
+                runner = cls(headless=self.headless, slow_mo=200)
+                runner.setup()
+                try:
+                    test_methods = [getattr(runner, name) for name in test_names]
+                    runner.run_category(category, test_methods)
+                    self.extra_results[key] = runner.results
+                finally:
+                    runner._update_checklist_result()
+                    runner.teardown()
+            except Exception as e:
+                import traceback
+                print(f"  [ERROR] {category} 테스트 실패: {e}")
+                traceback.print_exc()
+                fail_result = UnitTestResult(f"{key}_error", category)
+                fail_result.fail_test(f"모듈 실행 오류: {e}")
+                self.extra_results[key] = [fail_result]
+
+        # Backup (mock 기반, 브라우저 불필요)
+        print(f"\n{'─' * 40}")
+        print(f"  Backup: 백업 스케줄러 테스트 시작")
+        print(f"{'─' * 40}")
+        try:
+            from test.test_unit_backup import BackupUnitTest
+            backup_runner = BackupUnitTest()
+            backup_runner.run_category("Backup: 백업 스케줄러", [
+                backup_runner.test_backup_filename_format,
+                backup_runner.test_backup_cleanup_no_dir,
+                backup_runner.test_backup_cleanup_deletes_old_files,
+                backup_runner.test_backup_cleanup_keeps_recent_files,
+                backup_runner.test_backup_email_body_success,
+                backup_runner.test_backup_email_body_failure,
+            ])
+            self.extra_results['backup'] = backup_runner.results
+            backup_runner._update_checklist_result()
+        except Exception as e:
+            import traceback
+            print(f"  [ERROR] Backup 테스트 실패: {e}")
+            traceback.print_exc()
+            fail_result = UnitTestResult("backup_error", "Backup")
+            fail_result.fail_test(f"모듈 실행 오류: {e}")
+            self.extra_results['backup'] = [fail_result]
+
     def run_all(self):
-        """모든 Public 링크 테스트 실행"""
+        """모든 Unit 테스트 실행 (Public 링크 + Auth/Admin/Common API/Backup)"""
         # 서버 확인 및 필요시 시작
         if not self.check_server_running():
             print("\n테스트를 중단합니다.")
@@ -361,7 +427,7 @@ class PublicLinkTestRunner:
         test_links = self.get_test_links()
 
         print("\n" + "=" * 80)
-        print("  PUBLIC 기능 통합 Unit 테스트")
+        print("  전체 Unit 테스트 (Public 링크 + Auth/Admin/Common API/Backup)")
         print("=" * 80)
         print(f"  대상 링크: {', '.join([f'Link{l}' for l in test_links])}")
         print(f"  실행 시간: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -376,6 +442,9 @@ class PublicLinkTestRunner:
 
                 results = self.run_link_test(link_num)
                 self.all_results[link_num] = results
+
+            # 추가 모듈 테스트 (Auth, Admin, Common API, Backup)
+            self.run_extra_tests()
 
             self.end_time = datetime.now()
             self.print_summary()
@@ -407,7 +476,7 @@ class PublicLinkTestRunner:
     def print_summary(self):
         """테스트 결과 요약 출력 (그룹별)"""
         print("\n" + "=" * 80)
-        print("  PUBLIC 기능 통합 테스트 결과 요약")
+        print("  전체 Unit 테스트 결과 요약")
         print("=" * 80)
 
         total_passed = 0
@@ -434,6 +503,26 @@ class PublicLinkTestRunner:
                     g_icon = "✓" if g_passed == g_total else "✗"
                     print(f"      {g_icon} {group_name}: {g_passed}/{g_total}")
 
+        # 추가 모듈 결과 출력
+        extra_names = {
+            'auth':       'Auth: 인증/세션',
+            'admin':      'Admin: 관리자 기능',
+            'common_api': 'Common API',
+            'backup':     'Backup: 백업 스케줄러',
+        }
+        if self.extra_results:
+            print(f"\n  {'─' * 36}")
+            for key, results in self.extra_results.items():
+                e_passed = sum(1 for r in results if r.status == TestStatus.PASSED)
+                e_failed = sum(1 for r in results if r.status == TestStatus.FAILED)
+                e_warn   = sum(1 for r in results if r.status == TestStatus.WARNING)
+                e_total  = len(results)
+                total_passed += e_passed
+                total_failed += e_failed
+                status_icon = "✅" if e_failed == 0 else "❌"
+                warn_str = f" (⚠️ {e_warn})" if e_warn else ""
+                print(f"\n  {status_icon} {extra_names.get(key, key)} ({e_passed}/{e_total}){warn_str}")
+
         print("\n" + "─" * 40)
         total_all = total_passed + total_failed
         duration = (self.end_time - self.start_time).total_seconds()
@@ -442,7 +531,7 @@ class PublicLinkTestRunner:
         print(f"  소요 시간: {duration:.1f}초")
 
         if total_failed == 0:
-            print("\n  🎉 모든 Public 기능 테스트 통과!")
+            print("\n  🎉 모든 Unit 테스트 통과!")
         else:
             print(f"\n  ⚠️ {total_failed}개 테스트 실패")
 
@@ -453,27 +542,33 @@ class PublicLinkTestRunner:
         report_path = project_root / "test" / "unit_public_result.md"
 
         with open(report_path, 'w', encoding='utf-8') as f:
-            f.write("# Public 기능 통합 Unit 테스트 결과\n\n")
+            f.write("# 전체 Unit 테스트 결과\n\n")
             f.write(f"- 실행 시간: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"- 소요 시간: {(self.end_time - self.start_time).total_seconds():.1f}초\n")
             f.write(f"- 모드: {'Headless' if self.headless else 'Browser'}\n\n")
 
             f.write("## 테스트 대상\n\n")
-            f.write("| Link | 설명 | Public |\n")
-            f.write("|------|------|--------|\n")
-            f.write("| Link1 | RCM 생성 | O |\n")
-            f.write("| Link2 | 인터뷰/설계평가 | O |\n")
-            f.write("| Link3 | 조서 템플릿 | O |\n")
-            f.write("| Link4 | 컨텐츠 | O |\n")
-            f.write("| Link9 | 문의/피드백 | O |\n")
-            f.write("| Link10 | AI 결과 | O |\n")
-            f.write("| Link11 | 공시 | O |\n\n")
+            f.write("| 모듈 | 설명 |\n")
+            f.write("|------|------|\n")
+            f.write("| Link1 | RCM 생성 |\n")
+            f.write("| Link2 | 인터뷰/설계평가 |\n")
+            f.write("| Link3 | 조서 템플릿 |\n")
+            f.write("| Link4 | 컨텐츠 |\n")
+            f.write("| Link9 | 문의/피드백 |\n")
+            f.write("| Link10 | AI 결과 |\n")
+            f.write("| Link11 | 공시 |\n")
+            f.write("| Auth | 인증/세션 |\n")
+            f.write("| Admin | 관리자 기능 |\n")
+            f.write("| Common API | 공통 API |\n")
+            f.write("| Backup | 백업 스케줄러 |\n\n")
 
-            f.write("## 요약 (그룹별)\n\n")
+            f.write("## 요약\n\n")
 
             total_passed = 0
             total_all = 0
 
+            # Public 링크 요약
+            f.write("### Public 링크\n\n")
             for link_num, results in self.all_results.items():
                 grouped = self._get_grouped_results(link_num, results)
 
@@ -485,7 +580,7 @@ class PublicLinkTestRunner:
                 total_all += link_total
 
                 status = "✅" if link_failed == 0 else "❌"
-                f.write(f"### {status} Link{link_num} ({link_passed}/{link_total})\n\n")
+                f.write(f"#### {status} Link{link_num} ({link_passed}/{link_total})\n\n")
 
                 f.write("| 그룹 | 결과 | 상태 |\n")
                 f.write("|------|------|------|\n")
@@ -497,6 +592,27 @@ class PublicLinkTestRunner:
                         g_status = "✅" if g_passed == g_total else "❌"
                         f.write(f"| {group_name} | {g_passed}/{g_total} | {g_status} |\n")
 
+                f.write("\n")
+
+            # 추가 모듈 요약
+            if self.extra_results:
+                extra_names = {
+                    'auth':       'Auth: 인증/세션',
+                    'admin':      'Admin: 관리자 기능',
+                    'common_api': 'Common API',
+                    'backup':     'Backup: 백업 스케줄러',
+                }
+                f.write("### 추가 모듈\n\n")
+                f.write("| 모듈 | 통과 | 전체 | 상태 |\n")
+                f.write("|------|------|------|------|\n")
+                for key, results in self.extra_results.items():
+                    e_passed = sum(1 for r in results if r.status == TestStatus.PASSED)
+                    e_total = len(results)
+                    e_failed = sum(1 for r in results if r.status == TestStatus.FAILED)
+                    total_passed += e_passed
+                    total_all += e_total
+                    e_status = "✅" if e_failed == 0 else "❌"
+                    f.write(f"| {extra_names.get(key, key)} | {e_passed} | {e_total} | {e_status} |\n")
                 f.write("\n")
 
             f.write("## 상세 결과\n\n")
@@ -520,6 +636,24 @@ class PublicLinkTestRunner:
 
                         f.write("\n")
 
+            # 추가 모듈 상세
+            if self.extra_results:
+                extra_names = {
+                    'auth':       'Auth: 인증/세션',
+                    'admin':      'Admin: 관리자 기능',
+                    'common_api': 'Common API',
+                    'backup':     'Backup: 백업 스케줄러',
+                }
+                for key, results in self.extra_results.items():
+                    e_passed = sum(1 for r in results if r.status == TestStatus.PASSED)
+                    e_total = len(results)
+                    f.write(f"### {extra_names.get(key, key)} 상세 ({e_passed}/{e_total})\n\n")
+                    f.write("| 테스트 | 상태 | 메시지 |\n")
+                    f.write("|--------|------|--------|\n")
+                    for result in results:
+                        f.write(f"| {result.test_name} | {result.status.value} | {result.message} |\n")
+                    f.write("\n")
+
             f.write("---\n\n")
             f.write("## 전체 요약\n\n")
             f.write(f"- 총 테스트: {total_all}\n")
@@ -531,7 +665,7 @@ class PublicLinkTestRunner:
 
 def parse_args():
     """명령줄 인수 파싱"""
-    parser = argparse.ArgumentParser(description="Public 기능 통합 Unit 테스트")
+    parser = argparse.ArgumentParser(description="전체 Unit 테스트 (Public 링크 + Auth/Admin/Common API/Backup)")
     parser.add_argument("--headless", action="store_true", help="헤드리스 모드 실행")
     parser.add_argument("--links", type=str, help="테스트할 링크 (예: 1,2,3)")
     parser.add_argument("--skip", type=str, help="제외할 링크 (예: 10,11)")

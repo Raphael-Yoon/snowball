@@ -30,6 +30,10 @@ def get_gmail_credentials():
 # 텍스트 메일 전송
 
 def send_gmail(to, subject, body, bcc=None):
+    if os.getenv('MOCK_MAIL') == 'True':
+        print(f"[MOCK_MAIL] To: {to}, Subject: {subject}")
+        return {"id": "mock_id", "threadId": "mock_thread_id"}
+    
     creds = get_gmail_credentials()
     service = build('gmail', 'v1', credentials=creds)
     
@@ -52,6 +56,10 @@ def send_gmail(to, subject, body, bcc=None):
 # 첨부파일 포함 메일 전송
 
 def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=None, file_name=None):
+    if os.getenv('MOCK_MAIL') == 'True':
+        print(f"[MOCK_MAIL_ATTACH] To: {to}, Subject: {subject}, File: {file_name}")
+        return {"id": "mock_id", "threadId": "mock_thread_id"}
+    
     creds = get_gmail_credentials()
     service = build('gmail', 'v1', credentials=creds)
 
