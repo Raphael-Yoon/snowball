@@ -1,7 +1,7 @@
 # Link8: 내부평가(Internal Assessment) E2E 테스트 시나리오
 
 ## 1. 메인 페이지 (내부평가 현황)
-- [ ] **test_link8_access**: `/internal-assessment` 페이지가 정상적으로 로드되는지 확인
+- [ ] **test_link8_access**: `/link8` 페이지가 정상적으로 로드되는지 확인
 - [ ] **test_link8_company_list**: 사용자에게 할당된 회사 목록 및 카테고리(ITGC, ELC, TLC)별 RCM 카드가 표시되는지 확인
 - [ ] **test_link8_progress_badges**: RCM 카드 내 진행 상태(NOT_STARTED, IN_PROGRESS, COMPLETED) 배지가 정상적으로 표시되는지 확인
 

@@ -42,7 +42,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_access(self, result: UnitTestResult):
         """1. 페이지 접근 확인"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
         
         # 타이틀이나 헤더 확인
@@ -57,7 +57,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_company_list(self, result: UnitTestResult):
         """1. 회사 목록 및 RCM 카드 확인"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
         
         # RCM 카드들이 있는지 확인
@@ -71,7 +71,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_progress_badges(self, result: UnitTestResult):
         """1. 진행 상태 배지 확인"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
         
         badges = self.page.locator(".badge")
@@ -84,7 +84,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_detail_access(self, result: UnitTestResult):
         """2. 상세 페이지 진입 확인"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
         
         # 첫 번째 RCM 카드의 상세 버튼 클릭
@@ -95,7 +95,7 @@ class Link8UnitTest(PlaywrightTestBase):
             self.page.wait_for_load_state("networkidle")
             self.page.wait_for_timeout(1000)
             
-            if "/internal-assessment/" in self.page.url:
+            if "/link8/" in self.page.url:
                 result.pass_test(f"상세 페이지 진입 확인: {self.page.url}")
             else:
                 result.fail_test(f"상세 페이지 URL 불일치: {self.page.url}")
@@ -105,7 +105,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_summary_stats(self, result: UnitTestResult):
         """2. 상세 페이지 요약 통계 확인"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
         
         detail_btn = self.page.locator("a:has-text('상세 현황 보기')").first
@@ -126,7 +126,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_progress_stepper(self, result: UnitTestResult):
         """2. 진행 스테퍼(타임라인) 확인"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
         
         detail_btn = self.page.locator("a:has-text('상세 현황 보기')").first
@@ -147,7 +147,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_step_navigation(self, result: UnitTestResult):
         """3. 단계별 이동 확인 (설계/운영평가 버튼)"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
 
         detail_btn = self.page.locator("a:has-text('상세 현황 보기')").first
@@ -182,7 +182,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_step_templates(self, result: UnitTestResult):
         """5. 단계별 템플릿 렌더링 확인 (상세 페이지 내 타임라인 구조 검증)"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
 
         detail_btn = self.page.locator("a:has-text('상세 현황 보기')").first
@@ -222,7 +222,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_design_evaluation_sync(self, result: UnitTestResult):
         """3. 설계평가 데이터 동기화 확인 (Link6 -> Link8)"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
 
         detail_btn = self.page.locator("a:has-text('상세 현황 보기')").first
@@ -246,7 +246,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_operation_evaluation_sync(self, result: UnitTestResult):
         """3. 운영평가 데이터 동기화 확인 (Link7 -> Link8)"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
 
         detail_btn = self.page.locator("a:has-text('상세 현황 보기')").first
@@ -269,7 +269,7 @@ class Link8UnitTest(PlaywrightTestBase):
     def test_link8_api_detail(self, result: UnitTestResult):
         """4. 상세 데이터 API 확인"""
         self._do_admin_login()
-        self.navigate_to("/internal-assessment")
+        self.navigate_to("/link8")
         self.page.wait_for_timeout(2000)
 
         # 첫 번째 카드에서 rcm_id 추출
@@ -279,12 +279,12 @@ class Link8UnitTest(PlaywrightTestBase):
             result.skip_test("상세 링크 없음")
             return
             
-        # /internal-assessment/2/Eval_123 -> rcm_id=2, session=Eval_123
+        # /link8/2/Eval_123 -> rcm_id=2, session=Eval_123
         parts = href.strip("/").split("/")
         if len(parts) >= 3:
             rcm_id = parts[1]
             session = parts[2]
-            api_url = f"{self.base_url}/internal-assessment/api/detail/{rcm_id}/{session}"
+            api_url = f"{self.base_url}/link8/api/detail/{rcm_id}/{session}"
             
             response = self.page.request.get(api_url)
             if response.status == 200:

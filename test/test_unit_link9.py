@@ -21,7 +21,7 @@ class Link9UnitTest(PlaywrightTestBase):
 
     def test_link9_access(self, result: UnitTestResult):
         """1. 페이지 접근 확인"""
-        self.navigate_to("/contact")
+        self.navigate_to("/link9")
         if "서비스 문의" in self.page.title():
             result.pass_test("페이지 로드 및 타이틀 확인 완료")
         else:
@@ -30,7 +30,7 @@ class Link9UnitTest(PlaywrightTestBase):
     def test_link9_ui_guest(self, result: UnitTestResult):
         """1. 게스트 UI 상태 확인"""
         self._do_logout()
-        self.navigate_to("/contact")
+        self.navigate_to("/link9")
         
         # 필드 입력 가능 여부 확인
         company_input = self.page.locator("#company_name")
@@ -47,7 +47,7 @@ class Link9UnitTest(PlaywrightTestBase):
     def test_link9_ui_logged_in(self, result: UnitTestResult):
         """1. 로그인 상태 UI 확인"""
         self._do_admin_login()
-        self.navigate_to("/contact")
+        self.navigate_to("/link9")
         
         company_input = self.page.locator("#company_name")
         email_input = self.page.locator("#email")
@@ -67,7 +67,7 @@ class Link9UnitTest(PlaywrightTestBase):
     def test_link9_form_validation(self, result: UnitTestResult):
         """2. 폼 유효성 검사 확인"""
         self._do_logout()
-        self.navigate_to("/contact")
+        self.navigate_to("/link9")
         
         # 빈 상태에서 제출 클릭
         self.page.click("button[type='submit']")
@@ -76,7 +76,7 @@ class Link9UnitTest(PlaywrightTestBase):
         # HTML5 validation 메시지는 스크립트로 확인하기 까다로우므로 
         # 페이지 리로드(POST 전송)가 발생하지 않았는지 확인
         self.page.wait_for_timeout(500)
-        if self.page.url.endswith("/contact") and self.page.locator(".alert-success").count() == 0:
+        if self.page.url.endswith("/link9") and self.page.locator(".alert-success").count() == 0:
             result.pass_test("필수값 누락 시 폼 전송 차단 확인")
         else:
             result.fail_test("필수값 누락 상태에서 폼이 전송됨")
@@ -84,7 +84,7 @@ class Link9UnitTest(PlaywrightTestBase):
     def test_link9_send_success(self, result: UnitTestResult):
         """2. 문의 전송 성공 확인"""
         self._do_logout()
-        self.navigate_to("/contact")
+        self.navigate_to("/link9")
         
         self.page.fill("#company_name", "Test Company")
         self.page.fill("#name", "Tester")
@@ -108,7 +108,7 @@ class Link9UnitTest(PlaywrightTestBase):
     def test_link9_send_failure_handling(self, result: UnitTestResult):
         """2. 문의 전송 실패 확인 (서버 오류 모의)"""
         self._do_logout()
-        self.navigate_to("/contact")
+        self.navigate_to("/link9")
         
         # POST 요청 가로채기
         def handle_route(route):
@@ -127,8 +127,8 @@ class Link9UnitTest(PlaywrightTestBase):
             else:
                 route.continue_()
 
-        # 모든 /contact 요청 가로채되 POST만 처리
-        self.page.route("**/contact", handle_route)
+        # 모든 /link9 요청 가로채되 POST만 처리
+        self.page.route("**/link9", handle_route)
         
         self.page.fill("#company_name", "Fail Test")
         self.page.fill("#email", "fail@test.com")
@@ -149,7 +149,7 @@ class Link9UnitTest(PlaywrightTestBase):
             result.fail_test("서버 오류 시 .alert-danger 메시지가 표시되지 않음")
         
         # 라우팅 해제
-        self.page.unroute("**/contact")
+        self.page.unroute("**/link9")
 
     def test_link9_service_inquiry(self, result: UnitTestResult):
         """3. 로그인 페이지 서비스 문의 확인"""

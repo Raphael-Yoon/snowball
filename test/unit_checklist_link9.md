@@ -1,7 +1,7 @@
 # Link9: 서비스 문의(Contact Us) E2E 테스트 시나리오
 
 ## 1. 페이지 접근 및 초기 상태 확인
-- [ ] **test_link9_access**: `/contact` 페이지가 정상적으로 로드되는지 확인
+- [ ] **test_link9_access**: `/link9` 페이지가 정상적으로 로드되는지 확인
 - [ ] **test_link9_ui_guest**: 비로그인 상태에서 회사명, 이름, 이메일 필드가 입력 가능한 상태인지 확인
 - [ ] **test_link9_ui_logged_in**: 로그인 상태에서 회사명, 이름, 이메일 필드가 읽기 전용(readonly)이고 사용자 정보가 자동 입력되어 있는지 확인
 

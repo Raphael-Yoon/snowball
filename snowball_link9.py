@@ -22,14 +22,12 @@ def get_user_info():
 
 # Contact Us 관련 기능들
 
-@bp_link9.route('/contact', methods=['GET', 'POST'])
-def contact():
-    """Contact Us 페이지"""
+@bp_link9.route('/link9', methods=['GET', 'POST'])
+def link9():
+    """서비스 문의 페이지 (Contact Us)"""
     user_logged_in = is_logged_in()
     user_info = get_user_info()
 
-    # 디버깅 정보 출력
-    
     if request.method == 'POST':
         name = request.form.get('name')
         company_name = request.form.get('company_name')
@@ -44,12 +42,12 @@ def contact():
                 subject=subject,
                 body=body
             )
-            return render_template('contact.jsp', success=True, remote_addr=request.remote_addr,
+            return render_template('link9.jsp', success=True, remote_addr=request.remote_addr,
                                  is_logged_in=user_logged_in, user_info=user_info)
         except Exception as e:
-            return render_template('contact.jsp', success=False, error=str(e), remote_addr=request.remote_addr,
+            return render_template('link9.jsp', success=False, error=str(e), remote_addr=request.remote_addr,
                                  is_logged_in=user_logged_in, user_info=user_info)
-    return render_template('contact.jsp', remote_addr=request.remote_addr,
+    return render_template('link9.jsp', remote_addr=request.remote_addr,
                          is_logged_in=user_logged_in, user_info=user_info)
 
 @bp_link9.route('/service_inquiry', methods=['POST'])
