@@ -1,5 +1,6 @@
 # IDE / editor
 .claude/
+.agent/
 .vscode/
 
 # etc
@@ -20,7 +21,13 @@ deploy.sh
 *.db-journal
 *.db.backup*
 
-# Test coverage reports
+# Python cache
+__pycache__/
+*.pyo
+
+# Test artifacts
+test/screenshots/
 tests/htmlcov/
+htmlcov/
 .coverage
 .pytest_cache/

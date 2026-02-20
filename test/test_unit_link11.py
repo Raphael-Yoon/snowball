@@ -4,6 +4,8 @@ Link11: 정보보호공시 Unit 테스트 코드
 
 import sys
 import re
+import os
+import tempfile
 from pathlib import Path
 from datetime import datetime
 
@@ -496,21 +498,21 @@ class Link11UnitTest(PlaywrightTestBase):
         q4_input.wait_for(state="visible", timeout=10000)
         q4_input.fill("1500000")
         q4_input.blur()
-        self.page.wait_for_timeout(2000) # 검증 및 alert 대기
         
-        # alert가 표시되었는지 확인
+        # 저장 시도 (저장 시점에 검증 수행)
+        self.page.locator("button:has-text('임시 저장')").first.click()
+        self.page.wait_for_timeout(2000) # 검증 및 토스트 대기
+        
+        # 1. alert가 표시되었는지 확인
         if self.last_dialog_message and "초과" in self.last_dialog_message:
             result.pass_test(f"투자액 초과 검증 확인 (alert): {self.last_dialog_message[:50]}...")
         else:
-            # alert가 없으면 토스트 메시지 확인
-            self.page.wait_for_timeout(500)
+            # 2. 토스트 메시지 확인
             toast = self.page.locator(".toast-body")
-            if toast.count() > 0:
-                toast_text = toast.first.inner_text()
-                if "초과" in toast_text:
-                    result.pass_test(f"투자액 초과 검증 확인 (toast): {toast_text}")
-                else:
-                    result.fail_test(f"예상과 다른 토스트 메시지: {toast_text}")
+            target_toast = toast.filter(has_text="초과")
+            if target_toast.count() > 0:
+                toast_text = target_toast.first.inner_text()
+                result.pass_test(f"투자액 초과 검증 확인 (toast): {toast_text}")
             elif self.last_dialog_message:
                 result.pass_test(f"투자액 초과 검증 확인 (dialog): {self.last_dialog_message}")
             else:
@@ -737,19 +739,27 @@ class Link11UnitTest(PlaywrightTestBase):
         q10_input.fill("100")
         q28_input.fill("120") # 오류 유발
         q28_input.blur()
-        self.page.wait_for_timeout(1000)
+        self.page.wait_for_timeout(1500)
         
-        case1_ok = self.last_dialog_message and "총 임직원 수" in self.last_dialog_message
+        # 토스트 메시지 기반 검증
+        toast = self.page.locator(".toast-body")
+        case1_ok = (self.last_dialog_message and "총 임직원 수" in self.last_dialog_message) or \
+                   (toast.filter(has_text="총 임직원 수").count() > 0)
+        
         self.last_dialog_message = None # 초기화
         
         # [테스트 2] 보안 인력(D1+D2) > IT 인력(C) 오류 검증
         q28_input.fill("50") # 정상값으로 수정 (IT=50, Total=100)
+        q28_input.blur()
+        self.page.wait_for_timeout(1000)
+        
         q11_input.fill("40")
         q12_input.fill("20") # 합계 60 > IT 50 (오류 유발)
         q12_input.blur()
-        self.page.wait_for_timeout(1000)
+        self.page.wait_for_timeout(1500)
         
-        case2_ok = self.last_dialog_message and "정보기술부문 인력" in self.last_dialog_message
+        case2_ok = (self.last_dialog_message and "정보기술부문 인력" in self.last_dialog_message) or \
+                   (toast.filter(has_text="정보기술부문 인력").count() > 0)
         self.last_dialog_message = None # 초기화
 
         # 결과 판정
@@ -761,6 +771,134 @@ class Link11UnitTest(PlaywrightTestBase):
             if not case2_ok: errors.append("보안 인력 수 상부 초과 검증 실패")
             result.fail_test(", ".join(errors))
 
+    def test_link11_numerical_boundary(self, result: UnitTestResult):
+        """8. 수치 경계값 무결성 확인 (조 단위 입력)"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2000)
+        
+        # 카테고리 1 클릭
+        cat1 = self.page.locator(".category-card", has_text="투자").first
+        cat1.click()
+        self.page.wait_for_selector("#questions-view", state="visible")
+        
+        # Q1 '예' 선택
+        q1_selector = self.get_question_selector('Q1')
+        self.page.locator(f"{q1_selector} .yes-no-btn.yes").click()
+        self.page.wait_for_timeout(1000)
+        
+        # Q2 에 1조원(1,000,000,000,000) 입력
+        q2_input = self.get_input_by_display('Q2')
+        large_val = "1000000000000"
+        q2_input.fill(large_val)
+        q2_input.blur()
+        
+        # Q4 에 5,000억원 입력 (비율 50% 유도)
+        q4_input = self.get_input_by_display('Q4')
+        half_val = "500000000000"
+        q4_input.fill(half_val)
+        q4_input.blur()
+        
+        self.page.wait_for_timeout(2000)
+        
+        # 비율 디스플레이 확인
+        ratio_display = self.page.locator("#ratio-value")
+        ratio_text = ratio_display.inner_text()
+        
+        if "50.00%" in ratio_text:
+            result.pass_test(f"조 단위 대규모 수치 연산 무결성 확인 (비율: {ratio_text})")
+        else:
+            result.fail_test(f"대규모 수치 연산 오차 발생 (예상: 50.00%, 실제: {ratio_text})")
+
+    def test_link11_evidence_physical_integrity(self, result: UnitTestResult):
+        """8. 증빙 물리 파일 존재 무결성 확인"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2000)
+        
+        # 인증 카테고리 이동
+        cat3 = self.page.locator(".category-card", has_text="인증").first
+        cat3.click()
+        self.page.wait_for_timeout(1000)
+        
+        # Q15 '예' 선택하여 업로드 버튼 노출
+        self.page.locator("#question-Q15 .yes-no-btn.yes").click()
+        self.page.wait_for_timeout(1000)
+        
+        # 업로드 모달 열기
+        self.page.locator(".evidence-upload-btn").first.click()
+        self.page.wait_for_selector("#uploadModal", state="visible")
+        
+        # 임시 파일 생성 (유효한 PNG 시그니처 포함) 및 업로드
+        png_sig = b"\x89PNG\r\n\x1a\n"
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            tmp.write(png_sig + b"fake image content for integrity check")
+            tmp_path = tmp.name
+
+        try:
+            # 파일 선택 및 업로드
+            self.page.set_input_files("input[type='file']", tmp_path)
+            self.page.click("#uploadModal .btn-primary:has-text('업로드')")
+            self.page.wait_for_timeout(4000) # 업로드 및 파일 시스템 동기화 대기
+            
+            # 업로드 경로 추적
+            upload_root = project_root / "uploads"
+            
+            found = False
+            # 재시도 로직 추가 (파일 시스템 쓰기 대기)
+            for _ in range(3):
+                for root, dirs, files in os.walk(upload_root):
+                    for f in files:
+                        f_path = Path(root) / f
+                        if f_path.stat().st_size == (len(png_sig) + len(b"fake image content for integrity check")):
+                            if f_path.read_bytes().startswith(png_sig):
+                                found = True
+                                break
+                    if found: break
+                if found: break
+                self.page.wait_for_timeout(1000)
+                
+            if found:
+                result.pass_test("파일 업로드 후 서버 내 물리적 파일 존재 확인 (데이터 일치)")
+            else:
+                result.fail_test("물리적 파일이 서버 저장소에 존재하지 않거나 내용이 불일치함")
+                
+        finally:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
+    def test_link11_recursive_cleanup(self, result: UnitTestResult):
+        """8. 재귀적 하위 데이터 클렌징 무결성 확인"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2000)
+        
+        # 투자 카테고리
+        cat1 = self.page.locator(".category-card", has_text="투자").first
+        cat1.click()
+        self.page.wait_for_timeout(1000)
+        
+        # Q1 '예' 선택하고 Q2에 값 입력
+        self.page.locator("#question-Q1 .yes-no-btn.yes").click()
+        q2_input = self.get_input_by_display('Q2')
+        q2_input.fill("888888")
+        q2_input.blur()
+        self.page.wait_for_timeout(1500)
+        
+        # 다시 Q1 '아니오' 선택 (하위 스킵 및 클렌징 트리거)
+        self.page.locator("#question-Q1 .yes-no-btn.no").click()
+        self.page.wait_for_timeout(2000) # 재귀 삭제 대기
+        
+        # 다시 Q1 '예' 선택하여 Q2를 열었을 때 값이 비어있어야 함 (무결성)
+        self.page.locator("#question-Q1 .yes-no-btn.yes").click()
+        self.page.wait_for_timeout(1000)
+        
+        q2_val = self.get_input_by_display('Q2').input_value()
+        
+        if q2_val == "" or q2_val == "0":
+            result.pass_test("상위 질문 취소 시 하위 데이터 재귀적 클렌징 확인 (논리 무결성)")
+        else:
+            result.fail_test(f"데이터 클렌징 실패: Q2에 여전히 데이터가 남음 ('{q2_val}')")
 
     def _do_admin_login(self):
         """관리자 로그인"""
@@ -845,7 +983,10 @@ def run_tests():
             test_runner.test_link11_evidence_mime_validation,
             test_runner.test_link11_report_preview,
             test_runner.test_link11_report_download,
-            test_runner.test_link11_company_data_isolation
+            test_runner.test_link11_company_data_isolation,
+            test_runner.test_link11_numerical_boundary,
+            test_runner.test_link11_evidence_physical_integrity,
+            test_runner.test_link11_recursive_cleanup
         ])
     finally:
         test_runner._update_checklist_result()

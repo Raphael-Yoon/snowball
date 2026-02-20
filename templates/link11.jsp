@@ -8,725 +8,471 @@
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
     <style>
-        /* 정보보호공시 페이지 전용 스타일 */
-        .disclosure-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 30px;
+        /* [조윤진] 정보보호공시 프리미엄 디자인 시스템 */
+        :root {
+            --primary-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --premium-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --card-radius: 16px;
         }
 
+        body {
+            background: #f8fafc;
+            color: #1e293b;
+            font-family: 'Inter', 'Pretendard', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .disclosure-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 페이지 헤더 최적화 */
         .page-header {
-            margin-bottom: 40px;
-            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px;
+            background: var(--primary-gradient);
+            border-radius: var(--card-radius);
+            color: white;
+            box-shadow: var(--premium-shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         .page-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--primary-color);
-            margin-bottom: 10px;
-            letter-spacing: -0.03em;
-        }
-
-        .page-description {
-            color: #6c757d;
-            font-size: 1.1rem;
-        }
-
-        /* 대시보드 카드 */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }
-
-        .stat-card {
-            background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 25px;
-            text-align: center;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            letter-spacing: -0.04em;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 15px;
-            font-size: 24px;
+            gap: 15px;
+        }
+
+        .page-description {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.15rem;
+            font-weight: 400;
+        }
+
+        /* Glassmorphism 통계 카드 */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+            margin-bottom: 50px;
+        }
+
+        .stat-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--card-radius);
+            padding: 30px;
+            text-align: left;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border-color: #3b82f6;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
             color: white;
-        }
-
-        .stat-icon.investment {
-            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-        }
-
-        .stat-icon.personnel {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-
-        .stat-icon.certification {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        }
-
-        .stat-icon.activity {
-            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary-color);
             margin-bottom: 5px;
         }
 
-        .stat-label {
-            color: #6c757d;
-            font-size: 0.95rem;
+        .stat-icon.investment { background: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%); }
+        .stat-icon.personnel { background: linear-gradient(135deg, #10b981 0%, #34d399 100%); }
+        .stat-icon.certification { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); }
+        .stat-icon.activity { background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%); }
+
+        .stat-value {
+            font-size: 2.22rem;
+            font-weight: 850;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
         }
 
-        /* 진행률 바 */
+        .stat-chart-container {
+            width: 80px;
+            height: 80px;
+            position: absolute;
+            right: 20px;
+            top: 55%;
+            transform: translateY(-50%);
+        }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        /* 세련된 진행률 바 */
         .progress-section {
             background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 40px;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--card-radius);
+            padding: 35px;
+            margin-bottom: 50px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
         .progress-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
+            align-items: flex-end;
+            margin-bottom: 15px;
         }
 
         .progress-title {
-            font-size: 1.3rem;
+            font-size: 1.25rem;
             font-weight: 700;
-            color: var(--primary-color);
+            color: #1e293b;
         }
 
         .progress-percentage {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--secondary-color);
+            font-size: 2rem;
+            font-weight: 800;
+            color: #3b82f6;
         }
 
         .progress-bar-container {
-            background: #e9ecef;
-            border-radius: 10px;
-            height: 20px;
+            background: #f1f5f9;
+            border-radius: 999px;
+            height: 14px;
             overflow: hidden;
         }
 
         .progress-bar-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--secondary-color) 0%, var(--primary-color) 100%);
-            border-radius: 10px;
-            transition: width 0.5s ease;
+            background: var(--accent-gradient);
+            border-radius: 999px;
+            transition: width 1s cubic-bezier(0.19, 1, 0.22, 1);
+            position: relative;
         }
 
-        /* 카테고리 카드 */
+        .progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+            animation: skeleton-loading 2s infinite;
+        }
+
+        @keyframes skeleton-loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* 카테고리 카드 그리드 */
         .category-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 25px;
         }
 
         .category-card {
             background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 25px;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--card-radius);
+            padding: 24px;
             transition: all 0.3s ease;
-            cursor: pointer;
-            text-decoration: none;
-            color: inherit;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .category-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-            border-color: var(--secondary-color);
+            border-color: #3b82f6;
+            box-shadow: 0 12px 20px -10px rgba(59, 130, 246, 0.15);
+            transform: scale(1.02);
         }
 
         .category-header {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
 
         .category-icon {
-            width: 50px;
-            height: 50px;
+            width: 44px;
+            height: 44px;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 20px;
             color: white;
+            background: #64748b; /* Default */
         }
 
         .category-title {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             font-weight: 700;
-            color: var(--primary-color);
-            margin: 0;
+            color: #1e293b;
         }
 
         .category-progress {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 15px;
             padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .category-stats {
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-
-        .category-badge {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        .category-badge.complete {
-            background: #d1fae5;
-            color: #059669;
-        }
-
-        .category-badge.in-progress {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        .category-badge.not-started {
-            background: #f3f4f6;
-            color: #6b7280;
-        }
-
-        /* 질문 섹션 */
-        .questions-section {
-            background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 30px;
-        }
-
-        .question-item {
-            padding: 20px;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            margin-bottom: 15px;
-            transition: all 0.3s ease;
-        }
-
-        .question-item:hover {
-            border-color: var(--secondary-color);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        }
-
-        .question-item.level-1 {
-            background: #ffffff;
-            border-left: 6px solid #2563eb;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .question-item.level-2 {
-            margin-left: 30px;
-            background: #f8fafc;
-            border-left: 4px solid #64748b;
-        }
-
-        .question-item.level-3 {
-            margin-left: 60px;
-            background: #ffffff;
-            border-left: 3px dashed #94a3b8;
             border-top: 1px solid #f1f5f9;
         }
 
-        .question-item.level-4 {
-            margin-left: 90px;
-            background: #ffffff;
-            border-left: 2px dotted #cbd5e1;
+        .category-stats {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 500;
         }
 
-        /* Group 유형 질문의 안내 문구 스타일 */
-        .group-header {
-            padding: 12px 15px;
-            background: #eff6ff;
+        .category-badge {
+            padding: 5px 14px;
             border-radius: 8px;
-            border-left: 4px solid #3b82f6;
-            font-weight: 600;
-            color: #1e40af;
-            margin-top: 10px;
-            font-size: 0.95rem;
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
         }
 
-        .question-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 15px;
-            margin-bottom: 15px;
+        .category-badge.complete { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); color: #166534; border: 1px solid rgba(22, 101, 52, 0.1); }
+        .category-badge.in-progress { background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%); color: #854d0e; border: 1px solid rgba(133, 77, 14, 0.1); }
+        .category-badge.not-started { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: #475569; border: 1px solid rgba(71, 85, 105, 0.1); }
+
+        /* 질문 뷰 및 섹션 */
+        .questions-section {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--card-radius);
+            padding: 40px;
+            box-shadow: var(--premium-shadow);
+        }
+
+        .question-item {
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #f1f5f9;
+            transition: all 0.2s ease;
+        }
+
+        .question-item.level-1 {
+            background: white;
+            border-left: 5px solid #3b82f6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .question-item.level-2 { background: #f8fafc; margin-left: 20px; }
+        .question-item.level-3 { background: white; margin-left: 40px; border-left: 3px dashed #cbd5e1; }
+
+        .question-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
         }
 
         .question-number {
-            background: var(--primary-color);
+            background: #3b82f6;
             color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        .question-text {
-            flex: 1;
-            font-size: 1.05rem;
-            color: var(--text-color);
-            line-height: 1.6;
-        }
-
-        .question-reset-btn {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 4px 10px;
+            padding: 3px 10px;
             border-radius: 6px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            white-space: nowrap;
+            font-weight: 700;
         }
 
-        .question-reset-btn:hover {
-            background: #dc2626;
-            transform: scale(1.05);
-        }
-
-        .question-reset-btn i {
-            font-size: 0.75rem;
-        }
-
-        .question-help {
-            font-size: 0.9rem;
-            color: #6c757d;
-            margin-bottom: 15px;
-            padding: 10px 15px;
-            background: #f1f5f9;
-            border-radius: 8px;
-        }
-
-        /* 입력 필드 스타일 */
-        .answer-section {
-            margin-top: 15px;
-        }
-
-        .yes-no-buttons {
-            display: flex;
-            gap: 15px;
-        }
-
-        .yes-no-btn {
-            flex: 1;
-            padding: 12px 20px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            background: white;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
+        /* 버튼 프리미엄 업그레이드 */
+        .btn-primary-custom, .btn-secondary-custom {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 700;
             transition: all 0.3s ease;
-        }
-
-        .yes-no-btn:hover {
-            border-color: var(--secondary-color);
-        }
-
-        .yes-no-btn.selected.yes {
-            background: #d1fae5;
-            border-color: #10b981;
-            color: #059669;
-        }
-
-        .yes-no-btn.selected.no {
-            background: #fee2e2;
-            border-color: #ef4444;
-            color: #dc2626;
-        }
-
-        .text-input,
-        .date-input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        /* 숫자 입력 필드 (오른쪽 정렬) */
-        .number-input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 1.05rem;
-            font-weight: 500;
-            text-align: right;
-            font-family: 'Consolas', 'Monaco', monospace;
-            transition: all 0.3s ease;
-        }
-
-        .number-input::placeholder {
-            text-align: left;
-            font-weight: normal;
-            font-size: 1rem;
-        }
-
-        /* 금액 입력 필드 (오른쪽 정렬, 쉼표 표시) */
-        .currency-input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            text-align: right;
-            font-family: 'Consolas', 'Monaco', monospace;
-            transition: all 0.3s ease;
-        }
-
-        .currency-input:focus {
-            outline: none;
-            border-color: var(--secondary-color);
-            box-shadow: 0 0 0 3px rgba(var(--secondary-color-rgb), 0.1);
-        }
-
-        .currency-input::placeholder {
-            text-align: left;
-            font-weight: normal;
-            font-size: 1rem;
-        }
-
-        .text-input:focus,
-        .date-input:focus {
-            outline: none;
-            border-color: var(--secondary-color);
-            box-shadow: 0 0 0 3px rgba(var(--secondary-color-rgb), 0.1);
-        }
-
-        .number-input:focus {
-            outline: none;
-            border-color: var(--secondary-color);
-            box-shadow: 0 0 0 3px rgba(var(--secondary-color-rgb), 0.1);
-        }
-
-        .checkbox-group,
-        .select-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .checkbox-item,
-        .radio-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .checkbox-item:hover,
-        .radio-item:hover {
-            border-color: var(--secondary-color);
-        }
-
-        /* 툴팁 스타일 */
-        .checkbox-item[title]:hover::after,
-        .radio-item[title]:hover::after {
-            content: attr(title);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            margin-bottom: 8px;
-            padding: 8px 12px;
-            background: #1f2937;
-            color: white;
-            font-size: 0.85rem;
-            border-radius: 6px;
-            white-space: nowrap;
-            z-index: 1000;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .checkbox-item[title]:hover::before,
-        .radio-item[title]:hover::before {
-            content: '';
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            margin-bottom: 2px;
-            border: 6px solid transparent;
-            border-top-color: #1f2937;
-            z-index: 1000;
-        }
-
-        .checkbox-item.selected,
-        .radio-item.selected {
-            background: #eff6ff;
-            border-color: var(--secondary-color);
-        }
-
-        /* 증빙 자료 섹션 */
-        .evidence-section {
-            margin-top: 20px;
-            padding: 15px;
-            background: #fef3c7;
-            border-radius: 8px;
-        }
-
-        .evidence-title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #92400e;
-            margin-bottom: 10px;
-        }
-
-        .evidence-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .evidence-item {
-            padding: 5px 12px;
-            background: white;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: #78350f;
-        }
-
-        .evidence-upload-btn {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 15px;
-            background: #d97706;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             cursor: pointer;
-            margin-top: 10px;
+            border: none;
+        }
+
+        .btn-primary-custom {
+            background: linear-gradient(13point5deg, #2563eb 0%, #3b82f6 100%);
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-primary-custom:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .btn-secondary-custom {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-secondary-custom:hover {
+            background: white;
+            border-color: #3b82f6;
+            color: #3b82f6;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 공시자료 생성 버튼 전용 골드 그래디언트 (윤지현 가이드) */
+        .btn-success-premium {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            color: white;
+            font-weight: 800;
+            padding: 12px 28px;
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4);
             transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .evidence-upload-btn:hover {
-            background: #b45309;
+        .btn-success-premium:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 20px 30px -10px rgba(16, 185, 129, 0.5);
+            filter: brightness(1.15);
         }
 
-        /* 버튼 스타일 */
         .action-buttons {
             display: flex;
             gap: 15px;
             justify-content: center;
-            margin-top: 40px;
+            margin-top: 50px;
+            margin-bottom: 30px;
         }
 
-        .btn-primary-custom {
-            padding: 12px 30px;
-            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        /* 폼 요소 고도화 */
+        .number-input, .currency-input, .text-input {
+            background: #fdfdfd;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-size: 1.1rem;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            transition: all 0.2s ease;
         }
 
-        .btn-primary-custom:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-secondary-custom {
-            padding: 12px 30px;
+        .number-input:focus, .currency-input:focus {
             background: white;
-            color: var(--primary-color);
-            border: 2px solid var(--primary-color);
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            outline: none;
         }
 
-        .btn-secondary-custom:hover {
-            background: var(--primary-color);
+        .yes-no-btn {
+            border: 1px solid #e2e8f0;
+            background: white;
+            padding: 14px;
+            font-weight: 700;
+            border-radius: 10px;
+        }
+
+        .yes-no-btn.selected.yes { background: #dcfce7; border-color: #22c55e; color: #166534; }
+        .yes-no-btn.selected.no { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+
+        /* 증빙 업로드 영역 스페셜 스타일 */
+        .evidence-section {
+            background: #fafafa;
+            border: 1px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+
+        .evidence-upload-btn {
+            background: #0f172a;
             color: white;
-        }
-
-        /* 로딩 스피너 */
-        .loading-spinner {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 60px;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--secondary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* 알림 메시지 */
-        .alert-custom {
-            padding: 15px 20px;
+            padding: 10px 18px;
             border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .alert-success {
-            background: #d1fae5;
-            color: #059669;
-            border: 1px solid #10b981;
-        }
-
-        .alert-warning {
-            background: #fef3c7;
-            color: #d97706;
-            border: 1px solid #f59e0b;
-        }
-
-        .alert-error {
-            background: #fee2e2;
-            color: #dc2626;
-            border: 1px solid #ef4444;
-        }
-
-        /* 가로 배치를 위한 그리드 스타일 */
-        .question-row-container {
-            display: flex;
-            gap: 15px;
-            margin-left: 30px;
-            /* level-2 들여쓰기 유지 */
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .question-grid-item {
-            flex: 1;
-            min-width: 250px;
-            padding: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            background: #f8fafc;
-            display: flex;
-            flex-direction: column;
-            transition: all 0.3s ease;
-        }
-
-        .question-grid-item:hover {
-            border-color: var(--secondary-color);
-            background: #ffffff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-
-        .question-grid-item.level-2 {
-            margin-left: 0 !important;
-            /* 그리드 내부에서는 개별 들여쓰기 제거 */
-            margin-bottom: 0 !important;
-        }
-
-        .question-grid-item .question-header {
-            margin-bottom: 10px;
-            align-items: center;
-        }
-
-        .question-grid-item .question-number {
-            padding: 2px 8px;
-            font-size: 0.75rem;
-        }
-
-        .question-grid-item .question-text {
-            font-size: 0.95rem;
             font-weight: 600;
+            border: none;
+            transition: all 0.2s;
         }
 
-        .question-grid-item .question-help {
-            font-size: 0.8rem;
-            padding: 8px;
-            margin-bottom: 12px;
-            flex-grow: 1;
-            /* 도움말 영역을 늘려 입력창 위치 통일 */
-            display: flex;
-            align-items: center;
+        .evidence-upload-btn:hover { background: #1e293b; transform: scale(1.02); }
+
+        /* 토스트 메시지 프리미엄화 */
+        .toast {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
         }
 
-        .question-grid-item .number-input,
-        .question-grid-item .currency-input {
-            font-size: 1rem;
-            padding: 8px 12px;
+        .toast-header {
+            border-bottom: none;
+            padding: 12px 16px;
         }
 
-        /* 모바일 대응 */
-        @media (max-width: 992px) {
-            .question-row-container {
-                flex-direction: column;
-                margin-left: 15px;
-            }
+        .toast-body { padding: 16px; font-weight: 500; }
 
-            .question-grid-item {
-                min-width: 100%;
-            }
+        /* 모바일 대응 최적화 */
+        @media (max-width: 768px) {
+            .page-title { font-size: 2rem; }
+            .stat-value { font-size: 1.8rem; }
+            .disclosure-container { padding: 20px 15px; }
+            .questions-section { padding: 20px; }
         }
     </style>
 </head>
@@ -776,29 +522,41 @@
                     <div class="stat-icon investment">
                         <i class="fas fa-hand-holding-usd"></i>
                     </div>
-                    <div class="stat-value" id="dashboard-inv-ratio">0.00%</div>
-                    <div class="stat-label">정보보호 투자 비율 (B/A)</div>
+                    <div class="stat-label">정보보호 투자 비율</div>
+                    <div class="stat-value"><span id="dashboard-inv-ratio">0.00</span><small style="font-size: 1rem; font-weight: 600;">%</small></div>
+                    <div class="stat-chart-container">
+                        <canvas id="invChart"></canvas>
+                    </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon personnel">
                         <i class="fas fa-user-shield"></i>
                     </div>
-                    <div class="stat-value" id="dashboard-per-ratio">0.00%</div>
-                    <div class="stat-label">정보보호 인력 비율 ((D1+D2)/C)</div>
+                    <div class="stat-label">정보보호 인력 비율</div>
+                    <div class="stat-value"><span id="dashboard-per-ratio">0.00</span><small style="font-size: 1rem; font-weight: 600;">%</small></div>
+                    <div class="stat-chart-container">
+                        <canvas id="perChart"></canvas>
+                    </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon certification">
                         <i class="fas fa-medal"></i>
                     </div>
-                    <div class="stat-value" id="dashboard-cert-count">0</div>
                     <div class="stat-label">보유 인증 건수</div>
+                    <div class="stat-value">
+                        <span id="dashboard-cert-count">0</span>
+                        <small style="font-size: 1rem; font-weight: 600; color: #64748b; margin-left: 2px;">건</small>
+                    </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon activity">
                         <i class="fas fa-rocket"></i>
                     </div>
-                    <div class="stat-value" id="dashboard-act-score">--</div>
                     <div class="stat-label">보안 활동 지수</div>
+                    <div class="stat-value">
+                        <span id="dashboard-act-score">--</span>
+                        <small style="font-size: 1rem; font-weight: 600; color: #64748b; margin-left: 2px;">점</small>
+                    </div>
                 </div>
             </div>
 
@@ -825,7 +583,7 @@
                 <button class="btn-secondary-custom" onclick="location.href='/link11/evidence'">
                     <i class="fas fa-file-alt"></i> 증빙자료 관리
                 </button>
-                <button class="btn-secondary-custom" onclick="location.href='/link11/report'">
+                <button class="btn-success-premium" onclick="location.href='/link11/report'">
                     <i class="fas fa-file-export"></i> 공시자료 생성
                 </button>
             </div>
@@ -1003,16 +761,17 @@
             return question.display_number || question.id;
         }
 
-        // 카테고리 아이콘 매핑
+        // 카테고리 아이콘 매핑 (상단 요약 카드와 1:1 동기화)
         const categoryIcons = {
-            '정보보호 투자 현황': { icon: 'fas fa-chart-line', color: '#3b82f6' },
-            '정보보호 인력 현황': { icon: 'fas fa-users', color: '#10b981' },
-            '정보보호 관련 인증': { icon: 'fas fa-certificate', color: '#f59e0b' },
-            '정보보호 관련 활동': { icon: 'fas fa-tasks', color: '#8b5cf6' }
+            '정보보호 투자': { icon: 'fas fa-hand-holding-usd', color: 'linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%)' },
+            '정보보호 인력': { icon: 'fas fa-user-shield', color: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)' },
+            '정보보호 인증': { icon: 'fas fa-medal', color: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' },
+            '정보보호 활동': { icon: 'fas fa-rocket', color: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)' }
         };
 
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', async function () {
+            initCharts();            // 차트 엔진 초기화
             await loadCategories();  // 카테고리 로드 완료 후
             await loadProgress();    // 진행률 로드
         });
@@ -1082,7 +841,7 @@
                 if (data.success) {
                     updateProgressUI(data);
                     if (data.ratios) {
-                        updateRatioDashboard(data.ratios);
+                        updateDashboardStats(data.ratios);
                     }
                     console.log('[진행률 로드] UI 업데이트 완료');
                 } else {
@@ -1146,27 +905,71 @@
             }
         }
 
-        // 비율 요약 업데이트
-        function updateRatioDashboard(ratios) {
+        // 차트 객체 전역 관리
+        let invChartObj = null;
+        let perChartObj = null;
+
+        function initCharts() {
+            const chartConfig = (color) => ({
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: [color, 'rgba(226, 232, 240, 0.4)'],
+                        borderWidth: 0,
+                        cutout: '82%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false }, 
+                        tooltip: { enabled: false } 
+                    },
+                    animation: { duration: 2500, easing: 'easeOutQuart' },
+                    // 비중 차트임을 강조하기 위해 각도 조정 없음 (0도부터 시작)
+                }
+            });
+
+            const invCanvas = document.getElementById('invChart');
+            const perCanvas = document.getElementById('perChart');
+            
+            if (invCanvas) invChartObj = new Chart(invCanvas, chartConfig('#3b82f6'));
+            if (perCanvas) perChartObj = new Chart(perCanvas, chartConfig('#10b981'));
+        }
+
+        // 대시보드 모든 지표 업데이트 (Share Matrix & Stats 동기화)
+        function updateDashboardStats(ratios) {
             const invRatio = document.getElementById('dashboard-inv-ratio');
             const perRatio = document.getElementById('dashboard-per-ratio');
-            if (invRatio) {
-                invRatio.textContent = ratios.investment_ratio.toFixed(2) + '%';
-                invRatio.style.color = ratios.investment_ratio > 0 ? '#0284c7' : '#94a3b8';
-            }
-            if (perRatio) {
-                perRatio.textContent = ratios.personnel_ratio.toFixed(2) + '%';
-                perRatio.style.color = ratios.personnel_ratio > 0 ? '#059669' : '#94a3b8';
+            const certCount = document.getElementById('dashboard-cert-count');
+            const actScore = document.getElementById('dashboard-act-score');
+            
+            const invVal = ratios.investment_ratio || 0;
+            const perVal = ratios.personnel_ratio || 0;
+            const certVal = ratios.certification_count || 0;
+            const scoreVal = ratios.activity_score || 0;
+
+            if (invRatio) invRatio.textContent = invVal.toFixed(2);
+            if (perRatio) perRatio.textContent = perVal.toFixed(2);
+            if (certCount) certCount.textContent = certVal;
+            if (actScore) {
+                actScore.textContent = scoreVal;
+                // 점수에 따른 다이내믹 컬러링 (윤지현 가이드)
+                if (scoreVal >= 70) actScore.style.color = '#10b981';
+                else if (scoreVal >= 30) actScore.style.color = '#f59e0b';
+                else actScore.style.color = '#94a3b8';
             }
 
-            // 보안 활동 지수 업데이트
-            const actScore = document.getElementById('dashboard-act-score');
-            if (actScore && ratios.activity_score !== undefined) {
-                actScore.textContent = ratios.activity_score;
-                // 점수에 따라 색상 변경 (0~30: 회색, 31~70: 주황색, 71~100: 초록색)
-                if (ratios.activity_score >= 70) actScore.style.color = '#10b981';
-                else if (ratios.activity_score >= 30) actScore.style.color = '#f59e0b';
-                else actScore.style.color = '#94a3b8';
+            // 비중 차트 유기적 업데이트
+            if (invChartObj) {
+                invChartObj.data.datasets[0].data = [invVal, Math.max(0, 100 - invVal)];
+                invChartObj.update();
+            }
+            if (perChartObj) {
+                perChartObj.data.datasets[0].data = [perVal, Math.max(0, 100 - perVal)];
+                perChartObj.update();
             }
         }
 
@@ -1319,18 +1122,22 @@
                     if (q.id === QID.INV_SEC_GROUP) {
                         const sum = parseFloat(currentValue) || 0;
                         answerHtml = `
-                            <div class="group-header" style="margin-bottom: 10px;">
-                                <i class="fas fa-layer-group"></i> 정보보호 투자액(B) - 다음 3개 항목의 합계
+                            <div class="group-header" style="margin-bottom: 12px; border-radius: 12px; background: rgba(59, 130, 246, 0.05); border-left: 5px solid #3b82f6; padding: 15px;">
+                                <i class="fas fa-layer-group" style="margin-right: 8px;"></i> 정보보호 투자액(B) - 다음 3개 항목의 합계
                             </div>
-                            <div id="investment-total-display" class="total-display" style="margin-bottom: 8px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-weight: 600; color: #475569;">정보보호 투자액 합계(B):</span>
-                                <span id="input-${QID.INV_SEC_GROUP}-display" style="font-size: 1.1em; font-weight: 700; color: #1e293b;">${formatCurrency(sum)}원</span>
+                            <div id="investment-total-display" class="total-display" style="margin-bottom: 10px; padding: 20px; background: white; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                                <span style="font-weight: 700; color: #64748b; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">정보보호 투자액 합계(B)</span>
+                                <span id="input-${QID.INV_SEC_GROUP}-display" style="font-size: 1.5rem; font-weight: 850; color: #1e293b; font-family: 'JetBrains Mono', monospace;">${formatCurrency(sum)}<span style="font-size: 1rem; margin-left: 4px; font-weight: 600;">원</span></span>
                                 <input type="hidden" id="input-${QID.INV_SEC_GROUP}" value="${sum}" data-raw-value="${sum}">
                             </div>
-                            <div id="investment-ratio-display" class="ratio-display" style="padding: 12px; background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); border-radius: 8px; border-left: 4px solid #0ea5e9;">
-                                <i class="fas fa-calculator" style="color: #0ea5e9; margin-right: 8px;"></i>
-                                <span style="color: #0369a1; font-weight: 600;">IT 예산 대비 정보보호 투자 비율: </span>
-                                <span id="ratio-value" style="color: #0ea5e9; font-weight: 700; font-size: 1.1em;">--%</span>
+                            <div id="investment-ratio-display" class="ratio-display" style="padding: 16px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; border-left: 5px solid #0ea5e9; display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 36px; height: 36px; background: #0ea5e9; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                                    <i class="fas fa-calculator"></i>
+                                </div>
+                                <div>
+                                    <div style="color: #0369a1; font-weight: 600; font-size: 0.85rem;">IT 예산 대비 정보보호 투자 비율</div>
+                                    <div id="ratio-value" style="color: #0ea5e9; font-weight: 800; font-size: 1.25rem;">--%</div>
+                                </div>
                             </div>
                         `;
                     } else {
