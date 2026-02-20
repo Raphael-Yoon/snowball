@@ -42,3 +42,9 @@
   - 해당 회사의 공시 데이터만 표시되는지 확인
   - '관리자로 돌아가기' 버튼으로 원래 계정 복귀
 
+## 8. 데이터 무결성 검증 (Data Integrity)
+
+- **test_link11_numerical_boundary**: 극단적인 수치(조 단위) 입력 시 비율 계산 정밀도 및 DB 저장 무결성 확인
+- **test_link11_evidence_physical_integrity**: 증빙 업로드 후 서버 내 물리적 파일 존재 여부 및 DB 메타데이터(크기, 타입) 일치 확인
+- **test_link11_recursive_cleanup**: 상위 질문 '아니오' 변경 시 하위 데이터의 논리적 무결성(DB 삭제 상태) 확인
+

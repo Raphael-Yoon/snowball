@@ -83,7 +83,7 @@
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-info h-100">
                         <img src="{{ url_for('static', filename='img/dashboard.jpg')}}" class="feature-img"
-                            alt="Dashboard" onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                            alt="Dashboard" onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}';">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-chart-pie me-2"></i>Dashboard</h5>
                             <p class="feature-description">ELC, TLC, ITGC 평가 결과를 통합 조회하고 종합 리포트를 생성합니다.</p>
@@ -100,7 +100,7 @@
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-primary h-100">
                         <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img" alt="RCM"
-                            onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                            onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}';">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-database me-2"></i>RCM</h5>
                             <p class="feature-description">위험통제매트릭스(RCM) 데이터를 조회하고 관리할 수 있습니다.</p>
@@ -117,7 +117,7 @@
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-secondary h-100">
                         <img src="{{ url_for('static', filename='img/security.jpg')}}" class="feature-img" alt="정보보호공시"
-                            onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                            onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}';">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-shield-alt me-2"></i>정보보호공시</h5>
                             <p class="feature-description">정보보호 투자·인력·인증·활동 현황을 관리하고 KISA 공시자료를 생성합니다.</p>
@@ -136,7 +136,7 @@
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-success h-100">
                         <img src="{{ url_for('static', filename='img/elc.jpg')}}" class="feature-img" alt="ELC"
-                            onerror="this.src='{{ url_for('static', filename='img/elc.png')}}'">
+                            onerror="this.src='{{ url_for('static', filename='img/elc.png')}}';">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-building me-2"></i>ELC</h5>
                             <p class="feature-description">전사수준통제 설계평가 및 운영평가를 수행합니다.</p>
@@ -153,7 +153,7 @@
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-warning h-100">
                         <img src="{{ url_for('static', filename='img/tlc.jpg')}}" class="feature-img" alt="TLC"
-                            onerror="this.src='{{ url_for('static', filename='img/tlc.png')}}'">
+                            onerror="this.src='{{ url_for('static', filename='img/tlc.png')}}';">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-exchange-alt me-2"></i>TLC</h5>
                             <p class="feature-description">거래수준통제 설계평가 및 운영평가를 수행합니다.</p>
@@ -170,7 +170,7 @@
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card border-danger h-100">
                         <img src="{{ url_for('static', filename='img/itgc.jpg')}}" class="feature-img" alt="ITGC"
-                            onerror="this.src='{{ url_for('static', filename='img/itgc.png')}}'">
+                            onerror="this.src='{{ url_for('static', filename='img/itgc.png')}}';">
                         <div class="card-body p-4 d-flex flex-column">
                             <h5 class="feature-title text-center"><i class="fas fa-server me-2"></i>ITGC</h5>
                             <p class="feature-description">IT일반통제 설계평가 및 운영평가를 수행합니다.</p>
@@ -253,7 +253,7 @@
                     <div class="col-lg-3 col-md-6">
                         <div class="feature-card border-success h-100">
                             <img src="{{ url_for('static', filename='img/stock.jpg')}}" class="feature-img" alt="종목 분석"
-                                onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                                onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}';">
                             <div class="card-body p-4 d-flex flex-column">
                                 <h5 class="feature-title text-center"><i class="fas fa-chart-line me-2"></i>종목 분석</h5>
                                 <p class="feature-description">KOSPI 종목의 재무 데이터와 투자 지표를 수집하고 분석합니다.</p>
@@ -285,7 +285,7 @@
                         <div class="feature-card border-info h-100">
                             <img src="{{ url_for('static', filename='img/contact_us.jpg')}}" class="feature-img"
                                 alt="Contact Us"
-                                onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                                onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}';">
                             <div class="card-body p-4 d-flex flex-column">
                                 <h5 class="feature-title text-center">서비스 문의</h5>
                                 <p class="feature-description">문의사항이나 지원이 필요하시면 언제든지 연락주세요.</p>
@@ -316,7 +316,7 @@
                     <div class="col-lg-3 col-md-6 offset-lg-3">
                         <div class="feature-card border-info h-100">
                             <img src="{{ url_for('static', filename='img/dashboard.jpg')}}" class="feature-img"
-                                alt="Dashboard" onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                                alt="Dashboard" onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}';">
                             <div class="card-body p-4 d-flex flex-column">
                                 <h5 class="feature-title text-center"><i class="fas fa-chart-pie me-2"></i>Dashboard
                                 </h5>
@@ -334,7 +334,7 @@
                     <div class="col-lg-3 col-md-6">
                         <div class="feature-card border-primary h-100">
                             <img src="{{ url_for('static', filename='img/rcm_inquiry.jpg')}}" class="feature-img"
-                                alt="RCM" onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}'">
+                                alt="RCM" onerror="this.src='{{ url_for('static', filename='img/testing.jpg')}}';">
                             <div class="card-body p-4 d-flex flex-column">
                                 <h5 class="feature-title text-center"><i class="fas fa-database me-2"></i>RCM</h5>
                                 <p class="feature-description">위험통제매트릭스(RCM) 데이터를 조회하고 관리할 수 있습니다.</p>
@@ -395,7 +395,7 @@
                                 <div class="text-center mt-auto">
                                     <a href="/user/design-evaluation" class="feature-link" data-bs-toggle="tooltip"
                                         data-bs-placement="top" data-bs-html="true"
-                                        title="<div>• IT General Controls 평가<br>• 설계평가 및 운영평가<br>• 자동통제 및 수동통제 평가<br>• 기준통제 매핑 및 리포트 생성</div>">자세히
+                                        title="<div>• IT General Controls 평가<br>• 설계평가 및 운영평가 통합<br>• 자동통제 및 수동통제 평가<br>• 기준통제 매핑 및 리포트 생성</div>">자세히
                                         보기</a>
                                 </div>
                             </div>
