@@ -125,17 +125,26 @@ class PlaywrightTestBase:
         self.screenshot_dir.mkdir(exist_ok=True)
 
     def check_server_running(self) -> bool:
-        """서버 실행 상태 확인 및 필요시 시작"""
+        """서버 실행 상태 확인 및 강제 재시작 (환경변수 반영을 위함)"""
+        port = int(self.base_url.split(':')[-1])
+        
+        # 해당 포트를 사용하는 프로세스 강제 종료 (Windows)
+        print(f"🧹 기존 포트({port}) 정리 중...")
         try:
-            response = requests.get(f"{self.base_url}/health", timeout=3)
-            if response.status_code == 200:
-                print(f"✅ 서버 실행 중 ({self.base_url})")
-                self.server_was_running = True
-                return True
+            # netstat로 PID 찾기
+            find_pid_cmd = f"netstat -ano | findstr LISTENING | findstr :{port}"
+            output = subprocess.check_output(find_pid_cmd, shell=True).decode()
+            for line in output.splitlines():
+                parts = line.strip().split()
+                if len(parts) > 4 and parts[1].endswith(f":{port}"):
+                    pid = parts[-1]
+                    if pid != "0" and int(pid) != os.getpid():
+                        subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True)
+                        print(f"   종료된 PID: {pid}")
         except:
             pass
 
-        print(f"⚠️ 서버가 실행 중이지 않습니다. 서버를 시작합니다...")
+        print(f"🚀 서버를 새로 시작합니다... (Base URL: {self.base_url})")
         self.server_was_running = False
         return self._start_server()
 
@@ -342,6 +351,64 @@ class PlaywrightTestBase:
         print(f"{TestStatus.SKIPPED.value} 건너뜀: {skipped}개 ({skipped/total*100:.1f}%)")
 
         return 0 if failed == 0 else 1
+
+    def _update_checklist_result(self):
+        """테스트 결과를 체크리스트 마크다운 파일에 업데이트"""
+        if not hasattr(self, 'checklist_source') or not hasattr(self, 'checklist_result'):
+            return
+
+        print(f"📄 결과 리포트 업데이트 중: {self.checklist_result}")
+        
+        try:
+            # 원본 체크리스트 읽기
+            with open(self.checklist_source, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # 테스트 결과 매핑
+            for result in self.results:
+                # 체크리스트 항목 패턴 찾기 (예: - [ ] **test_xxx**)
+                pattern = rf"- \[ \] \*\*{result.test_name}\*\*"
+                if result.status == TestStatus.PASSED:
+                    content = re.sub(pattern, f"- [x] **{result.test_name}**", content)
+                elif result.status == TestStatus.FAILED:
+                    content = re.sub(pattern, f"- [!] **{result.test_name}** (FAILED)", content)
+
+            # 결과 요약 추가
+            summary = self._generate_markdown_summary()
+            content = f"<!-- Test Run: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} -->\n" + content + "\n\n" + summary
+
+            # 결과 파일 저장 (UTF-8)
+            with open(self.checklist_result, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            print(f"✅ 결과 리포트 저장 완료")
+        except Exception as e:
+            print(f"⚠️ 리포트 업데이트 중 오류: {e}")
+
+    def _generate_markdown_summary(self) -> str:
+        """마크다운 형식의 결과 요약 생성"""
+        status_counts = {status: 0 for status in TestStatus}
+        for result in self.results:
+            status_counts[result.status] += 1
+
+        total = len(self.results)
+        if total == 0: return ""
+
+        passed = status_counts[TestStatus.PASSED]
+        failed = status_counts[TestStatus.FAILED]
+        warning = status_counts[TestStatus.WARNING]
+        skipped = status_counts[TestStatus.SKIPPED]
+
+        summary = f"## 테스트 결과 요약\n\n"
+        summary += f"| 항목 | 개수 | 비율 |\n"
+        summary += f"|------|------|------|\n"
+        summary += f"| ✅ 통과 | {passed} | {passed/total*100:.1f}% |\n"
+        summary += f"| ❌ 실패 | {failed} | {failed/total*100:.1f}% |\n"
+        summary += f"| ⚠️ 경고 | {warning} | {warning/total*100:.1f}% |\n"
+        summary += f"| ⊘ 건너뜀 | {skipped} | {skipped/total*100:.1f}% |\n"
+        summary += f"| **총계** | **{total}** | **100%** |\n"
+        
+        return summary
 
     def save_json_report(self, report_name: str):
         """JSON 리포트 저장 (테스트 완료 후 자동 삭제)"""

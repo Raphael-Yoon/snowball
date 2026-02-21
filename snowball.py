@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.exceptions import HTTPException
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from pathlib import Path
@@ -334,6 +335,7 @@ def logout():
     return redirect(url_for('index'))
 
 @app.route('/extend_session', methods=['POST'])
+@csrf.exempt
 def extend_session():
     """세션 연장 엔드포인트"""
     if 'user_id' in session:
@@ -358,6 +360,7 @@ def health_check():
         return {'status': 'error', 'message': str(e)}, 500
 
 @app.route('/clear_session', methods=['POST'])
+@csrf.exempt
 def clear_session():
     """브라우저 종료 시 세션 해제 엔드포인트"""
     if 'user_id' in session:
@@ -368,6 +371,8 @@ def clear_session():
 
 @app.errorhandler(Exception)
 def handle_exception(e):
+    if isinstance(e, HTTPException):
+        return e
     logger.error(f"Unhandled Exception: {traceback.format_exc()}")
     return "Internal Server Error: check logs", 500
 

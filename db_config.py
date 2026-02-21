@@ -11,7 +11,8 @@ DB_TYPE = os.getenv('DB_TYPE', 'sqlite')  # 기본값: sqlite
 # SQLite 설정
 # 항상 이 파일이 위치한 디렉토리(snowball)에 DB 파일 생성
 _DB_DIR = os.path.dirname(os.path.abspath(__file__))
-SQLITE_DATABASE = os.path.join(_DB_DIR, 'snowball.db')
+_DEFAULT_SQLITE_PATH = os.path.join(_DB_DIR, 'snowball.db')
+SQLITE_DATABASE = os.getenv('SQLITE_DB_PATH', _DEFAULT_SQLITE_PATH)
 
 # MySQL 설정 (환경 변수에서 로드)
 MYSQL_CONFIG = {
