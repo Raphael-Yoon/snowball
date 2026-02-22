@@ -299,6 +299,238 @@ class Link1UnitTest(PlaywrightTestBase):
 
         result.pass_test("이메일 입력 및 발송 버튼 확인 완료")
 
+    def test_link1_system_type_toggle(self, result: UnitTestResult):
+        """11. 시스템 유형(In-house/Package) 변경 시 SW 드롭다운 토글 확인"""
+        self.navigate_to("/link1")
+
+        sw_select = self.page.locator("#software")
+
+        # In-house 선택 → SW 드롭다운 비활성화, 값 ETC 고정
+        self.page.select_option("#system_type", "In-house")
+        self.page.wait_for_timeout(400)
+
+        if sw_select.is_disabled():
+            result.add_detail("In-house: SW 드롭다운 비활성화 확인")
+        else:
+            result.fail_test("In-house 선택 시에도 SW 드롭다운이 활성화되어 있습니다.")
+            return
+
+        sw_val = sw_select.input_value()
+        if sw_val == "ETC":
+            result.add_detail("In-house: SW 값 ETC 고정 확인")
+        else:
+            result.fail_test(f"In-house 선택 후 SW 값이 ETC가 아닙니다: {sw_val}")
+            return
+
+        # Package 선택 → SW 드롭다운 활성화
+        self.page.select_option("#system_type", "Package")
+        self.page.wait_for_timeout(400)
+
+        if not sw_select.is_disabled():
+            result.add_detail("Package: SW 드롭다운 활성화 확인")
+        else:
+            result.fail_test("Package 선택 시에도 SW 드롭다운이 비활성화되어 있습니다.")
+            return
+
+        result.pass_test("시스템 유형 변경 시 SW 드롭다운 토글 확인 완료")
+
+    def test_link1_sw_version_toggle(self, result: UnitTestResult):
+        """12. SW 변경 시 버전 드롭다운 옵션 갱신 확인"""
+        self.navigate_to("/link1")
+
+        # Package로 전환하여 SW 선택 가능 상태로
+        self.page.select_option("#system_type", "Package")
+        self.page.wait_for_timeout(300)
+
+        version_select = self.page.locator("#sw_version")
+
+        # SAP 선택 → 버전 옵션에 ECC, S4HANA 포함 확인
+        self.page.select_option("#software", "SAP")
+        self.page.wait_for_timeout(400)
+
+        sap_options = version_select.locator("option").all_text_contents()
+        sap_has_ecc = any("ECC" in o for o in sap_options)
+        sap_has_s4 = any("S/4HANA" in o or "S4HANA" in o for o in sap_options)
+
+        if sap_has_ecc and sap_has_s4:
+            result.add_detail(f"SAP 버전 옵션 확인: {sap_options}")
+        else:
+            result.fail_test(f"SAP 선택 시 버전 옵션 불일치: {sap_options}")
+            return
+
+        # ORACLE 선택 → 버전 옵션에 R12, Fusion 포함 확인
+        self.page.select_option("#software", "ORACLE")
+        self.page.wait_for_timeout(400)
+
+        oracle_options = version_select.locator("option").all_text_contents()
+        oracle_has_r12 = any("R12" in o for o in oracle_options)
+        oracle_has_fusion = any("Fusion" in o or "FUSION" in o for o in oracle_options)
+
+        if oracle_has_r12 and oracle_has_fusion:
+            result.add_detail(f"ORACLE 버전 옵션 확인: {oracle_options}")
+        else:
+            result.fail_test(f"ORACLE 선택 시 버전 옵션 불일치: {oracle_options}")
+            return
+
+        result.pass_test("SW 변경 시 버전 드롭다운 옵션 갱신 확인 완료")
+
+    def test_link1_population_calculation(self, result: UnitTestResult):
+        """13. 수동 통제 주기 변경 시 모집단·표본수 자동 계산 확인"""
+        self.navigate_to("/link1")
+        self.page.wait_for_timeout(1500)  # 템플릿 로드 대기
+
+        # APD01: 수동 통제 (접근 권한 검토)
+        ctrl_id = "APD01"
+        freq_select = self.page.locator(f"#freq-{ctrl_id}")
+
+        if freq_select.count() == 0:
+            result.skip_test(f"{ctrl_id} 통제를 찾을 수 없습니다.")
+            return
+
+        # 수동(Manual) 상태 확인 후 주기를 '월'로 변경
+        type_select = self.page.locator(f"#type-{ctrl_id}")
+        if type_select.input_value() == "Auto":
+            type_select.select_option("Manual")
+            self.page.wait_for_timeout(400)
+
+        freq_select.select_option("월")
+        self.page.wait_for_timeout(500)
+
+        # 상세 행 펼치기
+        detail_row = self.page.locator(f"#detail-{ctrl_id}")
+        if not detail_row.is_visible():
+            toggle_btn = self.page.locator(f".control-row[data-id='{ctrl_id}'] .toggle-detail")
+            if toggle_btn.count() > 0:
+                toggle_btn.click()
+                self.page.wait_for_timeout(400)
+
+        # 모집단 수 확인 (월 = 12건)
+        pop_count_el = self.page.locator(f"#population-count-{ctrl_id}")
+        pop_count_text = pop_count_el.text_content().strip() if pop_count_el.count() > 0 else ""
+
+        # 표본수 확인 (월 = 2건)
+        sample_count_el = self.page.locator(f"#sample-count-{ctrl_id}")
+        sample_count_text = sample_count_el.text_content().strip() if sample_count_el.count() > 0 else ""
+
+        if "12" in pop_count_text:
+            result.add_detail(f"모집단 수: {pop_count_text} (월=12건 정상)")
+        else:
+            result.fail_test(f"모집단 수 계산 오류 — 기대: 12, 실제: '{pop_count_text}'")
+            return
+
+        if "2" in sample_count_text:
+            result.add_detail(f"표본수: {sample_count_text} (월=2건 정상)")
+        else:
+            result.fail_test(f"표본수 계산 오류 — 기대: 2, 실제: '{sample_count_text}'")
+            return
+
+        result.pass_test(f"주기 '월' 선택 시 모집단 12건·표본수 2건 자동 계산 확인")
+
+    def test_link1_cloud_control_exclusion(self, result: UnitTestResult):
+        """14. SaaS 선택 시 특정 통제에 CSP Managed 뱃지 및 비활성화 확인"""
+        self.navigate_to("/link1")
+        self.page.wait_for_timeout(500)
+
+        # SaaS 선택
+        self.page.select_option("#cloud_env", "SaaS")
+        self.page.wait_for_timeout(600)
+
+        # CO06: 모든 Cloud에서 제외 대상
+        co06_row = self.page.locator(".control-row[data-id='CO06']")
+        if co06_row.count() == 0:
+            result.skip_test("CO06 통제 행을 찾을 수 없습니다.")
+            return
+
+        # excluded-control 클래스 부여 확인
+        co06_class = co06_row.get_attribute("class") or ""
+        if "excluded-control" in co06_class:
+            result.add_detail("CO06: excluded-control 클래스 부여 확인")
+        else:
+            result.fail_test(f"CO06에 excluded-control 클래스가 없습니다. (class: {co06_class})")
+            return
+
+        # CSP Managed 뱃지 확인
+        badge = co06_row.locator(".cloud-badge")
+        if badge.count() > 0:
+            result.add_detail(f"CO06: CSP Managed 뱃지 표시 확인 ({badge.text_content().strip()})")
+        else:
+            result.fail_test("CO06에 cloud-badge가 없습니다.")
+            return
+
+        # SaaS 전용 제외 통제 확인 (APD09)
+        apd09_row = self.page.locator(".control-row[data-id='APD09']")
+        if apd09_row.count() > 0:
+            apd09_class = apd09_row.get_attribute("class") or ""
+            if "excluded-control" in apd09_class:
+                result.add_detail("APD09: SaaS 환경 제외 확인")
+            else:
+                result.add_detail(f"APD09: excluded-control 미적용 (class: {apd09_class})")
+
+        result.pass_test("SaaS 환경 시 통제 제외(CSP Managed) 처리 확인 완료")
+
+    def test_link1_export_api(self, result: UnitTestResult):
+        """15. Export Excel API 직접 검증 (이메일 누락 400, 유효 요청 응답 구조 확인)"""
+        self._do_admin_login()
+        self.navigate_to("/link1")
+
+        # 페이지에서 CSRF 토큰 추출 (link1은 CSRF 보호 적용됨)
+        csrf_token = self.page.evaluate("() => typeof csrfToken !== 'undefined' ? csrfToken : ''")
+
+        # 케이스 1: 이메일 누락 → 400
+        res_no_email = self.page.evaluate(f"""
+            async () => {{
+                const resp = await fetch('/api/rcm/export_excel', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json', 'X-CSRFToken': '{csrf_token}'}},
+                    body: JSON.stringify({{
+                        rcm_data: [],
+                        system_info: {{system_name: '테스트시스템', software: 'ETC'}},
+                        user_email: ''
+                    }})
+                }});
+                const body = await resp.json();
+                return {{status: resp.status, body: body}};
+            }}
+        """)
+
+        if res_no_email["status"] == 400:
+            msg = res_no_email["body"].get("message", "")
+            result.add_detail(f"이메일 누락 → 400 확인 (message: {msg})")
+        else:
+            result.fail_test(f"이메일 누락 시 400이 아닌 {res_no_email['status']} 반환")
+            return
+
+        # 케이스 2: 유효 요청 → 200(성공) 또는 500(SMTP 오류), 단 API 자체는 도달
+        res_valid = self.page.evaluate(f"""
+            async () => {{
+                const resp = await fetch('/api/rcm/export_excel', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json', 'X-CSRFToken': '{csrf_token}'}},
+                    body: JSON.stringify({{
+                        rcm_data: [],
+                        system_info: {{
+                            system_name: '테스트시스템',
+                            software: 'ETC',
+                            os: 'LINUX',
+                            db: 'ORACLE',
+                            cloud_env: 'None',
+                            system_type: 'In-house'
+                        }},
+                        user_email: 'test@test.com'
+                    }})
+                }});
+                const body = await resp.json();
+                return {{status: resp.status, body: body}};
+            }}
+        """)
+
+        if res_valid["status"] in (200, 500):
+            msg = res_valid["body"].get("message", "")[:60]
+            result.add_detail(f"유효 요청 → {res_valid['status']} (success: {res_valid['body'].get('success')}, message: {msg})")
+            result.pass_test("Export Excel API 구조 검증 완료")
+        else:
+            result.fail_test(f"유효 요청 시 예상 외 상태 코드: {res_valid['status']}")
+
     def test_link1_export_email_validation(self, result: UnitTestResult):
         """10. 이메일 미입력 시 발송 방지 확인"""
         self.navigate_to("/link1")
@@ -321,6 +553,16 @@ class Link1UnitTest(PlaywrightTestBase):
             result.pass_test("이메일 미입력 시 발송 방지 동작 확인")
         else:
             result.fail_test("이메일 없이 발송이 진행되었습니다.")
+
+    def _do_admin_login(self):
+        """관리자 로그인"""
+        self.page.goto(f"{self.base_url}/login")
+        if self.page.locator("a:has-text('로그아웃')").count() > 0:
+            return
+        admin_btn = self.page.locator(".admin-login-section button[type='submit']")
+        if admin_btn.count() > 0:
+            admin_btn.click()
+            self.page.wait_for_load_state("networkidle")
 
     def _update_checklist_result(self):
         """체크리스트 결과 파일 생성"""
@@ -376,6 +618,7 @@ def run_tests():
 
     try:
         test_runner.run_category("Link1 Unit Tests", [
+            # 기존 테스트 (10개)
             test_runner.test_link1_page_access,
             test_runner.test_link1_form_elements,
             test_runner.test_link1_os_version_toggle,
@@ -385,7 +628,13 @@ def run_tests():
             test_runner.test_link1_type_change_monitoring,
             test_runner.test_link1_population_templates_api,
             test_runner.test_link1_email_input,
-            test_runner.test_link1_export_email_validation
+            test_runner.test_link1_export_email_validation,
+            # 신규 추가 테스트 (5개) - 커버리지 갭 보완
+            test_runner.test_link1_system_type_toggle,
+            test_runner.test_link1_sw_version_toggle,
+            test_runner.test_link1_population_calculation,
+            test_runner.test_link1_cloud_control_exclusion,
+            test_runner.test_link1_export_api,
         ])
     finally:
         test_runner._update_checklist_result()
