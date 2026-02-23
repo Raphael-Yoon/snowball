@@ -179,6 +179,8 @@ class Link4UnitTest(PlaywrightTestBase):
 
         passed = sum(1 for r in self.results if r.status == TestStatus.PASSED)
         failed = sum(1 for r in self.results if r.status == TestStatus.FAILED)
+        warned = sum(1 for r in self.results if r.status == TestStatus.WARNING)
+        skipped = sum(1 for r in self.results if r.status == TestStatus.SKIPPED)
         total = len(self.results) if self.results else 1
 
         updated_lines.append("\n---\n")
@@ -187,6 +189,9 @@ class Link4UnitTest(PlaywrightTestBase):
         updated_lines.append(f"|------|------|------|\n")
         updated_lines.append(f"| ✅ 통과 | {passed} | {passed/total*100:.1f}% |\n")
         updated_lines.append(f"| ❌ 실패 | {failed} | {failed/total*100:.1f}% |\n")
+        updated_lines.append(f"| ⚠️ 경고 | {warned} | {warned/total*100:.1f}% |\n")
+        updated_lines.append(f"| ⊘ 건너뜀 | {skipped} | {skipped/total*100:.1f}% |\n")
+        updated_lines.append(f"| **총계** | **{total}** | **100%** |\n")
 
         with open(self.checklist_result, 'w', encoding='utf-8') as f:
             f.writelines(updated_lines)

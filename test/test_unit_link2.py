@@ -316,6 +316,64 @@ class Link2UnitTest(PlaywrightTestBase):
         else:
             result.fail_test(f"기대한 질문(2)이 아님: {q_title}")
 
+    def test_link2_complete_interview(self, result: UnitTestResult):
+        """5. 인터뷰 전체 완료 프로세스 확인"""
+        self._do_logout()
+        self._do_admin_login()
+        self.navigate_to("/link2?reset=1")
+
+        # 최대 60회까지 샘플입력으로 전 질문 통과
+        for _ in range(60):
+            q_text = self.get_text(".card-title")
+
+            # 완료 페이지 or 완료 메시지 감지
+            complete_indicators = [
+                self.page.locator("text=인터뷰가 완료되었습니다").count() > 0,
+                self.page.locator("text=설계평가가 완료").count() > 0,
+                self.page.locator(".interview-complete").count() > 0,
+                self.page.locator(".alert-success").count() > 0,
+                "/link2/result" in self.page.url,
+                "/link2/complete" in self.page.url,
+            ]
+            if any(complete_indicators):
+                result.pass_test("인터뷰 전체 완료 및 완료 페이지 확인")
+                return
+
+            # 질문 5(Cloud 종류)에서 IaaS 선택 (SaaS 스킵 방지)
+            if "질문 5" in q_text:
+                self.page.check("input[name='a4'][value='IaaS']")
+                self.page.click("#submitBtn")
+                self.page.wait_for_load_state("networkidle")
+                continue
+
+            # 샘플입력 버튼이 있으면 클릭
+            sample_btn = self.page.locator("button:has-text('샘플입력')")
+            if sample_btn.count() > 0:
+                sample_btn.click()
+                self.page.wait_for_timeout(500)
+            else:
+                # 샘플입력 없으면 그냥 다음으로 이동
+                next_btn = self.page.locator("#submitBtn")
+                if next_btn.count() > 0:
+                    next_btn.click()
+                    self.page.wait_for_load_state("networkidle")
+                else:
+                    break
+
+        # 루프 종료 후 완료 여부 최종 확인
+        complete_indicators = [
+            self.page.locator("text=인터뷰가 완료되었습니다").count() > 0,
+            self.page.locator("text=설계평가가 완료").count() > 0,
+            self.page.locator(".interview-complete").count() > 0,
+            self.page.locator(".alert-success").count() > 0,
+            "/link2/result" in self.page.url,
+            "/link2/complete" in self.page.url,
+        ]
+        if any(complete_indicators):
+            result.pass_test("인터뷰 전체 완료 및 완료 페이지 확인")
+        else:
+            result.fail_test(f"완료 화면에 도달하지 못함 (현재: {self.page.url})")
+
     def _update_checklist_result(self):
         """체크리스트 결과 파일 생성"""
         if not self.checklist_source.exists():
@@ -382,7 +440,8 @@ def run_tests():
             test_runner.test_link2_conditional_skip_db,
             test_runner.test_link2_conditional_skip_os,
             test_runner.test_link2_admin_sample_buttons,
-            test_runner.test_link2_sample_fill_click
+            test_runner.test_link2_sample_fill_click,
+            test_runner.test_link2_complete_interview
         ])
     finally:
         test_runner._update_checklist_result()

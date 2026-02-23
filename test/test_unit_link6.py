@@ -1071,13 +1071,13 @@ class Link6DesignTestSuite(PlaywrightTestBase):
                         updated_line = line.replace("- [ ] **", "- [x] ✅ **")
                         updated_line = updated_line.rstrip() + f" → **통과** ({res.message})\n"
                     elif res.status == TestStatus.FAILED:
-                        updated_line = line.replace("- [ ] **", "- [ ] **")
+                        updated_line = line.replace("- [ ] **", "- [ ] ❌ **")
                         updated_line = updated_line.rstrip() + f" → **실패** ({res.message})\n"
                     elif res.status == TestStatus.WARNING:
                         updated_line = line.replace("- [ ] **", "- [~] ⚠️ **")
                         updated_line = updated_line.rstrip() + f" → **경고** ({res.message})\n"
                     elif res.status == TestStatus.SKIPPED:
-                        updated_line = line.replace("- [ ] **", "- [ ] **")
+                        updated_line = line.replace("- [ ] **", "- [ ] ⊘ **")
                         updated_line = updated_line.rstrip() + f" → **건너뜀** ({res.message})\n"
                     break
             updated_lines.append(updated_line)
