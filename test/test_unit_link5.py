@@ -160,6 +160,11 @@ class Link5RCMTestSuite(PlaywrightTestBase):
                 self.test_rcm_delete
             ])
 
+            # 카테고리 5: 회사별 데이터 격리
+            self.run_category("5. 회사별 데이터 격리", [
+                self.test_link5_company_data_isolation
+            ])
+
         finally:
             self.teardown()
 

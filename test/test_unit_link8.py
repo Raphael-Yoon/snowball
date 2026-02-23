@@ -321,19 +321,30 @@ class Link8UnitTest(PlaywrightTestBase):
                     elif res.status == TestStatus.FAILED:
                         updated_line = line.replace("- [ ]", "- [ ] ❌")
                         updated_line = updated_line.rstrip() + f" → **실패** ({clean_msg})\n"
+                    elif res.status == TestStatus.WARNING:
+                        updated_line = line.replace("- [ ]", "- [~] ⚠️")
+                        updated_line = updated_line.rstrip() + f" → **경고** ({clean_msg})\n"
+                    elif res.status == TestStatus.SKIPPED:
+                        updated_line = line.replace("- [ ]", "- [ ] ⊘")
+                        updated_line = updated_line.rstrip() + f" → **건너뜀** ({clean_msg})\n"
                     break
             updated_lines.append(updated_line)
 
         passed = sum(1 for r in self.results if r.status == TestStatus.PASSED)
-        total = len(self.results)
-        
+        failed = sum(1 for r in self.results if r.status == TestStatus.FAILED)
+        warned = sum(1 for r in self.results if r.status == TestStatus.WARNING)
+        skipped = sum(1 for r in self.results if r.status == TestStatus.SKIPPED)
+        total = len(self.results) if self.results else 1
+
         updated_lines.append("\n---\n")
         updated_lines.append(f"## 테스트 결과 요약\n\n")
         updated_lines.append(f"| 항목 | 개수 | 비율 |\n")
         updated_lines.append(f"|------|------|------|\n")
         updated_lines.append(f"| ✅ 통과 | {passed} | {passed/total*100:.1f}% |\n")
-        updated_lines.append(f"| ❌ 실패 | {total - passed} | {(total-passed)/total*100:.1f}% |\n")
-        updated_lines.append(f"| **합계** | **{total}** | **100%** |\n")
+        updated_lines.append(f"| ❌ 실패 | {failed} | {failed/total*100:.1f}% |\n")
+        updated_lines.append(f"| ⚠️ 경고 | {warned} | {warned/total*100:.1f}% |\n")
+        updated_lines.append(f"| ⊘ 건너뜀 | {skipped} | {skipped/total*100:.1f}% |\n")
+        updated_lines.append(f"| **총계** | **{total}** | **100%** |\n")
 
         with open(self.checklist_result, 'w', encoding='utf-8') as f:
             f.writelines(updated_lines)

@@ -17,3 +17,6 @@
 ## 4. 관리자 전용 기능 (Admin Features)
 - [ ] **test_link2_admin_sample_buttons**: 관리자 로그인 시 '샘플입력', '스킵샘플' 버튼이 표시되는지 확인
 - [ ] **test_link2_sample_fill_click**: '샘플입력' 클릭 시 현재 질문의 답변이 자동으로 채워지고 다음 질문으로 넘어가는지 확인
+
+## 5. 인터뷰 완료 프로세스 확인
+- [ ] **test_link2_complete_interview**: 샘플입력을 활용하여 전체 인터뷰 질문을 순서대로 완료한 뒤 완료 페이지(또는 완료 메시지)에 정상 도달하는지 확인
