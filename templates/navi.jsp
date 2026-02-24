@@ -36,11 +36,6 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ url_for('link11.index') }}" class="nav-link">
-                            <i class="fas fa-shield-alt me-1"></i>정보보호공시
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a href="{{ url_for('link6.elc_design_evaluation') }}" class="nav-link">
                             <i class="fas fa-building me-1"></i>ELC 평가
                         </a>
@@ -53,6 +48,11 @@
                     <li class="nav-item">
                         <a href="{{ url_for('link6.itgc_evaluation') }}" class="nav-link">
                             <i class="fas fa-server me-1"></i>ITGC 평가
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('link11.index') }}" class="nav-link">
+                            <i class="fas fa-shield-alt me-1"></i>정보보호공시
                         </a>
                     </li>
                     <li class="nav-item">
