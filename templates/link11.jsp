@@ -12,74 +12,14 @@
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
     <style>
-        /* [조윤진] 정보보호공시 프리미엄 디자인 시스템 */
+        /* [조윤진] 정보보호공시 디자인 시스템 */
         :root {
-            --primary-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            --glass-bg: rgba(255, 255, 255, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.4);
+            --glass-border: #e2e8f0;
             --premium-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             --card-radius: 16px;
         }
 
-        body {
-            background: #f8fafc;
-            color: #1e293b;
-            font-family: 'Inter', 'Pretendard', sans-serif;
-            overflow-x: hidden;
-        }
-
-        .disclosure-container {
-            max-width: 1300px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            animation: fadeIn 0.8s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* 페이지 헤더 최적화 */
-        .page-header {
-            margin-bottom: 50px;
-            padding: 40px;
-            background: var(--primary-gradient);
-            border-radius: var(--card-radius);
-            color: white;
-            box-shadow: var(--premium-shadow);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .page-header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        .page-title {
-            font-size: 2.8rem;
-            font-weight: 800;
-            margin-bottom: 15px;
-            letter-spacing: -0.04em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-        }
-
-        .page-description {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 1.15rem;
-            font-weight: 400;
-        }
 
         /* Glassmorphism 통계 카드 */
         .dashboard-grid {
@@ -90,25 +30,16 @@
         }
 
         .stat-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: white;
             border: 1px solid var(--glass-border);
             border-radius: var(--card-radius);
             padding: 30px;
             text-align: left;
-            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             display: flex;
             flex-direction: column;
             gap: 10px;
             position: relative;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            border-color: #3b82f6;
         }
 
         .stat-icon {
@@ -155,62 +86,6 @@
             letter-spacing: 0.02em;
         }
 
-        /* 세련된 진행률 바 */
-        .progress-section {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: var(--card-radius);
-            padding: 35px;
-            margin-bottom: 50px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        }
-
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 15px;
-        }
-
-        .progress-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .progress-percentage {
-            font-size: 2rem;
-            font-weight: 800;
-            color: #3b82f6;
-        }
-
-        .progress-bar-container {
-            background: #f1f5f9;
-            border-radius: 999px;
-            height: 14px;
-            overflow: hidden;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background: var(--accent-gradient);
-            border-radius: 999px;
-            transition: width 1s cubic-bezier(0.19, 1, 0.22, 1);
-            position: relative;
-        }
-
-        .progress-bar-fill::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
-            animation: skeleton-loading 2s infinite;
-        }
-
-        @keyframes skeleton-loading {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
 
         /* 카테고리 카드 그리드 */
         .category-grid {
@@ -629,40 +504,26 @@
 
         /* 모바일 대응 최적화 */
         @media (max-width: 768px) {
-            .page-title { font-size: 2rem; }
             .stat-value { font-size: 1.8rem; }
-            .disclosure-container { padding: 20px 15px; }
             .questions-section { padding: 20px; }
         }
 
-        /* [윤지현] 공시 연도 선택기 - 헤더 우상단 통합 배치 */
+        /* [윤지현] 공시 연도 선택기 */
         .year-selector-container {
-            position: absolute;
-            top: 24px;
-            right: 24px;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 7px 14px 7px 12px;
+            background: #f8f9fa;
+            padding: 6px 14px 6px 12px;
             border-radius: 50px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            transition: background 0.2s ease, border-color 0.2s ease;
-        }
-
-        .year-selector-container:hover {
-            background: rgba(255, 255, 255, 0.18);
-            border-color: rgba(255, 255, 255, 0.4);
+            border: 1px solid #dee2e6;
         }
 
         .year-label {
-            color: rgba(255, 255, 255, 0.7);
+            color: #6c757d;
             font-weight: 500;
-            font-size: 0.78rem;
+            font-size: 0.85rem;
             white-space: nowrap;
-            letter-spacing: 0.02em;
         }
 
         .year-select {
@@ -670,33 +531,13 @@
             -webkit-appearance: none;
             -moz-appearance: none;
             background: transparent;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 2px center;
-            background-size: 11px;
             border: none;
-            color: white;
-            font-weight: 700;
-            font-size: 0.88rem;
+            color: #212529;
+            font-weight: 600;
+            font-size: 0.9rem;
             cursor: pointer;
             outline: none;
-            padding-right: 18px;
-            font-family: 'JetBrains Mono', 'Pretendard', sans-serif;
-            letter-spacing: -0.02em;
-        }
-
-        .year-select option {
-            background: #1e293b;
-            color: white;
-            font-weight: 600;
-        }
-
-        @media (max-width: 768px) {
-            .year-selector-container {
-                position: static;
-                margin-top: 16px;
-                align-self: center;
-            }
+            padding-right: 4px;
         }
     </style>
 </head>
@@ -705,22 +546,21 @@
     <!-- 네비게이션 -->
     {% include 'navi.jsp' %}
 
-    <div class="disclosure-container">
+    <div class="container mt-4">
         <!-- 페이지 헤더 -->
-        <div class="page-header">
-            <h1 class="page-title">
-                <i class="fas fa-shield-alt"></i> 정보보호공시
-            </h1>
-            <p class="page-description">
-                KISA 정보보호 공시를 위한 질문 응답 및 증빙 자료 관리 시스템
-            </p>
-
-            <!-- [조윤진] 대상 연도 선택기 UI (실무 공시 사이클 반영) -->
-            <div class="year-selector-container">
-                <span class="year-label"><i class="fas fa-calendar-check me-2"></i>공시 대상 연도:</span>
-                <select class="year-select" id="disclosure-year-select" onchange="changeDisclosureYear()">
-                    <!-- [입력 연도와 공시 연도의 분리] JS에서 동적 생성 -->
-                </select>
+        <div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h1><i class="fas fa-shield-alt me-2 text-primary"></i>정보보호공시</h1>
+            <!-- [조윤진] 대상 연도 선택기 + 진행률 인라인 배지 -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="year-selector-container">
+                    <span class="year-label"><i class="fas fa-calendar-check me-2"></i>공시 대상 연도:</span>
+                    <select class="year-select" id="disclosure-year-select" onchange="changeDisclosureYear()">
+                        <!-- [입력 연도와 공시 연도의 분리] JS에서 동적 생성 -->
+                    </select>
+                </div>
+                <span id="header-progress-badge" class="text-secondary" style="display:inline-flex;align-items:center;gap:6px;background:#f8f9fa;padding:6px 14px 6px 12px;border-radius:50px;border:1px solid #dee2e6;font-size:0.85rem;font-weight:600;">
+                    <i class="fas fa-tasks"></i><span id="header-progress-text">0 / 29</span>
+                </span>
             </div>
         </div>
 
@@ -734,19 +574,6 @@
 
         <!-- 대시보드 뷰 (기본) -->
         <div id="dashboard-view">
-            <!-- 진행률 섹션 -->
-            <div class="progress-section">
-                <div class="progress-header">
-                    <span class="progress-title">전체 진행률</span>
-                    <span class="progress-percentage" id="overall-percentage">0%</span>
-                </div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar-fill" id="overall-progress-bar" style="width: 0%"></div>
-                </div>
-                <div class="mt-3 text-muted text-center" id="progress-stats">
-                    응답 완료: 0 / 29 질문
-                </div>
-            </div>
 
             <!-- 비율 요약 대시보드 -->
             <div class="dashboard-grid mb-5">
@@ -1138,11 +965,9 @@
             const progress = data.progress;
             const categories = data.categories;
 
-            // 전체 진행률
-            document.getElementById('overall-percentage').textContent = `${progress.completion_rate}%`;
-            document.getElementById('overall-progress-bar').style.width = `${progress.completion_rate}%`;
-            document.getElementById('progress-stats').textContent =
-                `응답 완료: ${progress.answered_questions} / ${progress.total_questions} 질문`;
+            // 헤더 진행률 배지 업데이트
+            document.getElementById('header-progress-text').textContent =
+                `${progress.answered_questions} / ${progress.total_questions}`;
 
             // 보고서 생성 버튼 활성화 (버튼이 있는 경우에만)
             const reportBtn = document.getElementById('generate-report-btn');
