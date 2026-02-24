@@ -357,6 +357,60 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* [윤지현] 공시 연도 선택기 - 헤더 통합 스타일 */
+        .year-selector-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 7px 14px 7px 12px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            margin-top: 14px;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .year-selector-container:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .year-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+            font-size: 0.78rem;
+            white-space: nowrap;
+            letter-spacing: 0.02em;
+        }
+
+        .year-select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background: transparent;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 2px center;
+            background-size: 11px;
+            border: none;
+            color: white;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            outline: none;
+            padding-right: 18px;
+            font-family: 'JetBrains Mono', 'Pretendard', sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        .year-select option {
+            background: #1e293b;
+            color: white;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -380,6 +434,13 @@
                         <i class="fas fa-file-export"></i> 공시자료 생성
                     </h1>
                     <p class="mb-0 opacity-75">KISA 정보보호공시 제출용 자료를 생성합니다.</p>
+                    
+                    <!-- 대상 연도 선택기 -->
+                    <div class="year-selector-container">
+                        <span class="year-label"><i class="fas fa-calendar-check me-2"></i>공시 대상 연도:</span>
+                        <select class="year-select" id="disclosure-year-select" onchange="changeDisclosureYear()">
+                        </select>
+                    </div>
                 </div>
                 <a href="/link11" class="back-btn">
                     <i class="fas fa-arrow-left"></i> 공시 현황으로 돌아가기
@@ -454,14 +515,41 @@
     <script>
         const userId = {{ user_info.user_id if user_info else 0 }};
         const companyName = '{{ user_info.company_name if user_info else "default" }}';
-        const currentYear = new Date().getFullYear();
+        
+        // [김유신] 실무 사이클 반영 지능형 연도 초기화
+        const now = new Date();
+        const defaultYear = now.getMonth() < 6 ? now.getFullYear() - 1 : now.getFullYear();
+        let currentYear = defaultYear;
+
         let selectedFormat = 'excel';
         let reportData = null;
 
         document.addEventListener('DOMContentLoaded', function () {
+            initYearSelector();
             loadProgress();
             loadPreview();
         });
+
+        function initYearSelector() {
+            const select = document.getElementById('disclosure-year-select');
+            if (!select) return;
+            const currentActualYear = new Date().getFullYear();
+            for (let y = currentActualYear; y >= currentActualYear - 4; y--) {
+                const option = document.createElement('option');
+                option.value = y;
+                option.textContent = `${y}년`;
+                if (y === currentYear) option.selected = true;
+                select.appendChild(option);
+            }
+        }
+
+        async function changeDisclosureYear() {
+            const select = document.getElementById('disclosure-year-select');
+            currentYear = parseInt(select.value);
+            showToast(`${currentYear}년 공시로 전환되었습니다.`, 'info');
+            loadProgress();
+            loadPreview();
+        }
 
         // 진행 상황 로드
         async function loadProgress() {
@@ -587,7 +675,7 @@
                             displayValue = (upperVal === 'YES') ? '예' : (upperVal === 'NO' ? '아니요' : value);
                         } else if (typeof value === 'object') {
                             if (Array.isArray(value)) {
-                                displayValue = value.join(', ');
+                                displayValue = value.length > 0 ? value.join(', ') : (q.type === 'checkbox' ? '미수행' : '-');
                             } else {
                                 // 랭크/구성 등 객체 형태 처리
                                 displayValue = Object.entries(value)

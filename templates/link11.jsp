@@ -229,6 +229,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            cursor: pointer;
         }
 
         .category-card:hover {
@@ -316,6 +317,30 @@
         .question-item.level-2 { background: #f8fafc; margin-left: 20px; }
         .question-item.level-3 { background: white; margin-left: 40px; border-left: 3px dashed #cbd5e1; }
 
+        /* 그리드 가로 배치 */
+        .question-row-container {
+            display: flex;
+            gap: 16px;
+            margin-left: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+
+        .question-row-container .question-grid-item {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .question-row-container .question-grid-item .number-input,
+        .question-row-container .question-grid-item .currency-input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 768px) {
+            .question-row-container { flex-direction: column; }
+        }
+
         .question-text {
             font-size: 1.1rem;
             font-weight: 600;
@@ -328,6 +353,84 @@
             padding: 3px 10px;
             border-radius: 6px;
             font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .question-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* 안내문구 툴팁 (question-number 마우스오버) */
+        .question-number[data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+
+        .question-number[data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 0;
+            background: #1e293b;
+            color: rgba(255,255,255,0.92);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 400;
+            font-family: 'Pretendard', 'Inter', sans-serif;
+            white-space: normal;
+            width: max-content;
+            max-width: 280px;
+            min-width: 160px;
+            word-break: keep-all;
+            line-height: 1.5;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+            z-index: 200;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .question-number[data-tooltip]:hover::after {
+            opacity: 1;
+        }
+
+        /* 그리드 아이템 텍스트 크기 축소 */
+        .question-grid-item .question-text {
+            font-size: 0.9rem;
+        }
+
+        /* 그리드 아이템 헤더: 질문번호 아래에 텍스트 배치 */
+        .question-grid-item .question-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .question-reset-btn {
+            margin-left: auto;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #94a3b8;
+            background: transparent;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s, background 0.15s;
+            white-space: nowrap;
+        }
+
+        .question-reset-btn:hover {
+            color: #ef4444;
+            border-color: #fca5a5;
+            background: #fef2f2;
         }
 
         /* 버튼 프리미엄 업그레이드 */
@@ -413,6 +516,32 @@
             transition: all 0.2s ease;
         }
 
+        .text-input {
+            font-family: 'Pretendard', 'Inter', sans-serif;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            resize: vertical;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .text-input::placeholder {
+            font-family: 'Pretendard', 'Inter', sans-serif;
+            font-size: 0.88rem;
+            color: #94a3b8;
+        }
+
+        .number-input, .currency-input {
+            text-align: right;
+        }
+
+        .number-input::placeholder, .currency-input::placeholder {
+            font-family: 'Pretendard', 'Inter', sans-serif;
+            font-size: 0.88rem;
+            color: #94a3b8;
+            text-align: left;
+        }
+
         .number-input:focus, .currency-input:focus {
             background: white;
             border-color: #3b82f6;
@@ -420,12 +549,20 @@
             outline: none;
         }
 
+        .yes-no-buttons {
+            margin-top: 10px;
+        }
+
+        .currency-input-wrapper, .number-input, .text-input {
+            margin-top: 10px;
+        }
+
         .yes-no-btn {
             border: 1px solid #e2e8f0;
             background: white;
-            padding: 14px;
+            padding: 6px 18px;
             font-weight: 700;
-            border-radius: 10px;
+            border-radius: 8px;
         }
 
         .yes-no-btn.selected.yes { background: #dcfce7; border-color: #22c55e; color: #166534; }
@@ -438,6 +575,29 @@
             border-radius: 10px;
             padding: 20px;
             margin-top: 15px;
+        }
+
+        .evidence-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .evidence-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .evidence-item {
+            background: #e0f2fe;
+            color: #0369a1;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 3px 10px;
+            border-radius: 20px;
         }
 
         .evidence-upload-btn {
@@ -474,6 +634,70 @@
             .disclosure-container { padding: 20px 15px; }
             .questions-section { padding: 20px; }
         }
+
+        /* [윤지현] 공시 연도 선택기 - 헤더 우상단 통합 배치 */
+        .year-selector-container {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 7px 14px 7px 12px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .year-selector-container:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .year-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+            font-size: 0.78rem;
+            white-space: nowrap;
+            letter-spacing: 0.02em;
+        }
+
+        .year-select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background: transparent;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 2px center;
+            background-size: 11px;
+            border: none;
+            color: white;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            outline: none;
+            padding-right: 18px;
+            font-family: 'JetBrains Mono', 'Pretendard', sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        .year-select option {
+            background: #1e293b;
+            color: white;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .year-selector-container {
+                position: static;
+                margin-top: 16px;
+                align-self: center;
+            }
+        }
     </style>
 </head>
 
@@ -490,6 +714,14 @@
             <p class="page-description">
                 KISA 정보보호 공시를 위한 질문 응답 및 증빙 자료 관리 시스템
             </p>
+
+            <!-- [조윤진] 대상 연도 선택기 UI (실무 공시 사이클 반영) -->
+            <div class="year-selector-container">
+                <span class="year-label"><i class="fas fa-calendar-check me-2"></i>공시 대상 연도:</span>
+                <select class="year-select" id="disclosure-year-select" onchange="changeDisclosureYear()">
+                    <!-- [입력 연도와 공시 연도의 분리] JS에서 동적 생성 -->
+                </select>
+            </div>
         </div>
 
         <!-- 로그인 필요 알림 -->
@@ -726,8 +958,12 @@
             ACT_INSURANCE: "Q26"         // 배상책임보험
         };
 
+        // [김유신] 실무 사이클(매년 상반기 전년도분 공시)을 반영한 지능형 연도 초기화
+        const now = new Date();
+        const defaultYear = now.getMonth() < 6 ? now.getFullYear() - 1 : now.getFullYear(); // 6월 전이면 전년도 기본
+        
         // 전역 변수
-        let currentYear = new Date().getFullYear();
+        let currentYear = defaultYear;
         let userId = {{ user_info.user_id if user_info else 0 }};
         let companyName = '{{ user_info.company_name if user_info else "default" }}';
         let questions = [];
@@ -771,10 +1007,51 @@
 
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', async function () {
+            initYearSelector();      // [조윤진] 연도 선택기 초기화
             initCharts();            // 차트 엔진 초기화
             await loadCategories();  // 카테고리 로드 완료 후
             await loadProgress();    // 진행률 로드
         });
+
+        // [양윤기] 공시 대상 연도 선택기 초기화 (입력 시점 기준 5년치)
+        function initYearSelector() {
+            const select = document.getElementById('disclosure-year-select');
+            if (!select) return;
+            
+            const currentActualYear = new Date().getFullYear();
+            select.innerHTML = '';
+            
+            // [최윤아] 최근 5개년 공시 프로젝트 관리 지원
+            for (let y = currentActualYear; y >= currentActualYear - 4; y--) {
+                const option = document.createElement('option');
+                option.value = y;
+                option.textContent = `${y}년`;
+                if (y === currentYear) option.selected = true;
+                select.appendChild(option);
+            }
+        }
+
+        // [김유신] 공시 연도 변경 시 전체 데이터 리프레시
+        async function changeDisclosureYear() {
+            const select = document.getElementById('disclosure-year-select');
+            const newYear = parseInt(select.value);
+            
+            if (newYear === currentYear) return;
+            
+            currentYear = newYear;
+            showToast(`${currentYear}년 공시로 전환되었습니다.`, 'info');
+            
+            // 모든 질문/답변 상태 초기화
+            answers = {};
+            
+            // UI 업데이트
+            if (currentCategoryId && currentCategory) {
+                await showCategory(currentCategoryId, currentCategory);
+            } else {
+                await loadProgress();
+                await loadCategories(); 
+            }
+        }
 
         // 카테고리 목록 로드
         async function loadCategories() {
@@ -1078,6 +1355,46 @@
                     });
                 }
             }
+
+            // yes_no 타입이고 증빙이 있으면 text 타입 종속 질문 앞에 삽입 (없으면 마지막에 추가)
+            if (q.type === 'yes_no' && q.evidence_list && q.evidence_list.length > 0) {
+                const isVisible = answers[q.id] === 'YES';
+                const evidenceTitle = q.evidence_title || '필요한 증빙 자료';
+                const evidenceEl = document.createElement('div');
+                evidenceEl.className = 'evidence-section';
+                evidenceEl.id = `evidence-${q.id}`;
+                evidenceEl.style.display = isVisible ? 'block' : 'none';
+                evidenceEl.style.marginLeft = `${q.level * 20}px`;
+                evidenceEl.innerHTML = `
+                    <div class="evidence-title">
+                        <i class="fas fa-paperclip"></i> ${evidenceTitle}
+                    </div>
+                    <div class="evidence-list">
+                        ${q.evidence_list.map(e => `<span class="evidence-item">${e}</span>`).join('')}
+                    </div>
+                    <button class="evidence-upload-btn" onclick="openUploadModal('${q.id}', ${JSON.stringify(q.evidence_list).replace(/"/g, '&quot;')})">
+                        <i class="fas fa-upload"></i> 파일 업로드
+                    </button>
+                `;
+
+                // text 타입 종속 질문이 있으면 그 앞에 삽입, 없으면 마지막에 추가
+                let insertBeforeEl = null;
+                if (q.dependent_question_ids) {
+                    for (const depId of q.dependent_question_ids) {
+                        const depQ = questions.find(dq => dq.id === depId);
+                        if (depQ && (depQ.type === 'text' || depQ.type === 'textarea')) {
+                            insertBeforeEl = document.getElementById(`question-${depId}`);
+                            break;
+                        }
+                    }
+                }
+
+                if (insertBeforeEl) {
+                    container.insertBefore(evidenceEl, insertBeforeEl);
+                } else {
+                    container.appendChild(evidenceEl);
+                }
+            }
         }
 
         // 질문 의존성 트리거 여부 확인
@@ -1157,17 +1474,28 @@
                         if (!Array.isArray(tableData)) tableData = [{}];
                     } catch (e) { tableData = [{}]; }
 
+                    const DATE_COL_KEYWORDS = ['기간', '일자', '날짜'];
+                    const isDateCol = (colName) => DATE_COL_KEYWORDS.some(k => colName.includes(k));
+                    const toDateInputVal = (v) => {
+                        if (!v) return '';
+                        // YYYY.MM.DD 또는 YYYY/MM/DD → YYYY-MM-DD
+                        return v.replace(/\./g, '-').replace(/\//g, '-');
+                    };
+
                     let tableRowsHtml = tableData.map((row, idx) => `
                         <tr>
-                            ${tableOptions.map(opt => `
+                            ${tableOptions.map(opt => {
+                                const isDate = isDateCol(opt);
+                                const val = isDate ? toDateInputVal(row[opt] || '') : (row[opt] || '');
+                                return `
                                 <td>
-                                    <input type="text" class="table-input" 
+                                    <input type="${isDate ? 'date' : 'text'}" class="table-input"
                                            data-row-idx="${idx}" data-col-name="${opt}"
-                                           value="${row[opt] || ''}"
+                                           value="${val}"
                                            oninput="handleTableInput('${q.id}', this)"
                                            style="width: 100%; border: none; padding: 5px; outline: none;">
-                                </td>
-                            `).join('')}
+                                </td>`;
+                            }).join('')}
                             <td style="width: 40px; text-align: center;">
                                 <button class="btn btn-sm btn-outline-danger" onclick="deleteTableRow('${q.id}', ${idx})">
                                     <i class="fas fa-trash"></i>
@@ -1202,7 +1530,7 @@
                 case 'textarea':
                     answerHtml = `
                         <textarea class="text-input" rows="3"
-                                  placeholder="상세 내용을 입력하세요..."
+                                  placeholder="${q.help_text || '내용을 입력하세요...'}"
                                   onchange="updateAnswer('${q.id}', this.value)">${currentValue}</textarea>
                     `;
                     break;
@@ -1321,6 +1649,7 @@
                     const selectedValues = Array.isArray(currentValue) ? currentValue : [];
                     answerHtml = `
                         <div class="checkbox-group">
+                            <div class="checkbox-none-hint" style="font-size:0.8rem; color:#94a3b8; margin-bottom:6px;">선택하지 않으면 미수행으로 처리됩니다</div>
                             ${checkOptions.map(opt => {
                         const tooltip = securityTerms[opt] ? `title="${securityTerms[opt]}"` : '';
                         return `
@@ -1337,13 +1666,14 @@
                     break;
             }
 
-            // 증빙 자료 섹션
+            // 증빙 자료 섹션 (yes_no 타입은 appendQuestionRecursive에서 하위 질문 뒤에 별도 렌더링)
             let evidenceHtml = '';
-            if (q.evidence_list && q.evidence_list.length > 0) {
+            if (q.evidence_list && q.evidence_list.length > 0 && q.type !== 'yes_no') {
+                const evidenceTitle = q.evidence_title || '필요한 증빙 자료';
                 evidenceHtml = `
-                    <div class="evidence-section">
+                    <div class="evidence-section" id="evidence-${q.id}">
                         <div class="evidence-title">
-                            <i class="fas fa-paperclip"></i> 필요한 증빙 자료
+                            <i class="fas fa-paperclip"></i> ${evidenceTitle}
                         </div>
                         <div class="evidence-list">
                             ${q.evidence_list.map(e => `<span class="evidence-item">${e}</span>`).join('')}
@@ -1372,8 +1702,8 @@
             }
 
             div.innerHTML = `
-                <div class="question-header" style="align-items: flex-start;">
-                    <span class="question-number">${displayNumber}</span>
+                <div class="question-header">
+                    <span class="question-number" ${formattedHelpText ? `data-tooltip="${formattedHelpText.replace(/"/g, '&quot;')}"` : ''}>${displayNumber}</span>
                     <span class="question-text">${formattedText}</span>
                     ${(q.type !== 'number' && !isGrid) ? `
                     <button class="question-reset-btn" onclick="resetQuestion('${q.id}'); event.stopPropagation();" title="이 질문 초기화">
@@ -1381,7 +1711,6 @@
                     </button>
                     ` : ''}
                 </div>
-                ${formattedHelpText ? `<div class="question-help"><i class="fas fa-info-circle"></i> ${formattedHelpText}</div>` : ''}
                 <div class="answer-section">
                     ${answerHtml}
                 </div>
@@ -1421,6 +1750,12 @@
                 } else {
                     hideDependentQuestions(question);
                 }
+            }
+
+            // yes_no 질문의 증빙 섹션 표시 토글
+            const evidenceSection = document.getElementById(`evidence-${questionId}`);
+            if (evidenceSection) {
+                evidenceSection.style.display = (value === 'YES') ? 'block' : 'none';
             }
         }
 
@@ -1876,7 +2211,7 @@
             if (securityPersonnel > itEmp && itEmp > 0) {
                 if (canShowToast) {
                     lastPersonnelToastTime = now;
-                    showToast(`정보보호 인력(${securityPersonnel}명)은 정보기술부문 인력(${itEmp}명)을 초과할 수 없습니다.`, 'error', 'per-err');
+                    showToast(`내·외부 전담인력 합계(D1+D2: ${securityPersonnel}명)가 정보기술부문 인력 수(C: ${itEmp}명)를 초과할 수 없습니다.`, 'error', 'per-err');
                 }
                 if (internalInput) internalInput.style.borderColor = '#ef4444';
                 if (externalInput) externalInput.style.borderColor = '#ef4444';
@@ -2297,12 +2632,9 @@
         // 데이터 초기화
         async function resetDisclosure() {
             try {
-                const response = await fetch('/link11/api/reset', {
+                const response = await fetch(`/link11/api/reset/${userId}/${currentYear}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        year: currentYear
-                    })
+                    headers: { 'Content-Type': 'application/json' }
                 });
 
                 const data = await response.json();
@@ -2368,13 +2700,9 @@
             }
 
             try {
-                const response = await fetch('/link11/api/copy-from-year', {
+                const response = await fetch(`/link11/api/copy-from-year/${userId}/${sourceYear}/${currentYear}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        source_year: parseInt(sourceYear),
-                        target_year: currentYear
-                    })
+                    headers: { 'Content-Type': 'application/json' }
                 });
 
                 const data = await response.json();

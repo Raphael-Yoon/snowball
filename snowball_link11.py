@@ -843,17 +843,55 @@ def _is_question_active(q, questions_dict, answers):
     parent_answer = answers.get(parent_id)
     if parent_answer is None:
         return False
-        
+
     parent_answer_str = str(parent_answer).strip().upper()
-    
+
     # 1. Group 유형은 항상 자식 트리거
     if parent_q['type'] == 'group':
         return True
-    
+
     # 2. YES/NO 유형
     if parent_q['type'] == 'yes_no':
         # 다양한 '예'/'YES' 형태 지원
         return parent_answer_str in ('YES', 'Y', 'TRUE', '1', '예', '네')
+
+    return False
+
+
+def _is_question_skipped(q, questions_dict, answers):
+    """질문이 건너뛰기 상태인지 확인 (부모가 NO로 명시 답변된 경우만 True)
+
+    - True : 상위 질문이 NO → 해당없음, 자동 완료 처리
+    - False: 상위 질문이 미답변이거나 활성 상태 → 미완료로 처리
+    """
+    if q['level'] == 1:
+        return False
+
+    parent_id = q.get('parent_question_id')
+    if not parent_id:
+        return False
+
+    parent_q = questions_dict.get(parent_id)
+    if not parent_q:
+        return False
+
+    parent_answer = answers.get(parent_id)
+
+    if parent_q['type'] == 'group':
+        # Group은 답변 없이도 트리거하므로 조상을 재귀 확인
+        return _is_question_skipped(parent_q, questions_dict, answers)
+
+    if parent_q['type'] == 'yes_no':
+        if parent_answer is None:
+            # 부모 미답변 → 건너뛰기 아님 (아직 미결)
+            return False
+        parent_answer_str = str(parent_answer).strip().upper()
+        if parent_answer_str not in ('YES', 'Y', 'TRUE', '1', '예', '네'):
+            # 부모가 명시적으로 NO → 건너뛰기
+            return True
+        else:
+            # 부모가 YES → 조상 체인을 재귀 확인
+            return _is_question_skipped(parent_q, questions_dict, answers)
 
     return False
 
@@ -1182,9 +1220,12 @@ def get_progress(user_id, year):
                         categories[cat_name]['completed'] += 1
                         answered_questions += 1
                 else:
-                    # 비활성화된 질문: 상위 질문이 NO여서 해당없음 → 자동 완료 처리
-                    categories[cat_name]['completed'] += 1
-                    answered_questions += 1
+                    # 비활성화 이유 구분:
+                    # - 상위 질문이 NO(건너뛰기) → 자동 완료
+                    # - 상위 질문이 미답변 → 미완료 (카운트 제외)
+                    if _is_question_skipped(q, questions_dict, answers):
+                        categories[cat_name]['completed'] += 1
+                        answered_questions += 1
 
             # 각 카테고리별 퍼센트 계산
             for cat_name in categories:
@@ -1405,8 +1446,11 @@ def _update_session_progress(conn, company_id, year, user_id=None):
                 if q['id'] in answers and answers[q['id']] not in (None, ''):
                     answered += 1
             else:
-                # 비활성화된 질문: 자동 완료 처리
-                answered += 1
+                # 비활성화 이유 구분:
+                # - 상위 질문이 NO(건너뛰기) → 자동 완료
+                # - 상위 질문이 미답변 → 미완료 (카운트 제외)
+                if _is_question_skipped(q, questions_dict, answers):
+                    answered += 1
 
         # 진행률 계산
         completion_rate = round((answered / total) * 100) if total > 0 else 0
