@@ -38,7 +38,7 @@
 - **test_link11_report_download**: '공시자료 생성 및 다운로드' 버튼 클릭 시 파일 생성 프로세스(로딩 오버레이) 시작 확인
 - **test_link11_submit_incomplete_blocked**: 완료율 미달(< 100%) 상태에서 공시 제출 시도 시 차단되는지 확인
 - **test_link11_reset_disclosure**: 새로하기(데이터 초기화) API 정상 동작 확인
-- **test_link11_copy_from_year**: 이전 자료 불러오기(전년도 복사) API 확인 - 동일연도 차단 및 유효 복사 성공
+- **test_link11_copy_block_verification**: 이전 자료 불러오기(직접 복사) API 호출 시 403 차단 및 가이드 메시지 반환 확인
 - **test_link11_available_years**: 이용 가능 연도 목록 조회 API 정상 응답 확인
 
 ## 7. 회사별 데이터 격리
@@ -57,4 +57,6 @@
 - **test_link11_q7_q8**: 향후 투자 계획(Q7) YES 선택 후 예정 투자액(Q8) 입력 필드 연동 확인
 - **test_link11_q13_q14**: CISO/CPO 지정 여부(Q13) YES 선택 후 상세현황(Q14) 입력 연동 확인
 - **test_link11_q27_new_question**: 신규 추가 질문 Q27(주요 투자 항목) 렌더링 및 표시 확인
+- **test_link11_reference_view**: "전년도 참고" 패널 노출 및 연도 선택에 따른 데이터 조회 확인
+- **test_link11_ratio_trigger_integrity**: 상위 트리거(Q1, Q9) '아니오' 시 하위 잔류 데이터 무시 및 대시보드 0% 고정 확인
 

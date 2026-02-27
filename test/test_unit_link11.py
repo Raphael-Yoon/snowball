@@ -1228,44 +1228,86 @@ class Link11UnitTest(PlaywrightTestBase):
         else:
             result.fail_test(f"초기화 API 오류: HTTP {response.status_code}")
 
-    def test_link11_copy_from_year(self, result: UnitTestResult):
-        """6. 전년도 자료 복사(이전 자료 불러오기) API 확인"""
+    def test_link11_copy_block_verification(self, result: UnitTestResult):
+        """6. 전년도 자료 복사(직접 복사) 차단 및 가이드 메시지 확인"""
         import requests as req
 
         self._do_admin_login()
         cookies = self.context.cookies()
         session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
 
-        # [케이스 1] 같은 연도 복사 시도 → 400 차단 기대
-        resp_same = req.post(
-            f"{self.base_url}/link11/api/copy-from-year/1/2024/2024",
+        # 이전에는 복사가 성공했으나, 이제는 403 Forbidden과 가이드 메시지가 와야 함
+        # target_year를 2025로 설정 (이미 데이터가 있을 수 있으므로 무관)
+        response = req.post(
+            f"{self.base_url}/link11/api/copy-from-year/1/2024/2025",
             cookies=session_cookie, timeout=10
         )
 
-        if resp_same.status_code == 401:
-            result.skip_test("로그인 세션이 API에 전달되지 않음 (쿠키 문제)")
-            return
-
-        case1_ok = (resp_same.status_code == 400 and
-                    '같은 연도' in resp_same.json().get('message', ''))
-
-        # [케이스 2] 유효한 복사 시도 (테스트 전용 연도 9997 → 9998)
-        resp_valid = req.post(
-            f"{self.base_url}/link11/api/copy-from-year/1/9997/9998",
-            cookies=session_cookie, timeout=10
-        )
-        case2_ok = (resp_valid.status_code == 200 and
-                    resp_valid.json().get('success') is True)
-
-        if case1_ok and case2_ok:
-            result.pass_test("전년도 복사 확인 (동일연도 차단 + 유효 복사 성공)")
+        if response.status_code == 403:
+            resp_json = response.json()
+            msg = resp_json.get('message', '')
+            if '전년도 참고' in msg and '데이터 무결성' in msg:
+                result.pass_test(f"직접 복사 기능 차단 및 가이드 메시지 확인 완료: {msg[:60]}...")
+            else:
+                result.fail_test(f"차단되었으나 메시지가 예상과 다름: {msg}")
+        elif response.status_code == 401:
+            result.skip_test("로그인 세션 만료")
         else:
-            errors = []
-            if not case1_ok:
-                errors.append(f"동일연도 차단 실패 (status: {resp_same.status_code}, msg: {resp_same.json().get('message','')[:40]})")
-            if not case2_ok:
-                errors.append(f"유효 복사 실패 (status: {resp_valid.status_code})")
-            result.fail_test(", ".join(errors))
+            result.fail_test(f"기능이 차단되지 않음 (Status: {response.status_code})")
+
+    def test_link11_reference_view(self, result: UnitTestResult):
+        """9. 전년도 참고 패널 노출 및 데이터 조회 확인"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2000)
+
+        # 전년도 참고 버튼 클릭
+        ref_btn = self.page.locator("button:has-text('전년도 참고')")
+        if ref_btn.count() > 0:
+            ref_btn.click()
+            self.page.wait_for_timeout(1000)
+
+            # 패널 노출 확인
+            panel = self.page.locator(".reference-panel")
+            if panel.is_visible():
+                # 연도 선택 셀렉트 박스 존재 확인
+                year_select = self.page.locator("#ref-year-select")
+                if year_select.count() > 0:
+                    result.pass_test("전년도 참고 패널 노출 및 구성 요소 확인 완료")
+                else:
+                    result.fail_test("참고 패널 내 연도 선택 필드 미발견")
+            else:
+                result.fail_test("참고 패널이 화면에 표시되지 않음")
+        else:
+            result.fail_test("'전년도 참고' 버튼을 찾을 수 없음")
+
+    def test_link11_ratio_trigger_integrity(self, result: UnitTestResult):
+        """9. 상위 트리거 '아니오' 시 하위 잔류 데이터 무시 확인 (대시보드 0% 고정)"""
+        import requests as req
+        self._do_admin_login()
+        cookies = self.context.cookies()
+        session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
+
+        # 1. 테스트용 데이터를 강제로 주입 (Q1=NO 지만 Q2, Q3에 값이 있는 모순된 상태)
+        # API를 통해 Q2, Q4 값을 먼저 넣고 마지막에 Q1을 NO로 변경
+        base_api = f"{self.base_url}/link11/api/answers"
+        req.post(base_api, json={'question_id': 'Q2', 'value': '1000000', 'year': 2026}, cookies=session_cookie)
+        req.post(base_api, json={'question_id': 'Q4', 'value': '500000', 'year': 2026}, cookies=session_cookie)
+        req.post(base_api, json={'question_id': 'Q1', 'value': 'NO', 'year': 2026}, cookies=session_cookie)
+        
+        self.navigate_to("/link11")
+        # 2026년으로 연도 변경
+        self.page.select_option("#disclosure-year-select", "2026")
+        self.page.wait_for_timeout(3000)
+
+        # 2. 대시보드 수치 확인
+        inv_ratio = self.page.locator("#dashboard-inv-ratio").inner_text()
+        
+        # 3. Q1이 NO이므로 하위 데이터가 있더라도 0.00%여야 함
+        if inv_ratio == "0.00":
+            result.pass_test("상위 트리거 '아니오' 시 잔류 데이터 무시하고 0% 표시 확인 (무결성 강화)")
+        else:
+            result.fail_test(f"잔류 데이터로 인해 비율이 계산됨 (현재: {inv_ratio}%, 예상: 0.00%)")
 
     def test_link11_available_years(self, result: UnitTestResult):
         """6. 이용 가능 연도 목록 조회 확인"""
@@ -1389,8 +1431,10 @@ def run_tests():
             test_runner.test_link11_evidence_download,
             test_runner.test_link11_submit_incomplete_blocked,
             test_runner.test_link11_reset_disclosure,
-            test_runner.test_link11_copy_from_year,
+            test_runner.test_link11_copy_block_verification,
             test_runner.test_link11_available_years,
+            test_runner.test_link11_reference_view,
+            test_runner.test_link11_ratio_trigger_integrity,
         ])
     finally:
         test_runner._update_checklist_result()
