@@ -744,56 +744,76 @@ def _calculate_ratios(conn, company_id, year):
     
     try:
         # 1. 투자 비율 (감가상각비 + 서비스비용 + 인건비 / 정보기술부문 투자액)
-        # Q3(Group)는 하위 항목들의 합을 사용함
-        inv_ids = [QID.INV_IT_AMOUNT, QID.INV_SEC_GROUP, QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR]
-        cursor = conn.execute(f'''
-            SELECT question_id, value FROM sb_disclosure_answers
-            WHERE question_id IN ({','.join(['?']*len(inv_ids))})
-            AND company_id = ? AND year = ? AND deleted_at IS NULL
-        ''', (*inv_ids, company_id, year))
-        ans = {row['question_id']: row['value'] for row in cursor.fetchall()}
+        # Q1(투자 발생 여부)이 'YES'인 경우에만 계산, 아니면 0%
+        cursor = conn.execute('SELECT value FROM sb_disclosure_answers WHERE question_id = ? AND company_id = ? AND year = ? AND deleted_at IS NULL', (QID.INV_HAS_INVESTMENT, company_id, year))
+        q1_ans = cursor.fetchone()
+        
+        has_investment = False
+        if q1_ans and str(q1_ans['value']).strip().upper() in ('YES', 'Y', 'TRUE', '1', '예', '네'):
+            has_investment = True
 
-        if QID.INV_IT_AMOUNT in ans:
-            try:
-                a = float(str(ans[QID.INV_IT_AMOUNT]).replace(',', ''))
-                # 감가상각비 + 서비스비용 + 인건비 합계 계산
-                b1 = float(str(ans.get(QID.INV_SEC_DEPRECIATION, 0)).replace(',', ''))
-                b2 = float(str(ans.get(QID.INV_SEC_SERVICE, 0)).replace(',', ''))
-                b3 = float(str(ans.get(QID.INV_SEC_LABOR, 0)).replace(',', ''))
-                b_sum = b1 + b2 + b3
+        if has_investment:
+            inv_ids = [QID.INV_IT_AMOUNT, QID.INV_SEC_GROUP, QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR]
+            cursor = conn.execute(f'''
+                SELECT question_id, value FROM sb_disclosure_answers
+                WHERE question_id IN ({','.join(['?']*len(inv_ids))})
+                AND company_id = ? AND year = ? AND deleted_at IS NULL
+            ''', (*inv_ids, company_id, year))
+            ans = {row['question_id']: row['value'] for row in cursor.fetchall()}
 
-                # 하위 항목 합계가 있으면 우선 사용, 없으면 Group 값 사용
-                b = b_sum if b_sum > 0 else float(str(ans.get(QID.INV_SEC_GROUP, 0)).replace(',', ''))
+            if QID.INV_IT_AMOUNT in ans:
+                try:
+                    a = float(str(ans[QID.INV_IT_AMOUNT]).replace(',', ''))
+                    # 감가상각비 + 서비스비용 + 인건비 합계 계산
+                    b1 = float(str(ans.get(QID.INV_SEC_DEPRECIATION, 0)).replace(',', ''))
+                    b2 = float(str(ans.get(QID.INV_SEC_SERVICE, 0)).replace(',', ''))
+                    b3 = float(str(ans.get(QID.INV_SEC_LABOR, 0)).replace(',', ''))
+                    b_sum = b1 + b2 + b3
 
-                if a > 0:
-                    ratios['investment_ratio'] = round((b / a) * 100, 2)
-            except: pass
+                    # 하위 항목 합계가 있으면 우선 사용, 없으면 Group 값 사용
+                    b = b_sum if b_sum > 0 else float(str(ans.get(QID.INV_SEC_GROUP, 0)).replace(',', ''))
+
+                    if a > 0:
+                        ratios['investment_ratio'] = round((b / a) * 100, 2)
+                except: pass
+        else:
+            ratios['investment_ratio'] = 0.0
 
         # 2. 인력 비율 (정보보호 전담인력 / 정보기술부문 인력 수 = D/C)
-        # Q28(IT 전체 인력)이 있으면 D/C로 계산, 없으면 기존처럼 총 임직원 대비 비율로 표시
-        per_ids = [QID.PER_TOTAL_EMPLOYEES, QID.PER_INTERNAL, QID.PER_EXTERNAL, QID.PER_IT_EMPLOYEES]
-        cursor = conn.execute(f'''
-            SELECT question_id, value FROM sb_disclosure_answers
-            WHERE question_id IN ({','.join(['?']*len(per_ids))}) AND company_id = ? AND year = ? AND deleted_at IS NULL
-        ''', (*per_ids, company_id, year))
-        ans = {row['question_id']: row['value'] for row in cursor.fetchall()}
+        # Q9(전담 부서/인력 여부)가 'YES'인 경우에만 계산
+        cursor = conn.execute('SELECT value FROM sb_disclosure_answers WHERE question_id = ? AND company_id = ? AND year = ? AND deleted_at IS NULL', (QID.PER_HAS_TEAM, company_id, year))
+        q9_ans = cursor.fetchone()
+        
+        has_personnel = False
+        if q9_ans and str(q9_ans['value']).strip().upper() in ('YES', 'Y', 'TRUE', '1', '예', '네'):
+            has_personnel = True
 
-        internal = float(str(ans.get(QID.PER_INTERNAL, 0)).replace(',', ''))
-        external = float(str(ans.get(QID.PER_EXTERNAL, 0)).replace(',', ''))
-        d_sum = internal + external
+        if has_personnel:
+            per_ids = [QID.PER_TOTAL_EMPLOYEES, QID.PER_INTERNAL, QID.PER_EXTERNAL, QID.PER_IT_EMPLOYEES]
+            cursor = conn.execute(f'''
+                SELECT question_id, value FROM sb_disclosure_answers
+                WHERE question_id IN ({','.join(['?']*len(per_ids))}) AND company_id = ? AND year = ? AND deleted_at IS NULL
+            ''', (*per_ids, company_id, year))
+            ans = {row['question_id']: row['value'] for row in cursor.fetchall()}
 
-        if QID.PER_IT_EMPLOYEES in ans:
-            try:
-                it_total = float(str(ans[QID.PER_IT_EMPLOYEES]).replace(',', ''))
-                if it_total > 0:
-                    ratios['personnel_ratio'] = round((d_sum / it_total) * 100, 2)
-            except: pass
-        elif QID.PER_TOTAL_EMPLOYEES in ans:
-            try:
-                total = float(str(ans[QID.PER_TOTAL_EMPLOYEES]).replace(',', ''))
-                if total > 0:
-                    ratios['personnel_ratio'] = round((d_sum / total) * 100, 2)
-            except: pass
+            internal = float(str(ans.get(QID.PER_INTERNAL, 0)).replace(',', ''))
+            external = float(str(ans.get(QID.PER_EXTERNAL, 0)).replace(',', ''))
+            d_sum = internal + external
+
+            if QID.PER_IT_EMPLOYEES in ans:
+                try:
+                    it_total = float(str(ans[QID.PER_IT_EMPLOYEES]).replace(',', ''))
+                    if it_total > 0:
+                        ratios['personnel_ratio'] = round((d_sum / it_total) * 100, 2)
+                except: pass
+            elif QID.PER_TOTAL_EMPLOYEES in ans:
+                try:
+                    total = float(str(ans[QID.PER_TOTAL_EMPLOYEES]).replace(',', ''))
+                    if total > 0:
+                        ratios['personnel_ratio'] = round((d_sum / total) * 100, 2)
+                except: pass
+        else:
+            ratios['personnel_ratio'] = 0.0
 
         # 3. 활동 지수 (카테고리 4의 긍정 응답 비율)
         try:
@@ -2040,63 +2060,8 @@ def get_available_years(user_id):
 
 @bp_link11.route('/link11/api/copy-from-year/<int:user_id>/<int:source_year>/<int:target_year>', methods=['POST'])
 def copy_from_year(user_id, source_year, target_year):
-    """이전 자료 불러오기 - 이전 연도 데이터를 현재 연도로 복사"""
-    if not is_logged_in():
-        return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
-
-    try:
-        user_info = get_user_info()
-        company_id = get_company_name_by_user_id(user_id)
-
-        if source_year == target_year:
-            return jsonify({'success': False, 'message': '같은 연도로는 복사할 수 없습니다.'}), 400
-
-        with get_db() as conn:
-            # 기존 타겟 연도 데이터 삭제
-            conn.execute('''
-                DELETE FROM sb_disclosure_answers
-                WHERE company_id = ? AND year = ?
-            ''', (company_id, target_year))
-
-            conn.execute('''
-                DELETE FROM sb_disclosure_sessions
-                WHERE company_id = ? AND year = ?
-            ''', (company_id, target_year))
-
-            # 이전 연도 답변 복사
-            cursor = conn.execute('''
-                SELECT question_id, value, status
-                FROM sb_disclosure_answers
-                WHERE company_id = ? AND year = ?
-            ''', (company_id, source_year))
-
-            copied_count = 0
-            for row in cursor.fetchall():
-                answer_id = generate_uuid()
-                conn.execute('''
-                    INSERT INTO sb_disclosure_answers
-                    (id, question_id, company_id, user_id, year, value, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    answer_id, row['question_id'], company_id,
-                    str(user_info.get('user_id', '')), target_year,
-                    row['value'], row['status']
-                ))
-                copied_count += 1
-
-            conn.commit()
-
-            # 진행률 업데이트
-            _update_session_progress(conn, company_id, target_year, str(user_info.get('user_id', '')))
-
-            return jsonify({
-                'success': True,
-                'message': f'{source_year}년 자료를 {target_year}년으로 복사했습니다. ({copied_count}개 답변)',
-                'copied_count': copied_count
-            })
-
-    except Exception as e:
-        print(f"자료 복사 오류: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
+    """이전 자료 불러오기 - 데이터 무결성을 위해 복사 기능을 비활성화하고 가이드 메시지 반환"""
+    return jsonify({
+        'success': False,
+        'message': '데이터 무결성과 감사 품질을 위해 직접 복사 기능은 더 이상 지원되지 않습니다. 우측 상단의 [전년도 참고] 패널을 활용하여 내용을 직접 검토 후 입력해 주세요.'
+    }), 403

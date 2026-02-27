@@ -508,36 +508,111 @@
             .questions-section { padding: 20px; }
         }
 
-        /* [윤지현] 공시 연도 선택기 */
-        .year-selector-container {
+        /* [조윤진] 전년도 참고 패널 (Reference View) */
+        .reference-panel {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+            z-index: 1050;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--glass-border);
+        }
+
+        .reference-panel.open {
+            right: 0;
+        }
+
+        .reference-header {
+            padding: 25px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .reference-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .ref-item {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .ref-q-num {
+            font-weight: 800;
+            color: #3b82f6;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .ref-q-text {
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .ref-a-box {
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            color: #1e293b;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .ref-badge {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            background: #f8f9fa;
-            padding: 6px 14px 6px 12px;
+            gap: 4px;
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .reference-toggle-btn {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            padding: 8px 16px;
             border-radius: 50px;
-            border: 1px solid #dee2e6;
-        }
-
-        .year-label {
-            color: #6c757d;
-            font-weight: 500;
+            font-weight: 700;
             font-size: 0.85rem;
-            white-space: nowrap;
+            transition: all 0.2s;
         }
 
-        .year-select {
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            background: transparent;
-            border: none;
-            color: #212529;
-            font-weight: 600;
-            font-size: 0.9rem;
-            cursor: pointer;
-            outline: none;
-            padding-right: 4px;
+        .reference-toggle-btn:hover {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .reference-toggle-btn.active {
+            background: #3b82f6;
+            color: white;
         }
     </style>
 </head>
@@ -558,6 +633,9 @@
                         <!-- [입력 연도와 공시 연도의 분리] JS에서 동적 생성 -->
                     </select>
                 </div>
+                <button class="reference-toggle-btn" onclick="toggleReferencePanel()">
+                    <i class="fas fa-history me-1"></i> 전년도 참고
+                </button>
                 <span id="header-progress-badge" class="text-secondary" style="display:inline-flex;align-items:center;gap:6px;background:#f8f9fa;padding:6px 14px 6px 12px;border-radius:50px;border:1px solid #dee2e6;font-size:0.85rem;font-weight:600;">
                     <i class="fas fa-tasks"></i><span id="header-progress-text">0 / 29</span>
                 </span>
@@ -632,9 +710,6 @@
             <!-- 액션 버튼 -->
             <div class="action-buttons">
                 {% if is_logged_in %}
-                <button class="btn-secondary-custom" onclick="showLoadFromYearModal()">
-                    <i class="fas fa-history"></i> 이전 자료 불러오기
-                </button>
                 <button class="btn-secondary-custom" onclick="confirmReset()" style="color: #dc3545;">
                     <i class="fas fa-redo"></i> 새로하기
                 </button>
@@ -709,31 +784,24 @@
         </div>
     </div>
 
-    <!-- 이전 자료 불러오기 모달 -->
-    <div class="modal fade" id="loadFromYearModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-history"></i> 이전 자료 불러오기</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted mb-3">이전 연도의 답변을 현재 연도로 복사합니다. 현재 작성 중인 내용은 덮어씌워집니다.</p>
-                    <div class="mb-3">
-                        <label class="form-label">불러올 연도 선택</label>
-                        <select class="form-select" id="source-year-select">
-                            <option value="">연도를 선택하세요</option>
-                        </select>
-                        <div id="no-previous-data" class="text-muted mt-2" style="display: none;">
-                            <i class="fas fa-info-circle"></i> 이전 연도 자료가 없습니다.
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-primary" onclick="loadFromYear()"
-                        id="load-from-year-btn">불러오기</button>
-                </div>
+    <!-- 전년도 참고 사이드 패널 -->
+    <div id="reference-panel" class="reference-panel">
+        <div class="reference-header">
+            <h5 class="mb-0"><i class="fas fa-history me-2"></i>전년도 자료 참고</h5>
+            <button type="button" class="btn-close btn-close-white" onclick="toggleReferencePanel()"></button>
+        </div>
+        <div class="p-3 bg-light border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" id="ref-year-select" onchange="loadReferenceData()">
+                    <option value="">연도 선택</option>
+                </select>
+                <small class="text-muted">내용을 확인하며 직접 입력해 주세요.</small>
+            </div>
+        </div>
+        <div id="reference-content" class="reference-body">
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-calendar-alt fa-3x mb-3 opacity-20"></i>
+                <p>연도를 선택하면 전년도 답변 내용이 표시됩니다.</p>
             </div>
         </div>
     </div>
@@ -2476,73 +2544,162 @@
             }
         }
 
-        // 이전 자료 불러오기 모달 표시
-        async function showLoadFromYearModal() {
-            const select = document.getElementById('source-year-select');
-            const noDataMsg = document.getElementById('no-previous-data');
-            const loadBtn = document.getElementById('load-from-year-btn');
+        // [김유신] 전년도 참고 사이드 패널 토글
+        async function toggleReferencePanel() {
+            const panel = document.getElementById('reference-panel');
+            const btn = document.querySelector('.reference-toggle-btn');
+            
+            panel.classList.toggle('open');
+            btn.classList.toggle('active');
 
-            // 초기화
-            select.innerHTML = '<option value="">연도를 선택하세요</option>';
-            noDataMsg.style.display = 'none';
-            loadBtn.disabled = false;
+            if (panel.classList.contains('open')) {
+                await updateReferenceYearList();
+                loadReferenceData(); // 패널을 열 때 드롭다운 상태와 내용 동기화 (연도 미선택 시 안내 메시지 표시)
+            }
+        }
+
+        // 참고용 가용 연도 목록 업데이트
+        async function updateReferenceYearList() {
+            const select = document.getElementById('ref-year-select');
+            const currentVal = select.value;
 
             try {
                 const response = await fetch(`/link11/api/available-years/${userId}`);
                 const data = await response.json();
 
-                if (data.success && data.years.length > 0) {
+                if (data.success) {
+                    select.innerHTML = '<option value="">연도 선택</option>';
                     data.years.forEach(y => {
+                        if (parseInt(y.year) === currentYear) return; // 현재 연도는 제외
                         const option = document.createElement('option');
                         option.value = y.year;
-                        option.textContent = `${y.year}년 (${y.answer_count}개 답변)`;
+                        option.textContent = `${y.year}년`;
+                        if (y.year == currentVal) option.selected = true;
                         select.appendChild(option);
                     });
-                } else {
-                    noDataMsg.style.display = 'block';
-                    loadBtn.disabled = true;
                 }
-
-                const modal = new bootstrap.Modal(document.getElementById('loadFromYearModal'));
-                modal.show();
             } catch (error) {
-                console.error('연도 목록 조회 오류:', error);
-                showToast('연도 목록을 불러오는 중 오류가 발생했습니다.', 'error');
+                console.error('참고 연도 로드 실패:', error);
             }
         }
 
-        // 이전 자료 불러오기 실행
-        async function loadFromYear() {
-            const sourceYear = document.getElementById('source-year-select').value;
-
-            if (!sourceYear) {
-                showToast('연도를 선택해주세요.', 'warning');
+        // 전년도 참고 데이터 로드 및 렌더링
+        async function loadReferenceData() {
+            const year = document.getElementById('ref-year-select').value;
+            const content = document.getElementById('reference-content');
+            
+            if (!year) {
+                content.innerHTML = `
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-calendar-alt fa-3x mb-3 opacity-20"></i>
+                        <p>연도를 선택하면 전년도 답변 내용이 표시됩니다.</p>
+                    </div>
+                `;
                 return;
             }
 
-            if (!confirm(`${sourceYear}년 자료를 ${currentYear}년으로 복사하시겠습니까?\n\n현재 ${currentYear}년에 작성된 내용은 모두 덮어씌워집니다.`)) {
-                return;
-            }
+            content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">자료 로딩 중...</p></div>';
 
             try {
-                const response = await fetch(`/link11/api/copy-from-year/${userId}/${sourceYear}/${currentYear}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
+                // 특정 연도 답변 가져오기
+                const response = await fetch(`/link11/api/answers/${userId}/${year}`);
                 const data = await response.json();
-                if (data.success) {
-                    showToast(data.message, 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('loadFromYearModal')).hide();
-                    // 페이지 새로고침
-                    setTimeout(() => location.reload(), 1000);
+
+                if (data.success && data.answers.length > 0) {
+                    let html = '';
+                    
+                    // 카테고리별로 정렬하여 표시
+                    const groupedAnswers = {};
+                    data.answers.forEach(a => {
+                        const cat = a.category_id || 0;
+                        if (!groupedAnswers[cat]) groupedAnswers[cat] = [];
+                        groupedAnswers[cat].push(a);
+                    });
+
+                    // 전체 질문 정보를 이미 가지고 있으므로 (questions 전역변수) 매핑 가능
+                    // 하지만 타겟 연도의 질문 구성이 다를 수 있으므로 answers 자체의 정보 활용
+                    data.answers.forEach(a => {
+                        const valueDisplay = formatReferenceValue(a.value, a.question_type);
+                        const isQuantitative = ['number', 'rank_composition'].includes(a.question_type);
+
+                        html += `
+                            <div class="ref-item">
+                                ${isQuantitative ? '<span class="ref-badge"><i class="fas fa-exclamation-circle"></i> 정량 데이터 (재계산 필요)</span>' : ''}
+                                <span class="ref-q-num">${a.question_id}</span>
+                                <span class="ref-q-text">${a.question_text}</span>
+                                <div class="ref-a-box">${valueDisplay}</div>
+                            </div>
+                        `;
+                    });
+                    content.innerHTML = html;
                 } else {
-                    showToast('복사 실패: ' + data.message, 'error');
+                    content.innerHTML = '<div class="text-center py-5 text-muted">해당 연도의 데이터가 없습니다.</div>';
                 }
             } catch (error) {
-                console.error('자료 복사 오류:', error);
-                showToast('자료 복사 중 오류가 발생했습니다.', 'error');
+                console.error('참고 데이터 로드 실패:', error);
+                content.innerHTML = '<div class="text-center py-5 text-danger">데이터를 불러오는 중 오류가 발생했습니다.</div>';
             }
+        }
+
+        // 참고용 데이터 포맷팅
+        function formatReferenceValue(value, type) {
+            if (value === null || value === undefined || value === '') return '<span class="text-muted">(미입력)</span>';
+            
+            // JSON 문자열인 경우 파싱 시도
+            let parsedValue = value;
+            if (typeof value === 'string' && (value.startsWith('[') || value.startsWith('{'))) {
+                try {
+                    parsedValue = JSON.parse(value);
+                } catch (e) {
+                    console.warn('JSON 파싱 실패:', value);
+                }
+            }
+
+            if (type === 'yes_no') {
+                return parsedValue === 'YES' ? '<span class="text-success font-weight-bold">예 (YES)</span>' : '<span class="text-danger font-weight-bold">아니오 (NO)</span>';
+            }
+            
+            // 테이블 형식 (Array) 처리
+            if (Array.isArray(parsedValue)) {
+                if (parsedValue.length === 0) return '<span class="text-muted">(데이터 없음)</span>';
+                
+                let tableHtml = '<div style="font-size: 0.85rem; margin-top: 5px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;">';
+                const keys = Object.keys(parsedValue[0]);
+                
+                // 헤더
+                tableHtml += '<div style="display: flex; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #64748b;">';
+                keys.forEach(k => tableHtml += `<div style="flex: 1; padding: 6px 10px; border-right: 1px solid #e2e8f0;">${k}</div>`);
+                tableHtml += '</div>';
+
+                // 행
+                parsedValue.forEach(row => {
+                    tableHtml += '<div style="display: flex; border-bottom: 1px solid #f1f5f9; background: white;">';
+                    keys.forEach(k => {
+                        const val = row[k] || '-';
+                        tableHtml += `<div style="flex: 1; padding: 6px 10px; border-right: 1px solid #e2e8f0; word-break: break-all;">${val}</div>`;
+                    });
+                    tableHtml += '</div>';
+                });
+                tableHtml += '</div>';
+                return tableHtml;
+            }
+
+            // 구성 형식 (Object) 처리
+            if (typeof parsedValue === 'object') {
+                let listHtml = '<ul style="margin: 5px 0 0 0; padding-left: 18px; font-size: 0.85rem; color: #475569;">';
+                for (const [k, v] of Object.entries(parsedValue)) {
+                    listHtml += `<li style="margin-bottom: 2px;"><span style="font-weight: 600;">${k}:</span> ${v}</li>`;
+                }
+                listHtml += '</ul>';
+                return listHtml;
+            }
+            
+            if (type === 'number') {
+                const num = parseFloat(parsedValue);
+                return isNaN(num) ? String(parsedValue) : num.toLocaleString();
+            }
+
+            return String(parsedValue);
         }
     </script>
 </body>
