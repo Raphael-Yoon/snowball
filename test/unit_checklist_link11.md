@@ -49,7 +49,7 @@
 
 - **test_link11_numerical_boundary**: 극단적인 수치(조 단위) 입력 시 비율 계산 정밀도 및 DB 저장 무결성 확인
 - **test_link11_evidence_physical_integrity**: 증빙 업로드 후 서버 내 물리적 파일 존재 여부 및 DB 메타데이터(크기, 타입) 일치 확인
-- **test_link11_recursive_cleanup**: 상위 질문 '아니오' 변경 시 하위 데이터의 논리적 무결성(DB 삭제 상태) 확인
+- **test_link11_recursive_cleanup**: 상위 질문 '아니오' 변경 시 하위 데이터의 논리적 무결성(N/A 처리 후 YES 복귀 시 재입력 상태) 확인
 
 ## 9. 진행 현황 및 추가 질문 검증 (신규)
 
@@ -57,6 +57,7 @@
 - **test_link11_q7_q8**: 향후 투자 계획(Q7) YES 선택 후 예정 투자액(Q8) 입력 필드 연동 확인
 - **test_link11_q13_q14**: CISO/CPO 지정 여부(Q13) YES 선택 후 상세현황(Q14) 입력 연동 확인
 - **test_link11_q27_new_question**: 신규 추가 질문 Q27(주요 투자 항목) 렌더링 및 표시 확인
+- **test_link11_q29_new_question**: 신규 추가 질문 Q29(CISO/CPO 활동내역) Q13 YES 선택 후 노출 확인
 - **test_link11_reference_view**: "전년도 참고" 패널 노출 및 연도 선택에 따른 데이터 조회 확인
 - **test_link11_ratio_trigger_integrity**: 상위 트리거(Q1, Q9) '아니오' 시 하위 잔류 데이터 무시 및 대시보드 0% 고정 확인
 

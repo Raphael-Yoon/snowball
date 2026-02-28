@@ -23,6 +23,7 @@ class Link11UnitTest(PlaywrightTestBase):
         self.checklist_result = project_root / "test" / "unit_checklist_link11_result.md"
         
         # DB ID -> Display Number 매핑 (화면에 표시되는 번호)
+        # 기준: migration 036(ID 체계 재정비) + 037(Q27/Q28/Q29 추가) 적용 후 실제 DB 값
         self.display_map = {
             'Q1': 'Q1-1',
             'Q2': 'Q1-1-1',
@@ -30,15 +31,17 @@ class Link11UnitTest(PlaywrightTestBase):
             'Q4': 'Q1-1-2-1',
             'Q5': 'Q1-1-2-2',
             'Q6': 'Q1-1-2-3',
+            'Q27': 'Q1-1-3',   # 주요 투자 항목 (migration 037 신규)
             'Q7': 'Q1-2',
             'Q8': 'Q1-2-1',
             'Q9': 'Q2-1',
             'Q10': 'Q2-1-1',
-            'Q28': 'Q2-1-2',
-            'Q11': 'Q2-1-3',
-            'Q12': 'Q2-1-4',
+            'Q28': 'Q2-1-0',   # 정보기술인력(C) (migration 037 신규, 번호 Q2-1-0)
+            'Q11': 'Q2-1-2',   # 내부 전담인력 수 (migration 036 고정값)
+            'Q12': 'Q2-1-3',   # 외주 전담인력 수 (migration 036 고정값)
             'Q13': 'Q2-2',
             'Q14': 'Q2-2-1',
+            'Q29': 'Q2-2-2',   # CISO/CPO 활동내역 (migration 037 신규)
         }
     
     def get_question_selector(self, db_id):
@@ -910,9 +913,9 @@ class Link11UnitTest(PlaywrightTestBase):
         q2_input.blur()
         self.page.wait_for_timeout(1500)
         
-        # 다시 Q1 '아니오' 선택 (하위 스킵 및 클렌징 트리거)
+        # 다시 Q1 '아니오' 선택 → 하위 질문 N/A 처리 트리거
         self.page.locator("#question-Q1 .yes-no-btn.no").click()
-        self.page.wait_for_timeout(2000) # 재귀 삭제 대기
+        self.page.wait_for_timeout(2000) # N/A 처리 완료 대기
         
         # 다시 Q1 '예' 선택하여 Q2를 열었을 때 값이 비어있어야 함 (무결성)
         self.page.locator("#question-Q1 .yes-no-btn.yes").click()
@@ -1060,6 +1063,42 @@ class Link11UnitTest(PlaywrightTestBase):
                     result.fail_test("Q27 질문이 화면에 렌더링되지 않음 (DB 또는 템플릿 확인 필요)")
             else:
                 result.fail_test("Q27 및 Q1 버튼 모두 미발견")
+
+    def test_link11_q29_new_question(self, result: UnitTestResult):
+        """3. 신규 질문 Q29 (CISO/CPO 활동내역) 렌더링 확인"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2500)
+
+        cat2 = self.page.locator(".category-card", has_text="인력").first
+        if cat2.count() == 0:
+            result.skip_test("인력 카테고리 없음")
+            return
+
+        cat2.click()
+        self.page.wait_for_selector("#questions-view", state="visible")
+        self.page.wait_for_timeout(1000)
+
+        # Q13 YES에 종속되므로 먼저 Q9, Q13 순서로 활성화
+        q9_yes = self.page.locator("#question-Q9 .yes-no-btn.yes")
+        if q9_yes.count() > 0:
+            q9_yes.click()
+            self.page.wait_for_timeout(1000)
+
+        q13_yes = self.page.locator("#question-Q13 .yes-no-btn.yes")
+        if q13_yes.count() == 0:
+            result.fail_test("Q13 버튼 미발견 — Q29 종속 여부 확인 불가")
+            return
+
+        q13_yes.scroll_into_view_if_needed()
+        q13_yes.click()
+        self.page.wait_for_timeout(1500)
+
+        q29_elem = self.page.locator("#question-Q29")
+        if q29_elem.count() > 0 and q29_elem.is_visible():
+            result.pass_test("Q29 (CISO/CPO 활동내역) Q13 YES 선택 후 노출 확인")
+        else:
+            result.fail_test("Q29 질문이 화면에 렌더링되지 않음 (DB 또는 템플릿 확인 필요)")
 
     def test_link11_evidence_delete(self, result: UnitTestResult):
         """5. 증빙 파일 삭제 기능 확인"""
@@ -1421,12 +1460,13 @@ def run_tests():
             test_runner.test_link11_numerical_boundary,
             test_runner.test_link11_evidence_physical_integrity,
             test_runner.test_link11_recursive_cleanup,
-            # 신규 추가 테스트 (11개) - 커버리지 갭 보완
+            # 신규 추가 테스트 (12개) - 커버리지 갭 보완
             test_runner.test_link11_evidence_view_page,
             test_runner.test_link11_progress_view,
             test_runner.test_link11_q7_q8,
             test_runner.test_link11_q13_q14,
             test_runner.test_link11_q27_new_question,
+            test_runner.test_link11_q29_new_question,
             test_runner.test_link11_evidence_delete,
             test_runner.test_link11_evidence_download,
             test_runner.test_link11_submit_incomplete_blocked,

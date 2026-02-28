@@ -516,26 +516,33 @@ def save_answer():
                     pass  # 숫자 변환 오류 시 무시
 
             # 1. 정보보호 투자액 검증 (B <= A)
-            if question_id == QID.INV_SEC_GROUP:  # Q3: 정보보호부문 투자액
-                cursor = conn.execute(f'SELECT value FROM sb_disclosure_answers WHERE question_id = ? AND company_id = ? AND year = ?', (QID.INV_IT_AMOUNT, company_id, year))
-                q_it = cursor.fetchone()
-                if q_it and q_it['value']:
+            # B = Q4+Q5+Q6 합산 — Q3 저장값 미사용 (정규화 원칙)
+            inv_b_ids = [QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR]
+            if question_id in inv_b_ids or question_id == QID.INV_IT_AMOUNT:
+                # 현재 저장된 Q4/Q5/Q6 조회
+                cursor = conn.execute(f'''
+                    SELECT question_id, value FROM sb_disclosure_answers
+                    WHERE question_id IN (?, ?, ?) AND company_id = ? AND year = ? AND deleted_at IS NULL
+                ''', (*inv_b_ids, company_id, year))
+                b_vals = {row['question_id']: row['value'] for row in cursor.fetchall()}
+                # 현재 저장 중인 값으로 override
+                if question_id in inv_b_ids:
+                    b_vals[question_id] = value
+                # Q2(A) 조회
+                cursor = conn.execute(
+                    'SELECT value FROM sb_disclosure_answers WHERE question_id = ? AND company_id = ? AND year = ? AND deleted_at IS NULL',
+                    (QID.INV_IT_AMOUNT, company_id, year)
+                )
+                q_a = cursor.fetchone()
+                val_a = float(str(value).replace(',', '')) if question_id == QID.INV_IT_AMOUNT \
+                    else float(str(q_a['value']).replace(',', '')) if q_a and q_a['value'] else 0
+                if val_a > 0:
                     try:
-                        val_a = float(str(q_it['value']).replace(',', ''))
-                        val_b = float(str(value).replace(',', ''))
+                        val_b = sum(float(str(b_vals.get(qid, 0) or 0).replace(',', '')) for qid in inv_b_ids)
                         if val_b > val_a:
-                            return jsonify({'success': False, 'message': '정보보호 투자액(B)은 정보기술 투자액(A)을 초과할 수 없습니다.'}), 400
-                    except ValueError: pass
-            elif question_id == QID.INV_IT_AMOUNT:  # Q2: 정보기술부문 투자액
-                cursor = conn.execute(f'SELECT value FROM sb_disclosure_answers WHERE question_id = ? AND company_id = ? AND year = ?', (QID.INV_SEC_GROUP, company_id, year))
-                q_sec = cursor.fetchone()
-                if q_sec and q_sec['value']:
-                    try:
-                        val_a = float(str(value).replace(',', ''))
-                        val_b = float(str(q_sec['value']).replace(',', ''))
-                        if val_b > val_a:
-                            return jsonify({'success': False, 'message': '정보기술 투자액(A)은 정보보호 투자액(B)보다 적을 수 없습니다.'}), 400
-                    except ValueError: pass
+                            return jsonify({'success': False, 'message': f'정보보호 투자액(B) {int(val_b):,}원이 정보기술 투자액(A) {int(val_a):,}원을 초과합니다.'}), 400
+                    except ValueError:
+                        pass
 
             # 2. 기존 답변 확인
             cursor = conn.execute('''
@@ -571,11 +578,11 @@ def save_answer():
                     is_negative = True
 
             if is_negative:
-                # 재귀적 실삭제 대신 deleted_at 처리
-                _recursive_soft_delete(conn, question_id, company_id, year)
+                # 하위 질문 전체 N/A 처리 (답변 없던 것도 포함)
+                _mark_dependent_questions_na(conn, question_id, company_id, year, str(user_info.get('user_id', '')))
             else:
-                # 긍정적인 답변으로 변경 시, 하위 질문들 중 소프트 삭제된 것들만 보존 (사용자 결정에 따라 복구 가능)
-                pass
+                # YES 복귀 시 N/A 행 삭제 → 사용자 재입력 (기존 답변 복구 없음)
+                _clear_na_from_dependents(conn, question_id, company_id, year)
 
             conn.commit()
 
@@ -711,27 +718,6 @@ def _get_all_dependent_question_ids(conn, question_ids):
 
     return all_ids
 
-
-def _recursive_soft_delete(conn, parent_question_id, company_id, year):
-    """부모 질문이 '아니요'일 때 하위 질문들을 재귀적으로 소프트 삭제 (deleted_at)"""
-    cursor = conn.execute('SELECT dependent_question_ids FROM sb_disclosure_questions WHERE id = ?', (parent_question_id,))
-    row = cursor.fetchone()
-    if not row or not row['dependent_question_ids']:
-        return
-
-    try:
-        dependent_ids = json.loads(row['dependent_question_ids'])
-        for dep_id in dependent_ids:
-            # 해당 질문 소프트 삭제
-            conn.execute('''
-                UPDATE sb_disclosure_answers
-                SET deleted_at = CURRENT_TIMESTAMP
-                WHERE question_id = ? AND company_id = ? AND year = ?
-            ''', (dep_id, company_id, year))
-            # 재귀 호출
-            _recursive_soft_delete(conn, dep_id, company_id, year)
-    except:
-        pass
 
 
 def _calculate_ratios(conn, company_id, year):
@@ -1486,10 +1472,10 @@ def _update_session_progress(conn, company_id, year, user_id=None):
             # 세션 업데이트
             conn.execute('''
                 UPDATE sb_disclosure_sessions
-                SET answered_questions = ?, completion_rate = ?, updated_at = CURRENT_TIMESTAMP,
+                SET total_questions = ?, answered_questions = ?, completion_rate = ?, updated_at = CURRENT_TIMESTAMP,
                     status = CASE WHEN ? = 100 THEN 'completed' ELSE 'in_progress' END
                 WHERE company_id = ? AND year = ?
-            ''', (answered, completion_rate, completion_rate, company_id, year))
+            ''', (total, answered, completion_rate, completion_rate, company_id, year))
         else:
             # 세션 자동 생성
             session_id = generate_uuid()
@@ -1570,11 +1556,22 @@ def generate_report():
 
                 if not is_active:
                     # 숫자 유형이거나 Q3(합계)인 경우 '0'으로 표시, 그 외엔 '해당 없음'
-                    if row['type'] == 'number' or row['id'] == 'Q3':
+                    if row['type'] == 'number' or row['id'] == QID.INV_SEC_GROUP:
                         q_data['value'] = '0'
                     else:
                         q_data['value'] = '해당 없음'
                     q_data['status'] = 'completed'
+                elif row['id'] == QID.INV_SEC_GROUP:
+                    # Q3(group)는 저장값 없이 Q4+Q5+Q6 합산으로 표시
+                    try:
+                        b_sum = sum(
+                            float(str(answers_dict.get(qid, 0) or 0).replace(',', ''))
+                            for qid in [QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR]
+                        )
+                        q_data['value'] = int(b_sum) if b_sum == int(b_sum) else b_sum
+                        q_data['status'] = 'completed' if b_sum > 0 else 'pending'
+                    except (ValueError, TypeError):
+                        pass
                 else:
                     # JSON 값 파싱
                     if q_data['value']:
@@ -1697,10 +1694,20 @@ def download_report():
             
             if not is_active:
                 # 숫자 유형이거나 Q3(합계)인 경우 '0'으로 표시, 그 외엔 '해당 없음'
-                if q.get('type') == 'number' or q['id'] == 'Q3':
+                if q.get('type') == 'number' or q['id'] == QID.INV_SEC_GROUP:
                     value = '0'
                 else:
                     value = '해당 없음'
+            elif q['id'] == QID.INV_SEC_GROUP:
+                # Q3(group)는 저장값 없이 Q4+Q5+Q6 합산으로 표시
+                try:
+                    b_sum = sum(
+                        float(str(answers_dict.get(qid, 0) or 0).replace(',', ''))
+                        for qid in [QID.INV_SEC_DEPRECIATION, QID.INV_SEC_SERVICE, QID.INV_SEC_LABOR]
+                    )
+                    value = "{:,}".format(int(b_sum)) if b_sum == int(b_sum) else "{:,.2f}".format(b_sum)
+                except (ValueError, TypeError):
+                    value = ''
             else:
                 # 질문 데이터 타입에 따른 포맷팅
                 raw_value = q['value'] or ''
