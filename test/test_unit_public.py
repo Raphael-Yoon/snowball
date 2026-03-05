@@ -42,15 +42,19 @@ PUBLIC_LINKS = [1, 2, 3, 4, 9, 10, 11]
 LINK_TEST_GROUPS = {
     1: OrderedDict([
         ("1번", ["test_link1_page_access", "test_link1_form_elements"]),
-        ("2번", ["test_link1_os_version_toggle", "test_link1_cloud_env_toggle"]),
+        ("2번", ["test_link1_os_version_toggle", "test_link1_cloud_env_toggle",
+                 "test_link1_system_type_toggle", "test_link1_sw_version_toggle"]),
         ("3번", ["test_link1_control_table", "test_link1_toggle_detail", "test_link1_type_change_monitoring"]),
-        ("4번", ["test_link1_population_templates_api", "test_link1_email_input", "test_link1_export_email_validation"]),
+        ("4번", ["test_link1_population_templates_api", "test_link1_email_input",
+                 "test_link1_export_email_validation", "test_link1_export_api"]),
+        ("5번", ["test_link1_population_calculation", "test_link1_cloud_control_exclusion"]),
     ]),
     2: OrderedDict([
         ("1번", ["test_link2_access_guest", "test_link2_access_logged_in"]),
         ("2번", ["test_link2_progress_bar", "test_link2_navigation", "test_link2_input_types"]),
         ("3번", ["test_link2_conditional_skip_cloud", "test_link2_conditional_skip_db", "test_link2_conditional_skip_os"]),
         ("4번", ["test_link2_admin_sample_buttons", "test_link2_sample_fill_click"]),
+        ("5번", ["test_link2_complete_interview"]),
     ]),
     3: OrderedDict([
         ("1번", ["test_link3_access", "test_link3_initial_ui"]),
@@ -58,11 +62,13 @@ LINK_TEST_GROUPS = {
         ("3번", ["test_link3_content_loading", "test_link3_step_navigation"]),
         ("4번", ["test_link3_download_button_initial", "test_link3_download_button_active",
                  "test_link3_download_link_correct"]),
+        ("5번", ["test_link3_activity_log"]),
     ]),
     4: OrderedDict([
         ("1번", ["test_link4_access", "test_link4_initial_ui"]),
         ("2번", ["test_link4_sidebar_categories", "test_link4_sidebar_toggle"]),
         ("3번", ["test_link4_content_loading", "test_link4_preparing_message"]),
+        ("4번", ["test_link4_activity_log"]),
     ]),
     9: OrderedDict([
         ("1번", ["test_link9_access", "test_link9_ui_guest", "test_link9_ui_logged_in"]),
@@ -76,11 +82,19 @@ LINK_TEST_GROUPS = {
         ("4번", ["test_link10_logged_in_action"]),
     ]),
     11: OrderedDict([
-        ("1번", ["test_link11_access", "test_link11_dashboard_stats"]),
+        ("1번", ["test_link11_access", "test_link11_dashboard_stats", "test_link11_progress_view"]),
         ("2번", ["test_link11_category_navigation", "test_link11_answer_yes_no", "test_link11_dependent_questions"]),
         ("3번", ["test_link11_currency_input", "test_link11_number_input", "test_link11_multi_select"]),
-        ("4번", ["test_link11_evidence_modal", "test_link11_report_preview", "test_link11_report_download"]),
-        ("5번", ["test_link11_validation_b_lt_a", "test_link11_auto_calculation", "test_link11_validation_personnel"]),
+        ("4번", ["test_link11_evidence_modal", "test_link11_evidence_mime_validation",
+                 "test_link11_evidence_physical_integrity", "test_link11_evidence_view_page",
+                 "test_link11_evidence_delete", "test_link11_evidence_download",
+                 "test_link11_report_preview", "test_link11_report_download"]),
+        ("5번", ["test_link11_validation_b_lt_a", "test_link11_auto_calculation",
+                 "test_link11_validation_personnel", "test_link11_validation_negative",
+                 "test_link11_numerical_boundary", "test_link11_submit_incomplete_blocked"]),
+        ("6번", ["test_link11_q7_q8", "test_link11_q13_q14", "test_link11_q27_new_question"]),
+        ("7번", ["test_link11_company_data_isolation", "test_link11_reset_disclosure"]),
+        ("8번", ["test_link11_copy_from_year", "test_link11_available_years", "test_link11_recursive_cleanup"]),
     ]),
 }
 
@@ -201,12 +215,17 @@ class PublicLinkTestRunner:
                         runner.test_link1_form_elements,
                         runner.test_link1_os_version_toggle,
                         runner.test_link1_cloud_env_toggle,
+                        runner.test_link1_system_type_toggle,
+                        runner.test_link1_sw_version_toggle,
                         runner.test_link1_control_table,
                         runner.test_link1_toggle_detail,
                         runner.test_link1_type_change_monitoring,
                         runner.test_link1_population_templates_api,
                         runner.test_link1_email_input,
                         runner.test_link1_export_email_validation,
+                        runner.test_link1_export_api,
+                        runner.test_link1_population_calculation,
+                        runner.test_link1_cloud_control_exclusion,
                     ])
                     results = runner.results
                 finally:
@@ -228,6 +247,7 @@ class PublicLinkTestRunner:
                         runner.test_link2_conditional_skip_os,
                         runner.test_link2_admin_sample_buttons,
                         runner.test_link2_sample_fill_click,
+                        runner.test_link2_complete_interview,
                     ])
                     results = runner.results
                 finally:
@@ -248,6 +268,7 @@ class PublicLinkTestRunner:
                         runner.test_link3_download_button_initial,
                         runner.test_link3_download_button_active,
                         runner.test_link3_download_link_correct,
+                        runner.test_link3_activity_log,
                     ])
                     results = runner.results
                 finally:
@@ -265,6 +286,7 @@ class PublicLinkTestRunner:
                         runner.test_link4_sidebar_toggle,
                         runner.test_link4_content_loading,
                         runner.test_link4_preparing_message,
+                        runner.test_link4_activity_log,
                     ])
                     results = runner.results
                 finally:
@@ -316,6 +338,7 @@ class PublicLinkTestRunner:
                     runner.run_category("Link11: 공시", [
                         runner.test_link11_access,
                         runner.test_link11_dashboard_stats,
+                        runner.test_link11_progress_view,
                         runner.test_link11_category_navigation,
                         runner.test_link11_answer_yes_no,
                         runner.test_link11_dependent_questions,
@@ -323,11 +346,27 @@ class PublicLinkTestRunner:
                         runner.test_link11_number_input,
                         runner.test_link11_multi_select,
                         runner.test_link11_evidence_modal,
+                        runner.test_link11_evidence_mime_validation,
+                        runner.test_link11_evidence_physical_integrity,
+                        runner.test_link11_evidence_view_page,
+                        runner.test_link11_evidence_delete,
+                        runner.test_link11_evidence_download,
                         runner.test_link11_report_preview,
                         runner.test_link11_report_download,
                         runner.test_link11_validation_b_lt_a,
                         runner.test_link11_auto_calculation,
                         runner.test_link11_validation_personnel,
+                        runner.test_link11_validation_negative,
+                        runner.test_link11_numerical_boundary,
+                        runner.test_link11_submit_incomplete_blocked,
+                        runner.test_link11_q7_q8,
+                        runner.test_link11_q13_q14,
+                        runner.test_link11_q27_new_question,
+                        runner.test_link11_company_data_isolation,
+                        runner.test_link11_reset_disclosure,
+                        runner.test_link11_copy_from_year,
+                        runner.test_link11_available_years,
+                        runner.test_link11_recursive_cleanup,
                     ])
                     results = runner.results
                 finally:

@@ -709,6 +709,12 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
         """결과 리포트 저장"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+        PHASE_MAP = {
+            "rcm":       "Phase 1: RCM 관리",
+            "design":    "Phase 2: 설계평가",
+            "operation": "Phase 3: 운영평가",
+        }
+
         lines = [
             f"<!-- E2E Test Run: {timestamp} -->\n",
             f"# {self.eval_type.upper()} E2E 통합 테스트 결과\n\n"
@@ -716,7 +722,14 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
 
         current_phase = ""
         for res in self.results:
-            phase_match = res.test_name.split('_')[0] if '_' in res.test_name else ""
+            # test_name에서 phase 키 추출 (예: test_rcm_upload → rcm, test_design_complete → design)
+            parts = res.test_name.split('_')
+            phase_key = parts[1] if len(parts) > 1 else ""
+            phase_label = PHASE_MAP.get(phase_key, "기타")
+
+            if phase_label != current_phase:
+                current_phase = phase_label
+                lines.append(f"\n## {current_phase}\n\n")
 
             status_icon = {
                 TestStatus.PASSED: "✅",
@@ -750,15 +763,13 @@ class E2EEvaluationTestSuite(PlaywrightTestBase):
 
 
 def run_all_types(base_url, headless):
-    """모든 타입 순차 실행"""
-    import requests
-
+    """모든 타입 순차 실행 (서버 생명주기를 외부에서 일원 관리)"""
     total_exit_code = 0
     eval_types = ["itgc", "elc", "tlc"]
+    server_process = None
     server_was_running_initially = False
-    first_suite = None
 
-    # 먼저 서버 상태 확인
+    # 서버 상태 확인
     try:
         response = requests.get(f"{base_url}/health", timeout=3)
         if response.status_code == 200:
@@ -767,35 +778,64 @@ def run_all_types(base_url, headless):
     except:
         pass
 
-    for i, eval_type in enumerate(eval_types):
-        print(f"\n{'='*80}")
-        print(f">>> {eval_type.upper()} 테스트 시작")
-        print(f"{'='*80}\n")
+    # 필요시 서버 직접 시작
+    if not server_was_running_initially:
+        print(f"⚠️ 서버가 실행 중이지 않습니다. 서버를 시작합니다...")
+        try:
+            server_process = subprocess.Popen(
+                [sys.executable, "snowball.py"],
+                cwd=str(project_root),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
+            )
+            print(f"   서버 시작 중... (PID: {server_process.pid})")
+            started = False
+            for i in range(30):
+                time.sleep(1)
+                try:
+                    response = requests.get(f"{base_url}/health", timeout=2)
+                    if response.status_code == 200:
+                        print(f"✅ 서버 시작 완료")
+                        started = True
+                        break
+                except:
+                    print(f"   서버 준비 대기 중... ({i+1}/30)")
+            if not started:
+                print(f"❌ 서버 시작 시간 초과")
+                return 1
+        except Exception as e:
+            print(f"❌ 서버 시작 실패: {e}")
+            return 1
 
-        suite = E2EEvaluationTestSuite(base_url=base_url, headless=headless, eval_type=eval_type)
+    try:
+        for eval_type in eval_types:
+            print(f"\n{'='*80}")
+            print(f">>> {eval_type.upper()} 테스트 시작")
+            print(f"{'='*80}\n")
 
-        # 첫 번째 테스트에서 서버 시작
-        if i == 0:
-            first_suite = suite
-            suite.server_was_running = server_was_running_initially
-        else:
-            # 이후 테스트에서는 서버가 이미 실행 중
-            suite.server_was_running = True
+            suite = E2EEvaluationTestSuite(base_url=base_url, headless=headless, eval_type=eval_type)
+            suite.server_was_running = True  # 서버 관리는 run_all_types에서 담당
+            suite.skip_server_stop = True    # 각 suite 내에서 서버 종료 방지
 
-        # 마지막 테스트가 아니면 서버 종료 스킵
-        if i < len(eval_types) - 1:
-            suite.skip_server_stop = True
+            exit_code = suite.run_all_tests()
+            if exit_code != 0:
+                total_exit_code = exit_code
 
-        exit_code = suite.run_all_tests()
-        if exit_code != 0:
-            total_exit_code = exit_code
-
-    # 마지막 테스트에서 서버 종료 처리됨 (first_suite.server_process 사용)
-    # 단, 첫 번째 스위트에서 시작한 서버 프로세스를 마지막 스위트로 전달해야 함
-    # 현재 구조에서는 첫 번째 스위트만 server_process를 가지므로 별도 처리
-    if first_suite and first_suite.server_process and not server_was_running_initially:
-        first_suite.skip_server_stop = False
-        first_suite.stop_server()
+    finally:
+        # 직접 시작한 서버 종료 (예외 발생 시에도 반드시 실행)
+        if server_process is not None:
+            print(f"\n🛑 서버 중지 중... (PID: {server_process.pid})")
+            try:
+                server_process.terminate()
+                server_process.wait(timeout=5)
+                print(f"✅ 서버 중지 완료")
+            except Exception as e:
+                print(f"⚠️ 서버 중지 중 오류: {e}")
+                try:
+                    server_process.kill()
+                except:
+                    pass
 
     return total_exit_code
 
