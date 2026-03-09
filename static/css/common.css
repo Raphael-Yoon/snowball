@@ -345,4 +345,89 @@ body {
     .radio-option {
         width: 100%;
     }
-} 
+}
+
+/* ================================================================
+   다크 모드 (Bootstrap 5.3 data-bs-theme="dark" 기반)
+   Bootstrap 컴포넌트(card, form, modal 등)는 자동 처리됨
+   아래는 커스텀 클래스 전용 오버라이드
+================================================================ */
+[data-bs-theme="dark"] body {
+    background-color: #13151a !important;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .sidebar {
+    background-color: #1c1f26;
+    border-color: #3a3f4b;
+}
+
+[data-bs-theme="dark"] .category-title {
+    background-color: #252930;
+    color: #dee2e6;
+    border-color: #3a3f4b;
+}
+
+[data-bs-theme="dark"] .category-title:hover {
+    background-color: #2e333d;
+}
+
+[data-bs-theme="dark"] .nav-link {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .nav-link:hover {
+    background-color: #2e333d;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .form-control {
+    background-color: #252930;
+    border-color: #3a3f4b;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .form-control:focus {
+    background-color: #2e333d;
+    border-color: #6ea8fe;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .form-control:disabled,
+[data-bs-theme="dark"] .form-control[readonly] {
+    background-color: #1c1f26;
+    color: #6c757d;
+}
+
+[data-bs-theme="dark"] .form-label {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .radio-option label {
+    background-color: #252930;
+    border-color: #3a3f4b;
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .radio-option label:hover {
+    background-color: #2e333d;
+}
+
+[data-bs-theme="dark"] .section-title i {
+    color: #6ea8fe;
+}
+
+/* 다크모드 토글 버튼 */
+#themeToggle {
+    border: none;
+    background: transparent;
+    font-size: 1rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 50%;
+    transition: background 0.2s;
+    line-height: 1;
+}
+
+#themeToggle:hover {
+    background: rgba(128, 128, 128, 0.15);
+}

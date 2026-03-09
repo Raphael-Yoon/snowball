@@ -5,6 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Snowball Navigation</title>
+    <!-- 다크모드 FOUC 방지: CSS 로드 전에 테마 적용 -->
+    <script>
+        (function() {
+            var theme = localStorage.getItem('snowball-theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', theme);
+        })();
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
@@ -15,8 +22,8 @@
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
             <a class="navbar-brand" href="/">
-                <img src="{{ url_for('static', filename='img/logo.jpg')}}" class="logo" alt="Snowball Logo"
-                    style="max-height: 40px; width: auto;">
+                <img src="{{ url_for('static', filename='img/logo.jpg')}}" class="logo logo-light" alt="Snowball Logo">
+                <img src="{{ url_for('static', filename='img/logo_dark.jpg')}}" class="logo logo-dark" alt="Snowball Logo">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -129,6 +136,12 @@
                 </ul>
 
                 <ul class="navbar-nav">
+                    <!-- 다크모드 토글 버튼 -->
+                    <li class="nav-item d-flex align-items-center">
+                        <button id="themeToggle" onclick="toggleTheme()" title="다크/라이트 모드 전환">
+                            <i id="themeIcon" class="fas fa-moon"></i>
+                        </button>
+                    </li>
                     {% if is_logged_in %}
                     {% if session.get('original_admin_id') %}
                     <li class="nav-item">
@@ -170,6 +183,32 @@
     </nav>
 
     <script>
+        // 다크모드 토글
+        function toggleTheme() {
+            var html = document.documentElement;
+            var current = html.getAttribute('data-bs-theme') || 'light';
+            var next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-bs-theme', next);
+            localStorage.setItem('snowball-theme', next);
+            updateThemeIcon(next);
+        }
+
+        function updateThemeIcon(theme) {
+            var icon = document.getElementById('themeIcon');
+            if (!icon) return;
+            if (theme === 'dark') {
+                icon.className = 'fas fa-sun';
+            } else {
+                icon.className = 'fas fa-moon';
+            }
+        }
+
+        // 페이지 로드 시 아이콘 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            var theme = localStorage.getItem('snowball-theme') || 'light';
+            updateThemeIcon(theme);
+        });
+
         // 사용자 전환 모달 표시
         function showUserSwitchModal() {
             fetch('/admin/api/admin/users')
