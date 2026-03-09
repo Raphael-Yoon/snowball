@@ -97,8 +97,7 @@
                                             aria-valuemax="100">0%</div>
                                     </div>
                                     <small class="text-muted">
-                                        <span id="evaluatedCount">0</span> / <span id="totalControlCount">{{
-                                            rcm_details|length }}</span> 통제 평가 완료
+<span id="evaluatedCount">0</span> / <span id="totalControlCount">{{ rcm_details|length }}</span> 통제 평가 완료
                                     </small>
                                 </div>
                             </div>
@@ -195,7 +194,7 @@
                                         <td>
                                             {% if mapping_info %}
                                             <a href="javascript:void(0)"
-                                                onclick="openStdControlModal({{ detail.detail_id }}, '{{ detail.control_code }}', {{ mapping_info.std_control_id or 'null' }})"
+                                                onclick="openStdControlModal({{ detail.detail_id }}, {{ detail.control_code | tojson }}, {{ mapping_info.std_control_id or 'null' }})"
                                                 class="badge bg-success text-white text-decoration-none"
                                                 title="{{ mapping_info.std_control_name or mapping_info.std_control_code or '기준통제 매핑됨' }}"
                                                 data-bs-toggle="tooltip">
@@ -203,7 +202,7 @@
                                             </a>
                                             {% else %}
                                             <a href="javascript:void(0)"
-                                                onclick="openStdControlModal({{ detail.detail_id }}, '{{ detail.control_code }}', null)"
+                                                onclick="openStdControlModal({{ detail.detail_id }}, {{ detail.control_code | tojson }}, null)"
                                                 class="badge bg-warning text-dark fw-bold text-decoration-none"
                                                 style="border: 2px solid #fd7e14;" title="클릭하여 기준통제 매핑하기"
                                                 data-bs-toggle="tooltip">
@@ -214,7 +213,7 @@
                                         {% endif %}
                                         <td style="text-align: center; padding: 0.25rem;">
                                             <button class="btn btn-sm btn-outline-success evaluate-btn"
-                                                onclick="openEvaluationModal({{ loop.index }}, '{{ detail.control_code }}', '{{ detail.control_name }}')"
+                                                onclick="openEvaluationModal({{ loop.index }}, {{ detail.control_code | tojson }}, {{ detail.control_name | tojson }})"
                                                 id="eval-btn-{{ loop.index }}"
                                                 style="padding: 0.2rem 0.5rem; font-size: 0.75rem; min-width: 60px; white-space: nowrap;">
                                                 <i class="fas fa-edit me-1"></i>평가
@@ -320,10 +319,13 @@
                                 </div>
                             </div>
 
-                            <div class="alert alert-info">
+                            <div class="alert-guide-info">
                                 <i class="fas fa-lightbulb me-2"></i>
-                                <strong>평가 기준:</strong> 위에 기술된 통제활동이 현재 실제로 수행되고 있는 통제 절차와 일치하는지, 그리고 해당 통제가 실무적으로 효과적으로
-                                작동하고 있는지 평가하세요.
+                                <div>
+                                    <strong>평가 기준:</strong> 위에 기술된 통제활동이 현재 실제로 수행되고 있는 통제 절차와 일치하는지, 그리고 해당 통제가 실무적으로
+                                    효과적으로
+                                    작동하고 있는지 평가하세요.
+                                </div>
                             </div>
 
                             <div class="mb-3">
@@ -447,11 +449,13 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info">
+                    <div class="alert-guide-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        <strong>업로드 안내:</strong> 설계평가 결과가 포함된 CSV 또는 Excel 파일을 업로드하여 일괄 적용할 수 있습니다.
+                        <div>
+                            <strong>샘플링 안내:</strong> 모집단 엑셀 파일을 업로드하면 시스템에서 자동으로 샘플을 추출합니다.
+                            추출된 샘플에 대해 테스트를 진행해 주세요.
+                        </div>
                     </div>
-
                     <!-- 파일 업로드 -->
                     <div class="mb-4">
                         <label for="evaluationFile" class="form-label">평가 결과 파일 선택</label>
@@ -1070,8 +1074,8 @@
                     effectivenessSelect.disabled = false;
                     effectivenessSection.style.opacity = '1';
 
-                    // 증빙 내용이 비어있으면 기본 텍스트 입력
-                    if (!evaluationEvidence.value.trim()) {
+                    // 기본 증빙 필드가 있을 때만 기본값 설정 (Attribute 기반인 경우 없음)
+                    if (evaluationEvidence && !evaluationEvidence.value.trim()) {
                         evaluationEvidence.value = '통제 활동 수행 기록, 관련 문서 및 증적 확인';
                     }
                 } else {
@@ -1082,8 +1086,8 @@
                     recommendedActionsField.disabled = true;
                     effectivenessSection.style.opacity = '0.5';
 
-                    // 증빙 내용이 비어있으면 기본 텍스트 입력
-                    if (!evaluationEvidence.value.trim()) {
+                    // 기본 증빙 필드가 있을 때만 기본값 설정 (Attribute 기반인 경우 없음)
+                    if (evaluationEvidence && !evaluationEvidence.value.trim()) {
                         evaluationEvidence.value = '통제 활동 설명 문서 및 관련 자료 검토';
                     }
                 }
@@ -1546,34 +1550,33 @@
                         let notMatchedCodes = [];
                         let matchedList = [];
                         {% for detail in rcm_details %}
-                        const controlCode{{ loop.index }} = '{{ detail.control_code }}';
-                        if (data.evaluations[controlCode{{ loop.index }}]) {
-                            const evaluationData = data.evaluations[controlCode{{ loop.index }}];
-                            matchedList.push({
-                                index: {{ loop.index }},
-                                code: controlCode{{ loop.index }},
-                                evaluation_date: evaluationData.evaluation_date,
-                                adequacy: evaluationData.description_adequacy,
-                                effectiveness: evaluationData.overall_effectiveness
+                        const controlCode{{ loop.index }} = {{ detail.control_code | tojson }};
+                    if (data.evaluations[controlCode{{ loop.index }}]) {
+                const evaluationData = data.evaluations[controlCode{{ loop.index }}];
+            matchedList.push({
+                index: {{ loop.index }},
+        code: controlCode{{ loop.index }},
+        adequacy: evaluationData.description_adequacy,
+            effectiveness: evaluationData.overall_effectiveness
                             });
 
-                            evaluationResults[{{ loop.index }}] = evaluationData;
-                            updateEvaluationUI({{ loop.index }}, evaluationData);
-                            matchedCount++;
+        evaluationResults[{{ loop.index }}] = evaluationData;
+        updateEvaluationUI({{ loop.index }}, evaluationData);
+        matchedCount++;
                         } else {
-                            notMatchedCodes.push({ index: {{ loop.index }}, code: controlCode{{ loop.index }} });
+            notMatchedCodes.push({ index: {{ loop.index }}, code: controlCode{{ loop.index }}});
                         }
-                        {% endfor %}
+        {% endfor %}
 
-                        console.log(`Matching completed: ${matchedCount} / {{ rcm_details|length }}`, {
-                            matched_count: matchedCount,
-                            total_count: {{ rcm_details|length }},
-                            matched_samples: matchedList.slice(0, 3),
-                            not_matched_count: notMatchedCodes.length,
-                            not_matched_samples: notMatchedCodes.slice(0, 3)
+        console.log(`Matching completed: ${matchedCount} / {{ rcm_details|length }}`, {
+            matched_count: matchedCount,
+            total_count: {{ rcm_details| length }},
+            matched_samples: matchedList.slice(0, 3),
+            not_matched_count: notMatchedCodes.length,
+            not_matched_samples: notMatchedCodes.slice(0, 3)
                         });
 
-                                updateProgress();
+        updateProgress();
                     }
                 })
                 .catch (error => {
@@ -1586,6 +1589,7 @@
 
         // 평가 모달 열기
         function openEvaluationModal(index, controlCode, controlName) {
+            try {
             console.log('=== openEvaluationModal called ===');
             console.log('Parameters:', { index, controlCode, controlName });
 
@@ -1627,11 +1631,11 @@
             // RCM 세부 데이터에서 통제성격(Nature) 찾기
             {% for detail in rcm_details %}
             if ({{ loop.index }} === index) {
-                document.getElementById('modalControlNature').textContent = '{{ detail.control_nature_name or detail.control_nature or "-" }}';
-            }
-            {% endfor %}
-            
-                    // Attribute 기반 증빙 테이블 생성 (기존 데이터 로드 전에 먼저 생성)
+            document.getElementById('modalControlNature').textContent = {{ (detail.control_nature_name or detail.control_nature or "-") | tojson }};
+        }
+        {% endfor %}
+
+        // Attribute 기반 증빙 테이블 생성 (기존 데이터 로드 전에 먼저 생성)
         generateDesignEvidenceTable(controlCode);
 
         // 동적으로 생성된 요소에 이벤트 리스너 재설정
@@ -1850,7 +1854,7 @@
         {% for detail in rcm_details %}
         if ({{ loop.index }} === index) {
             // 자동통제 판별
-            const controlNature = '{{ detail.control_nature or "" }}';
+            const controlNature = {{ (detail.control_nature or "") | tojson }};
             const isAutomated = controlNature && (
                 controlNature.toUpperCase() === 'A' ||
                 controlNature.includes('자동') ||
@@ -1880,6 +1884,10 @@
         setTimeout(() => {
             toggleNoOccurrenceDesign();
         }, 100);
+            } catch (e) {
+                console.error('=== openEvaluationModal ERROR ===', e);
+                alert('[디버그] 평가 모달 오류: ' + e.message + '\n\n위치: ' + e.stack);
+            }
         }
 
         // 평가 결과 저장
@@ -1974,7 +1982,7 @@
 
             // 서버에 결과 저장
             const controlCode = {% for detail in rcm_details %}
-        {{ loop.index }} === currentEvaluationIndex ? '{{ detail.control_code }}' :
+        {{ loop.index }} === currentEvaluationIndex ? {{ detail.control_code | tojson }} :
             {% endfor %} null;
 
         console.log('Control code:', controlCode);
@@ -2254,7 +2262,7 @@
 
         // 진행률 업데이트 (header completed_date 기반)
         function updateProgress() {
-            const totalControls = {{ rcm_details| length}};
+const totalControls = {{ rcm_details| length }};
         let evaluatedCount = 0;
 
         // evaluation_date가 있는 항목만 개별 완료로 계산 (완료 버튼 표시용)
@@ -2347,7 +2355,7 @@
                 return;
             }
 
-            const totalControls = {{ rcm_details| length}};
+const totalControls = {{ rcm_details| length }};
 
         for (let i = 1; i <= totalControls; i++) {
             // evaluation_date가 없는 통제만 평가 (미완료 통제)
@@ -2420,7 +2428,7 @@
                 return;
             }
 
-            const totalControls = {{ rcm_details| length}};
+const totalControls = {{ rcm_details| length }};
         let savedCount = 0;
         let errors = [];
 
@@ -2443,7 +2451,7 @@
             let controlCode = null;
             {% for detail in rcm_details %}
             if ({{ loop.index }} === index) {
-            controlCode = '{{ detail.control_code }}';
+            controlCode = {{ detail.control_code | tojson }};
         }
         {% endfor %}
 
@@ -2589,7 +2597,7 @@
                         evaluation.overall_effectiveness === 'ineffective') {
                         // 통제 코드 찾기
                         const controlCode = {% for detail in rcm_details %}
-                    {{ loop.index }} === parseInt(index) ? '{{ detail.control_code }}' :
+                    {{ loop.index }} === parseInt(index) ? {{ detail.control_code | tojson }} :
                         {% endfor %} null;
 
                 if (controlCode) {
@@ -2731,7 +2739,7 @@
             let controlCode = null;
             {% for detail in rcm_details %}
             if ({{ loop.index }} === controlIndex) {
-            controlCode = '{{ detail.control_code }}';
+            controlCode = {{ detail.control_code | tojson }};
         }
         {% endfor %}
 
@@ -2788,7 +2796,8 @@
                         evaluationResults = {};
 
                         // UI 초기화
-                        const totalControls = {{ rcm_details| length}};
+                        const totalControls = {{ rcm_details|length }};
+                };
             for (let i = 1; i <= totalControls; i++) {
                 resetEvaluationUI(i);
             }
@@ -2903,7 +2912,7 @@
             let csv = '통제코드,설명적절성,개선제안,종합효과성,평가근거,권고조치사항\n';
 
             {% for detail in rcm_details %}
-            csv += `"{{ detail.control_code }}","adequate","","effective","",""\n`;
+            csv += {{ detail.control_code | tojson }} + `,"adequate","","effective","",""\n`;
             {% endfor %}
 
             // BOM 추가 (한글 깨짐 방지)
@@ -2972,7 +2981,7 @@
             // 통제코드 인덱스 맵 생성
             const controlCodeToIndex = {};
             {% for detail in rcm_details %}
-            controlCodeToIndex['{{ detail.control_code }}'] = {{ loop.index }};
+            controlCodeToIndex[{{ detail.control_code | tojson }}] = {{ loop.index }};
         {% endfor %}
 
         let uploadedCount = 0;
