@@ -1381,7 +1381,7 @@
 
             // 서버에서 전달받은 evaluation_session이 있으면 사용
             {% if evaluation_session %}
-            const serverSession = '{{ evaluation_session }}';
+            const serverSession = {{ evaluation_session | tojson }};
             console.log('Server provided session:', serverSession);
             sessionStorage.setItem('currentEvaluationSession', serverSession);
             sessionStorage.setItem('isNewEvaluationSession', 'false'); // 기존 세션
@@ -2924,7 +2924,7 @@ const totalControls = {{ rcm_details| length }};
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
-            link.setAttribute('download', '{{ rcm_info.rcm_name }}_설계평가_템플릿.csv');
+            link.setAttribute('download', {{ (rcm_info.rcm_name + '_설계평가_템플릿.csv') | tojson }});
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
