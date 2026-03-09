@@ -1546,3 +1546,56 @@ h2 {
 [data-bs-theme="dark"] .tooltip.bs-tooltip-bottom .tooltip-arrow::before {
     border-bottom-color: #3a3f4b;
 }
+
+/* 로그인 페이지 */
+[data-bs-theme="dark"] .login-container {
+    background: #1c1f26;
+    border-color: #3a3f4b;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+[data-bs-theme="dark"] .info-container {
+    background: linear-gradient(135deg, #1a2030 0%, #1e2a3a 100%);
+    border-color: #3a3f4b;
+}
+
+[data-bs-theme="dark"] .inquiry-container {
+    background: #1c1f26;
+    border-color: #3a3f4b;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+[data-bs-theme="dark"] .info-subtitle {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .feature-item {
+    background: #252930;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+[data-bs-theme="dark"] .feature-content h4 {
+    color: #dee2e6;
+}
+
+[data-bs-theme="dark"] .feature-content p {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .pricing-info {
+    background: #1c1f26;
+}
+
+[data-bs-theme="dark"] .pricing-description {
+    color: #adb5bd;
+}
+
+/* link3 운영평가 가이드 */
+[data-bs-theme="dark"] .step-card {
+    background: #1c1f26;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+[data-bs-theme="dark"] .content-area {
+    background-color: #13151a;
+}

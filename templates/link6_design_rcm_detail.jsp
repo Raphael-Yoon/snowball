@@ -320,7 +320,7 @@
                                 </div>
                             </div>
 
-                            <div class="alert alert-info">
+                            <div class="alert alert-guide-info">
                                 <i class="fas fa-lightbulb me-2"></i>
                                 <strong>평가 기준:</strong> 위에 기술된 통제활동이 현재 실제로 수행되고 있는 통제 절차와 일치하는지, 그리고 해당 통제가 실무적으로 효과적으로
                                 작동하고 있는지 평가하세요.
@@ -447,7 +447,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info">
+                    <div class="alert alert-guide-info">
                         <i class="fas fa-info-circle me-2"></i>
                         <strong>업로드 안내:</strong> 설계평가 결과가 포함된 CSV 또는 Excel 파일을 업로드하여 일괄 적용할 수 있습니다.
                     </div>
@@ -531,7 +531,7 @@
                         <strong>통제코드:</strong> <code id="std-modal-control-code"></code>
                     </div>
                     <hr>
-                    <div class="alert alert-info">
+                    <div class="alert alert-guide-info">
                         <i class="fas fa-info-circle me-2"></i>
                         매핑할 기준통제를 선택하세요. 선택한 기준통제의 Attribute 템플릿이 자동으로 적용됩니다.
                     </div>
@@ -1071,7 +1071,7 @@
                     effectivenessSection.style.opacity = '1';
 
                     // 증빙 내용이 비어있으면 기본 텍스트 입력
-                    if (!evaluationEvidence.value.trim()) {
+                    if (evaluationEvidence && !evaluationEvidence.value.trim()) {
                         evaluationEvidence.value = '통제 활동 수행 기록, 관련 문서 및 증적 확인';
                     }
                 } else {
@@ -1083,7 +1083,7 @@
                     effectivenessSection.style.opacity = '0.5';
 
                     // 증빙 내용이 비어있으면 기본 텍스트 입력
-                    if (!evaluationEvidence.value.trim()) {
+                    if (evaluationEvidence && !evaluationEvidence.value.trim()) {
                         evaluationEvidence.value = '통제 활동 설명 문서 및 관련 자료 검토';
                     }
                 }

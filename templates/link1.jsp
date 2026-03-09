@@ -14,7 +14,6 @@
 		<style>
 			.rcm-table-container {
 				margin-top: 2rem;
-				background: white;
 				padding: 1.5rem;
 				border-radius: 12px;
 				box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -25,6 +24,16 @@
 			}
 			.control-row:hover {
 				background-color: #f8f9fa;
+			}
+			[data-bs-theme="dark"] .rcm-table-container {
+				background-color: #1c1f26;
+				box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+			}
+			[data-bs-theme="dark"] .control-row {
+				border-bottom-color: #3a3f4b;
+			}
+			[data-bs-theme="dark"] .control-row:hover {
+				background-color: #252930;
 			}
 			.toggle-detail {
 				color: #6c757d;
@@ -115,7 +124,7 @@
 					
 					<!-- 1. Input Section -->
 					<div class="card border-0 shadow-sm mb-4">
-						<div class="card-header bg-white py-3">
+						<div class="card-header py-3">
 							<h5 class="mb-0"><i class="fas fa-server me-2"></i>대상 시스템 정보</h5>
 						</div>
 						<div class="card-body">
@@ -389,7 +398,7 @@
 																<i class="far fa-copy me-1"></i>복사
 															</button>
 														</div>
-														<div class="small text-muted bg-white p-2 border rounded" id="test-proc-detail-{{ control.id }}"
+														<div class="small text-muted p-2 border rounded" id="test-proc-detail-{{ control.id }}"
 															style="white-space: pre-wrap;"
 															data-auto="{{ control.test_procedure_auto }}"
 															data-manual="{{ control.test_procedure_manual }}">{{ control.test_procedure_auto if control.type == 'Auto' else control.test_procedure_manual }}</div>

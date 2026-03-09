@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
+<script>
+    (function() {
+        var theme = localStorage.getItem('snowball-theme') || 'light';
+        document.documentElement.setAttribute('data-bs-theme', theme);
+    })();
+</script>
     <meta charset="UTF-8">
     <title>Snowball - 로그인</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
