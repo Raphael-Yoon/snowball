@@ -194,7 +194,7 @@
                                         <td>
                                             {% if mapping_info %}
                                             <a href="javascript:void(0)"
-                                                onclick="openStdControlModal({{ detail.detail_id }}, {{ detail.control_code | tojson }}, {{ mapping_info.std_control_id or 'null' }})"
+                                                onclick="openStdControlModal({{ detail.detail_id }}, {{ detail.control_code | tojson | e }}, {{ mapping_info.std_control_id or 'null' }})"
                                                 class="badge bg-success text-white text-decoration-none"
                                                 title="{{ mapping_info.std_control_name or mapping_info.std_control_code or '기준통제 매핑됨' }}"
                                                 data-bs-toggle="tooltip">
@@ -202,7 +202,7 @@
                                             </a>
                                             {% else %}
                                             <a href="javascript:void(0)"
-                                                onclick="openStdControlModal({{ detail.detail_id }}, {{ detail.control_code | tojson }}, null)"
+                                                onclick="openStdControlModal({{ detail.detail_id }}, {{ detail.control_code | tojson | e }}, null)"
                                                 class="badge bg-warning text-dark fw-bold text-decoration-none"
                                                 style="border: 2px solid #fd7e14;" title="클릭하여 기준통제 매핑하기"
                                                 data-bs-toggle="tooltip">
@@ -213,7 +213,7 @@
                                         {% endif %}
                                         <td style="text-align: center; padding: 0.25rem;">
                                             <button class="btn btn-sm btn-outline-success evaluate-btn"
-                                                onclick="openEvaluationModal({{ loop.index }}, {{ detail.control_code | tojson }}, {{ detail.control_name | tojson }})"
+                                                onclick="openEvaluationModal({{ loop.index }}, {{ detail.control_code | tojson | e }}, {{ detail.control_name | tojson | e }})"
                                                 id="eval-btn-{{ loop.index }}"
                                                 style="padding: 0.2rem 0.5rem; font-size: 0.75rem; min-width: 60px; white-space: nowrap;">
                                                 <i class="fas fa-edit me-1"></i>평가
