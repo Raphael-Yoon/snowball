@@ -5,6 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Snowball</title>
+    <!-- 다크모드 FOUC 방지 -->
+    <script>
+        (function() {
+            var theme = localStorage.getItem('snowball-theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', theme);
+        })();
+    </script>
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -28,8 +35,8 @@
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-lg-2">
-                    <img src="{{ url_for('static', filename='img/snowball.jpg')}}" alt="Snowball" class="img-fluid"
-                        style="max-height: 80px; width: auto;">
+                    <img src="{{ url_for('static', filename='img/snowball.png')}}" alt="Snowball"
+                        class="img-fluid" style="max-height: 80px; width: auto;">
                 </div>
                 <div class="col-lg-8 hero-content">
                     <h1 class="hero-title">Snowball System</h1>
@@ -88,7 +95,7 @@
                             <h5 class="feature-title text-center"><i class="fas fa-chart-pie me-2"></i>Dashboard</h5>
                             <p class="feature-description">ELC, TLC, ITGC 평가 결과를 통합 조회하고 종합 리포트를 생성합니다.</p>
                             <div class="text-center mt-auto">
-                                <a href="/internal-assessment" class="feature-link" data-bs-toggle="tooltip"
+                                <a href="{{ url_for('link8.link8') }}" class="feature-link" data-bs-toggle="tooltip"
                                     data-bs-placement="top" data-bs-html="true"
                                     title="<div>• ELC, TLC, ITGC 통합 결과 조회<br>• 통제 현황 종합 분석<br>• 자동 리포트 생성<br>• 트렌드 분석 및 인사이트</div>">자세히
                                     보기</a>
@@ -223,6 +230,12 @@
                                         data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
                                         title="<div>• AI 기반 대화형 RCM 분석 및 검토<br>• 업로드한 RCM 파일의 통제 설계 평가<br>• 통제 효과성 및 적절성 자동 분석<br>• 개선 방안 및 리포트 자동 생성</div>">자세히
                                         보기</a>
+                                    <br>
+                                    <a href="{{ url_for('link2_1p.link2_1p_start', reset=1) }}"
+                                       class="btn btn-sm btn-outline-secondary mt-2"
+                                       title="섹션별 1페이지 방식 (테스트)">
+                                        🧪 섹션형 (신규)
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -430,11 +443,35 @@
         </div>
     </section>
 
+    <!-- 다크모드 플로팅 버튼 -->
+    <button id="themeToggle" onclick="toggleTheme()" title="다크/라이트 모드 전환"
+            style="position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999;">
+        <i id="themeIcon" class="fas fa-moon"></i>
+    </button>
+
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- 세션 관리 및 RCM 기능 -->
     <script>
+        // 다크모드 토글
+        function toggleTheme() {
+            var html = document.documentElement;
+            var current = html.getAttribute('data-bs-theme') || 'light';
+            var next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-bs-theme', next);
+            localStorage.setItem('snowball-theme', next);
+            updateThemeIcon(next);
+        }
+        function updateThemeIcon(theme) {
+            var icon = document.getElementById('themeIcon');
+            if (!icon) return;
+            icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            updateThemeIcon(localStorage.getItem('snowball-theme') || 'light');
+        });
+
         window.isLoggedIn = {{ 'true' if is_logged_in else 'false' }};
 
         // 툴팁 초기화
