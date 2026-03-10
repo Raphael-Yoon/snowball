@@ -169,8 +169,8 @@
                     <div id="step-desc" class="text-start mb-3" style="max-width:900px;width:100%;margin:0 auto;"></div>
                     <div id="step-indicator" class="text-center mb-3"></div>
                     <div class="step-btns d-flex justify-content-center">
-                        <button id="prev-btn" class="btn btn-primary me-2">이전</button>
-                        <button id="next-btn" class="btn btn-primary">다음</button>
+                        <button id="prev-btn" class="btn btn-sm btn-outline-secondary me-2">이전</button>
+                        <button id="next-btn" class="btn btn-sm btn-outline-light">다음</button>
                     </div>
                 </div>
             `;

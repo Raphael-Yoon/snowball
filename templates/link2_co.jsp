@@ -1,4 +1,4 @@
-{% extends 'link2_1p_base.jsp' %}
+{% extends 'link2_base.jsp' %}
 
 {# ================================================================
    CO 섹션 (Q41~Q51)  Computer Operation
@@ -10,10 +10,10 @@
    Q44: co01_procedure    (type 4)
    Q45: co02_batch_auth   (type 5)
    Q46: co03_monitoring   (type 5)
-   Q47: co04_incident     (type 5) — Cloud+SOC1 시 숨김 가능
-   Q48: co05_backup       (type 5) — Cloud+SOC1 시 숨김
-   Q49: co06_server_room  (type 5) — Cloud+SOC1 시 숨김
-   Q50: co07_security_patch(type 4) — Cloud+SOC1 시 숨김
+   Q47: co04_incident     (type 5) — Cloud 타입 선택 시 숨김
+   Q48: co05_backup       (type 5) — Cloud 타입 선택 시 숨김
+   Q49: co06_server_room  (type 5) — Cloud 타입 선택 시 숨김
+   Q50: co07_security_patch(type 4) — Cloud 타입 선택 시 숨김
    Q51: soc1_review       (type 1) — Cloud 없으면 숨김
 ================================================================ #}
 
@@ -21,11 +21,11 @@
 <input type="hidden" id="q{{ idx }}_hidden" name="q{{ idx }}" value="{{ answers[idx] }}">
 <div class="yn-wrap">
     <button type="button" id="q{{ idx }}_yes" onclick="setYN({{ idx }},'Y')"
-            class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-primary{% endif %}">
         <i class="fas fa-check me-1"></i>예
     </button>
     <button type="button" id="q{{ idx }}_no" onclick="setYN({{ idx }},'N')"
-            class="btn btn-sm {% if answers[idx]=='N' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+            style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
         <i class="fas fa-times me-1"></i>아니요
     </button>
 </div>
@@ -39,17 +39,16 @@
                {% if answers[idx]=='Y' %}checked{% endif %}>
         <label class="form-check-label" for="q{{ idx }}_r_yes">예</label>
     </div>
-    <textarea class="form-control" name="q{{ idx }}_text" id="q{{ idx }}_ta"
-              placeholder="{{ q.text_help or '관련 절차를 입력하세요.' }}" rows="5"
-              {% if answers[idx] != 'Y' %}readonly{% endif %}
-              {% if answers[idx] == 'Y' %}required{% endif %}
-              style="cursor:{% if answers[idx]=='N' %}not-allowed{% else %}pointer{% endif %};{% if answers[idx]=='N' %}background-color:#e9ecef;{% endif %}"
-              onclick="clickTextarea4({{ idx }})">{{ textarea_answers[idx] }}</textarea>
     <div class="form-check mt-1">
         <input class="form-check-input" type="radio" name="q{{ idx }}" value="N"
                id="q{{ idx }}_r_no" onchange="toggleTextarea4({{ idx }})"
                {% if answers[idx]=='N' %}checked{% endif %}>
         <label class="form-check-label" for="q{{ idx }}_r_no">아니요</label>
+    </div>
+    <div id="q{{ idx }}_ta_wrap" class="mt-2{% if answers[idx] != 'Y' %} d-none{% endif %}">
+        <textarea class="form-control" name="q{{ idx }}_text" id="q{{ idx }}_ta"
+                  rows="5"
+                  {% if answers[idx] == 'Y' %}required{% endif %}>{{ textarea_answers[idx] }}</textarea>
     </div>
 </div>
 {% endmacro %}
@@ -75,7 +74,7 @@
 {% set q = qs[1] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         <textarea class="form-control" name="q{{ idx }}"
@@ -87,7 +86,7 @@
 {% set q = qs[2] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         {{ yn_field(idx, answers) }}
@@ -98,7 +97,7 @@
 {% set q = qs[3] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         {{ type4_field(idx, q, answers, textarea_answers) }}
@@ -109,7 +108,7 @@
 {% set q = qs[4] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         <textarea class="form-control" name="q{{ idx }}"
@@ -121,7 +120,7 @@
 {% set q = qs[5] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         <textarea class="form-control" name="q{{ idx }}" required
@@ -129,7 +128,7 @@
     </div>
 </div>
 
-{# ── 운영 통제 그룹 (Q47~Q50) ── Cloud+SOC1 시 숨길 수 있음 #}
+{# ── 운영 통제 그룹 (Q47~Q50) ── Cloud 타입 선택 시 숨김 #}
 <div class="section-divider">
     <div class="sub-section-title"><i class="fas fa-cog me-1"></i>운영 통제</div>
 </div>
@@ -138,7 +137,7 @@
 {% set q = qs[6] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         <textarea class="form-control" name="q{{ idx }}" required
@@ -150,7 +149,7 @@
 {% set q = qs[7] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         <textarea class="form-control" name="q{{ idx }}" required
@@ -162,7 +161,7 @@
 {% set q = qs[8] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         <textarea class="form-control" name="q{{ idx }}" required
@@ -174,7 +173,7 @@
 {% set q = qs[9] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         {{ type4_field(idx, q, answers, textarea_answers) }}
@@ -190,7 +189,7 @@
 {% set q = qs[10] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         {{ yn_field(idx, answers) }}
@@ -203,18 +202,17 @@
 {% block section_scripts %}
 <script>
 const _cloudType = '{{ answers[Q_ID["cloud_type"]] }}';
-const _soc1      = '{{ answers[Q_ID["soc1_report"]] }}';
 const _useCloud  = '{{ answers[Q_ID["use_cloud"]] }}';
 
 function applyConditions() {
-    const hasSoc1Cond = ((_cloudType === 'IaaS' || _cloudType === 'PaaS' || _cloudType === 'SaaS') && _soc1 === 'Y');
+    const isCloud = (_cloudType === 'SaaS' || _cloudType === 'PaaS' || _cloudType === 'IaaS');
 
     // ── 배치 분기 ──────────────────────────────────────────────────
     const hasBatch = getVal(41);
     toggleRange(42, 45, hasBatch === 'Y');
 
-    // ── 운영 통제 (Q47~Q50): Cloud+SOC1 시 숨김 ───────────────────
-    toggleRange(47, 50, !hasSoc1Cond);
+    // ── 운영 통제 (Q47~Q50): Cloud 타입 선택 시 숨김 ──────────────
+    toggleRange(47, 50, !isCloud);
 
     // ── SOC1 Review (Q51): Cloud 사용 시만 표시 ────────────────────
     toggleQ(51, _useCloud === 'Y');
@@ -224,13 +222,13 @@ function fillAllSamples() {
     setYN(41, 'Y');  // co_has_batch
     document.querySelector('textarea[name="q42"]').value = 'Control-M';
     setYN(43, 'Y');  // batch_history
-    setYN(44, 'Y');  document.getElementById('q44_ta').value = 'IT팀장 승인 후 배치 등록';
+    document.querySelector('input[name="q44"][value="Y"]').checked = true; toggleTextarea4(44); document.getElementById('q44_ta').value = 'IT팀장 승인 후 배치 등록';
     document.querySelector('textarea[name="q45"]').value = '배치운영팀 이몽룡 과장';
     document.querySelector('textarea[name="q46"]').value = '매일 오전 7시 배치 결과 확인 및 오류 시 담당자 알림';
     document.querySelector('textarea[name="q47"]').value = '장애 발생 시 에스컬레이션 절차에 따라 대응';
     document.querySelector('textarea[name="q48"]').value = '매일 자정 전체 백업, 완료 후 알림 메일 발송';
     document.querySelector('textarea[name="q49"]').value = '신분증 확인 및 출입자 명부 작성 후 출입 가능';
-    setYN(50, 'Y');  document.getElementById('q50_ta').value = '월 1회 보안 패치 현황 점검 및 적용';
+    document.querySelector('input[name="q50"][value="Y"]').checked = true; toggleTextarea4(50); document.getElementById('q50_ta').value = '월 1회 보안 패치 현황 점검 및 적용';
     setYN(51, 'N');  // soc1_review
     applyConditions();
 }

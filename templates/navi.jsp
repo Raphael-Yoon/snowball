@@ -19,6 +19,19 @@
 </head>
 
 <body>
+    <!-- 다크모드 alert-guide-info override -->
+    <style>
+        body.dark-theme .alert-guide-info {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+            color: #7dd3fc !important;
+        }
+    </style>
+    <script>
+        if (localStorage.getItem('snowball-theme') === 'dark') {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
             <a class="navbar-brand" href="/">
@@ -76,7 +89,7 @@
                             <li><a class="dropdown-item" href="{{ url_for('link1.link1') }}">
                                     <i class="fas fa-clipboard-list me-2"></i>RCM 생성
                                 </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link2.link2', reset=1) }}">
+                            <li><a class="dropdown-item" href="{{ url_for('link2_1p.link2_1p_start', reset=1) }}">
                                     <i class="fas fa-user-tie me-2"></i>인터뷰/설계평가
                                 </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('link3.link3') }}">
@@ -108,7 +121,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ url_for('link2.link2', reset=1) }}" class="nav-link">
+                        <a href="{{ url_for('link2_1p.link2_1p_start', reset=1) }}" class="nav-link">
                             <i class="fas fa-user-tie me-1"></i>인터뷰/설계평가
                         </a>
                     </li>
@@ -191,6 +204,8 @@
             html.setAttribute('data-bs-theme', next);
             localStorage.setItem('snowball-theme', next);
             updateThemeIcon(next);
+            applyAlertGuideTheme(next);
+            document.body.classList.toggle('dark-theme', next === 'dark');
         }
 
         function updateThemeIcon(theme) {
@@ -203,10 +218,25 @@
             }
         }
 
-        // 페이지 로드 시 아이콘 초기화
+        function applyAlertGuideTheme(theme) {
+            document.querySelectorAll('.alert-guide-info').forEach(function(el) {
+                if (theme === 'dark') {
+                    el.style.setProperty('background-color', '#1e293b', 'important');
+                    el.style.setProperty('border-color', '#334155', 'important');
+                    el.style.setProperty('color', '#000000', 'important');
+                } else {
+                    el.style.setProperty('background-color', '#f0f9ff', 'important');
+                    el.style.setProperty('border-color', '#bae6fd', 'important');
+                    el.style.setProperty('color', '#0369a1', 'important');
+                }
+            });
+        }
+
+        // 페이지 로드 시 아이콘 및 alert 스타일 초기화
         document.addEventListener('DOMContentLoaded', function() {
             var theme = localStorage.getItem('snowball-theme') || 'light';
             updateThemeIcon(theme);
+            applyAlertGuideTheme(theme);
         });
 
         // 사용자 전환 모달 표시

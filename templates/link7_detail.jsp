@@ -320,9 +320,9 @@
                             <div class="row mt-2">
                                 <div class="col-12">
                                     <strong>테스트절차:</strong>
-                                    <div class="mt-1 p-2 border rounded bg-white"
+                                    <div class="mt-1 p-2 border rounded"
                                         style="max-height: 120px; overflow-y: auto;">
-                                        <span id="modal-test-procedure" class="text-muted"
+                                        <span id="modal-test-procedure"
                                             style="white-space: pre-line;">-</span>
                                     </div>
                                 </div>
