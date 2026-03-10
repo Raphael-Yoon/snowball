@@ -3,6 +3,13 @@
 
 <head>
     <meta charset="UTF-8">
+    <!-- 다크모드 FOUC 방지 -->
+    <script>
+        (function() {
+            var theme = localStorage.getItem('snowball-theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', theme);
+        })();
+    </script>
     <title>Snowball - {{ evaluation_type|default('ITGC') }} 설계평가 - {{ rcm_info.rcm_name }}</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -11,6 +18,12 @@
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        html[data-bs-theme="dark"] .alert-guide-info,
+        html[data-bs-theme="dark"] .alert-guide-info * {
+            color: #000000 !important;
+        }
+    </style>
 </head>
 
 <body>

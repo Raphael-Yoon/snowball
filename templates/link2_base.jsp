@@ -43,7 +43,14 @@
 
         /* Y/N 버튼 */
         .yn-wrap { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
-        .yn-wrap .btn { min-width: 70px; font-size: 0.875rem; padding: 0.25rem 0.75rem; }
+        .yn-wrap .btn { flex: none; width: 80px !important; max-width: 80px !important; min-width: 0 !important; font-size: 0.875rem; padding: 0.25rem 0.75rem; }
+
+        /* 다크모드 텍스트 */
+        html[data-bs-theme="dark"] h2,
+        html[data-bs-theme="dark"] h3,
+        html[data-bs-theme="dark"] .q-text { color: #e9ecef; }
+        html[data-bs-theme="dark"] .q-num,
+        html[data-bs-theme="dark"] p.text-muted { color: #adb5bd !important; }
 
         /* 구분선 */
         .section-divider { border-top: 2px solid #e9ecef; margin: 2rem 0 1.5rem; padding-top: 1rem; }
@@ -144,10 +151,12 @@
         if (yes) {
             yes.classList.toggle('btn-primary',       value === 'Y');
             yes.classList.toggle('btn-outline-primary', value !== 'Y');
+            yes.style.setProperty('width', '80px', 'important');
         }
         if (no) {
-            no.classList.toggle('btn-danger',         value === 'N');
-            no.classList.toggle('btn-outline-danger', value !== 'N');
+            no.classList.toggle('btn-secondary',         value === 'N');
+            no.classList.toggle('btn-outline-secondary', value !== 'N');
+            no.style.setProperty('width', '80px', 'important');
         }
         applyConditions();
     }
@@ -197,31 +206,17 @@
 
     // ── answer_type 4 (Y/N + textarea) ────────────────────────────
     function toggleTextarea4(idx) {
+        const wrap = document.getElementById(`q${idx}_ta_wrap`);
         const ta   = document.getElementById(`q${idx}_ta`);
         const yesR = document.querySelector(`input[name="q${idx}"][value="Y"]`);
-        const noR  = document.querySelector(`input[name="q${idx}"][value="N"]`);
-        if (!ta || !yesR || !noR) return;
+        if (!wrap || !ta || !yesR) return;
         if (yesR.checked) {
-            ta.removeAttribute('readonly');
+            wrap.classList.remove('d-none');
             ta.required = true;
-            ta.style.cursor = '';
-            ta.style.backgroundColor = '';
         } else {
-            ta.setAttribute('readonly', true);
+            wrap.classList.add('d-none');
             ta.value = '';
             ta.required = false;
-            ta.style.cursor = 'not-allowed';
-            ta.style.backgroundColor = '#e9ecef';
-        }
-    }
-
-    function clickTextarea4(idx) {
-        const ta   = document.getElementById(`q${idx}_ta`);
-        const yesR = document.querySelector(`input[name="q${idx}"][value="Y"]`);
-        if (!ta || !yesR) return;
-        if (ta.hasAttribute('readonly')) {
-            yesR.checked = true;
-            toggleTextarea4(idx);
         }
     }
 
@@ -230,6 +225,12 @@
 
     /** fillAllSamples (각 섹션에서 override) */
     function fillAllSamples() {}
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.yn-wrap .btn').forEach(function(btn) {
+            btn.style.setProperty('width', '80px', 'important');
+        });
+    });
     </script>
     {% block section_scripts %}{% endblock %}
 </body>

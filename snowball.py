@@ -19,8 +19,8 @@ load_dotenv(dotenv_path=env_path)
 
 from logger_config import setup_logging, get_logger
 from snowball_link1 import bp_link1
-from snowball_link2 import bp_link2
-from snowball_link2_1page import bp_link2_1p
+from snowball_link2_bak import bp_link2
+from snowball_link2 import bp_link2_1p
 from snowball_link3 import bp_link3
 from snowball_link4 import bp_link4
 from snowball_link5 import bp_link5
@@ -87,9 +87,9 @@ csrf.exempt(bp_link11)
 logger.warning("CSRF Protection enabled with exemptions for API endpoints")
 
 # --- File-based Progress Tracking ---
-# 진행률 관련 기능은 snowball_link2.py로 이동됨
+# 진행률 관련 기능은 snowball_link2_bak.py로 이동됨
 
-# 시작할 질문 번호는 snowball_link2.py에서 관리됨
+# 시작할 질문 번호는 snowball_link2_bak.py에서 관리됨
 
 # 보안 관련 상수 (환경변수에서 로드) - 운영 환경에서만 필수
 is_production_env = os.getenv('PYTHONANYWHERE_DOMAIN') is not None
