@@ -31,8 +31,10 @@
             transition: all 0.2s;
         }
         .step i { font-size: 1.3rem; margin-bottom: 0.2rem; }
-        .step.completed { border-color: #198754; color: #198754; background: #d1e7dd; }
+        .step.completed { border-color: #198754; color: #198754; background: #d1e7dd; cursor: pointer; }
+        .step.completed:hover { border-color: #146c43; background: #a3cfbb; text-decoration: none; }
         .step.active    { border-color: #0d6efd; color: #0d6efd; background: #e7f1ff; font-weight: 600; }
+        a.step { text-decoration: none; }
 
         /* 질문 블록 */
         .question-block { margin-bottom: 1.2rem; }
@@ -69,10 +71,18 @@
             {% for s_key in section_order %}
             {% set s = sections[s_key] %}
             {% set s_idx = loop.index0 %}
-            <div class="step {% if s_idx < cur_section_idx %}completed{% elif s_idx == cur_section_idx %}active{% endif %}">
+            {% if s_idx < cur_section_idx %}
+            <a href="{{ url_for('link2_1p.section_view', section_name=s_key) }}"
+               class="step completed">
+                <i class="fas {{ s.icon }}"></i>
+                <span>{{ s.name.split('(')[0].strip() }}</span>
+            </a>
+            {% else %}
+            <div class="step {% if s_idx == cur_section_idx %}active{% endif %}">
                 <i class="fas {{ s.icon }}"></i>
                 <span>{{ s.name.split('(')[0].strip() }}</span>
             </div>
+            {% endif %}
             {% endfor %}
         </div>
 
@@ -150,11 +160,11 @@
         const no  = document.getElementById(`q${idx}_no`);
         if (yes) {
             yes.classList.toggle('btn-primary',       value === 'Y');
-            yes.classList.toggle('btn-outline-primary', value !== 'Y');
+            yes.classList.toggle('btn-outline-secondary', value !== 'Y');
             yes.style.setProperty('width', '80px', 'important');
         }
         if (no) {
-            no.classList.toggle('btn-secondary',         value === 'N');
+            no.classList.toggle('btn-primary',          value === 'N');
             no.classList.toggle('btn-outline-secondary', value !== 'N');
             no.style.setProperty('width', '80px', 'important');
         }
@@ -174,11 +184,25 @@
                 if (f.dataset.wasRequired) { f.setAttribute('required', ''); delete f.dataset.wasRequired; }
             }
         });
+        renumberQuestions();
     }
 
     /** 연속 범위 표시/숨김 */
     function toggleRange(start, end, show) {
         for (let i = start; i <= end; i++) toggleQ(i, show);
+    }
+
+    /** 표시 중인 질문 번호 순차 재계산 */
+    function renumberQuestions() {
+        let num = 1;
+        document.querySelectorAll('.question-block').forEach(function(block) {
+            if (block.classList.contains('hidden')) return;
+            const numEl = block.querySelector('.q-num');
+            if (!numEl) return;
+            const badge = numEl.querySelector('.badge');
+            numEl.textContent = 'Q' + num++;
+            if (badge) numEl.appendChild(badge);
+        });
     }
 
     // ── answer_type 3 (Y/N + text input) ──────────────────────────

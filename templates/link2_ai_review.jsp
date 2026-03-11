@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Snowball - AI 검토 옵션 선택</title>
+    <!-- 다크모드 FOUC 방지 -->
+    <script>(function(){var t=localStorage.getItem('snowball-theme')||'light';document.documentElement.setAttribute('data-bs-theme',t);})();</script>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -25,7 +27,7 @@
 
         .ai-option-card.selected {
             border-color: #007bff;
-            background-color: #f8f9ff;
+            background-color: rgba(0, 123, 255, 0.1);
             box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
         }
 
@@ -41,6 +43,7 @@
 </head>
 
 <body>
+    {% include 'navi.jsp' %}
     <div class="container text-center mt-5">
         <div class="row justify-content-center">
             <div class="col-md-8">
@@ -121,7 +124,7 @@
                         </div>
 
                         <div class="mt-3">
-                            <div class="card bg-light">
+                            <div class="card">
                                 <div class="card-body">
                                     <div class="row align-items-center">
                                         <div class="col-md-8">

@@ -460,52 +460,52 @@ s_questions = [
     {"index": 3, "text": "Cloud 서비스를 사용하고 있습니까?", "category": "IT PwC", "help": "해당 시스템이 클라우드 환경에서 운영되고 있는지 확인하는 질문입니다.<br>- 예: AWS, Azure, GCP 등의 클라우드 서비스를 이용<br>- 아니오: 자체 데이터센터나 온프레미스 환경에서 운영", "answer_type": "1", "text_help": ""},
     {"index": 4, "text": "어떤 종류의 Cloud입니까?", "category": "IT PwC", "help": "SaaS (Software as a Service): 사용자가 직접 설치 및 관리할 필요 없이, 클라우드에서 제공되는 ERP 소프트웨어를 사용하는 방식.<br>예: SAP S/4HANA Cloud, Oracle NetSuite, Microsoft Dynamics 365<br><br>PaaS (Platform as a Service): 애플리케이션 개발 및 배포를 위한 플랫폼을 클라우드에서 제공하는 방식.<br>예: Microsoft Azure App Service, Google App Engine<br><br>IaaS (Infrastructure as a Service): 기업이 자체적으로 ERP 시스템을 구축하고 운영할 수 있도록 서버, 스토리지, 네트워크 등의 인프라를 제공하는 방식.<br>예: AWS EC2, Microsoft Azure Virtual Machines, Google Cloud Compute Engine", "answer_type": "6", "text_help": "SaaS|PaaS|IaaS"},
     {"index": 5, "text": "클라우드 서비스 업체의 SOC1 Report를 내부에서 검토하는 절차가 있습니까?", "category": "IT PwC", "help": "예: 클라우드 업체로부터 연간 SOC1 Report를 수령하여 내부 감사팀 또는 IT 담당자가 주요 통제 항목을 검토하고 그 결과를 경영진에게 보고함", "answer_type": "1", "text_help": ""},
-    {"index": 6, "text": "사용자 권한부여 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "사용자A가 재무권한을 가지고 있었는데 당기에 구매권한을 추가로 받았을 경우 언제(날짜 등) 구매권한을 받았는지 시스템에서 관리되는 경우를 의미합니다.", "answer_type": "1", "text_help": ""},
-    {"index": 7, "text": "사용자 권한회수 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "기존 권한 회수 시 변경 이력을 관리하고 있는지 확인합니다.<br>Standard 기능을 기준으로 SAP ERP의 경우 권한회수이력을 별도로 저장하며 Oracle ERP의 경우 권한 데이터를 삭제하지 않고 Effective Date로 관리합니다", "answer_type": "1", "text_help": ""},
-    {"index": 8, "text": "시스템 사용자 ID는 사용자 개인별로 발급되고 있습니까?", "category": "APD", "help": "사용자가 시스템에 접속할 때 사용하는 ID의 발급 방식을 확인하는 질문입니다.<br><br>예(개인별 발급):<br>- 홍길동 → hong123, 김철수 → kim456 등 각자의 ID로 로그인<br><br>아니오(공용 발급):<br>- 재무팀 팀원 전체가 'finance01' 등 하나의 ID를 공동으로 사용<br>- 구매팀 전원이 팀 공용 ID로 발주·승인 업무 처리", "answer_type": "1", "text_help": ""},
+    {"index": 6, "text": "시스템 사용자 ID는 사용자 개인별로 발급되고 있습니까?", "category": "APD", "help": "사용자가 시스템에 접속할 때 사용하는 ID의 발급 방식을 확인하는 질문입니다.<br><br>예(개인별 발급):<br>- 홍길동 → hong123, 김철수 → kim456 등 각자의 ID로 로그인<br><br>아니오(공용 발급):<br>- 재무팀 팀원 전체가 'finance01' 등 하나의 ID를 공동으로 사용<br>- 구매팀 전원이 팀 공용 ID로 발주·승인 업무 처리", "answer_type": "1", "text_help": ""},
+    {"index": 7, "text": "사용자 권한부여 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "사용자A가 재무권한을 가지고 있었는데 당기에 구매권한을 추가로 받았을 경우 언제(날짜 등) 구매권한을 받았는지 시스템에서 관리되는 경우를 의미합니다.", "answer_type": "1", "text_help": ""},
+    {"index": 8, "text": "사용자 권한회수 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "기존 권한 회수 시 변경 이력을 관리하고 있는지 확인합니다.<br>Standard 기능을 기준으로 SAP ERP의 경우 권한회수이력을 별도로 저장하며 Oracle ERP의 경우 권한 데이터를 삭제하지 않고 Effective Date로 관리합니다", "answer_type": "1", "text_help": ""},
     {"index": 9, "text": "공용 계정 환경에서 권한 회수 및 퇴사자 접근 차단은 어떻게 관리하고 있습니까?", "category": "APD", "help": "공용 계정을 사용하는 경우 개인별 권한 회수·퇴사자 접근 차단 적용이 어려울 수 있습니다. 현재 시스템에서 이를 대신하는 관리 방식이나 대안적 통제가 있다면 자유롭게 기술해 주세요.<br><br>예:<br>- 퇴사 발생 시 팀장이 IT팀에 연락하여 공용 ID의 비밀번호를 변경<br>- 공용 ID 사용 가능 인원 목록을 주기적으로 갱신하고 퇴사자를 제외<br>- 별도 접근 로그로 사용자별 행위 추적<br>- 특별한 관리 방식이 없는 경우 그대로 기술해 주세요.", "answer_type": "5", "text_help": ""},
-    {"index": 10, "text": "사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD", "help": "예) 새로운 권한이 필요한 경우 ITSM을 통해 요청서를 작성하고 팀장의 승인을 받은 후 IT팀에서 해당 권한을 부여함", "answer_type": "4", "text_help": "예) 새로운 권한이 필요한 경우 ITSM을 통해 요청서를 작성하고 팀장의 승인을 받은 후 IT팀에서 해당 권한을 부여함"},
-    {"index": 11, "text": "부서이동 등 기존권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?", "category": "APD", "help": "예1) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 기존 권한을 회수함<br>예2) 인사팀에서 인사명령을 IT팀으로 전달하면 IT팀에서 해당 인원의 기존 권한을 회수함", "answer_type": "4", "text_help": "예) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 기존 권한을 회수함"},
+    {"index": 10, "text": "사용자가 새로운 권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 받는 절차가 있습니까?", "category": "APD", "help": "예) 새로운 권한이 필요한 경우 ITSM을 통해 요청서를 작성하고 팀장의 승인을 받은 후 IT팀에서 해당 권한을 부여함", "answer_type": "4", "text_help": "예) 새로운 권한이 필요한 경우 ITSM을 통해 요청서를 작성하고 팀장의 승인을 받은 후 IT팀에서 해당 권한을 부여함"},
+    {"index": 11, "text": "부서이동 등 기존 권한의 회수가 필요한 경우 기존 권한을 회수하는 절차가 있습니까?", "category": "APD", "help": "예1) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 기존 권한을 회수함<br>예2) 인사팀에서 인사명령을 IT팀으로 전달하면 IT팀에서 해당 인원의 기존 권한을 회수함", "answer_type": "4", "text_help": "예) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 기존 권한을 회수함"},
     {"index": 12, "text": "퇴사자 발생 시 접근권한을 차단하는 절차가 있습니까?", "category": "APD", "help": "예1) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 접근권한을 차단함<br>예2) 인사팀에서 인사명령을 IT팀으로 전달하면 IT팀에서 해당 인원의 접근권한을 차단함", "answer_type": "4", "text_help": "예) 인사팀에서 인사시스템에 인사명령을 입력하면 시스템에서 자동으로 접근권한을 차단함"},
     {"index": 13, "text": "Application 관리자(Superuser) 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD", "help": "예1) IT운영팀 김xx 책임", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
     {"index": 14, "text": "전체 사용자가 보유한 권한에 대한 적절성을 모니터링하는 절차가 있습니까?", "category": "APD", "help": "사용자에게 부여된 권한이 현재 업무에 적합한지를 주기적으로 검토하는 절차를 의미합니다.<br>예: 매분기 사용자 권한 적정성 검토 수행, 부서이동 시 기존 권한 회수 및 새로운 권한 부여 모니터링", "answer_type": "4", "text_help": "예) 매분기 사용자 권한 적정성 검토 수행, 부서이동 시 기존 권한 회수 및 새로운 권한 부여 모니터링"},
     {"index": 15, "text": "패스워드 설정사항을 기술해 주세요.", "category": "APD", "help": "예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등", "answer_type": "5", "text_help": ""},
     {"index": 16, "text": "회사에서 DB에 접속하여 필요한 작업을 수행하는 것이 가능합니까?", "category": "APD", "help": "회사에서 데이터가 저장된 곳에 직접 들어가서 데이터를 확인하거나 수정할 수 있는지를 묻는 질문입니다.<br><br>예시:<br>- 가능한 경우: IT 관리자가 데이터베이스에 직접 접속해서 고객 정보를 수정하거나 조회할 수 있음<br>- 불가능한 경우: 모든 데이터 작업은 시스템 화면을 통해서만 가능하고, 데이터베이스에 직접 들어갈 수 없음", "answer_type": "1", "text_help": ""},
     {"index": 17, "text": "데이터 변경 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "시스템의 기능을 이용하여 데이터를 변경한 것이 아닌 관리자 등이 DB에 접속하여 쿼리를 통해 데이터를 변경한 건이 대상이며 해당 변경건만 추출이 가능해야 합니다", "answer_type": "1", "text_help": ""},
-    {"index": 18, "text": "데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD", "help": "예) 데이터 변경 필요 시 담당자는 ITSM을 통해 요청서를 작성하고 책임자의 승인을 받은 후 IT담당자가 데이터를 변경함", "answer_type": "4", "text_help": "예) 데이터 변경 필요 시 담당자는 ITSM을 통해 요청서를 작성하고 책임자의 승인을 받은 후 IT담당자가 데이터를 변경함"},
+    {"index": 18, "text": "데이터 변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 받는 절차가 있습니까?", "category": "APD", "help": "예) 데이터 변경 필요 시 담당자는 ITSM을 통해 요청서를 작성하고 책임자의 승인을 받은 후 IT담당자가 데이터를 변경함", "answer_type": "4", "text_help": "예) 데이터 변경 필요 시 담당자는 ITSM을 통해 요청서를 작성하고 책임자의 승인을 받은 후 IT담당자가 데이터를 변경함"},
     {"index": 19, "text": "데이터 변경 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD", "help": "예1) IT운영팀 최xx 책임", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
     {"index": 20, "text": "DB 종류와 버전을 작성해 주세요.", "category": "IT PwC", "help": "예: Oracle R12, MS SQL Server 2008 등", "answer_type": "2", "text_help": ""},
     {"index": 21, "text": "DB 접근제어 Tool을 사용하고 있습니까?", "category": "IT PwC", "help": "예: DBi, DB Safer 등", "answer_type": "3", "text_help": "제품명을 입력하세요"},
     {"index": 22, "text": "DB 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "데이터베이스 접근 권한을 부여한 날짜, 사용자, 부여자, 권한 종류 등의 이력이 시스템에 기록되고 있는지 확인하는 질문입니다.<br>예: 권한 부여 시 로그 기록, DB 내장 관리 시스템에의 이력 저장", "answer_type": "1", "text_help": ""},
-    {"index": 23, "text": "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD", "help": "예) DB 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함", "answer_type": "4", "text_help": "예) DB 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함"},
+    {"index": 23, "text": "DB 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 받는 절차가 있습니까?", "category": "APD", "help": "예) DB 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함", "answer_type": "4", "text_help": "예) DB 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함"},
     {"index": 24, "text": "DB 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD", "help": "예) 인프라관리팀 김xx 과장, DBA", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
     {"index": 25, "text": "DB 패스워드 설정사항을 기술해 주세요.", "category": "APD", "help": "예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등", "answer_type": "5", "text_help": ""},
     {"index": 26, "text": "회사에서 OS서버에 접속하여 필요한 작업을 수행하는 것이 가능합니까?", "category": "APD", "help": "운영체제(OS) 수준에서 서버에 직접 접속하여 시스템 관리, 파일 수정, 로그 확인 등의 작업을 수행할 수 있는지를 확인하는 질문입니다.<br>예: SSH, Telnet, RDP 등을 통한 서버 접속 가능 여부<br>이 질문의 답변이 '아니오'일 경우, OS 관련 통제(APD12, APD13, APD14)는 해당사항이 없는 것으로 처리됩니다.", "answer_type": "1", "text_help": ""},
     {"index": 27, "text": "OS 종류와 버전을 작성해 주세요.", "category": "IT PwC", "help": "예: 윈도우즈 서버 2012, Unix AIX, Linux Redhat 등", "answer_type": "2", "text_help": ""},
     {"index": 28, "text": "OS 접근제어 Tool을 사용하고 있습니까?", "category": "IT PwC", "help": "예: Hiware, CyberArk 등", "answer_type": "3", "text_help": "제품명을 입력하세요"},
     {"index": 29, "text": "OS 접근권한 부여 이력이 시스템에 기록되고 있습니까?", "category": "APD", "help": "운영체제 수준의 접근 권한을 부여한 날짜, 사용자, 부여자, 권한 내용 등의 이력이 시스템에 기록되고 있는지 확인하는 질문입니다.<br>예: Active Directory 로그, 리눅스 audit 로그, 보안 관리 솔루션 내 이력 관리", "answer_type": "1", "text_help": ""},
-    {"index": 30, "text": "OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "APD", "help": "예) OS 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함", "answer_type": "4", "text_help": "예) OS 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함"},
+    {"index": 30, "text": "OS 접근권한이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 받는 절차가 있습니까?", "category": "APD", "help": "예) OS 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함", "answer_type": "4", "text_help": "예) OS 접근권한 필요시 담당자는 ITSM을 통해 요청서를 작성하고 서버 책임자에게 승인을 받은 후 서버 관리자가 접근 권한을 부여함"},
     {"index": 31, "text": "OS 관리자 권한을 보유한 인원에 대해 기술해 주세요.", "category": "APD", "help": "예) 인프라관리팀 이xx 책임, 보안관리자", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
     {"index": 32, "text": "OS 패스워드 설정사항을 기술해 주세요.", "category": "APD", "help": "예) 최소자리: 8, 복잡성: 영문/숫자/특수문자, 변경주기: 90일 등", "answer_type": "5", "text_help": ""},
     {"index": 33, "text": "외부에서 시스템에 원격 접속하는 경우 VPN 등의 접근 통제 수단을 사용하고 있습니까?", "category": "APD", "help": "재택근무, 출장, 외부 업체 접속 등 외부 네트워크에서 시스템에 접근할 때 사용하는 보안 수단을 확인하는 질문입니다.<br>예:<br>- VPN(Virtual Private Network) 사용<br>- 2차 인증(MFA) 사용<br>- 아니오: 별도의 접근 통제 없이 인터넷으로 직접 접속", "answer_type": "3", "text_help": "VPN 솔루션명을 입력하세요"},
-    {"index": 34, "text": "주요 로직을 회사내부에서 수정하여 사용할 수 있습니까?", "category": "IT PwC", "help": "시스템의 핵심 기능을 회사에서 직접 변경할 수 있는지를 의미합니다.<br>예:<br>- 가능: 회사 개발팀이 계산 방식이나 업무 절차를 수정할 수 있음<br>- 불가능: 외부에서 만든 패키지 소프트웨어로 수정 불가", "answer_type": "1", "text_help": ""},
+    {"index": 34, "text": "주요 로직을 회사 내부에서 수정하여 사용할 수 있습니까?", "category": "IT PwC", "help": "시스템의 핵심 기능을 회사에서 직접 변경할 수 있는지를 의미합니다.<br>예:<br>- 가능: 회사 개발팀이 계산 방식이나 업무 절차를 수정할 수 있음<br>- 불가능: 외부에서 만든 패키지 소프트웨어로 수정 불가", "answer_type": "1", "text_help": ""},
     {"index": 35, "text": "프로그램 변경 이력이 시스템에 기록되고 있습니까?", "category": "PC", "help": "변경에 대한 History가 시스템에 의해 기록되어야 합니다. A화면을 1, 3, 5월에 요청서를 받아 변경했다면 각각의 이관(배포)이력이 기록되어야 하며 자체기능, 배포툴, 형상관리툴 등을 사용할 수 있습니다.", "answer_type": "1", "text_help": ""},
-    {"index": 36, "text": "프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 득하는 절차가 있습니까?", "category": "PC", "help": "예) 프로그램 기능 변경 필요시 ITSM을 통해 요청서를 작성하고 부서장의 승인을 득함", "answer_type": "4", "text_help": "예) 프로그램 기능 변경 필요시 ITSM을 통해 요청서를 작성하고 부서장의 승인을 득함"},
-    {"index": 37, "text": "프로그램 변경시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?", "category": "PC", "help": "예) 프로그램 기능 변경 완료 후 요청자에 의해 사용자 테스트가 수행되고 그 결과가 문서화됨", "answer_type": "4", "text_help": "예) 프로그램 기능 변경 완료 후 요청자에 의해 사용자 테스트가 수행되고 그 결과가 문서화됨"},
-    {"index": 38, "text": "프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "PC", "help": "예) 프로그램 기능 변경 및 사용자 테스트 완료 후 변경담당자로부터 이관 요청서가 작성되고 부서장의 승인을 득함", "answer_type": "4", "text_help": "예) 프로그램 기능 변경 및 사용자 테스트 완료 후 변경담당자로부터 이관 요청서가 작성되고 부서장의 승인을 득함"},
+    {"index": 36, "text": "프로그램 변경이 필요한 경우 요청서를 작성하고 부서장의 승인을 받는 절차가 있습니까?", "category": "PC", "help": "예) 프로그램 기능 변경 필요 시 ITSM을 통해 요청서를 작성하고 부서장의 승인을 받음", "answer_type": "4", "text_help": "예) 프로그램 기능 변경 필요 시 ITSM을 통해 요청서를 작성하고 부서장의 승인을 받음"},
+    {"index": 37, "text": "프로그램 변경 시 사용자 테스트를 수행하고 그 결과를 문서화하는 절차가 있습니까?", "category": "PC", "help": "예) 프로그램 기능 변경 완료 후 요청자에 의해 사용자 테스트가 수행되고 그 결과가 문서화됨", "answer_type": "4", "text_help": "예) 프로그램 기능 변경 완료 후 요청자에 의해 사용자 테스트가 수행되고 그 결과가 문서화됨"},
+    {"index": 38, "text": "프로그램 변경 완료 후 이관(배포)을 위해 부서장 등의 승인을 받는 절차가 있습니까?", "category": "PC", "help": "예) 프로그램 기능 변경 및 사용자 테스트 완료 후 변경담당자로부터 이관 요청서가 작성되고 부서장의 승인을 받음", "answer_type": "4", "text_help": "예) 프로그램 기능 변경 및 사용자 테스트 완료 후 변경담당자로부터 이관 요청서가 작성되고 부서장의 승인을 받음"},
     {"index": 39, "text": "이관(배포)권한을 보유한 인원에 대해 기술해 주세요.", "category": "PC", "help": "예) 인프라관리팀 박xx 수석, 서버관리자", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
     {"index": 40, "text": "운영서버 외 별도의 개발 또는 테스트 서버를 운용하고 있습니까?", "category": "PC", "help": "JSP, ASP 등으로 개발된 웹시스템의 경우 localhost 또는 127.0.0.1을 개발서버로도 볼 수 있습니다", "answer_type": "1", "text_help": ""},
-    {"index": 41, "text": "현재 실행중인 배치 스케줄이 있습니까?", "category": "CO", "help": "시스템이 정해진 시간에 자동으로 수행하는 작업이 있는지 확인하는 질문입니다.<br>예:<br>- 매일 밤 12시에 주문 데이터 집계 작업<br>- 매월 말 월천결산 데이터 백업<br>- 매주 월요일 사용자 권한 점검", "answer_type": "1", "text_help": ""},
+    {"index": 41, "text": "현재 실행 중인 배치 스케줄이 있습니까?", "category": "CO", "help": "시스템이 정해진 시간에 자동으로 수행하는 작업이 있는지 확인하는 질문입니다.<br>예:<br>- 매일 밤 12시에 주문 데이터 집계 작업<br>- 매월 말 월천결산 데이터 백업<br>- 매주 월요일 사용자 권한 점검", "answer_type": "1", "text_help": ""},
     {"index": 42, "text": "별도의 Batch Schedule Tool을 사용하고 있습니까?", "category": "IT PwC", "help": "예: Waggle, JobScheduler 등", "answer_type": "3", "text_help": "제품명을 입력하세요"},
     {"index": 43, "text": "배치 스케줄 등록/변경 이력이 시스템에 기록되고 있습니까?", "category": "CO", "help": "개발되어 등록된 배치 프로그램(Background Job)을 스케줄로 등록 또는 변경한 경우로 한정합니다. 배치 프로그램을 개발하여 운영서버에 반영하는 것은 이 경우에 포함되지 않습니다", "answer_type": "1", "text_help": ""},
-    {"index": 44, "text": "배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 득하는 절차가 있습니까?", "category": "CO", "help": "예) 배치 스케줄이 필요한 경우 ITSM을 통해 요청서를 작성하고 승인권자의 승인을 득한 후 적절한 담당자에 의해 스케줄이 등록됨", "answer_type": "4", "text_help": "예) 배치 스케줄이 필요한 경우 ITSM을 통해 요청서를 작성하고 승인권자의 승인을 득한 후 적절한 담당자에 의해 스케줄이 등록됨"},
+    {"index": 44, "text": "배치 스케줄 등록/변경이 필요한 경우 요청서를 작성하고 부서장 등의 승인을 받는 절차가 있습니까?", "category": "CO", "help": "예) 배치 스케줄이 필요한 경우 ITSM을 통해 요청서를 작성하고 승인권자의 승인을 받은 후 적절한 담당자에 의해 스케줄이 등록됨", "answer_type": "4", "text_help": "예) 배치 스케줄이 필요한 경우 ITSM을 통해 요청서를 작성하고 승인권자의 승인을 받은 후 적절한 담당자에 의해 스케줄이 등록됨"},
     {"index": 45, "text": "배치 스케줄을 등록/변경할 수 있는 인원에 대해 기술해 주세요.", "category": "CO", "help": "예) 시스템 운영팀 최xx 과장, 시스템운영자", "answer_type": "5", "text_help": "권한 보유 인원의 부서, 직급, 직무 등"},
-    {"index": 46, "text": "배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.", "category": "CO", "help": "예1) 매일 아침 배치수행결과를 확인하며 문서화하며 오류 발생시 원인파악 및 조치현황 등을 함께 기록함<br>예2) 오류 발생시에만 점검결과를 작성하며 오류 발생 기록은 삭제하지 않고 유지됨", "answer_type": "5", "text_help": ""},
-    {"index": 47, "text": "장애 발생시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO", "help": "시스템에 문제가 생겼을 때 어떻게 대처하고 해결하는지에 대한 절차를 설명해 주세요.<br>예:<br>- 시스템 중단 시 연락체계 및 복구 절차<br>- 데이터 오류 발견 시 수정 및 보고 절차<br>- 외부 공격이나 보안 사고 대응 방법", "answer_type": "5", "text_help": ""},
+    {"index": 46, "text": "배치 실행 오류 등에 대한 모니터링은 어떻게 수행되고 있는지 기술해 주세요.", "category": "CO", "help": "예1) 매일 아침 배치 수행 결과를 확인하며 문서화하며 오류 발생 시 원인 파악 및 조치 현황 등을 함께 기록함<br>예2) 오류 발생 시에만 점검결과를 작성하며 오류 발생 기록은 삭제하지 않고 유지됨", "answer_type": "5", "text_help": ""},
+    {"index": 47, "text": "장애 발생 시 이에 대응하고 조치하는 절차에 대해 기술해 주세요.", "category": "CO", "help": "시스템에 문제가 생겼을 때 어떻게 대처하고 해결하는지에 대한 절차를 설명해 주세요.<br>예:<br>- 시스템 중단 시 연락체계 및 복구 절차<br>- 데이터 오류 발견 시 수정 및 보고 절차<br>- 외부 공격이나 보안 사고 대응 방법", "answer_type": "5", "text_help": ""},
     {"index": 48, "text": "백업은 어떻게 수행되고 또 어떻게 모니터링되고 있는지 기술해 주세요.", "category": "CO", "help": "시스템의 데이터를 안전하게 복사해서 보조하는 방법과 이것이 제대로 되고 있는지 확인하는 방법을 설명해 주세요.<br>예:<br>- 매일 밤에 전체 데이터 복사 후 외부 저장장치에 저장<br>- 백업 완료 시 알림 메일 발송<br>- 주기적으로 백업 데이터 복구 테스트 수행", "answer_type": "5", "text_help": ""},
-    {"index": 49, "text": "서버실 출입시의 절차에 대해 기술해 주세요.", "category": "CO", "help": "서버나 주요 IT 장비가 있는 방에 들어갈 때의 보안 절차를 설명해 주세요.<br>예:<br>- 신분증 확인 및 출입자 명부 작성<br>- 보안카드나 비밀번호로 출입문 통과<br>- 출입 시간 기록 및 CCTV 모니터링<br>- 외부 인원의 경우 동반자 필요 여부", "answer_type": "5", "text_help": ""},
+    {"index": 49, "text": "서버실 출입 시 절차에 대해 기술해 주세요.", "category": "CO", "help": "서버나 주요 IT 장비가 있는 방에 들어갈 때의 보안 절차를 설명해 주세요.<br>예:<br>- 신분증 확인 및 출입자 명부 작성<br>- 보안카드나 비밀번호로 출입문 통과<br>- 출입 시간 기록 및 CCTV 모니터링<br>- 외부 인원의 경우 동반자 필요 여부", "answer_type": "5", "text_help": ""},
     {"index": 50, "text": "OS, DB 등 시스템 소프트웨어에 대한 보안 패치를 주기적으로 적용하는 절차가 있습니까?", "category": "CO", "help": "운영체제(OS), 데이터베이스(DB), 미들웨어 등 시스템 구성요소에 대한 보안 취약점 패치를 정기적으로 적용하는 절차가 있는지 확인합니다.<br>예:<br>- 월 1회 보안 패치 현황 점검 및 적용<br>- 긴급 보안 패치의 경우 발표 후 1주일 이내 적용<br>- 패치 적용 전 테스트 환경에서 검증 절차 수행", "answer_type": "4", "text_help": "예) 월 1회 보안 패치 현황 점검 및 적용, 긴급 패치의 경우 발표 후 1주일 이내 적용"},
-    {"index": 51, "text": "SOC1 Report를 검토/승인하는 절차 및 통제가 존재합니까?", "category": "IT PwC", "help": "클라우드 서비스 제공업체에서 발행하는 SOC1 보고서를 회사에서 검토하고 승인하는 공식적인 절차가 있는지 확인하는 질문입니다.<br>예:<br>- 연간 또는 정기적으로 SOC1 보고서 수령 및 검토<br>- IT 보안팀 또는 감사팀의 검토 및 승인 절차<br>- SOC1 보고서상의 예외사항 또는 개선권고사항에 대한 대응 계획 수립<br>- 검토 결과의 문서화 및 보고", "answer_type": "1", "text_help": ""}
+    {"index": 51, "text": "SOC1 Report를 검토/승인하는 절차 및 통제가 있습니까?", "category": "IT PwC", "help": "클라우드 서비스 제공업체에서 발행하는 SOC1 보고서를 회사에서 검토하고 승인하는 공식적인 절차가 있는지 확인하는 질문입니다.<br>예:<br>- 연간 또는 정기적으로 SOC1 보고서 수령 및 검토<br>- IT 보안팀 또는 감사팀의 검토 및 승인 절차<br>- SOC1 보고서상의 예외사항 또는 개선권고사항에 대한 대응 계획 수립<br>- 검토 결과의 문서화 및 보고", "answer_type": "1", "text_help": ""}
 ]
 
 question_count = len(s_questions)
@@ -522,9 +522,9 @@ Q_ID = {
     'use_cloud':            3,   # Cloud 사용 여부
     'cloud_type':           4,   # Cloud 종류 (SaaS/PaaS/IaaS)
     'soc1_report':          5,   # SOC1 Report 내부 검토 절차 여부
-    'apd01_auth_history':   6,   # 사용자 권한부여 이력
-    'apd02_revoke_history': 7,   # 사용자 권한회수 이력
-    'apd15_shared_account': 8,   # 공유 계정 존재 여부
+    'apd15_shared_account': 6,   # 공유 계정 존재 여부 (분기점, 구 index 8)
+    'apd01_auth_history':   7,   # 사용자 권한부여 이력
+    'apd02_revoke_history': 8,   # 사용자 권한회수 이력
     'apd15_shared_mgmt':    9,   # 공용 계정 환경 권한 관리 방식 (apd15=N 시 표시)
     'apd01_procedure':      10,  # 신규 권한 승인 절차
     'apd02_procedure':      11,  # 권한 회수 절차
@@ -550,7 +550,7 @@ Q_ID = {
     'apd13_os_admin':       31,  # OS 관리자 권한자
     'apd14_os_password':    32,  # OS 패스워드 설정
     'apd16_vpn':            33,  # 외부 접속(VPN) 사용 여부
-    'pc_can_modify':        34,  # 주요 로직 수정 가능 여부 (분기점)
+    'pc_can_modify':        34,  # 주요 로직 수정 가능 여부 (컨텍스트 파악용)
     'pc01_change_history':  35,  # 프로그램 변경 이력
     'pc01_procedure':       36,  # 프로그램 변경 승인 절차
     'pc02_procedure':       37,  # 사용자 테스트 절차
@@ -589,24 +589,28 @@ def get_conditional_questions(answers):
     # Cloud 타입별 스킵 (SOC1 여부 무관)
     cloud_type = str(answers[Q_ID['cloud_type']]) if len(answers) > Q_ID['cloud_type'] and answers[Q_ID['cloud_type']] else ''
 
-    # SaaS: apd04_admin, DB+OS그룹(Q16~32), PC전체+CO운영통제(Q34~50) 생략
-    # apd16_vpn(Q33)은 Cloud 무관하므로 스킵하지 않음
+    # SaaS: DB+OS그룹(Q16~32), PC전체(Q34~40), CO백업·서버실·보안패치(Q48~50) 생략
+    # apd04_admin(Q13): App레벨 SuperUser 자사관리 → 유지
+    # apd16_vpn(Q33): Cloud 무관 → 유지
+    # co04_incident(Q47): 업체 장애 시 자사 내부 에스컬레이션 절차 필요 → 유지
     if cloud_type == 'SaaS':
-        skip_ranges.append((Q_ID['apd04_admin'], Q_ID['apd04_admin']))
         skip_ranges.append((Q_ID['apd07_db_access'], Q_ID['apd14_os_password']))   # Q16~32 (DB+OS그룹)
-        skip_ranges.append((Q_ID['pc_can_modify'], Q_ID['co07_security_patch']))   # Q34~50 (PC+CO운영통제)
+        skip_ranges.append((Q_ID['pc_can_modify'], Q_ID['pc05_dev_env']))           # Q34~40 (PC전체)
+        skip_ranges.append((Q_ID['co05_backup'], Q_ID['co07_security_patch']))      # Q48~50 (백업·서버실·보안패치)
 
-    # IaaS: apd10_db_admin, apd13_os_admin, co04~co07 생략
+    # IaaS: apd10_db_admin, apd13_os_admin, co06_server_room만 생략
+    # co04_incident(Q47)·co05_backup(Q48)·co07_security_patch(Q50): 자사 관리 → 유지
+    # co06_server_room(Q49): 물리 서버실 없음 → 스킵
     elif cloud_type == 'IaaS':
         skip_ranges.append((Q_ID['apd10_db_admin'], Q_ID['apd10_db_admin']))
         skip_ranges.append((Q_ID['apd13_os_admin'], Q_ID['apd13_os_admin']))
-        skip_ranges.append((Q_ID['co04_incident'], Q_ID['co07_security_patch']))
+        skip_ranges.append((Q_ID['co06_server_room'], Q_ID['co06_server_room']))    # Q49만 스킵
 
-    # PaaS: DB+OS그룹(Q16~32), co04~co07 생략
-    # apd16_vpn(Q33)은 Cloud 무관하므로 스킵하지 않음
+    # PaaS: DB+OS그룹(Q16~32), CO백업·서버실·보안패치(Q48~50) 생략
+    # co04_incident(Q47): 앱 레벨 장애 자사 대응 → 유지
     elif cloud_type == 'PaaS':
         skip_ranges.append((Q_ID['apd07_db_access'], Q_ID['apd14_os_password']))   # Q16~32 (DB+OS그룹)
-        skip_ranges.append((Q_ID['co04_incident'], Q_ID['co07_security_patch']))
+        skip_ranges.append((Q_ID['co05_backup'], Q_ID['co07_security_patch']))      # Q48~50 (백업·서버실·보안패치)
 
     # DB 접속 불가 시 apd07_data_history~apd11_db_password(16~24) 생략
     if len(answers) > Q_ID['apd07_db_access'] and answers[Q_ID['apd07_db_access']] and str(answers[Q_ID['apd07_db_access']]).upper() == 'N':
@@ -615,10 +619,6 @@ def get_conditional_questions(answers):
     # OS 접속 불가 시 apd12_os_type~apd14_os_password(26~31) 생략
     if len(answers) > Q_ID['apd12_os_access'] and answers[Q_ID['apd12_os_access']] and str(answers[Q_ID['apd12_os_access']]).upper() == 'N':
         skip_ranges.append((Q_ID['apd12_os_type'], Q_ID['apd14_os_password']))
-
-    # 로직 수정 불가 시 pc01_change_history~pc05_dev_env(34~39) 생략
-    if len(answers) > Q_ID['pc_can_modify'] and answers[Q_ID['pc_can_modify']] and str(answers[Q_ID['pc_can_modify']]).upper() == 'N':
-        skip_ranges.append((Q_ID['pc01_change_history'], Q_ID['pc05_dev_env']))
 
     # 배치 스케줄 없을 시 co01_batch_tool~co03_monitoring(41~45) 생략
     if len(answers) > Q_ID['co_has_batch'] and answers[Q_ID['co_has_batch']] and str(answers[Q_ID['co_has_batch']]).upper() == 'N':
@@ -676,26 +676,27 @@ def get_skipped_controls(answers):
 
         if cloud_type and has_soc1_report:
             if cloud_type == 'SaaS':
-                # APD15(공유계정)·APD16(VPN)은 SaaS에서도 적용되므로 스킵하지 않음
+                # CO04(장애대응): 자사 내부 에스컬레이션 절차 필요 → 유지
                 skipped_controls.update([
-                    'APD04',
                     'APD07', 'APD08', 'APD09', 'APD10', 'APD11',
                     'APD12', 'APD13', 'APD14',
                     'PC01', 'PC02', 'PC03', 'PC04', 'PC05',
-                    'CO01', 'CO02', 'CO03',
-                    'CO04', 'CO05', 'CO06', 'CO07'
+                    'CO05', 'CO06', 'CO07'
                 ])
             elif cloud_type == 'PaaS':
+                # CO04(장애대응): 앱 레벨 장애 자사 대응 → 유지
                 skipped_controls.update([
                     'APD07', 'APD08', 'APD09', 'APD10', 'APD11',
                     'APD12', 'APD13', 'APD14',
-                    'CO04', 'CO05', 'CO06', 'CO07'
+                    'CO05', 'CO06', 'CO07'
                 ])
             elif cloud_type == 'IaaS':
+                # CO04(장애대응)·CO05(백업)·CO07(보안패치): 자사 관리 → 유지
+                # CO06(서버실): 물리 서버실 없음 → 스킵
                 skipped_controls.update([
                     'APD11',
                     'APD13',
-                    'CO04', 'CO05', 'CO06', 'CO07'
+                    'CO06'
                 ])
 
     # DB 접속 불가 시 DB 관련 통제 해당없음
@@ -705,10 +706,6 @@ def get_skipped_controls(answers):
     # OS 접속 불가 시 OS 관련 통제 해당없음
     if len(answers) > Q_ID['apd12_os_access'] and answers[Q_ID['apd12_os_access']] and str(answers[Q_ID['apd12_os_access']]).upper() == 'N':
         skipped_controls.update(['APD12', 'APD13', 'APD14'])
-
-    # 로직 수정 불가 시 PC 관련 통제 해당없음
-    if len(answers) > Q_ID['pc_can_modify'] and answers[Q_ID['pc_can_modify']] and str(answers[Q_ID['pc_can_modify']]).upper() == 'N':
-        skipped_controls.update(['PC01', 'PC02', 'PC03', 'PC04', 'PC05'])
 
     # 배치 스케줄 없을 시 CO01~CO03 해당없음
     if len(answers) > Q_ID['co_has_batch'] and answers[Q_ID['co_has_batch']] and str(answers[Q_ID['co_has_batch']]).upper() == 'N':
@@ -738,10 +735,6 @@ def clear_skipped_answers(answers, textarea_answers):
     # OS 접속 불가 시 apd12_os_type~apd14_os_password 생략
     if len(answers) > Q_ID['apd12_os_access'] and answers[Q_ID['apd12_os_access']] and str(answers[Q_ID['apd12_os_access']]).upper() == 'N':
         skip_ranges.append((Q_ID['apd12_os_type'], Q_ID['apd14_os_password']))
-
-    # 로직 수정 불가 시 pc01_change_history~pc05_dev_env 생략
-    if len(answers) > Q_ID['pc_can_modify'] and answers[Q_ID['pc_can_modify']] and str(answers[Q_ID['pc_can_modify']]).upper() == 'N':
-        skip_ranges.append((Q_ID['pc01_change_history'], Q_ID['pc05_dev_env']))
 
     # 배치 스케줄 없을 시 co01_batch_tool~co03_monitoring 생략
     if len(answers) > Q_ID['co_has_batch'] and answers[Q_ID['co_has_batch']] and str(answers[Q_ID['co_has_batch']]).upper() == 'N':
@@ -979,9 +972,6 @@ def is_ineffective(control, answers):
         return False  # 답변이 부족하면 기본값 반환
     
     # 조건부 N/A 처리
-    if control.startswith('PC') and answers[Q_ID['pc_can_modify']] == 'N':
-        return False  # 로직 수정 불가 시 PC 통제 N/A
-
     if control in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11'] and answers[Q_ID['apd07_db_access']] == 'N':
         return False  # DB 접속 불가 시 DB 관련 통제 N/A
 
@@ -1635,16 +1625,16 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
         if cloud_type and has_soc1_report:
             cloud_skip_message = ""
             if cloud_type == 'SaaS':
-                if control_number in ['APD04', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 
-                                    'APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 
-                                    'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06']:
+                if control_number in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11',
+                                    'APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05',
+                                    'CO05', 'CO06', 'CO07']:
                     cloud_skip_message = f"SaaS 환경에서는 서비스 제공업체가 담당합니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
             elif cloud_type == 'PaaS':
-                if control_number in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11', 
-                                    'APD12', 'APD13', 'APD14', 'CO04', 'CO05', 'CO06']:
+                if control_number in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11',
+                                    'APD12', 'APD13', 'APD14', 'CO05', 'CO06', 'CO07']:
                     cloud_skip_message = f"PaaS 환경에서는 플랫폼 제공업체가 담당합니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
             elif cloud_type == 'IaaS':
-                if control_number in ['APD11', 'APD13', 'CO04', 'CO05', 'CO06']:
+                if control_number in ['APD11', 'APD13', 'CO06']:
                     cloud_skip_message = f"IaaS 환경에서는 인프라 제공업체가 담당합니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
             
             if cloud_skip_message:
@@ -1655,12 +1645,6 @@ def get_text_itgc(answers, control_number, textarea_answers=None, enable_ai_revi
                 return result
         
         # 조건부 N/A 처리
-        if control_number.startswith('PC') and answers[Q_ID['pc_can_modify']] == 'N':
-            result['A1'] = control_number
-            result['B1'] = ITGC_CONTROLS.get(control_number, {}).get('title', control_number)
-            result['B2'] = f"이 시스템은 상용소프트웨어이며 회사내에서 수정이 불가능합니다. {control_number} 통제는 적용되지 않으므로(N/A) 미비점이 아닙니다."
-            result['C2'] = result['B2']
-            return result
 
         if control_number in ['APD01', 'APD02', 'APD03'] and answers[Q_ID['apd15_shared_account']] == 'N':
             result['A1'] = control_number
@@ -2060,11 +2044,11 @@ def export_interview_excel_and_send(answers, textarea_answers, get_text_itgc, fi
                 has_soc1_report = len(answers) > 5 and answers[5] and str(answers[5]).upper() == 'Y'
                 
                 if cloud_type and has_soc1_report:
-                    if cloud_type == 'SaaS' and control in ['APD04', 'APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 'CO01', 'CO02', 'CO03', 'CO04', 'CO05', 'CO06']:
+                    if cloud_type == 'SaaS' and control in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14', 'PC01', 'PC02', 'PC03', 'PC04', 'PC05', 'CO05', 'CO06', 'CO07']:
                         return 'SaaS 환경에서는 서비스 제공업체가 해당 영역을 담당하므로 이 통제는 적용되지 않습니다.'
-                    elif cloud_type == 'PaaS' and control in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14', 'CO04', 'CO05', 'CO06']:
+                    elif cloud_type == 'PaaS' and control in ['APD07', 'APD08', 'APD09', 'APD10', 'APD11', 'APD12', 'APD13', 'APD14', 'CO05', 'CO06', 'CO07']:
                         return 'PaaS 환경에서는 플랫폼 제공업체가 해당 영역을 담당하므로 이 통제는 적용되지 않습니다.'
-                    elif cloud_type == 'IaaS' and control in ['APD11', 'APD13', 'CO04', 'CO05', 'CO06']:
+                    elif cloud_type == 'IaaS' and control in ['APD11', 'APD13', 'CO06']:
                         return 'IaaS 환경에서는 인프라 제공업체가 해당 영역을 담당하므로 이 통제는 적용되지 않습니다.'
                 
                 # Package S/W 체크
@@ -2541,9 +2525,8 @@ def paper_request():
     return redirect(url_for('link2.link2'))
 
 @bp_link2.route('/ai_review_selection')
-@login_required
 def ai_review_selection():
-    """AI 검토 옵션 선택 화면 (인증 필요)"""
+    """AI 검토 옵션 선택 화면"""
     user_email = session.get('answer', [''])[0] if session.get('answer') else ''
     if not user_email:
         return redirect(url_for('link2.link2', reset=1))  # 세션이 없으면 인터뷰 처음으로
@@ -2585,9 +2568,8 @@ def update_session_email():
         return jsonify({'success': False, 'message': '서버 오류가 발생했습니다.'})
 
 @bp_link2.route('/process_with_ai_option', methods=['POST'])
-@login_required
 def process_with_ai_option():
-    """AI 검토 옵션에 따라 처리 페이지로 이동 (인증 필요)"""
+    """AI 검토 옵션에 따라 처리 페이지로 이동"""
     enable_ai_review = request.form.get('enable_ai_review', 'false').lower() == 'true'
     user_email = session.get('answer', [''])[0] if session.get('answer') else ''
     
@@ -2632,9 +2614,8 @@ def get_progress():
     return jsonify(status)
 
 @bp_link2.route('/process_interview', methods=['POST'])
-@login_required
 def process_interview():
-    """실제 인터뷰 처리 및 메일 발송 (인증 필요)"""
+    """실제 인터뷰 처리 및 메일 발송"""
     data = request.get_json() or {}
     task_id = data.get('task_id')
 

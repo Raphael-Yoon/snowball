@@ -57,11 +57,11 @@
         <input type="hidden" id="q{{ idx }}_hidden" name="q{{ idx }}" value="{{ answers[idx] }}">
         <div class="yn-wrap">
             <button type="button" id="q{{ idx }}_yes" onclick="setYN({{ idx }},'Y')"
-                    style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
                 <i class="fas fa-check me-1"></i>예
             </button>
             <button type="button" id="q{{ idx }}_no" onclick="setYN({{ idx }},'N')"
-                    style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+                    style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
                 <i class="fas fa-times me-1"></i>아니요
             </button>
         </div>
@@ -78,11 +78,11 @@
         <input type="hidden" id="q{{ idx }}_hidden" name="q{{ idx }}" value="{{ answers[idx] }}">
         <div class="yn-wrap">
             <button type="button" id="q{{ idx }}_yes" onclick="setYN({{ idx }},'Y')"
-                    style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
                 <i class="fas fa-check me-1"></i>예
             </button>
             <button type="button" id="q{{ idx }}_no" onclick="setYN({{ idx }},'N')"
-                    style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+                    style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
                 <i class="fas fa-times me-1"></i>아니요
             </button>
         </div>
