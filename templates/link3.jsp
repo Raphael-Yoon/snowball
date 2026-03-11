@@ -148,19 +148,6 @@
             // 버튼 컨테이너는 건드리지 않고 contentContainer만 업데이트
             contentContainer.innerHTML = '';
 
-            // 준비중 메시지를 보여줄 value 목록
-            const preparingList = [];
-
-            if (preparingList.includes(selectedValue)) {
-                contentContainer.innerHTML = `
-                    <div style="text-align: center; padding: 20px;">
-                        <h3>준비 중입니다</h3>
-                        <p>해당 항목은 작업 중 입니다.</p>
-                    </div>
-                `;
-                return;
-            }
-
             // step-by-step 컨텐츠 생성
             contentContainer.innerHTML = `
                 <div class="step-card flex-grow-1 d-flex flex-column align-items-center justify-content-center">
@@ -330,17 +317,18 @@
                 }
             };
             renderStep();
-            // step-card가 부모 영역을 무조건 꽉 채우도록 JS로 강제
-            function resizeStepCard() {
-                const area = document.querySelector('.content-area');
-                const card = document.querySelector('.step-card');
-                if (area && card) {
-                    card.style.height = area.offsetHeight + 'px';
-                }
-            }
-            window.addEventListener('resize', resizeStepCard);
             setTimeout(resizeStepCard, 100);
         }
+
+        // step-card가 부모 영역을 무조건 꽉 채우도록 JS로 강제 (전역 1회 등록)
+        function resizeStepCard() {
+            const area = document.querySelector('.content-area');
+            const card = document.querySelector('.step-card');
+            if (area && card) {
+                card.style.height = area.offsetHeight + 'px';
+            }
+        }
+        window.addEventListener('resize', resizeStepCard);
     </script>
 </body>
 </html>

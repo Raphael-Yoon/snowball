@@ -151,7 +151,7 @@ function applyConditions() {
 function fillAllSamples() {
     // Q0: 이메일 (로그인 시 readonly 스킵)
     const emailEl = document.querySelector('input[name="q0"]');
-    if (emailEl && !emailEl.readOnly) emailEl.value = 'snowball2727@naver.com';
+    if (emailEl && !emailEl.readOnly) emailEl.value = 'snowball1566@gmail.com';
     // Q1: 시스템명
     const sysEl = document.querySelector('input[name="q1"]');
     if (sysEl) sysEl.value = '테스트 시스템';
