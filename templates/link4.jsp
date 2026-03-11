@@ -5,6 +5,7 @@
     <title>Snowball - 영상 가이드</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/common.css')}}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css')}}" rel="stylesheet">
 </head>
@@ -60,11 +61,12 @@
             'ETC': '기타'
         };
 
+        // 영상 제작 중인 항목 (사이드바 비활성화 + 준비 중 메시지)
+        const preparingList = ['APD07', 'APD08', 'PC01', 'CO01'];
+
         function initializeSidebar() {
             const categoryList = document.getElementById('categoryList');
             categoryList.innerHTML = '';
-
-            const disabledList = ['APD07', 'APD08', 'PC01', 'CO01']; // 'MONITOR' 제거
 
             Object.keys(options).forEach(category => {
                 const categoryTitle = document.createElement('div');
@@ -73,35 +75,35 @@
                     ${categoryNames[category]}
                     <i class="fas fa-chevron-down"></i>
                 `;
-                
+
                 const optionList = document.createElement('div');
                 optionList.className = 'option-list';
-                
+
                 options[category].forEach(option => {
                     const link = document.createElement('a');
                     link.href = '#';
                     link.className = 'nav-link';
                     link.dataset.value = option.value;
                     link.textContent = option.text;
-                    
-                    if (disabledList.includes(option.value)) {
+
+                    if (preparingList.includes(option.value)) {
                         link.classList.add('disabled-link');
                     }
-                    
+
                     link.addEventListener('click', function(e) {
                         document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
                         this.classList.add('active');
                         updateContent(this.dataset.value);
                     });
-                    
+
                     optionList.appendChild(link);
                 });
-                
+
                 categoryTitle.addEventListener('click', function() {
                     this.classList.toggle('collapsed');
                     optionList.classList.toggle('show');
                 });
-                
+
                 categoryList.appendChild(categoryTitle);
                 categoryList.appendChild(optionList);
             });
@@ -110,9 +112,6 @@
         function updateContent(selectedValue) {
             const contentContainer = document.getElementById('contentContainer');
             contentContainer.innerHTML = '';
-
-            // 준비중 메시지를 보여줄 value 목록
-            const preparingList = ['APD07', 'APD08', 'PC01', 'CO01'];
 
             if (preparingList.includes(selectedValue)) {
                 contentContainer.innerHTML = `

@@ -353,7 +353,7 @@
             console.log(`[SAMPLE] fillSample 호출됨 - questionNumber: ${questionNumber}, currentIndex: ${currentIndex}`);
             // 질문별 샘플값 정의
             const samples = {
-                0: { type: 'text', value: 'snowball2727@naver.com' }, // 이메일
+                0: { type: 'text', value: 'snowball1566@gmail.com' }, // 이메일
                 1: { type: 'text', value: 'SAP ERP' }, // 시스템 이름
                 2: { type: 'radio_text', radio: 'Y', text: 'SAP S/4HANA' }, // 상용 SW
                 3: { type: 'radio', value: 'Y' }, // Cloud 사용 여부
@@ -503,7 +503,7 @@
 
             // 스킵 조건을 만족하는 샘플값 정의 (모든 가능한 질문 스킵)
             const skipSamples = {
-                0: { type: 'text', value: 'snowball2727@naver.com' }, // 이메일
+                0: { type: 'text', value: 'snowball1566@gmail.com' }, // 이메일
                 1: { type: 'text', value: 'SAP ERP' }, // 시스템 이름
                 2: { type: 'radio_text', radio: 'Y', text: 'SAP S/4HANA' }, // 상용소프트웨어
                 3: { type: 'radio', value: 'N' }, // Cloud 서비스 사용 안함 → 4~5번 스킵

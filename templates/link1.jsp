@@ -25,7 +25,10 @@
 			.control-row:hover {
 				background-color: #f8f9fa;
 			}
-			[data-bs-theme="dark"] .rcm-table-container {
+			[data-bs-theme="dark"] #simple-mode-notice {
+			color: #000 !important;
+		}
+		[data-bs-theme="dark"] .rcm-table-container {
 				background-color: #1c1f26;
 				box-shadow: 0 4px 15px rgba(0,0,0,0.4);
 			}
@@ -124,8 +127,11 @@
 					
 					<!-- 1. Input Section -->
 					<div class="card border-0 shadow-sm mb-4">
-						<div class="card-header py-3">
+						<div class="card-header py-3 d-flex justify-content-between align-items-center">
 							<h5 class="mb-0"><i class="fas fa-server me-2"></i>대상 시스템 정보</h5>
+							<button class="btn btn-sm btn-outline-secondary" id="btn-expert-mode" onclick="toggleExpertMode()">
+								<i class="fas fa-cog me-1"></i>전문가 모드
+							</button>
 						</div>
 						<div class="card-body">
 							<form id="system-form">
@@ -272,8 +278,13 @@
 						</div>
 					</div>
 					
+					<!-- 간편 모드 안내 -->
+					<div id="simple-mode-notice" class="alert alert-info border-0 shadow-sm mb-4">
+						<i class="fas fa-info-circle me-2"></i>통제 항목은 시스템 정보 기반으로 자동 구성됩니다. 세부 설정이 필요하면 <strong>전문가 모드</strong>를 활성화하세요.
+					</div>
+
 					<!-- 2. RCM Table Section -->
-					<div class="rcm-table-container">
+					<div class="rcm-table-container" id="rcm-section" style="display:none;">
 						<div class="d-flex justify-content-between align-items-center mb-3">
 							<h5 class="mb-0 fw-bold">ITGC Risk Control Matrix ({{ master_controls|length }}개 통제항목)</h5>
 							<button class="btn btn-sm btn-outline-secondary" type="button" id="btn-toggle-all" onclick="toggleAllDetails()">
@@ -461,7 +472,27 @@
 
 			// 전체 펼치기/접기 함수
 			let allExpanded = false;
-			function toggleAllDetails() {
+			// 간편/전문가 모드 토글
+		let expertMode = false;
+		function toggleExpertMode() {
+			expertMode = !expertMode;
+			const rcmSection = document.getElementById('rcm-section');
+			const notice = document.getElementById('simple-mode-notice');
+			const btn = document.getElementById('btn-expert-mode');
+			if (expertMode) {
+				rcmSection.style.display = 'block';
+				notice.style.display = 'none';
+				btn.innerHTML = '<i class="fas fa-compress-alt me-1"></i>간편 모드';
+				btn.classList.replace('btn-outline-secondary', 'btn-outline-primary');
+			} else {
+				rcmSection.style.display = 'none';
+				notice.style.display = 'block';
+				btn.innerHTML = '<i class="fas fa-cog me-1"></i>전문가 모드';
+				btn.classList.replace('btn-outline-primary', 'btn-outline-secondary');
+			}
+		}
+
+		function toggleAllDetails() {
 				const detailRows = document.querySelectorAll('.detail-row');
 				const toggleButtons = document.querySelectorAll('.toggle-detail');
 				const btnToggleAll = document.getElementById('btn-toggle-all');

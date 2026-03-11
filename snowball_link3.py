@@ -38,27 +38,15 @@ def link3():
                          remote_addr=request.remote_addr)
 
 
-@bp_link3.route('/get_content_link3')
-def get_content_link3():
-    """link3 상세 컨텐츠 로드"""
-    return render_template('link3_detail.jsp')
-
-
 @bp_link3.route('/paper_template_download', methods=['POST'])
 def paper_template_download():
     """운영평가 템플릿 다운로드"""
-    form_data = request.form.to_dict()
-    param1 = form_data.get('param1')
-    param2 = form_data.get('param2')
-
     template_path = os.path.join("static", "Design_Template.xlsx")
 
     if os.path.exists(template_path):
         return send_file(template_path, as_attachment=True)
     else:
         return render_template('link3.jsp',
-                             return_param1=param1,
-                             return_param2=param2,
                              is_logged_in=is_logged_in(),
                              user_info=get_user_info(),
                              remote_addr=request.remote_addr)
