@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Snowball - 작업 진행 중</title>
+    <!-- 다크모드 FOUC 방지 -->
+    <script>(function(){var t=localStorage.getItem('snowball-theme')||'light';document.documentElement.setAttribute('data-bs-theme',t);})();</script>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
@@ -14,6 +16,7 @@
 
 <body class="processing-page"
     style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; margin: 0;">
+    {% include 'navi.jsp' %}
     <div class="processing-container text-center mt-5">
 
         <div class="blacksmith-container">

@@ -7,8 +7,8 @@
    Jinja로 전달받아 JS 초기값으로 사용.
 
    조건 정리:
-   ─ Q8 (apd15_shared_account) = N → Q9 표시, Q10~Q12 숨김
-   ─ Q8 = Y                        → Q9 숨김, Q10~Q12 표시
+   ─ Q6 (apd15_shared_account) = N → Q9 표시, Q10~Q12 숨김
+   ─ Q6 = Y                        → Q9 숨김, Q10~Q12 표시
    ─ SaaS → Q13 숨김, Q16~Q32 숨김
    ─ PaaS → Q16~Q32 숨김
    ─ IaaS → Q24, Q31 숨김
@@ -20,11 +20,11 @@
 <input type="hidden" id="q{{ idx }}_hidden" name="q{{ idx }}" value="{{ answers[idx] }}">
 <div class="yn-wrap">
     <button type="button" id="q{{ idx }}_yes" onclick="setYN({{ idx }},'Y')"
-            style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
         <i class="fas fa-check me-1"></i>예
     </button>
     <button type="button" id="q{{ idx }}_no" onclick="setYN({{ idx }},'N')"
-            style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+            style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
         <i class="fas fa-times me-1"></i>아니요
     </button>
 </div>
@@ -112,18 +112,18 @@
 {# ── 접근권한 공통 그룹 (Q6~Q8) ── #}
 <div class="sub-section-title"><i class="fas fa-user-shield me-1"></i>접근권한 관리</div>
 
-{# Q6: apd01_auth_history (type 1) #}
+{# Q6: apd15_shared_account (type 1) ← 분기점 #}
 {% set q = qs[0] %}{% set idx = q.index %}
-<div id="qblock_{{ idx }}" class="question-block card mb-3">
+<div id="qblock_{{ idx }}" class="question-block card mb-3 border-warning">
     <div class="card-body">
-        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }} <span class="badge bg-warning text-dark ms-1">분기점</span></div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         {{ yn_field(idx, answers) }}
     </div>
 </div>
 
-{# Q7: apd02_revoke_history (type 1) #}
+{# Q7: apd01_auth_history (type 1) #}
 {% set q = qs[1] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
@@ -134,18 +134,18 @@
     </div>
 </div>
 
-{# Q8: apd15_shared_account (type 1) ← 분기점 #}
+{# Q8: apd02_revoke_history (type 1) #}
 {% set q = qs[2] %}{% set idx = q.index %}
-<div id="qblock_{{ idx }}" class="question-block card mb-3 border-warning">
+<div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx - section_info.q_start + 1 }} <span class="badge bg-warning text-dark ms-1">분기</span></div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         {{ yn_field(idx, answers) }}
     </div>
 </div>
 
-{# Q9: apd15_shared_mgmt (type 5) — Q8=N 시만 표시 #}
+{# Q9: apd15_shared_mgmt (type 5) — Q6=N 시만 표시 #}
 {% set q = qs[3] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
@@ -234,14 +234,25 @@
 {% set q = qs[10] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3 border-warning">
     <div class="card-body">
-        <div class="q-num">Q{{ idx - section_info.q_start + 1 }} <span class="badge bg-warning text-dark ms-1">분기</span></div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }} <span class="badge bg-warning text-dark ms-1">분기점</span></div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         {{ yn_field(idx, answers) }}
     </div>
 </div>
 
-{# Q17: apd07_data_history (type 1) #}
+{# Q17: apd09_db_tool (type 3, Y/N + text) #}
+{% set q = qs[15] %}{% set idx = q.index %}
+<div id="qblock_{{ idx }}" class="question-block card mb-3">
+    <div class="card-body">
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
+        <div class="q-text">{{ q.text }}</div>
+        {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
+        {{ type3_field(idx, q, answers, textarea_answers) }}
+    </div>
+</div>
+
+{# Q18: apd07_data_history (type 1) #}
 {% set q = qs[11] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
@@ -252,7 +263,7 @@
     </div>
 </div>
 
-{# Q18: apd07_procedure (type 4) #}
+{# Q19: apd07_procedure (type 4) #}
 {% set q = qs[12] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
@@ -284,17 +295,6 @@
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         <textarea class="form-control" name="q{{ idx }}"
                   placeholder="{{ q.text_help or 'DB 종류와 버전을 입력하세요.' }}" rows="3">{{ answers[idx] }}</textarea>
-    </div>
-</div>
-
-{# Q21: apd09_db_tool (type 3, Y/N + text) #}
-{% set q = qs[15] %}{% set idx = q.index %}
-<div id="qblock_{{ idx }}" class="question-block card mb-3">
-    <div class="card-body">
-        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
-        <div class="q-text">{{ q.text }}</div>
-        {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
-        {{ type3_field(idx, q, answers, textarea_answers) }}
     </div>
 </div>
 
@@ -353,14 +353,25 @@
 {% set q = qs[20] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3 border-warning">
     <div class="card-body">
-        <div class="q-num">Q{{ idx - section_info.q_start + 1 }} <span class="badge bg-warning text-dark ms-1">분기</span></div>
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }} <span class="badge bg-warning text-dark ms-1">분기점</span></div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         {{ yn_field(idx, answers) }}
     </div>
 </div>
 
-{# Q27: apd12_os_type (type 5) #}
+{# Q27: apd12_os_tool (type 3: Y/N + textbox) #}
+{% set q = qs[22] %}{% set idx = q.index %}
+<div id="qblock_{{ idx }}" class="question-block card mb-3">
+    <div class="card-body">
+        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
+        <div class="q-text">{{ q.text }}</div>
+        {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
+        {{ type3_field(idx, q, answers, textarea_answers) }}
+    </div>
+</div>
+
+{# Q28: apd12_os_type (type 5) #}
 {% set q = qs[21] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
@@ -369,17 +380,6 @@
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         <textarea class="form-control" name="q{{ idx }}"
                   placeholder="{{ q.text_help or 'OS 종류와 버전을 입력하세요.' }}" rows="3">{{ answers[idx] }}</textarea>
-    </div>
-</div>
-
-{# Q28: apd12_os_tool (type 3+4: Y/N + textbox + textarea) #}
-{% set q = qs[22] %}{% set idx = q.index %}
-<div id="qblock_{{ idx }}" class="question-block card mb-3">
-    <div class="card-body">
-        <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
-        <div class="q-text">{{ q.text }}</div>
-        {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
-        {{ type3_4_field(idx, q, answers, textarea_answers, textarea2_answers) }}
     </div>
 </div>
 
@@ -476,8 +476,8 @@ function applyConditions() {
     const isPaaS = (_cloudType === 'PaaS');
     const isIaaS = (_cloudType === 'IaaS');
 
-    // ── Q8(shared_account) 분기 ──────────────────────────────────
-    const shared = getVal(8);
+    // ── Q6(shared_account) 분기점 ────────────────────────────────
+    const shared = getVal(6);
     toggleQ(9,  shared === 'N');           // apd15_shared_mgmt: N 시 표시
     toggleRange(10, 12, shared === 'Y');   // apd01~03_procedure: Y 시 표시
 
@@ -535,9 +535,8 @@ function fillAllSamples() {
     setYN(26, 'Y');  // os_access
     document.querySelector('textarea[name="q27"]').value = 'Linux RHEL 8.6';
     document.querySelector('input[name="q28"][value="Y"]').checked = true;
-    toggleType34(28);
+    toggleTextInput3(28);
     document.getElementById('q28_text_input').value = 'Bastion Host';
-    document.getElementById('q28_ta2').value = 'SA 승인 후 Bastion Host를 통해 SSH Key 인증 방식으로 접속';
     setYN(29, 'Y');
     document.querySelector('input[name="q30"][value="Y"]').checked = true; toggleTextarea4(30); document.getElementById('q30_ta').value = 'SA 승인 후 접속 계정 부여';
     document.querySelector('textarea[name="q31"]').value = 'SA 이순신 책임';

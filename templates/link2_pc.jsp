@@ -20,11 +20,11 @@
 <input type="hidden" id="q{{ idx }}_hidden" name="q{{ idx }}" value="{{ answers[idx] }}">
 <div class="yn-wrap">
     <button type="button" id="q{{ idx }}_yes" onclick="setYN({{ idx }},'Y')"
-            style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
         <i class="fas fa-check me-1"></i>예
     </button>
     <button type="button" id="q{{ idx }}_no" onclick="setYN({{ idx }},'N')"
-            style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+            style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
         <i class="fas fa-times me-1"></i>아니요
     </button>
 </div>
@@ -62,11 +62,11 @@
     아래 질문들은 자동으로 해당없음 처리됩니다.
 </div>
 
-{# Q34: pc_can_modify (type 1) ← 분기점 #}
+{# Q34: pc_can_modify (type 1) - 컨텍스트 파악용 (분기점 아님) #}
 {% set q = qs[0] %}{% set idx = q.index %}
-<div id="qblock_{{ idx }}" class="question-block card mb-3 border-warning">
+<div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52 <span class="badge bg-warning text-dark ms-1">분기</span></div>
+        <div class="q-num">Q{{ idx + 1 }}/52</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         {{ yn_field(idx, answers) }}
@@ -150,18 +150,14 @@ const _cloudType = '{{ answers[Q_ID["cloud_type"]] }}';
 function applyConditions() {
     const isSaaS = (_cloudType === 'SaaS');
 
-    // SaaS: 배너 표시, Q35~Q40 숨김
+    // SaaS: 배너 표시, Q34~Q40 전체 숨김 (분기 질문 포함)
     const banner = document.getElementById('saas_soc1_banner');
     if (banner) banner.style.display = isSaaS ? '' : 'none';
 
     if (isSaaS) {
-        toggleRange(35, 40, false);
+        toggleRange(34, 40, false);
         return;
     }
-
-    // pc_can_modify (Q34) = N → Q35~Q40 숨김
-    const canModify = getVal(34);
-    toggleRange(35, 40, canModify === 'Y');
 }
 
 function fillAllSamples() {

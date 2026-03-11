@@ -4,8 +4,8 @@
    CO 섹션 (Q41~Q51)  Computer Operation
 
    Q41: co_has_batch      (type 1, Y/N) ← 분기점
-        N → Q42~Q45 숨김
-   Q42: co01_batch_tool   (type 5)
+        N → Q42~Q46 숨김
+   Q42: co01_batch_tool   (type 3: Y/N + 도구명)
    Q43: co01_batch_history(type 1)
    Q44: co01_procedure    (type 4)
    Q45: co02_batch_auth   (type 5)
@@ -21,13 +21,37 @@
 <input type="hidden" id="q{{ idx }}_hidden" name="q{{ idx }}" value="{{ answers[idx] }}">
 <div class="yn-wrap">
     <button type="button" id="q{{ idx }}_yes" onclick="setYN({{ idx }},'Y')"
-            style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            style="width:80px" class="btn btn-sm {% if answers[idx]=='Y' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
         <i class="fas fa-check me-1"></i>예
     </button>
     <button type="button" id="q{{ idx }}_no" onclick="setYN({{ idx }},'N')"
-            style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+            style="width:80px" class="btn btn-sm {% if answers[idx]=='N' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
         <i class="fas fa-times me-1"></i>아니요
     </button>
+</div>
+{% endmacro %}
+
+{% macro type3_field(idx, q, answers, textarea_answers) %}
+<div class="mt-1">
+    <div class="form-check mb-1">
+        <input class="form-check-input" type="radio" name="q{{ idx }}" value="Y"
+               id="q{{ idx }}_r_yes" required onchange="toggleTextInput3({{ idx }})"
+               {% if answers[idx]=='Y' %}checked{% endif %}>
+        <label class="form-check-label" for="q{{ idx }}_r_yes">예</label>
+    </div>
+    <input type="text" class="form-control mb-1" name="q{{ idx }}_text"
+           id="q{{ idx }}_text_input"
+           placeholder="{{ (q.text_help or '제품명을 입력하세요') if answers[idx]=='Y' else '' }}"
+           value="{{ textarea_answers[idx] }}"
+           data-orig-placeholder="{{ q.text_help or '제품명을 입력하세요' }}"
+           {% if answers[idx] != 'Y' %}disabled style="background-color:#e9ecef; cursor:not-allowed;"
+           {% else %}required{% endif %}>
+    <div class="form-check">
+        <input class="form-check-input" type="radio" name="q{{ idx }}" value="N"
+               id="q{{ idx }}_r_no" onchange="toggleTextInput3({{ idx }})"
+               {% if answers[idx]=='N' %}checked{% endif %}>
+        <label class="form-check-label" for="q{{ idx }}_r_no">아니요</label>
+    </div>
 </div>
 {% endmacro %}
 
@@ -63,22 +87,21 @@
 {% set q = qs[0] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3 border-warning">
     <div class="card-body">
-        <div class="q-num">Q{{ idx + 1 }}/52 <span class="badge bg-warning text-dark ms-1">분기</span></div>
+        <div class="q-num">Q{{ idx + 1 }}/52 <span class="badge bg-warning text-dark ms-1">분기점</span></div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
         {{ yn_field(idx, answers) }}
     </div>
 </div>
 
-{# Q42: co01_batch_tool (type 5) #}
+{# Q42: co01_batch_tool (type 3: Y/N + 도구명) #}
 {% set q = qs[1] %}{% set idx = q.index %}
 <div id="qblock_{{ idx }}" class="question-block card mb-3">
     <div class="card-body">
         <div class="q-num">Q{{ idx - section_info.q_start + 1 }}</div>
         <div class="q-text">{{ q.text }}</div>
         {% if q.help %}<div class="q-help mb-2">{{ q.help|safe }}</div>{% endif %}
-        <textarea class="form-control" name="q{{ idx }}"
-                  placeholder="{{ q.text_help or '사용 중인 배치 스케줄러 도구를 입력하세요.' }}" rows="3">{{ answers[idx] }}</textarea>
+        {{ type3_field(idx, q, answers, textarea_answers) }}
     </div>
 </div>
 
@@ -209,10 +232,25 @@ function applyConditions() {
 
     // ── 배치 분기 ──────────────────────────────────────────────────
     const hasBatch = getVal(41);
-    toggleRange(42, 45, hasBatch === 'Y');
+    toggleRange(42, 46, hasBatch === 'Y');
 
-    // ── 운영 통제 (Q47~Q50): Cloud 타입 선택 시 숨김 ──────────────
-    toggleRange(47, 50, !isCloud);
+    // ── 운영 통제 (Q47~Q50): Cloud 타입별 개별 제어 ──────────────
+    if (_cloudType === 'SaaS' || _cloudType === 'PaaS') {
+        // Q47(장애대응): 자사 내부 에스컬레이션 절차 필요 → 표시
+        // Q48(백업)·Q49(서버실)·Q50(보안패치): 업체 담당 → 숨김
+        toggleQ(47, true);
+        toggleRange(48, 50, false);
+    } else if (_cloudType === 'IaaS') {
+        // Q47(장애대응)·Q48(백업)·Q50(보안패치): 자사 관리 → 표시
+        // Q49(서버실): 물리 서버실 없음 → 숨김
+        toggleQ(47, true);
+        toggleQ(48, true);
+        toggleQ(49, false);
+        toggleQ(50, true);
+    } else {
+        // 온프레미스: Q47~Q50 전체 표시
+        toggleRange(47, 50, true);
+    }
 
     // ── SOC1 Review (Q51): Cloud 사용 시만 표시 ────────────────────
     toggleQ(51, _useCloud === 'Y');
@@ -220,7 +258,7 @@ function applyConditions() {
 
 function fillAllSamples() {
     setYN(41, 'Y');  // co_has_batch
-    document.querySelector('textarea[name="q42"]').value = 'Control-M';
+    document.querySelector('input[name="q42"][value="Y"]').checked = true; toggleTextInput3(42); document.getElementById('q42_text_input').value = 'Control-M';
     setYN(43, 'Y');  // batch_history
     document.querySelector('input[name="q44"][value="Y"]').checked = true; toggleTextarea4(44); document.getElementById('q44_ta').value = 'IT팀장 승인 후 배치 등록';
     document.querySelector('textarea[name="q45"]').value = '배치운영팀 이몽룡 과장';
