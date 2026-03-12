@@ -2,7 +2,7 @@
 
 ## 1. 페이지 접근 및 기본 요소 확인
 
-- [ ] **test_link1_page_access**: 페이지 타이틀, '대상 시스템 정보' 섹션, RCM 테이블(`#rcm-table`) 존재 확인
+- [ ] **test_link1_page_access**: 페이지 타이틀, '대상 시스템 정보' 섹션, 간편 모드 안내 메시지(`#simple-mode-notice`) 기본 표시, 전문가 모드 버튼(`#btn-expert-mode`) 존재, RCM 테이블(`#rcm-table`) DOM 존재 확인 (간편 모드에서 숨김 상태)
 
 ## 2. 입력 폼 요소 확인
 
@@ -40,7 +40,11 @@
 - [ ] **test_link1_population_templates_api**: 모집단 템플릿 API 호출 시 기본 템플릿(sw, os, db)과 Tool 템플릿(os_tool, db_tool, deploy_tool, batch_tool)이 모두 반환되는지 확인
 - [ ] **test_link1_export_api**: Export Excel API (POST `/api/rcm/export_excel`) — 이메일 누락 시 400 반환, 유효 요청 시 200 또는 메일 오류 응답 확인
 
-## 10. 이메일 입력 및 발송 UI
+## 10. 간편/전문가 모드 토글
+
+- [ ] **test_link1_expert_mode_toggle**: 기본 간편 모드 상태(RCM 숨김·안내 메시지 표시) 확인 → 전문가 모드 전환 시 RCM 표시·안내 메시지 숨김·버튼 텍스트 변경 확인 → 간편 모드 복귀 확인
+
+## 11. 이메일 입력 및 발송 UI
 
 - [ ] **test_link1_email_input**: 이메일 입력 필드(`#send_email`) 및 발송 버튼(`#btn-export-excel`) 존재 확인
 - [ ] **test_link1_export_email_validation**: 이메일 미입력 상태로 발송 버튼 클릭 시 페이지 이동 없이 차단되는지 확인
