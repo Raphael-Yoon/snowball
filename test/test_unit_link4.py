@@ -128,6 +128,21 @@ class Link4UnitTest(PlaywrightTestBase):
         else:
             result.fail_test(f"메시지 불일치: {msg}")
 
+    def test_link4_sidebar_chevron_icon(self, result: UnitTestResult):
+        """4. 사이드바 카테고리 chevron 아이콘 표시 확인 (FontAwesome)"""
+        self.navigate_to("/link4")
+
+        chevron_icons = self.page.locator(".category-title .fa-chevron-down")
+        count = chevron_icons.count()
+
+        if count > 0:
+            result.add_detail(f"카테고리 chevron 아이콘 {count}개 확인")
+        else:
+            result.fail_test("chevron 아이콘을 찾을 수 없습니다. FontAwesome이 로드되지 않았을 수 있습니다.")
+            return
+
+        result.pass_test("사이드바 chevron 아이콘 표시 확인 완료 (FontAwesome 정상 로드)")
+
     def test_link4_activity_log(self, result: UnitTestResult):
         """3. 활동 로그 기록 확인 (로그인)"""
         try:
@@ -207,6 +222,7 @@ def run_tests():
             test_runner.test_link4_sidebar_toggle,
             test_runner.test_link4_content_loading,
             test_runner.test_link4_preparing_message,
+            test_runner.test_link4_sidebar_chevron_icon,
             test_runner.test_link4_activity_log
         ])
     finally:

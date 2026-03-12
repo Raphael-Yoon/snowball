@@ -316,9 +316,9 @@
                     <div class="col-12">
                         <h2 class="section-title"><i class="fas fa-lock me-2"></i>Private</h2>
                         <div class="alert alert-info text-center"
-                            style="opacity: 1; pointer-events: auto; position: relative; z-index: 10;">
+                            style="opacity: 1; pointer-events: auto; position: relative; z-index: 10; color: #000 !important; font-weight: bold;">
                             <i class="fas fa-lock me-2"></i>
-                            Private 서비스를 이용하시려면 <a href="/login" class="alert-link">로그인</a>이 필요합니다.
+                            Private 서비스를 이용하시려면 <a href="/login" class="alert-link" style="color: #000 !important; font-weight: bold;">로그인</a>이 필요합니다.
                         </div>
                     </div>
 

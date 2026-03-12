@@ -2408,7 +2408,7 @@ def link2():
             # 필터링된 목록에 없으면 원본에서 가져오기 (혹시 모를 상황 대비)
             current_question = s_questions[current_question_index] if current_question_index < len(s_questions) else s_questions[0]
 
-        return render_template('link2.jsp',
+        return render_template('link2_bak.jsp',
                              question=current_question,
                              question_count=len(filtered_questions),
                              current_index=current_filtered_index,  # 필터링된 목록에서의 인덱스
@@ -2495,7 +2495,7 @@ def link2():
     user_info = get_user_info()
     users = user_info.get('user_name', 'Guest') if user_info else "User List"
     return render_template(
-        'link2.jsp',
+        'link2_bak.jsp',
         question=current_question,
         question_count=len(filtered_questions),
         current_index=current_filtered_index,

@@ -49,9 +49,23 @@ class Link1UnitTest(PlaywrightTestBase):
             result.fail_test("대상 시스템 정보 섹션을 찾을 수 없습니다.")
             return
 
-        # 통제 테이블 확인
-        if self.is_visible("#rcm-table"):
-            result.add_detail("ITGC RCM 테이블 확인")
+        # 간편 모드 안내 메시지 기본 표시 확인
+        if self.page.locator("#simple-mode-notice").is_visible():
+            result.add_detail("간편 모드 안내 메시지 기본 표시 확인")
+        else:
+            result.fail_test("간편 모드 안내 메시지가 표시되지 않습니다.")
+            return
+
+        # 전문가 모드 버튼 확인
+        if self.page.locator("#btn-expert-mode").count() > 0:
+            result.add_detail("전문가 모드 버튼 확인")
+        else:
+            result.fail_test("전문가 모드 버튼을 찾을 수 없습니다.")
+            return
+
+        # RCM 테이블 DOM 존재 확인 (기본: 숨김 상태)
+        if self.page.locator("#rcm-table").count() > 0:
+            result.add_detail("ITGC RCM 테이블 DOM 확인 (간편 모드에서 숨김 상태)")
         else:
             result.fail_test("RCM 테이블을 찾을 수 없습니다.")
             return
@@ -150,6 +164,7 @@ class Link1UnitTest(PlaywrightTestBase):
     def test_link1_control_table(self, result: UnitTestResult):
         """5. 통제 테이블 및 행 확인"""
         self.navigate_to("/link1")
+        self._enter_expert_mode()
 
         # 통제 행 개수 확인
         control_rows = self.page.locator(".control-row").count()
@@ -182,6 +197,7 @@ class Link1UnitTest(PlaywrightTestBase):
     def test_link1_toggle_detail(self, result: UnitTestResult):
         """6. 상세 펼치기/접기 기능 확인"""
         self.navigate_to("/link1")
+        self._enter_expert_mode()
 
         # 전체 펼치기 버튼 확인
         toggle_all_btn = self.page.locator("#btn-toggle-all")
@@ -213,6 +229,7 @@ class Link1UnitTest(PlaywrightTestBase):
     def test_link1_type_change_monitoring(self, result: UnitTestResult):
         """7. 자동→수동 변경 시 모니터링 명칭 변경 확인"""
         self.navigate_to("/link1")
+        self._enter_expert_mode()
 
         # 원래 자동통제인 APD05 찾기
         name_span = self.page.locator("#name-APD05")
@@ -377,6 +394,7 @@ class Link1UnitTest(PlaywrightTestBase):
     def test_link1_population_calculation(self, result: UnitTestResult):
         """13. 수동 통제 주기 변경 시 모집단·표본수 자동 계산 확인"""
         self.navigate_to("/link1")
+        self._enter_expert_mode()
         self.page.wait_for_timeout(1500)  # 템플릿 로드 대기
 
         # APD01: 수동 통제 (접근 권한 검토)
@@ -429,6 +447,7 @@ class Link1UnitTest(PlaywrightTestBase):
     def test_link1_cloud_control_exclusion(self, result: UnitTestResult):
         """14. SaaS 선택 시 특정 통제에 CSP Managed 뱃지 및 비활성화 확인"""
         self.navigate_to("/link1")
+        self._enter_expert_mode()
         self.page.wait_for_timeout(500)
 
         # SaaS 선택
@@ -554,6 +573,57 @@ class Link1UnitTest(PlaywrightTestBase):
         else:
             result.fail_test("이메일 없이 발송이 진행되었습니다.")
 
+    def _enter_expert_mode(self):
+        """전문가 모드 진입 (RCM 테이블 표시)"""
+        btn = self.page.locator("#btn-expert-mode")
+        if btn.count() > 0 and not self.page.locator("#rcm-section").is_visible():
+            btn.click()
+            self.page.wait_for_timeout(300)
+
+    def test_link1_expert_mode_toggle(self, result: UnitTestResult):
+        """16. 간편/전문가 모드 토글 기능 확인"""
+        self.navigate_to("/link1")
+
+        rcm_section = self.page.locator("#rcm-section")
+        notice = self.page.locator("#simple-mode-notice")
+        btn = self.page.locator("#btn-expert-mode")
+
+        # 기본 상태: 간편 모드 (RCM 숨김, 안내 표시)
+        if not rcm_section.is_visible() and notice.is_visible():
+            result.add_detail("기본 간편 모드 확인: RCM 숨김, 안내 메시지 표시")
+        else:
+            result.fail_test(f"기본 상태 오류 — RCM visible: {rcm_section.is_visible()}, notice visible: {notice.is_visible()}")
+            return
+
+        # 전문가 모드 전환
+        btn.click()
+        self.page.wait_for_timeout(300)
+
+        if rcm_section.is_visible() and not notice.is_visible():
+            result.add_detail("전문가 모드 전환 확인: RCM 표시, 안내 메시지 숨김")
+        else:
+            result.fail_test(f"전문가 모드 전환 오류 — RCM visible: {rcm_section.is_visible()}, notice visible: {notice.is_visible()}")
+            return
+
+        btn_text = btn.text_content().strip()
+        if "간편 모드" in btn_text:
+            result.add_detail(f"버튼 텍스트 변경 확인: '{btn_text}'")
+        else:
+            result.fail_test(f"전문가 모드 전환 후 버튼 텍스트 오류: '{btn_text}'")
+            return
+
+        # 간편 모드 복귀
+        btn.click()
+        self.page.wait_for_timeout(300)
+
+        if not rcm_section.is_visible() and notice.is_visible():
+            result.add_detail("간편 모드 복귀 확인: RCM 숨김, 안내 메시지 표시")
+        else:
+            result.fail_test(f"간편 모드 복귀 오류 — RCM visible: {rcm_section.is_visible()}, notice visible: {notice.is_visible()}")
+            return
+
+        result.pass_test("간편/전문가 모드 토글 기능 확인 완료")
+
     def _do_admin_login(self):
         """관리자 로그인"""
         self.page.goto(f"{self.base_url}/login")
@@ -635,6 +705,7 @@ def run_tests():
             test_runner.test_link1_population_calculation,
             test_runner.test_link1_cloud_control_exclusion,
             test_runner.test_link1_export_api,
+            test_runner.test_link1_expert_mode_toggle,
         ])
     finally:
         test_runner._update_checklist_result()
