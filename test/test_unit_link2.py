@@ -282,6 +282,138 @@ class Link2UnitTest(PlaywrightTestBase):
             else:
                 result.fail_test(f"인터뷰 완료 후 예상 페이지 미도달. URL: {final_url}")
 
+    # ================================================================
+    # 7. APD 조건부 로직 (감사팀 요청)
+    # ================================================================
+
+    def test_link2_apd_conditional(self, result: UnitTestResult):
+        """7. APD 섹션 조건부 질문 로직 확인 (Q6 공유계정, Q16 DB접속, Q26 OS접속)"""
+        self.page.goto(f"{self.base_url}/link2_1p/section/apd")
+        self.page.wait_for_load_state("networkidle", timeout=10000)
+
+        # ── Q6(공유계정) = N → Q9 표시, Q10~Q12 숨김 ──
+        no_btn = self.page.locator("#q6_no")
+        if no_btn.count() == 0:
+            result.fail_test("Q6 N 버튼을 찾을 수 없습니다")
+            return
+        no_btn.click()
+        self.page.wait_for_timeout(400)
+
+        # Q9 표시 확인
+        q9_cls = self.page.locator("#qblock_9").get_attribute("class") or ""
+        if "hidden" in q9_cls:
+            result.fail_test("Q6=N 시 Q9가 표시되어야 하나 숨겨져 있습니다")
+            return
+        result.add_detail("Q6=N → Q9 표시 확인")
+
+        # Q10~Q12 숨김 확인
+        for qidx in [10, 11, 12]:
+            cls = self.page.locator(f"#qblock_{qidx}").get_attribute("class") or ""
+            if "hidden" not in cls:
+                result.fail_test(f"Q6=N 시 Q{qidx}가 숨겨져야 하나 표시되어 있습니다")
+                return
+        result.add_detail("Q6=N → Q10~Q12 숨김 확인")
+
+        # Q6 = Y → Q9 숨김, Q10~Q12 표시
+        yes_btn = self.page.locator("#q6_yes")
+        yes_btn.click()
+        self.page.wait_for_timeout(400)
+        q9_cls = self.page.locator("#qblock_9").get_attribute("class") or ""
+        if "hidden" not in q9_cls:
+            result.fail_test("Q6=Y 시 Q9가 숨겨져야 하나 표시되어 있습니다")
+            return
+        result.add_detail("Q6=Y → Q9 숨김 확인")
+
+        # ── Q16(DB접속) = N → Q17~Q25 숨김 ──
+        q16_no = self.page.locator("#q16_no")
+        if q16_no.count() == 0:
+            result.fail_test("Q16 N 버튼을 찾을 수 없습니다")
+            return
+        q16_no.click()
+        self.page.wait_for_timeout(400)
+        for qidx in [17, 18, 19]:  # 대표 3개만 확인
+            cls = self.page.locator(f"#qblock_{qidx}").get_attribute("class") or ""
+            if "hidden" not in cls:
+                result.fail_test(f"Q16=N 시 Q{qidx}가 숨겨져야 하나 표시되어 있습니다")
+                return
+        result.add_detail("Q16=N → Q17~Q19 숨김 확인")
+
+        # ── Q26(OS접속) = N → Q27~Q32 숨김 ──
+        q26_no = self.page.locator("#q26_no")
+        if q26_no.count() == 0:
+            result.fail_test("Q26 N 버튼을 찾을 수 없습니다")
+            return
+        q26_no.click()
+        self.page.wait_for_timeout(400)
+        for qidx in [27, 28]:  # 대표 2개만 확인
+            cls = self.page.locator(f"#qblock_{qidx}").get_attribute("class") or ""
+            if "hidden" not in cls:
+                result.fail_test(f"Q26=N 시 Q{qidx}가 숨겨져야 하나 표시되어 있습니다")
+                return
+        result.add_detail("Q26=N → Q27~Q28 숨김 확인")
+
+        result.pass_test("APD 조건부 질문 로직(Q6/Q16/Q26) 확인 완료")
+
+    # ================================================================
+    # 8. 세션 유지 (감사팀 요청)
+    # ================================================================
+
+    def test_link2_session_persistence(self, result: UnitTestResult):
+        """8. common 섹션 제출 후 completed 스텝 클릭으로 복귀 시 답변 보존 확인"""
+        # 세션 리셋 후 common 섹션으로 직접 이동
+        self.navigate_to("/link2_1p?reset=1")
+        # 리다이렉트 결과와 무관하게 common 섹션으로 강제 이동
+        self.navigate_to("/link2_1p/section/common")
+
+        # common 섹션 필드 로드 대기 (Q1은 id 없이 name만 있음)
+        try:
+            self.page.wait_for_selector("#q0", timeout=5000)
+            self.page.wait_for_selector("input[name='q1']", timeout=5000)
+        except Exception:
+            result.fail_test(f"common 섹션 입력 필드 로드 실패 (현재 URL: {self.page.url})")
+            return
+
+        # common 섹션에 시스템명 직접 입력
+        system_name = "세션유지테스트시스템"
+        email_field = self.page.locator("#q0")
+        system_field = self.page.locator("input[name='q1']")
+
+        email_field.fill("persist@test.com")
+        system_field.fill(system_name)
+
+        # common 섹션 제출 → apd로 이동
+        submit_btn = self.page.locator("button[type='submit']")
+        submit_btn.click()
+        self.page.wait_for_load_state("networkidle", timeout=15000)
+
+        if "/section/apd" not in self.page.url:
+            result.fail_test(f"apd 섹션으로 이동되지 않았습니다: {self.page.url}")
+            return
+        result.add_detail("common 제출 → apd 이동 확인")
+
+        # completed 스텝(common) 클릭으로 복귀
+        common_step = self.page.locator(".section-steps a.step.completed").first
+        if common_step.count() == 0:
+            result.fail_test("completed 상태의 common 스텝 링크를 찾을 수 없습니다")
+            return
+        common_step.click()
+        self.page.wait_for_load_state("networkidle", timeout=10000)
+
+        if "/section/common" not in self.page.url:
+            result.fail_test(f"common 섹션으로 복귀되지 않았습니다: {self.page.url}")
+            return
+
+        # 답변 보존 확인
+        restored_system = self.page.locator("input[name='q1']").input_value()
+        restored_email  = self.page.locator("#q0").input_value()
+        if system_name in restored_system and "persist@test.com" in restored_email:
+            result.pass_test(f"섹션 복귀 후 답변 보존 확인 완료 (시스템명: {restored_system})")
+        else:
+            result.fail_test(
+                f"답변 유실 — 시스템명: '{restored_system}' (예상: '{system_name}'), "
+                f"이메일: '{restored_email}'"
+            )
+
     def _update_checklist_result(self):
         """체크리스트 결과 파일 생성"""
         if not self.checklist_source.exists():
@@ -347,6 +479,8 @@ def run_tests():
             test_runner.test_link2_navigation,
             test_runner.test_link2_all_sections_accessible,
             test_runner.test_link2_complete_interview,
+            test_runner.test_link2_apd_conditional,
+            test_runner.test_link2_session_persistence,
         ])
     finally:
         test_runner._update_checklist_result()

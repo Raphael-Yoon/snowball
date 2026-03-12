@@ -23,3 +23,9 @@
 
 ## 6. 전체 인터뷰 완료
 - [ ] **test_link2_complete_interview**: 샘플입력으로 4개 섹션을 순서대로 제출한 후 AI 검토 선택 페이지에 도달하는지 확인
+
+## 7. APD 조건부 질문 로직 (IT 감사팀 요청)
+- [ ] **test_link2_apd_conditional**: APD 섹션 분기점 질문 로직 확인 — Q6(공유계정) N 시 Q9 표시/Q10~Q12 숨김, Y 시 역전; Q16(DB접속) N 시 Q17~Q25 숨김; Q26(OS접속) N 시 Q27~Q32 숨김
+
+## 8. 세션 유지 (IT 감사팀 요청)
+- [ ] **test_link2_session_persistence**: common 섹션 제출 후 completed 스텝 클릭으로 복귀 시 이메일·시스템명 답변이 보존되는지 확인
