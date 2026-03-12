@@ -192,6 +192,28 @@
         .question-item.level-2 { background: #f8fafc; margin-left: 20px; }
         .question-item.level-3 { background: white; margin-left: 40px; border-left: 3px dashed #cbd5e1; }
 
+        /* 확정(confirmed) 잠금 상태 */
+        #questions-list.disclosure-locked {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.72;
+            user-select: none;
+        }
+        #questions-list.disclosure-locked::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                -45deg,
+                transparent,
+                transparent 12px,
+                rgba(6,95,70,0.04) 12px,
+                rgba(6,95,70,0.04) 13px
+            );
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
         /* 그리드 가로 배치 */
         .question-row-container {
             display: flex;
@@ -707,15 +729,36 @@
                 </div>
             </div>
 
+            <!-- 확정 상태 배너 (confirmed일 때만 표시) -->
+            <div id="confirmed-banner" style="display:none; background:linear-gradient(135deg,#065f46,#047857); color:#fff; border-radius:12px; padding:14px 20px; margin-bottom:16px; display:none; align-items:center; gap:12px;">
+                <i class="fas fa-lock fa-lg"></i>
+                <div>
+                    <strong>공시 확정 완료</strong>
+                    <span style="margin-left:8px; opacity:0.85; font-size:0.9rem;">이 공시는 최종 확정되어 수정이 불가합니다.</span>
+                </div>
+            </div>
+
             <!-- 액션 버튼 -->
             <div class="action-buttons">
                 {% if is_logged_in %}
-                <button class="btn-secondary-custom" onclick="confirmReset()" style="color: #dc3545;">
+                <button class="btn-secondary-custom" id="btn-reset" onclick="confirmReset()" style="color: #dc3545;">
                     <i class="fas fa-redo"></i> 새로하기
                 </button>
                 {% endif %}
                 <button class="btn-secondary-custom" onclick="location.href='/link11/evidence'">
                     <i class="fas fa-file-alt"></i> 증빙자료 관리
+                </button>
+                <!-- 제출하기 (100% 완료 + submitted 미만 상태) -->
+                <button id="btn-submit" class="btn-success-premium" onclick="submitDisclosure()" style="display:none;">
+                    <i class="fas fa-paper-plane"></i> 공시 제출
+                </button>
+                <!-- 최종 확정 (submitted 상태) -->
+                <button id="btn-confirm" class="btn-success-premium" onclick="confirmDisclosure()" style="display:none; background:linear-gradient(135deg,#065f46,#059669);">
+                    <i class="fas fa-check-double"></i> 최종 확정
+                </button>
+                <!-- 확정 취소 (confirmed 상태, 관리자) -->
+                <button id="btn-unconfirm" class="btn-secondary-custom" onclick="unconfirmDisclosure()" style="display:none; color:#b45309;">
+                    <i class="fas fa-unlock"></i> 확정 취소
                 </button>
                 <button class="btn-success-premium" onclick="location.href='/link11/report'">
                     <i class="fas fa-file-export"></i> 공시자료 생성
@@ -798,6 +841,7 @@
                 <small class="text-muted">내용을 확인하며 직접 입력해 주세요.</small>
             </div>
         </div>
+        <div id="ref-status-area" class="px-3 pt-3" style="display:none;"></div>
         <div id="reference-content" class="reference-body">
             <div class="text-center py-5 text-muted">
                 <i class="fas fa-calendar-alt fa-3x mb-3 opacity-20"></i>
@@ -1015,6 +1059,7 @@
                     if (data.ratios) {
                         updateDashboardStats(data.ratios);
                     }
+                    updateConfirmUI(data.session, data.progress);
                     console.log('[진행률 로드] UI 업데이트 완료');
                 } else {
                     console.error('[진행률 로드] 실패:', data.message);
@@ -1072,6 +1117,101 @@
                         badgeEl.textContent = '미시작';
                     }
                 }
+            }
+        }
+
+        // 확정 프로세스 UI 업데이트
+        function updateConfirmUI(session, progress) {
+            const status = session ? session.status : 'draft';
+            const isComplete = progress && progress.completion_rate === 100;
+
+            const btnSubmit    = document.getElementById('btn-submit');
+            const btnConfirm   = document.getElementById('btn-confirm');
+            const btnUnconfirm = document.getElementById('btn-unconfirm');
+            const btnReset     = document.getElementById('btn-reset');
+            const banner       = document.getElementById('confirmed-banner');
+            const qList        = document.getElementById('questions-list');
+
+            // 모두 숨긴 뒤 상태별 표시
+            [btnSubmit, btnConfirm, btnUnconfirm].forEach(b => { if (b) b.style.display = 'none'; });
+            if (banner) banner.style.display = 'none';
+
+            if (status === 'confirmed') {
+                if (banner) banner.style.display = 'flex';
+                if (btnUnconfirm) btnUnconfirm.style.display = 'inline-flex';
+                if (btnReset) btnReset.style.display = 'none';
+                // 입력 잠금
+                if (qList) {
+                    qList.classList.add('disclosure-locked');
+                    qList.querySelectorAll('input, textarea, select, button').forEach(el => {
+                        el.disabled = true;
+                    });
+                }
+            } else {
+                // 잠금 해제
+                if (qList) {
+                    qList.classList.remove('disclosure-locked');
+                    qList.querySelectorAll('input, textarea, select, button').forEach(el => {
+                        el.disabled = false;
+                    });
+                }
+                if (status === 'submitted') {
+                    if (btnConfirm) btnConfirm.style.display = 'inline-flex';
+                } else {
+                    // draft / in_progress / completed
+                    if (isComplete && btnSubmit) btnSubmit.style.display = 'inline-flex';
+                }
+            }
+        }
+
+        // 공시 제출
+        async function submitDisclosure() {
+            if (!confirm('공시를 제출하시겠습니까?\n제출 후에는 담당자 확정이 필요합니다.')) return;
+            try {
+                const res = await fetch(`/link11/api/submit/${userId}/${currentYear}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('공시가 제출되었습니다.', 'success');
+                    await loadProgress();
+                } else {
+                    showToast(data.message || '제출 실패', 'error');
+                }
+            } catch (e) {
+                showToast('제출 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 최종 확정
+        async function confirmDisclosure() {
+            if (!confirm('공시를 최종 확정하시겠습니까?\n확정 후에는 수정이 불가합니다.')) return;
+            try {
+                const res = await fetch(`/link11/api/confirm/${userId}/${currentYear}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('공시가 최종 확정되었습니다.', 'success');
+                    await loadProgress();
+                } else {
+                    showToast(data.message || '확정 실패', 'error');
+                }
+            } catch (e) {
+                showToast('확정 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        // 확정 취소 (관리자)
+        async function unconfirmDisclosure() {
+            if (!confirm('확정을 취소하시겠습니까?')) return;
+            try {
+                const res = await fetch(`/link11/api/unconfirm/${userId}/${currentYear}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('확정이 취소되었습니다.', 'success');
+                    await loadProgress();
+                } else {
+                    showToast(data.message || '취소 실패', 'error');
+                }
+            } catch (e) {
+                showToast('취소 중 오류가 발생했습니다.', 'error');
             }
         }
 
@@ -2569,11 +2709,13 @@
 
                 if (data.success) {
                     select.innerHTML = '<option value="">연도 선택</option>';
+                    const statusLabel = { confirmed: '확정', submitted: '제출됨', completed: '작성완료', in_progress: '작성중', draft: '초안' };
                     data.years.forEach(y => {
                         if (parseInt(y.year) === currentYear) return; // 현재 연도는 제외
                         const option = document.createElement('option');
                         option.value = y.year;
-                        option.textContent = `${y.year}년`;
+                        const label = statusLabel[y.status] || y.status;
+                        option.textContent = `${y.year}년 [${label}]`;
                         if (y.year == currentVal) option.selected = true;
                         select.appendChild(option);
                     });
@@ -2587,8 +2729,10 @@
         async function loadReferenceData() {
             const year = document.getElementById('ref-year-select').value;
             const content = document.getElementById('reference-content');
-            
+            const statusArea = document.getElementById('ref-status-area');
+
             if (!year) {
+                statusArea.style.display = 'none';
                 content.innerHTML = `
                     <div class="text-center py-5 text-muted">
                         <i class="fas fa-calendar-alt fa-3x mb-3 opacity-20"></i>
@@ -2601,27 +2745,40 @@
             content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">자료 로딩 중...</p></div>';
 
             try {
-                // 특정 연도 답변 가져오기
                 const response = await fetch(`/link11/api/answers/${userId}/${year}`);
                 const data = await response.json();
 
+                // 세션 상태 박스 렌더링
+                if (data.success && statusArea) {
+                    const st = data.status || 'draft';
+                    const isDone = ['confirmed', 'submitted', 'completed'].includes(st);
+                    const stLabel = { confirmed: '확정', submitted: '제출됨', completed: '작성완료', in_progress: '작성중', draft: '초안' }[st] || st;
+                    if (isDone) {
+                        statusArea.innerHTML = `
+                            <div class="alert alert-guide-info mb-3" style="border-left: 4px solid #10b981 !important;">
+                                <i class="fas fa-check-circle text-success"></i>
+                                <strong>${year}년 [${stLabel}]</strong> — 검토가 완료된 자료입니다. 안심하고 참고하세요.
+                            </div>`;
+                    } else {
+                        statusArea.innerHTML = `
+                            <div class="alert alert-warning mb-3" style="font-size:0.85rem;">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                <strong>${year}년 [${stLabel}]</strong> — 아직 작성 중인 초안입니다. 참고용으로만 활용하세요.
+                            </div>`;
+                    }
+                    statusArea.style.display = 'block';
+                }
+
                 if (data.success && data.answers.length > 0) {
                     let html = '';
-                    
-                    // 카테고리별로 정렬하여 표시
-                    const groupedAnswers = {};
                     data.answers.forEach(a => {
-                        const cat = a.category_id || 0;
-                        if (!groupedAnswers[cat]) groupedAnswers[cat] = [];
-                        groupedAnswers[cat].push(a);
-                    });
+                        // 미입력 항목 스킵
+                        const v = a.value;
+                        if (v === null || v === undefined || v === '' || v === 'N/A') return;
+                        if (Array.isArray(v) && v.length === 0) return;
 
-                    // 전체 질문 정보를 이미 가지고 있으므로 (questions 전역변수) 매핑 가능
-                    // 하지만 타겟 연도의 질문 구성이 다를 수 있으므로 answers 자체의 정보 활용
-                    data.answers.forEach(a => {
-                        const valueDisplay = formatReferenceValue(a.value, a.question_type);
+                        const valueDisplay = formatReferenceValue(v, a.question_type);
                         const isQuantitative = ['number', 'rank_composition'].includes(a.question_type);
-
                         html += `
                             <div class="ref-item">
                                 ${isQuantitative ? '<span class="ref-badge"><i class="fas fa-exclamation-circle"></i> 정량 데이터 (재계산 필요)</span>' : ''}
@@ -2631,7 +2788,7 @@
                             </div>
                         `;
                     });
-                    content.innerHTML = html;
+                    content.innerHTML = html || '<div class="text-center py-5 text-muted">입력된 답변이 없습니다.</div>';
                 } else {
                     content.innerHTML = '<div class="text-center py-5 text-muted">해당 연도의 데이터가 없습니다.</div>';
                 }
