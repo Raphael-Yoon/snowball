@@ -460,6 +460,15 @@ def save_answer():
         if not question_id:
             return jsonify({'success': False, 'message': '질문 ID가 필요합니다.'}), 400
 
+        # 확정 상태 차단 (confirmed 세션은 수정 불가)
+        with get_db() as conn:
+            sess = conn.execute(
+                'SELECT status FROM sb_disclosure_sessions WHERE company_id = ? AND year = ?',
+                (company_id, year)
+            ).fetchone()
+            if sess and sess['status'] == 'confirmed':
+                return jsonify({'success': False, 'message': '확정된 공시는 수정할 수 없습니다.'}), 403
+
         # 값이 리스트인 경우 JSON으로 직렬화
         if isinstance(value, list):
             value = json.dumps(value, ensure_ascii=False)
@@ -546,10 +555,11 @@ def save_answer():
 
             # 2. 기존 답변 확인
             cursor = conn.execute('''
-                SELECT id FROM sb_disclosure_answers
+                SELECT id, value FROM sb_disclosure_answers
                 WHERE question_id = ? AND company_id = ? AND year = ?
             ''', (question_id, company_id, year))
             existing = cursor.fetchone()
+            old_value = existing['value'] if existing else None
 
             if existing:
                 # 기존 답변 업데이트 (소프트 삭제된 경우 복구 가능성 포함)
@@ -567,6 +577,13 @@ def save_answer():
                     (id, question_id, company_id, user_id, year, value, status)
                     VALUES (?, ?, ?, ?, ?, ?, 'completed')
                 ''', (answer_id, question_id, company_id, str(user_info.get('user_id', '')), year, value))
+
+            # Audit Trail 기록 (K-SOX 대응)
+            conn.execute('''
+                INSERT INTO sb_disclosure_answer_history
+                (company_id, year, question_id, old_value, new_value, changed_by)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (company_id, year, question_id, old_value, value, str(user_info.get('user_id', ''))))
 
             # 3. 재귀적 데이터 클렌징 (상위 질문 'NO' 또는 N/A성 답변 시)
             cursor = conn.execute('SELECT type FROM sb_disclosure_questions WHERE id = ?', (question_id,))
@@ -627,10 +644,17 @@ def get_answers(user_id, year):
                         pass  # 일반 문자열인 경우 그대로 유지
                 answers.append(a)
 
+            sess = conn.execute(
+                'SELECT status FROM sb_disclosure_sessions WHERE company_id = ? AND year = ?',
+                (company_id, year)
+            ).fetchone()
+            session_status = sess['status'] if sess else 'draft'
+
             return jsonify({
                 'success': True,
                 'answers': answers,
-                'count': len(answers)
+                'count': len(answers),
+                'status': session_status
             })
 
     except Exception as e:
@@ -1965,6 +1989,60 @@ def submit_disclosure(user_id, year):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@bp_link11.route('/link11/api/confirm/<int:user_id>/<int:year>', methods=['POST'])
+def confirm_disclosure(user_id, year):
+    """공시 최종 확정 (submitted → confirmed)"""
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+    try:
+        user_info = get_user_info()
+        company_id = get_validated_company_id(user_info, None)
+        with get_db() as conn:
+            sess = conn.execute(
+                'SELECT id, status FROM sb_disclosure_sessions WHERE company_id = ? AND year = ?',
+                (company_id, year)
+            ).fetchone()
+            if not sess:
+                return jsonify({'success': False, 'message': '세션이 존재하지 않습니다.'}), 404
+            if sess['status'] != 'submitted':
+                return jsonify({'success': False, 'message': f"제출 완료 상태에서만 확정 가능합니다. (현재: {sess['status']})"}), 400
+            conn.execute(
+                "UPDATE sb_disclosure_sessions SET status = 'confirmed' WHERE id = ?",
+                (sess['id'],)
+            )
+            conn.commit()
+        return jsonify({'success': True, 'message': '공시가 최종 확정되었습니다.'})
+    except Exception as e:
+        print(f"공시 확정 오류: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp_link11.route('/link11/api/unconfirm/<int:user_id>/<int:year>', methods=['POST'])
+def unconfirm_disclosure(user_id, year):
+    """공시 확정 취소 (confirmed → submitted) — 관리자 전용"""
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': '로그인이 필요합니다.'}), 401
+    try:
+        user_info = get_user_info()
+        company_id = get_validated_company_id(user_info, None)
+        with get_db() as conn:
+            sess = conn.execute(
+                'SELECT id, status FROM sb_disclosure_sessions WHERE company_id = ? AND year = ?',
+                (company_id, year)
+            ).fetchone()
+            if not sess or sess['status'] != 'confirmed':
+                return jsonify({'success': False, 'message': '확정 상태가 아닙니다.'}), 400
+            conn.execute(
+                "UPDATE sb_disclosure_sessions SET status = 'submitted' WHERE id = ?",
+                (sess['id'],)
+            )
+            conn.commit()
+        return jsonify({'success': True, 'message': '공시 확정이 취소되었습니다.'})
+    except Exception as e:
+        print(f"공시 확정 취소 오류: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @bp_link11.route('/link11/api/submissions/<int:user_id>', methods=['GET'])
 def get_submissions(user_id):
     """제출 이력 조회"""
@@ -2041,18 +2119,21 @@ def get_available_years(user_id):
 
         with get_db() as conn:
             cursor = conn.execute('''
-                SELECT DISTINCT year, COUNT(*) as answer_count
-                FROM sb_disclosure_answers
-                WHERE company_id = ? AND year < ?
-                GROUP BY year
-                ORDER BY year DESC
+                SELECT DISTINCT a.year, COUNT(*) as answer_count, s.status
+                FROM sb_disclosure_answers a
+                LEFT JOIN sb_disclosure_sessions s
+                    ON a.company_id = s.company_id AND a.year = s.year
+                WHERE a.company_id = ? AND a.year < ?
+                GROUP BY a.year
+                ORDER BY a.year DESC
             ''', (company_id, current_year))
 
             years = []
             for row in cursor.fetchall():
                 years.append({
                     'year': row['year'],
-                    'answer_count': row['answer_count']
+                    'answer_count': row['answer_count'],
+                    'status': row['status'] or 'draft'
                 })
 
             return jsonify({
