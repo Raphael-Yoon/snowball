@@ -1372,6 +1372,273 @@ class Link11UnitTest(PlaywrightTestBase):
         else:
             result.fail_test(f"연도 목록 API 오류: HTTP {response.status_code}")
 
+    def test_link11_submit_disclosure(self, result: UnitTestResult):
+        """10. 공시 제출 API 호출 확인"""
+        import requests as req
+
+        self._do_admin_login()
+        cookies = self.context.cookies()
+        session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
+
+        response = req.post(
+            f"{self.base_url}/link11/api/submit/1/2024",
+            json={'details': 'unit test - submit'},
+            cookies=session_cookie, timeout=10
+        )
+
+        if response.status_code == 401:
+            result.skip_test("로그인 세션이 API에 전달되지 않음 (쿠키 문제)")
+        elif response.status_code == 200:
+            resp_json = response.json()
+            if resp_json.get('success'):
+                result.pass_test("공시 제출 API 정상 응답 (submitted 상태로 전환)")
+            else:
+                result.fail_test(f"제출 API 응답 오류: {resp_json.get('message', '')}")
+        elif response.status_code == 404:
+            msg = response.json().get('message', '')
+            result.warn_test(f"공시 세션 없음 (세션 생성 후 재테스트 필요): {msg[:80]}")
+        elif response.status_code in (400, 403):
+            msg = response.json().get('message', '')
+            result.warn_test(f"제출 차단: {msg[:80]} (완료율 미달 또는 이미 확정 상태)")
+        else:
+            result.fail_test(f"예상치 못한 응답: HTTP {response.status_code}")
+
+    def test_link11_confirm_disclosure(self, result: UnitTestResult):
+        """10. 공시 확정 API 동작 확인 (submitted → confirmed)"""
+        import requests as req
+
+        self._do_admin_login()
+        cookies = self.context.cookies()
+        session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
+
+        response = req.post(
+            f"{self.base_url}/link11/api/confirm/1/2024",
+            cookies=session_cookie, timeout=10
+        )
+
+        if response.status_code == 401:
+            result.skip_test("로그인 세션이 API에 전달되지 않음 (쿠키 문제)")
+        elif response.status_code == 200:
+            resp_json = response.json()
+            if resp_json.get('success'):
+                result.pass_test("공시 확정 API 정상 응답 (confirmed 상태로 전환)")
+            else:
+                result.fail_test(f"확정 API 응답 오류: {resp_json.get('message', '')}")
+        elif response.status_code == 404:
+            msg = response.json().get('message', '')
+            result.warn_test(f"공시 세션 없음 (세션 생성 후 재테스트 필요): {msg[:80]}")
+        elif response.status_code == 400:
+            msg = response.json().get('message', '')
+            result.warn_test(f"확정 조건 미충족 (submitted 상태 아님): {msg[:80]}")
+        else:
+            result.fail_test(f"예상치 못한 응답: HTTP {response.status_code}")
+
+    def test_link11_unconfirm_disclosure(self, result: UnitTestResult):
+        """10. 공시 확정 해제 API 동작 확인 (confirmed → submitted)"""
+        import requests as req
+
+        self._do_admin_login()
+        cookies = self.context.cookies()
+        session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
+
+        response = req.post(
+            f"{self.base_url}/link11/api/unconfirm/1/2024",
+            cookies=session_cookie, timeout=10
+        )
+
+        if response.status_code == 401:
+            result.skip_test("로그인 세션이 API에 전달되지 않음 (쿠키 문제)")
+        elif response.status_code == 200:
+            resp_json = response.json()
+            if resp_json.get('success'):
+                result.pass_test("공시 확정 해제 API 정상 응답 (submitted 상태로 복귀)")
+            else:
+                result.fail_test(f"확정 해제 API 응답 오류: {resp_json.get('message', '')}")
+        elif response.status_code == 400:
+            msg = response.json().get('message', '')
+            result.warn_test(f"확정 해제 조건 미충족 (confirmed 상태 아님): {msg[:80]}")
+        else:
+            result.fail_test(f"예상치 못한 응답: HTTP {response.status_code}")
+
+    def test_link11_confirmed_save_blocked(self, result: UnitTestResult):
+        """10. confirmed 상태에서 답변 저장 시 403 차단 확인"""
+        import requests as req
+
+        self._do_admin_login()
+        cookies = self.context.cookies()
+        session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
+
+        # 테스트 연도로 submit → confirm 시도 (이미 confirmed면 바로 저장 테스트)
+        test_year = 9997
+        req.post(f"{self.base_url}/link11/api/submit/1/{test_year}",
+                 json={'details': 'test'}, cookies=session_cookie, timeout=10)
+        confirm_resp = req.post(f"{self.base_url}/link11/api/confirm/1/{test_year}",
+                                cookies=session_cookie, timeout=10)
+
+        if confirm_resp.status_code != 200 or not confirm_resp.json().get('success'):
+            # 현재 연도(2024) 기준으로 already confirmed 상태인지 체크
+            save_resp_2024 = req.post(
+                f"{self.base_url}/link11/api/answers",
+                json={'question_id': 'Q1', 'value': 'YES', 'year': 2024},
+                cookies=session_cookie, timeout=10
+            )
+            if save_resp_2024.status_code == 403:
+                msg = save_resp_2024.json().get('message', '')
+                result.pass_test(f"confirmed 상태 저장 차단 확인 (403): {msg[:60]}")
+            else:
+                result.skip_test("confirmed 상태 설정 불가 (완료율 100% 미충족으로 제출 선행 필요)")
+            return
+
+        # confirmed 상태에서 답변 저장 시도
+        save_resp = req.post(
+            f"{self.base_url}/link11/api/answers",
+            json={'question_id': 'Q1', 'value': 'YES', 'year': test_year},
+            cookies=session_cookie, timeout=10
+        )
+
+        if save_resp.status_code == 403:
+            msg = save_resp.json().get('message', '')
+            result.pass_test(f"confirmed 상태 저장 차단 확인 (403): {msg[:60]}")
+        elif save_resp.status_code == 401:
+            result.skip_test("로그인 세션 만료")
+        else:
+            result.fail_test(f"차단되지 않음: HTTP {save_resp.status_code}")
+
+    def test_link11_confirmed_fields_disabled(self, result: UnitTestResult):
+        """10. confirmed 상태에서 입력 필드 disabled 렌더링 확인"""
+        import requests as req
+
+        self._do_admin_login()
+        cookies = self.context.cookies()
+        session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
+
+        # confirmed 상태인 연도 탐색
+        years_resp = req.get(
+            f"{self.base_url}/link11/api/available-years/1",
+            cookies=session_cookie, timeout=10
+        )
+        confirmed_year = None
+        if years_resp.status_code == 200:
+            for y in years_resp.json().get('years', []):
+                if y.get('status') == 'confirmed':
+                    confirmed_year = y.get('year')
+                    break
+
+        if not confirmed_year:
+            result.skip_test("confirmed 상태인 연도 없음 — 확정 완료 후 재테스트 필요")
+            return
+
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2000)
+        self.page.select_option("#disclosure-year-select", str(confirmed_year))
+        self.page.wait_for_timeout(2000)
+
+        # 카테고리 클릭해서 질문 로드
+        cat_card = self.page.locator(".category-card").first
+        if cat_card.count() > 0:
+            cat_card.click()
+            self.page.wait_for_timeout(1500)
+
+        disabled_inputs = self.page.locator("#questions-view input:disabled, #questions-view textarea:disabled")
+        total_inputs = self.page.locator("#questions-view input, #questions-view textarea")
+
+        if disabled_inputs.count() > 0:
+            result.pass_test(
+                f"confirmed 상태 입력 필드 disabled 확인 "
+                f"({disabled_inputs.count()}/{total_inputs.count()}개 잠금, {confirmed_year}년)"
+            )
+        else:
+            result.fail_test(
+                f"confirmed 상태({confirmed_year}년)임에도 입력 필드가 모두 활성화되어 있음"
+            )
+
+    def test_link11_reference_year_status_badge(self, result: UnitTestResult):
+        """11. 연도 참고 드롭다운에 상태 뱃지 표시 확인"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2000)
+
+        ref_btn = self.page.locator("button:has-text('전년도 참고')")
+        if ref_btn.count() == 0:
+            result.fail_test("'전년도 참고' 버튼을 찾을 수 없음")
+            return
+
+        ref_btn.click()
+        self.page.wait_for_timeout(1000)
+
+        year_select = self.page.locator("#ref-year-select")
+        if year_select.count() == 0:
+            result.fail_test("연도 선택 드롭다운을 찾을 수 없음")
+            return
+
+        options = year_select.locator("option")
+        if options.count() <= 1:
+            result.skip_test("참고 가능한 연도가 없음 — 데이터 입력 후 재테스트 필요")
+            return
+
+        first_option_text = options.nth(1).inner_text()
+        status_keywords = ['확정', '제출됨', '작성완료', '작성중', '진행중', '미시작', '초안']
+        has_status = any(kw in first_option_text for kw in status_keywords)
+
+        if has_status:
+            result.pass_test(f"연도 드롭다운 상태 뱃지 확인: '{first_option_text}'")
+        else:
+            result.fail_test(f"상태 표시 없이 연도만 표시됨: '{first_option_text}'")
+
+    def test_link11_reference_panel_status_banner(self, result: UnitTestResult):
+        """11. 참고 패널 내 상태 안내 배너 표시 확인"""
+        import requests as req
+
+        self._do_admin_login()
+        cookies = self.context.cookies()
+        session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
+
+        years_resp = req.get(
+            f"{self.base_url}/link11/api/available-years/1",
+            cookies=session_cookie, timeout=10
+        )
+        if years_resp.status_code != 200 or not years_resp.json().get('years'):
+            result.skip_test("참고 가능한 연도 없음 — 데이터 입력 후 재테스트 필요")
+            return
+
+        ref_year = years_resp.json()['years'][0].get('year')
+
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2000)
+
+        ref_btn = self.page.locator("button:has-text('전년도 참고')")
+        if ref_btn.count() == 0:
+            result.fail_test("'전년도 참고' 버튼을 찾을 수 없음")
+            return
+
+        ref_btn.click()
+        self.page.wait_for_timeout(2500)  # 비동기 옵션 로드 대기
+
+        year_select = self.page.locator("#ref-year-select")
+        if year_select.count() > 0:
+            options = year_select.locator("option")
+            # 옵션 value 기반으로 선택 (텍스트에 연도 포함된 옵션 찾기)
+            selected = False
+            for i in range(options.count()):
+                opt_val = options.nth(i).get_attribute("value") or ""
+                if str(ref_year) in opt_val or opt_val == str(ref_year):
+                    year_select.select_option(value=opt_val)
+                    selected = True
+                    break
+            if not selected:
+                # fallback: 첫 번째 실제 옵션 선택
+                if options.count() > 1:
+                    first_val = options.nth(1).get_attribute("value") or ""
+                    if first_val:
+                        year_select.select_option(value=first_val)
+            self.page.wait_for_timeout(2000)
+
+        status_banner = self.page.locator(".reference-panel .ref-status-banner, .reference-panel .alert")
+        if status_banner.count() > 0 and status_banner.first.is_visible():
+            result.pass_test(f"참고 패널 상태 안내 배너 표시 확인 ({ref_year}년 데이터)")
+        else:
+            result.fail_test("참고 패널 내 상태 안내 배너가 표시되지 않음")
+
     def _do_admin_login(self):
         """관리자 로그인"""
         self.page.goto(f"{self.base_url}/login")
@@ -1475,6 +1742,15 @@ def run_tests():
             test_runner.test_link11_available_years,
             test_runner.test_link11_reference_view,
             test_runner.test_link11_ratio_trigger_integrity,
+            # 확정 프로세스 및 입력 잠금 (5개)
+            test_runner.test_link11_submit_disclosure,
+            test_runner.test_link11_confirm_disclosure,
+            test_runner.test_link11_unconfirm_disclosure,
+            test_runner.test_link11_confirmed_save_blocked,
+            test_runner.test_link11_confirmed_fields_disabled,
+            # 연도별 참고 패널 개선 (2개)
+            test_runner.test_link11_reference_year_status_badge,
+            test_runner.test_link11_reference_panel_status_banner,
         ])
     finally:
         test_runner._update_checklist_result()

@@ -61,3 +61,16 @@
 - **test_link11_reference_view**: "전년도 참고" 패널 노출 및 연도 선택에 따른 데이터 조회 확인
 - **test_link11_ratio_trigger_integrity**: 상위 트리거(Q1, Q9) '아니오' 시 하위 잔류 데이터 무시 및 대시보드 0% 고정 확인
 
+## 10. 확정 프로세스 및 입력 잠금 (신규)
+
+- **test_link11_submit_disclosure**: 공시 제출 API 호출 확인 (완료율 100% 시 제출, 미달 시 차단 메시지)
+- **test_link11_confirm_disclosure**: 공시 확정 API 동작 확인 (submitted → confirmed 상태 전환)
+- **test_link11_unconfirm_disclosure**: 공시 확정 해제 API 동작 확인 (confirmed → submitted 상태 복귀)
+- **test_link11_confirmed_save_blocked**: confirmed 상태에서 답변 저장 시도 시 403 Forbidden 차단 확인
+- **test_link11_confirmed_fields_disabled**: confirmed 상태에서 질문 입력 필드 disabled 렌더링 확인 (UI 잠금)
+
+## 11. 연도별 참고 패널 개선 (신규)
+
+- **test_link11_reference_year_status_badge**: 연도 선택 드롭다운 옵션에 상태 뱃지(확정/제출됨/작성완료 등) 표시 확인
+- **test_link11_reference_panel_status_banner**: 연도 선택 후 참고 패널 내 상태 안내 배너 표시 확인
+
