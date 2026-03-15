@@ -15,6 +15,27 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/common.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* 다크모드 input 스타일 */
+        [data-bs-theme="dark"] input[type="email"],
+        [data-bs-theme="dark"] input[type="text"],
+        [data-bs-theme="dark"] input[type="password"] {
+            background-color: #252930;
+            border-color: #3a3f4b;
+            color: #dee2e6;
+        }
+        [data-bs-theme="dark"] input[type="email"]:focus,
+        [data-bs-theme="dark"] input[type="text"]:focus,
+        [data-bs-theme="dark"] input[type="password"]:focus {
+            background-color: #2e333d;
+            border-color: #6ea8fe;
+            color: #dee2e6;
+        }
+        [data-bs-theme="dark"] input::placeholder {
+            color: #6c757d;
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
