@@ -1,5 +1,6 @@
 from flask import Blueprint, request, render_template, redirect, url_for, session
 from snowball_mail import send_gmail
+from snowball import limiter
 
 bp_link9 = Blueprint('link9', __name__)
 
@@ -23,12 +24,18 @@ def get_user_info():
 # Contact Us 관련 기능들
 
 @bp_link9.route('/link9', methods=['GET', 'POST'])
+@limiter.limit("5 per hour")
 def link9():
     """서비스 문의 페이지 (Contact Us)"""
     user_logged_in = is_logged_in()
     user_info = get_user_info()
 
     if request.method == 'POST':
+        # Honeypot: 봇 차단 (숨겨진 필드에 값이 있으면 봇으로 판단)
+        if request.form.get('website'):
+            return render_template('link9.jsp', success=True, remote_addr=request.remote_addr,
+                                 is_logged_in=user_logged_in, user_info=user_info)
+
         name = request.form.get('name')
         company_name = request.form.get('company_name')
         email = request.form.get('email')
@@ -51,8 +58,14 @@ def link9():
                          is_logged_in=user_logged_in, user_info=user_info)
 
 @bp_link9.route('/service_inquiry', methods=['POST'])
+@limiter.limit("5 per hour")
 def service_inquiry():
     """서비스 문의 처리"""
+    # Honeypot: 봇 차단
+    if request.form.get('website'):
+        return render_template('login.jsp', service_inquiry_success=True,
+                             remote_addr=request.remote_addr)
+
     try:
         company_name = request.form.get('company_name')
         contact_name = request.form.get('contact_name')
@@ -85,10 +98,14 @@ def service_inquiry():
                              remote_addr=request.remote_addr)
 
 @bp_link9.route('/api/contact/send', methods=['POST'])
+@limiter.limit("5 per hour")
 def send_contact_message():
     """Contact 메시지 전송 API"""
     try:
         data = request.get_json()
+        # Honeypot: JSON API는 website 필드로 봇 판단
+        if data and data.get('website'):
+            return {'success': True, 'message': '문의가 성공적으로 전송되었습니다.'}
         name = data.get('name')
         email = data.get('email')
         subject = data.get('subject', '일반 문의')
