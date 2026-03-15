@@ -52,7 +52,7 @@
                     <div class="mb-3">
                         <label for="company_name" class="form-label">회사명 *</label>
                         {% if is_logged_in %}
-                        <input type="text" class="form-control" id="company_name" name="company_name" value="{{ user_info.company_name if user_info.company_name else '' }}" readonly style="background-color: #f8f9fa;" required>
+                        <input type="text" class="form-control" id="company_name" name="company_name" value="{{ user_info.company_name if user_info.company_name else '' }}" readonly required>
                         <small class="text-muted">로그인된 계정의 회사명이 자동으로 설정됩니다.</small>
                         {% else %}
                         <input type="text" class="form-control" id="company_name" name="company_name" placeholder="회사명을 입력하세요" required>
@@ -62,7 +62,7 @@
                     <div class="mb-3">
                         <label for="name" class="form-label">이름</label>
                         {% if is_logged_in %}
-                        <input type="text" class="form-control" id="name" name="name" value="{{ user_info.user_name }}" readonly style="background-color: #f8f9fa;">
+                        <input type="text" class="form-control" id="name" name="name" value="{{ user_info.user_name }}" readonly>
                         <small class="text-muted">로그인된 계정의 사용자 이름이 자동으로 설정됩니다.</small>
                         {% else %}
                         <input type="text" class="form-control" id="name" name="name" placeholder="이름을 입력하세요 (선택사항)">
@@ -72,7 +72,7 @@
                     <div class="mb-3">
                         <label for="email" class="form-label">이메일 *</label>
                         {% if is_logged_in %}
-                        <input type="email" class="form-control" id="email" name="email" value="{{ user_info.user_email }}" readonly style="background-color: #f8f9fa;" required>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user_info.user_email }}" readonly required>
                         <small class="text-muted">로그인된 계정의 이메일 주소가 자동으로 설정됩니다.</small>
                         {% else %}
                         <input type="email" class="form-control" id="email" name="email" placeholder="이메일 주소를 입력하세요" required>
