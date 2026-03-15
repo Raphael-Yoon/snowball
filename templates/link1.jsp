@@ -129,9 +129,15 @@
 					<div class="card border-0 shadow-sm mb-4">
 						<div class="card-header py-3 d-flex justify-content-between align-items-center">
 							<h5 class="mb-0"><i class="fas fa-server me-2"></i>대상 시스템 정보</h5>
+{% if is_logged_in %}
 							<button class="btn btn-sm btn-outline-secondary" id="btn-expert-mode" onclick="toggleExpertMode()">
 								<i class="fas fa-cog me-1"></i>전문가 모드
 							</button>
+							{% else %}
+							<button class="btn btn-sm btn-outline-secondary" id="btn-expert-mode" onclick="showExpertModeToast()" title="로그인 후 이용 가능합니다" style="opacity:0.55; cursor:not-allowed;">
+								<i class="fas fa-lock me-1"></i>전문가 모드
+							</button>
+							{% endif %}
 						</div>
 						<div class="card-body">
 							<form id="system-form">
@@ -475,6 +481,10 @@
 			// 간편/전문가 모드 토글
 		let expertMode = false;
 		function toggleExpertMode() {
+			{% if not is_logged_in %}
+			showExpertModeToast();
+			return;
+			{% endif %}
 			expertMode = !expertMode;
 			const rcmSection = document.getElementById('rcm-section');
 			const notice = document.getElementById('simple-mode-notice');
@@ -1547,5 +1557,24 @@
 				}
 			});
 		</script>
+
+	<!-- 전문가 모드 접근 제한 토스트 -->
+	<div class="position-fixed top-0 end-0 p-3" style="margin-top: 60px;" style="z-index: 9999">
+		<div id="expertModeToast" class="toast align-items-center text-bg-secondary border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
+			<div class="d-flex">
+				<div class="toast-body">
+					<i class="fas fa-lock me-2"></i>전문가 모드는 로그인 후 이용 가능합니다.
+				</div>
+				<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+			</div>
+		</div>
+	</div>
+	<script>
+		function showExpertModeToast() {
+			const toastEl = document.getElementById('expertModeToast');
+			const toast = new bootstrap.Toast(toastEl);
+			toast.show();
+		}
+	</script>
 	</body>
 </html>
