@@ -1,6 +1,6 @@
 from flask import Blueprint, request, render_template, redirect, url_for, session
 from snowball_mail import send_gmail
-from snowball import limiter
+from extensions import limiter
 
 bp_link9 = Blueprint('link9', __name__)
 

@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from flask_wtf.csrf import CSRFProtect
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from extensions import limiter
 from werkzeug.exceptions import HTTPException
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -73,12 +72,7 @@ logger.info(f"Flask 앱 시작 - Environment: {'Production' if is_production els
 csrf = CSRFProtect(app)
 
 # Rate Limiting 초기화 (스팸봇 차단)
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=[],
-    storage_uri="memory://"
-)
+limiter.init_app(app)
 
 # CSRF 제외할 엔드포인트 (임시 - 향후 템플릿에 CSRF 토큰 추가 후 제거)
 # csrf.exempt(bp_link1)  # CSRF 보호 적용 완료
