@@ -159,6 +159,8 @@
                     {% endif %}
                     <form method="POST" action="/service_inquiry" id="serviceInquiryForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <!-- Honeypot: 봇 차단용 숨김 필드 -->
+                        <input type="text" name="website" style="display:none;" tabindex="-1" autocomplete="off" value="">
                         <div class="form-group">
                             <label for="company_name">회사명</label>
                             <input type="text" id="company_name" name="company_name" required placeholder="회사명을 입력하세요">
