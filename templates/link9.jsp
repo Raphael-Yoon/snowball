@@ -17,6 +17,15 @@
             color: #999;
             opacity: 0.6;
         }
+        .hp-field {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+            opacity: 0;
+        }
     </style>
 </head>
 <body>
@@ -47,8 +56,9 @@
                 {% endif %}
                 <form method="post" action="/link9" class="mx-auto" style="width: 80%;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <!-- Honeypot: 봇 차단용 숨김 필드 (사람에게는 보이지 않음) -->
-                    <input type="text" name="website" style="display:none;" tabindex="-1" autocomplete="off" value="">
+                    <input type="hidden" name="form_token" value="{{ form_token }}"/>
+                    <!-- Honeypot: 봇 차단용 숨김 필드 -->
+                    <input type="text" name="website" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true" value="">
                     <div class="mb-3">
                         <label for="company_name" class="form-label">회사명 *</label>
                         {% if is_logged_in %}

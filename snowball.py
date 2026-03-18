@@ -1,3 +1,6 @@
+import hmac
+import hashlib
+import time
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from flask_wtf.csrf import CSRFProtect
 from extensions import limiter
@@ -107,8 +110,11 @@ if is_production_env and not PYTHONANYWHERE_AUTH_CODE:
 @app.context_processor
 def inject_globals():
     """모든 템플릿에 전역 변수 주입"""
+    timestamp = str(int(time.time()))
+    sig = hmac.new(app.secret_key.encode(), timestamp.encode(), hashlib.sha256).hexdigest()
     return {
-        'is_production': is_production
+        'is_production': is_production,
+        'form_token': f"{timestamp}.{sig}",
     }
 
 def is_logged_in():

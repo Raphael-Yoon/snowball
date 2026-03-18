@@ -1,8 +1,55 @@
-from flask import Blueprint, request, render_template, redirect, url_for, session
+import hmac
+import hashlib
+import time
+import re
+from flask import Blueprint, request, render_template, redirect, url_for, session, current_app
 from snowball_mail import send_gmail
 from extensions import limiter
+from logger_config import get_logger
 
 bp_link9 = Blueprint('link9', __name__)
+logger = get_logger('contact')
+
+_URL_PATTERN = re.compile(r'https?://|www\.', re.IGNORECASE)
+
+def _validate_form_token(token, min_seconds=3):
+    """폼 제출 토큰 검증 — 최소 min_seconds초 경과 여부 확인"""
+    if not token:
+        return False
+    try:
+        timestamp_str, sig = token.split('.', 1)
+        secret = current_app.config.get('SECRET_KEY', 'fallback-secret')
+        expected = hmac.new(secret.encode(), timestamp_str.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            return False
+        return (int(time.time()) - int(timestamp_str)) >= min_seconds
+    except (ValueError, AttributeError):
+        return False
+
+def _contains_url(text):
+    """메시지 본문에 URL이 포함되어 있는지 확인"""
+    return bool(_URL_PATTERN.search(text or ''))
+
+def _log_contact(endpoint, result, reason=None, extra=None):
+    """Contact 폼 제출 시도를 로깅한다.
+    result: 'blocked' | 'sent' | 'error'
+    reason: 차단 사유 (blocked일 때)
+    extra: 추가 정보 딕셔너리
+    """
+    ip = request.remote_addr
+    ua = request.headers.get('User-Agent', 'unknown')[:120]
+    base = f"[contact/{endpoint}] result={result} ip={ip} ua=\"{ua}\""
+    if reason:
+        base += f" reason={reason}"
+    if extra:
+        for k, v in extra.items():
+            base += f" {k}={str(v)[:80]!r}"
+    if result == 'blocked':
+        logger.warning(base)
+    elif result == 'error':
+        logger.error(base)
+    else:
+        logger.info(base)
 
 def is_logged_in():
     """로그인 상태 확인"""
@@ -33,13 +80,30 @@ def link9():
     if request.method == 'POST':
         # Honeypot: 봇 차단 (숨겨진 필드에 값이 있으면 봇으로 판단)
         if request.form.get('website'):
+            _log_contact('link9', 'blocked', reason='honeypot')
             return render_template('link9.jsp', success=True, remote_addr=request.remote_addr,
+                                 is_logged_in=user_logged_in, user_info=user_info)
+
+        # 폼 제출 시간 검증: 3초 미만이면 봇으로 판단
+        if not _validate_form_token(request.form.get('form_token')):
+            _log_contact('link9', 'blocked', reason='form_token')
+            return render_template('link9.jsp', success=False,
+                                 error='잘못된 요청입니다. 잠시 후 다시 시도해주세요.',
+                                 remote_addr=request.remote_addr,
                                  is_logged_in=user_logged_in, user_info=user_info)
 
         name = request.form.get('name')
         company_name = request.form.get('company_name')
         email = request.form.get('email')
         message = request.form.get('message')
+
+        # URL 포함 메시지 차단
+        if _contains_url(message):
+            _log_contact('link9', 'blocked', reason='url_in_message', extra={'email': email})
+            return render_template('link9.jsp', success=False,
+                                 error='문의 내용에 URL을 포함할 수 없습니다.',
+                                 remote_addr=request.remote_addr,
+                                 is_logged_in=user_logged_in, user_info=user_info)
 
         subject = f'Contact Us 문의: {name}'
         body = f'이름: {name}\n회사명: {company_name}\n이메일: {email}\n문의내용:\n{message}'
@@ -49,9 +113,11 @@ def link9():
                 subject=subject,
                 body=body
             )
+            _log_contact('link9', 'sent', extra={'email': email, 'company': company_name})
             return render_template('link9.jsp', success=True, remote_addr=request.remote_addr,
                                  is_logged_in=user_logged_in, user_info=user_info)
         except Exception as e:
+            _log_contact('link9', 'error', extra={'error': str(e)})
             return render_template('link9.jsp', success=False, error=str(e), remote_addr=request.remote_addr,
                                  is_logged_in=user_logged_in, user_info=user_info)
     return render_template('link9.jsp', remote_addr=request.remote_addr,
@@ -63,7 +129,14 @@ def service_inquiry():
     """서비스 문의 처리"""
     # Honeypot: 봇 차단
     if request.form.get('website'):
+        _log_contact('service_inquiry', 'blocked', reason='honeypot')
         return render_template('login.jsp', service_inquiry_success=True,
+                             remote_addr=request.remote_addr)
+
+    # 폼 제출 시간 검증
+    if not _validate_form_token(request.form.get('form_token')):
+        _log_contact('service_inquiry', 'blocked', reason='form_token')
+        return render_template('login.jsp', service_inquiry_error='잘못된 요청입니다. 잠시 후 다시 시도해주세요.',
                              remote_addr=request.remote_addr)
 
     try:
@@ -87,13 +160,13 @@ def service_inquiry():
             subject=subject,
             body=body
         )
-        
-        # 성공 메시지를 포함하여 로그인 페이지로 리다이렉트
-        return render_template('login.jsp', 
+        _log_contact('service_inquiry', 'sent', extra={'email': contact_email, 'company': company_name})
+        return render_template('login.jsp',
                              service_inquiry_success=True,
                              remote_addr=request.remote_addr)
     except Exception as e:
-        return render_template('login.jsp', 
+        _log_contact('service_inquiry', 'error', extra={'error': str(e)})
+        return render_template('login.jsp',
                              service_inquiry_error=str(e),
                              remote_addr=request.remote_addr)
 
@@ -105,13 +178,26 @@ def send_contact_message():
         data = request.get_json()
         # Honeypot: JSON API는 website 필드로 봇 판단
         if data and data.get('website'):
+            _log_contact('api', 'blocked', reason='honeypot')
             return {'success': True, 'message': '문의가 성공적으로 전송되었습니다.'}
+
+        # 폼 제출 시간 검증
+        if not _validate_form_token(data.get('form_token') if data else None):
+            _log_contact('api', 'blocked', reason='form_token')
+            return {'success': False, 'message': '잘못된 요청입니다. 잠시 후 다시 시도해주세요.'}, 400
+
         name = data.get('name')
         email = data.get('email')
         subject = data.get('subject', '일반 문의')
         message = data.get('message')
-        
+
+        # URL 포함 메시지 차단
+        if _contains_url(message):
+            _log_contact('api', 'blocked', reason='url_in_message', extra={'email': email})
+            return {'success': False, 'message': '문의 내용에 URL을 포함할 수 없습니다.'}, 400
+
         if not all([name, email, message]):
+            _log_contact('api', 'blocked', reason='missing_fields')
             return {
                 'success': False,
                 'message': '필수 정보가 누락되었습니다.'
@@ -167,12 +253,14 @@ snowball1566@gmail.com
             body=auto_reply_body
         )
         
+        _log_contact('api', 'sent', extra={'email': email, 'subject': subject})
         return {
             'success': True,
             'message': '문의가 성공적으로 전송되었습니다. 빠른 시일 내에 답변드리겠습니다.'
         }
-        
+
     except Exception as e:
+        _log_contact('api', 'error', extra={'error': str(e)})
         return {
             'success': False,
             'message': '메시지 전송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
