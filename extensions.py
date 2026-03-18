@@ -4,5 +4,5 @@ from flask_limiter.util import get_remote_address
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=[],
-    storage_uri="file:///c:/Python/snowball/.rate_limit_storage"
+    storage_uri="memory://"
 )
