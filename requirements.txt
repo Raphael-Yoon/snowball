@@ -15,5 +15,4 @@ playwright
 selenium
 OpenDartReader
 pykrx
-python-magic-bin>=0.4.14
 flask-limiter==4.1.1
