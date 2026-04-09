@@ -23,7 +23,7 @@ from auth import log_user_activity, login_required
 # ================================================================
 # Blueprint
 # ================================================================
-bp_link2 = Blueprint('link2_1p', __name__)
+bp_link2 = Blueprint('link2', __name__)
 
 # ================================================================
 # Constants & Data Structures
@@ -321,13 +321,13 @@ ITGC_CONTROLS = {
 # Routes
 # ================================================================
 
-@bp_link2.route('/link2_1p', methods=['GET', 'POST'])
-@bp_link2.route('/link2_1p/section/<section>', methods=['GET', 'POST'])
+@bp_link2.route('/itgc_interview', methods=['GET', 'POST'])
+@bp_link2.route('/itgc_interview/section/<section>', methods=['GET', 'POST'])
 def itgc_interview(section=None):
     """Main section-based interview UI."""
     if request.method == 'GET' and request.args.get('reset') == '1':
         reset_session()
-        return redirect(url_for('link2_1p.itgc_interview'))
+        return redirect(url_for('link2.itgc_interview'))
 
     init_session()
     
@@ -338,8 +338,10 @@ def itgc_interview(section=None):
 
     section_name = session.get('current_section', 'common')
     
-    if section is None and request.method == 'GET':
-        return redirect(url_for('link2_1p.itgc_interview', section='common'))
+    # If no section specified in path, we stay on /link2_1p and render based on session/default.
+    # This keeps the URL clean in the address bar.
+    # if section is None and request.method == 'GET':
+    #     return redirect(url_for('link2.itgc_interview', section='common'))
 
     if request.method == 'POST':
         answers = list(session.get('answer'))
@@ -361,14 +363,14 @@ def itgc_interview(section=None):
         if action == 'prev' and cur_idx > 0:
             new_sec = SECTION_ORDER[cur_idx - 1]
             session['current_section'] = new_sec
-            return redirect(url_for('link2_1p.itgc_interview', section=new_sec))
+            return redirect(url_for('link2.itgc_interview'))
         elif action == 'next' or action == 'finish':
             if cur_idx + 1 < len(SECTION_ORDER):
                 new_sec = SECTION_ORDER[cur_idx + 1]
                 session['current_section'] = new_sec
-                return redirect(url_for('link2_1p.itgc_interview', section=new_sec))
+                return redirect(url_for('link2.itgc_interview'))
             else:
-                return redirect(url_for('link2_1p.ai_review_selection'))
+                return redirect(url_for('link2.ai_review_selection'))
 
 
     # Rendering
@@ -400,7 +402,7 @@ def itgc_interview(section=None):
 def ai_review_selection():
     user_email = session.get('answer', [''])[0]
     if not user_email:
-        return redirect(url_for('link2_1p.itgc_interview', reset=1))
+        return redirect(url_for('link2.itgc_interview', reset=1))
     
     return render_template('link2_ai_review.jsp',
                          user_email=user_email,
@@ -411,7 +413,7 @@ def ai_review_selection():
 def process_with_ai_option():
     enable_ai = request.form.get('enable_ai_review', 'false').lower() == 'true'
     session['enable_ai_review'] = enable_ai
-    return redirect(url_for('link2_1p.processing'))
+    return redirect(url_for('link2.processing'))
 
 @bp_link2.route('/processing')
 def processing():
