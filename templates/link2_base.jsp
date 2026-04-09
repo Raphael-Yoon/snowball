@@ -72,7 +72,7 @@
             {% set s = sections[s_key] %}
             {% set s_idx = loop.index0 %}
             {% if s_idx < cur_section_idx %}
-            <a href="{{ url_for('link2_1p.section_view', section_name=s_key) }}"
+            <a href="{{ url_for('link2_1p.link2_1p_start', section=s_key) }}"
                class="step completed">
                 <i class="fas {{ s.icon }}"></i>
                 <span>{{ s.name.split('(')[0].strip() }}</span>
@@ -106,7 +106,7 @@
 
         <!-- 폼 -->
         <form id="sectionForm"
-              action="{{ url_for('link2_1p.section_view', section_name=section_name) }}"
+              action="{{ url_for('link2_1p.link2_1p_start') }}"
               method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
@@ -116,10 +116,9 @@
             <div class="d-flex justify-content-between align-items-center mt-4 mb-5 pt-3"
                  style="border-top: 1px solid #dee2e6;">
                 {% if prev_section %}
-                <a href="{{ url_for('link2_1p.section_view', section_name=prev_section) }}"
-                   class="btn btn-outline-secondary px-4">
+                <button type="submit" name="action" value="prev" class="btn btn-outline-secondary px-4">
                     <i class="fas fa-arrow-left me-1"></i> 이전
-                </a>
+                </button>
                 {% else %}
                 <div></div>
                 {% endif %}

@@ -1,7 +1,7 @@
 # snowball_link2.py
 # 섹션별(4페이지) ITGC 인터뷰 시스템
 # 섹션(공통/APD/PC/CO) 단위로 한 페이지에 모아서 표시
-# (구 단계별 52페이지 방식은 snowball_link2_bak.py 참조)
+# URL 노출 최소화 (Single URL 방식 적용: /itgc_interview)
 
 from flask import Blueprint, render_template, request, session, redirect, url_for
 from auth import log_user_activity
@@ -45,7 +45,7 @@ SECTION_ORDER = ['common', 'apd', 'pc', 'co']
 # ================================================================
 # 기존 snowball_link2.py에서 공유 자원 import
 # ================================================================
-from snowball_link2_bak import (
+from snowball_link2_core import (
     s_questions, Q_ID, question_count,
     clear_skipped_answers,
 )
@@ -95,40 +95,41 @@ def reset_1p_session():
 
 
 # ================================================================
-# 라우트
+# 라우트 (통합 URL 적용)
 # ================================================================
-@bp_link2_1p.route('/link2_1p', methods=['GET'])
+@bp_link2_1p.route('/itgc_interview', methods=['GET', 'POST'])
 def link2_1p_start():
-    """시작 라우트 - 현재 섹션으로 리디렉션"""
-    if request.args.get('reset') == '1':
+    """
+    단일 URL(/itgc_interview)로 모든 섹션 처리.
+    GET: session['link2_1p_section']에 저장된 섹션 표시.
+    POST: 현재 섹션 답변 저장 후 다음 섹션으로 이동.
+    """
+    # 1. 초기 접속 처리 (리셋 요청 등)
+    if request.method == 'GET' and request.args.get('reset') == '1':
         reset_1p_session()
         if is_logged_in():
             user_info = get_user_info()
             log_user_activity(
-                user_info, 'FEATURE_START', 'Interview(섹션형) 기능 시작',
-                '/link2_1p', request.remote_addr, request.headers.get('User-Agent')
+                user_info, 'FEATURE_START', 'Interview(섹션형) 리셋 및 시작',
+                '/itgc_interview', request.remote_addr, request.headers.get('User-Agent')
             )
-    elif 'link2_1p_answers' not in session:
-        if is_logged_in():
-            user_info = get_user_info()
-            log_user_activity(
-                user_info, 'FEATURE_START', 'Interview(섹션형) 기능 시작',
-                '/link2_1p', request.remote_addr, request.headers.get('User-Agent')
-            )
-
-    init_1p_session()
-    current_section = session.get('link2_1p_section', 'common')
-    return redirect(url_for('link2_1p.section_view', section_name=current_section))
-
-
-@bp_link2_1p.route('/link2_1p/section/<section_name>', methods=['GET', 'POST'])
-def section_view(section_name):
-    """섹션 표시(GET) 및 저장(POST)"""
-    if section_name not in SECTIONS:
         return redirect(url_for('link2_1p.link2_1p_start'))
 
     init_1p_session()
 
+    # 특정 색션으로 강제 이동 요청이 있는 경우 (주소창 파라미터로 명시할 때만 노출됨)
+    requested_section = request.args.get('section')
+    if requested_section in SECTIONS:
+        session['link2_1p_section'] = requested_section
+        return redirect(url_for('link2_1p.link2_1p_start'))
+
+    # 현재 섹션 결정
+    section_name = session.get('link2_1p_section', 'common')
+    if section_name not in SECTIONS:
+        section_name = 'common'
+        session['link2_1p_section'] = 'common'
+
+    # 2. POST 요청: 답변 저장 및 단계 이동
     if request.method == 'POST':
         answers = list(session.get('link2_1p_answers', [''] * question_count))
         textarea = list(session.get('link2_1p_textarea', [''] * question_count))
@@ -148,12 +149,20 @@ def section_view(section_name):
         session['link2_1p_textarea'] = textarea
         session['link2_1p_textarea2'] = textarea2
 
+        # 진행 방향 결정 (prev_section이 명시된 경우 뒤로 가기)
+        if request.form.get('action') == 'prev':
+            cur_idx = SECTION_ORDER.index(section_name)
+            if cur_idx > 0:
+                prev_section = SECTION_ORDER[cur_idx - 1]
+                session['link2_1p_section'] = prev_section
+            return redirect(url_for('link2_1p.link2_1p_start'))
+
         # 다음 섹션으로 이동
         cur_idx = SECTION_ORDER.index(section_name)
         if cur_idx + 1 < len(SECTION_ORDER):
             next_section = SECTION_ORDER[cur_idx + 1]
             session['link2_1p_section'] = next_section
-            return redirect(url_for('link2_1p.section_view', section_name=next_section))
+            return redirect(url_for('link2_1p.link2_1p_start'))
         else:
             # 마지막 섹션 완료 → 기존 세션 키에 복사 후 AI 검토 선택 페이지로
             session['answer'] = session['link2_1p_answers']
@@ -161,7 +170,7 @@ def section_view(section_name):
             session['textarea2_answer'] = session['link2_1p_textarea2']
             return redirect(url_for('link2.ai_review_selection'))
 
-    # GET: 섹션 렌더링
+    # 3. GET 요청: 렌더링
     answers = session.get('link2_1p_answers', [''] * question_count)
     textarea = session.get('link2_1p_textarea', [''] * question_count)
     textarea2 = session.get('link2_1p_textarea2', [''] * question_count)
@@ -191,3 +200,16 @@ def section_view(section_name):
         is_logged_in=is_logged_in(),
         remote_addr=request.remote_addr,
     )
+
+
+# 하위 호환성을 위한 기존 경로 리다이렉트
+@bp_link2_1p.route('/link2_1p')
+def old_link2_1p():
+    return redirect(url_for('link2_1p.link2_1p_start'))
+
+@bp_link2_1p.route('/link2_1p/section/<section_name>')
+def old_section_view(section_name):
+    # 명시적으로 섹션명이 포함된 경로로 오면 세션 업데이트 후 단일 URL로 보냄
+    if section_name in SECTIONS:
+        session['link2_1p_section'] = section_name
+    return redirect(url_for('link2_1p.link2_1p_start'))

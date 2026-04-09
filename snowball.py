@@ -23,7 +23,7 @@ load_dotenv(dotenv_path=env_path)
 
 from logger_config import setup_logging, get_logger
 from snowball_link1 import bp_link1
-from snowball_link2_bak import bp_link2
+from snowball_link2_core import bp_link2
 from snowball_link2 import bp_link2_1p
 from snowball_link3 import bp_link3
 from snowball_link4 import bp_link4
