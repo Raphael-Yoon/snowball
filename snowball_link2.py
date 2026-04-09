@@ -338,7 +338,7 @@ def itgc_interview(section=None):
 
     section_name = session.get('current_section', 'common')
     
-    # If no section specified in path, we stay on /link2_1p and render based on session/default.
+    # If no section specified in path, we stay on /itgc_interview and render based on session/default.
     # This keeps the URL clean in the address bar.
     # if section is None and request.method == 'GET':
     #     return redirect(url_for('link2.itgc_interview', section='common'))

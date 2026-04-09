@@ -1,9 +1,9 @@
 # Link2: ITGC 인터뷰 E2E 테스트 시나리오 (1-page 섹션 방식)
 
-대상: `/link2_1p` (섹션형 인터뷰 시스템 — common → apd → pc → co)
+대상: `/itgc_interview` (섹션형 인터뷰 시스템 — common → apd → pc → co)
 
 ## 1. 페이지 접근 및 리다이렉트 확인
-- [ ] **test_link2_access_guest**: 비로그인 상태에서 `/link2_1p` 접근 시 `common` 섹션으로 리다이렉트되고 "공통사항" 제목이 표시되는지 확인
+- [ ] **test_link2_access_guest**: 비로그인 상태에서 `/itgc_interview` 접근 시 `common` 섹션으로 리다이렉트되고 "공통사항" 제목이 표시되는지 확인
 - [ ] **test_link2_section_steps**: 섹션 스텝 인디케이터(`.section-steps .step`)가 4개(common/apd/pc/co) 표시되는지 확인
 
 ## 2. UI 요소 확인
@@ -18,7 +18,7 @@
 - [ ] **test_link2_sample_fill**: '샘플입력' 클릭 후 이메일 필드(`#q0`)에 값이 자동 입력되는지 확인
 
 ## 5. 섹션 내비게이션
-- [ ] **test_link2_navigation**: `common` 섹션 폼 제출 후 `apd` 섹션(`/link2_1p/section/apd`)으로 이동하는지 확인
+- [ ] **test_link2_navigation**: `common` 섹션 폼 제출 후 `apd` 섹션(`/itgc_interview/section/apd`)으로 이동하는지 확인
 - [ ] **test_link2_all_sections_accessible**: 4개 섹션(common/apd/pc/co) URL에 직접 접근 시 각 섹션 제목이 정상 표시되는지 확인
 
 ## 6. 전체 인터뷰 완료
