@@ -229,8 +229,7 @@
                                 <h5 class="feature-title text-center">인터뷰/설계평가</h5>
                                 <p class="feature-description">AI와의 대화형 인터뷰를 통해 RCM을 분석하고 통제 설계를 평가합니다.</p>
                                 <div class="text-center">
-                                    <a href="{{ url_for('link2_1p.link2_1p_start', reset=1) }}" class="feature-link"
-                                        data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+                                    <a href="{{ url_for('link2_1p.itgc_interview', reset=1) }}" class="feature-link" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
                                         title="<div>• AI 기반 대화형 RCM 분석 및 검토<br>• 업로드한 RCM 파일의 통제 설계 평가<br>• 통제 효과성 및 적절성 자동 분석<br>• 개선 방안 및 리포트 자동 생성</div>">자세히
                                         보기</a>
                                 </div>
