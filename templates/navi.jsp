@@ -89,7 +89,7 @@
                             <li><a class="dropdown-item" href="{{ url_for('link1.link1') }}">
                                     <i class="fas fa-clipboard-list me-2"></i>RCM 생성
                                 </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('link2_1p.itgc_interview', reset=1) }}">
+                            <li><a class="dropdown-item" href="{{ url_for('link2.itgc_interview', reset=1) }}">
                                     <i class="fas fa-user-tie me-2"></i>인터뷰/설계평가
                                 </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('link3.link3') }}">
@@ -121,7 +121,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ url_for('link2_1p.itgc_interview', reset=1) }}" class="nav-link">
+                        <a href="{{ url_for('link2.itgc_interview', reset=1) }}" class="nav-link">
                             <i class="fas fa-user-tie me-1"></i>인터뷰/설계평가
                         </a>
                     </li>

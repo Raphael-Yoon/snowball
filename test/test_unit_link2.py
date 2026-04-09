@@ -1,7 +1,7 @@
 """
 Link2: ITGC 인터뷰 Unit 테스트 코드 (1-page 섹션 방식)
 
-대상 URL: /link2_1p (섹션형 인터뷰 시스템)
+대상 URL: /itgc_interview (섹션형 인터뷰 시스템)
 섹션 구성: common → apd → pc → co
 
 주요 테스트 항목:
@@ -45,26 +45,24 @@ class Link2UnitTest(PlaywrightTestBase):
     # ================================================================
 
     def test_link2_access_guest(self, result: UnitTestResult):
-        """1. 비로그인 상태에서 /link2_1p 접근 시 common 섹션으로 리다이렉트 확인"""
-        self.navigate_to("/link2_1p")
+        """1. 비로그인 상태에서 /itgc_interview 접근 시 common 섹션으로 리다이렉트 확인"""
+        self.navigate_to("/itgc_interview")
         # 리다이렉트 후 URL에 /section/common 포함 여부 확인
         url = self.page.url
-        if "/section/common" in url:
+        # URL이 /itgc_interview 를 포함하는지 또는 /section/common으로 리다이렉트 되었는지 확인
+        if "/itgc_interview" in url:
             result.add_detail(f"리다이렉트 URL 확인: {url}")
+            # 제목이 '공통사항' 인지 확인
+            if "공통사항" in self.page.title() or self.page.locator("h2").text_content().strip().find("공통사항") >= 0:
+                result.pass_test("공통사항 섹션 접근 및 제목 확인 완료")
+            else:
+                result.fail_test(f"페이지 제목 미일치: {self.page.title()}")
         else:
             result.fail_test(f"예상 URL 패턴 불일치: {url}")
-            return
-
-        # 섹션 제목 h2 확인
-        h2 = self.page.locator("h2").first.inner_text()
-        if "공통사항" in h2:
-            result.pass_test("공통사항 섹션 접근 및 제목 확인 완료")
-        else:
-            result.fail_test(f"섹션 제목 불일치: {h2}")
 
     def test_link2_section_steps(self, result: UnitTestResult):
         """1. 섹션 스텝 인디케이터 4개(common/apd/pc/co)가 표시되는지 확인"""
-        self.navigate_to("/link2_1p")
+        self.navigate_to("/itgc_interview")
         steps = self.page.locator(".section-steps .step")
         count = steps.count()
         if count == 4:
@@ -79,7 +77,7 @@ class Link2UnitTest(PlaywrightTestBase):
 
     def test_link2_email_field(self, result: UnitTestResult):
         """2. common 섹션에서 이메일 입력 필드(#q0)가 표시되는지 확인"""
-        self.navigate_to("/link2_1p")
+        self.navigate_to("/itgc_interview")
         email_field = self.page.locator("#q0")
         if email_field.count() > 0:
             result.add_detail("이메일 필드 #q0 존재 확인")
@@ -90,7 +88,7 @@ class Link2UnitTest(PlaywrightTestBase):
 
     def test_link2_yn_buttons(self, result: UnitTestResult):
         """2. Y/N 버튼이 표시되고, 클릭 시 btn-primary 스타일로 변경되는지 확인"""
-        self.navigate_to("/link2_1p")
+        self.navigate_to("/itgc_interview")
         # Q2 (상용소프트웨어) Y 버튼 확인
         yes_btn = self.page.locator("#q2_yes")
         no_btn  = self.page.locator("#q2_no")
@@ -126,7 +124,7 @@ class Link2UnitTest(PlaywrightTestBase):
 
     def test_link2_conditional_cloud(self, result: UnitTestResult):
         """3. Q3(Cloud 사용여부) N 선택 시 Q4/Q5 질문 블록이 숨겨지는지 확인"""
-        self.navigate_to("/link2_1p")
+        self.navigate_to("/itgc_interview")
         # Q3의 N 버튼 클릭
         no_btn = self.page.locator("#q3_no")
         if no_btn.count() == 0:
@@ -167,7 +165,7 @@ class Link2UnitTest(PlaywrightTestBase):
 
     def test_link2_admin_sample_button(self, result: UnitTestResult):
         """4. localhost(127.0.0.1)에서 접근 시 '샘플입력' 버튼이 표시되는지 확인"""
-        self.navigate_to("/link2_1p")
+        self.navigate_to("/itgc_interview")
         # fillAllSamples 버튼
         sample_btn = self.page.locator("button[onclick='fillAllSamples()']")
         if sample_btn.count() > 0:
@@ -177,7 +175,7 @@ class Link2UnitTest(PlaywrightTestBase):
 
     def test_link2_sample_fill(self, result: UnitTestResult):
         """4. '샘플입력' 클릭 후 폼 필드에 값이 채워지는지 확인"""
-        self.navigate_to("/link2_1p")
+        self.navigate_to("/itgc_interview")
         sample_btn = self.page.locator("button[onclick='fillAllSamples()']")
         if sample_btn.count() == 0:
             result.fail_test("샘플입력 버튼을 찾을 수 없습니다")
@@ -198,7 +196,7 @@ class Link2UnitTest(PlaywrightTestBase):
 
     def test_link2_navigation(self, result: UnitTestResult):
         """5. common 섹션 폼 제출 후 apd 섹션으로 이동하는지 확인"""
-        self.navigate_to("/link2_1p?reset=1")
+        self.navigate_to("/itgc_interview?reset=1")
         self.page.wait_for_timeout(500)
 
         # 샘플입력으로 필수 필드 채우기
@@ -220,16 +218,19 @@ class Link2UnitTest(PlaywrightTestBase):
         submit_btn.click()
         self.page.wait_for_load_state("networkidle", timeout=15000)
 
-        url = self.page.url
-        if "/section/apd" in url:
-            result.pass_test("common → apd 섹션 이동 확인 완료")
+        # URL이 base거나 /section/apd 인지 확인 (UI 문구로 보강)
+        if "/itgc_interview" in self.page.url or "/section/apd" in self.page.url:
+            if "APD" in self.page.locator("h2").text_content():
+                result.add_detail("common → apd 섹션 이동 확인 완료")
+            else:
+                result.fail_test(f"apd 섹션으로 이동되지 않았습니다. 현재 제목: {self.page.locator('h2').text_content()}")
         else:
-            result.fail_test(f"apd 섹션으로 이동되지 않았습니다. 현재 URL: {url}")
+            result.fail_test(f"apd 섹션으로 이동되지 않았습니다. 현재 URL: {self.page.url}")
 
     def test_link2_all_sections_accessible(self, result: UnitTestResult):
         """5. 4개 섹션 URL이 모두 직접 접근 가능한지 확인"""
         for section in SECTIONS:
-            self.page.goto(f"{self.base_url}/link2_1p/section/{section}")
+            self.page.goto(f"{self.base_url}/itgc_interview/section/{section}")
             self.page.wait_for_load_state("networkidle", timeout=10000)
             h2 = self.page.locator("h2").first.inner_text()
             expected = SECTION_NAMES[section]
@@ -246,13 +247,13 @@ class Link2UnitTest(PlaywrightTestBase):
 
     def test_link2_complete_interview(self, result: UnitTestResult):
         """6. 샘플입력으로 4개 섹션 완료 후 AI 검토 선택 페이지 도달 확인"""
-        self.navigate_to("/link2_1p?reset=1")
+        self.navigate_to("/itgc_interview?reset=1")
         self.page.wait_for_timeout(500)
 
         for section in SECTIONS:
             url = self.page.url
             if f"/section/{section}" not in url:
-                self.page.goto(f"{self.base_url}/link2_1p/section/{section}")
+                self.page.goto(f"{self.base_url}/itgc_interview/section/{section}")
                 self.page.wait_for_load_state("networkidle", timeout=10000)
 
             # 샘플입력 시도
@@ -288,7 +289,7 @@ class Link2UnitTest(PlaywrightTestBase):
 
     def test_link2_apd_conditional(self, result: UnitTestResult):
         """7. APD 섹션 조건부 질문 로직 확인 (Q6 공유계정, Q16 DB접속, Q26 OS접속)"""
-        self.page.goto(f"{self.base_url}/link2_1p/section/apd")
+        self.page.goto(f"{self.base_url}/itgc_interview/section/apd")
         self.page.wait_for_load_state("networkidle", timeout=10000)
 
         # ── Q6(공유계정) = N → Q9 표시, Q10~Q12 숨김 ──
@@ -361,9 +362,9 @@ class Link2UnitTest(PlaywrightTestBase):
     def test_link2_session_persistence(self, result: UnitTestResult):
         """8. common 섹션 제출 후 completed 스텝 클릭으로 복귀 시 답변 보존 확인"""
         # 세션 리셋 후 common 섹션으로 직접 이동
-        self.navigate_to("/link2_1p?reset=1")
+        self.navigate_to("/itgc_interview?reset=1")
         # 리다이렉트 결과와 무관하게 common 섹션으로 강제 이동
-        self.navigate_to("/link2_1p/section/common")
+        self.navigate_to("/itgc_interview/section/common")
 
         # common 섹션 필드 로드 대기 (Q1은 id 없이 name만 있음)
         try:
@@ -386,8 +387,10 @@ class Link2UnitTest(PlaywrightTestBase):
         submit_btn.click()
         self.page.wait_for_load_state("networkidle", timeout=15000)
 
-        if "/section/apd" not in self.page.url:
-            result.fail_test(f"apd 섹션으로 이동되지 않았습니다: {self.page.url}")
+        # UI 제목으로 섹션 확인
+        h2_text = self.page.locator("h2").text_content()
+        if "APD" not in h2_text and "/section/apd" not in self.page.url:
+            result.fail_test(f"apd 섹션으로 이동되지 않았습니다. 현재 제목: {h2_text}")
             return
         result.add_detail("common 제출 → apd 이동 확인")
 
@@ -399,8 +402,10 @@ class Link2UnitTest(PlaywrightTestBase):
         common_step.click()
         self.page.wait_for_load_state("networkidle", timeout=10000)
 
-        if "/section/common" not in self.page.url:
-            result.fail_test(f"common 섹션으로 복귀되지 않았습니다: {self.page.url}")
+        # UI 제목으로 섹션 확인
+        h2_text = self.page.locator("h2").text_content()
+        if "공통사항" not in h2_text and "/section/common" not in self.page.url:
+            result.fail_test(f"개별 섹션 이동 로직 실패. 현재 제목: {h2_text}")
             return
 
         # 답변 보존 확인

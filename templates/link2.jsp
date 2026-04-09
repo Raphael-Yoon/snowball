@@ -29,7 +29,7 @@
         <div class="section-steps">
             {% for s_key in section_order %}
                 {% set s = sections[s_key] %}
-                <a href="{{ url_for('link2_1p.itgc_interview', section=s_key) }}" 
+                <a href="{{ url_for('link2.itgc_interview', section=s_key) }}" 
                    class="step {% if s_key == section_name %}active{% elif loop.index0 < cur_section_idx %}completed{% endif %}">
                     <i class="fas {{ s.icon }}"></i>
                     <span>{{ s.name }}</span>
@@ -50,7 +50,7 @@
         {% endif %}
         
 
-        <form id="sectionForm" action="{{ url_for('link2_1p.itgc_interview', section=section_name) }}" method="post">
+        <form id="sectionForm" action="{{ url_for('link2.itgc_interview', section=section_name) }}" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             
             <div id="questions-container">
@@ -185,7 +185,14 @@
         }
 
         function applyConditions() {
-            const sn = "{{ section_name }}";
+            const sn = '{{ section_name }}';
+            
+            // Clean URL for better UX (hide /section/ in address bar if present)
+            if (window.location.pathname.includes('/section/')) {
+                const baseUrl = "{{ url_for('link2.itgc_interview') }}";
+                window.history.replaceState({}, '', baseUrl);
+            }
+
             if (sn === 'common') {
                 const useCloud = getVal(3);
                 toggleQ(4, useCloud === 'Y');

@@ -1,4 +1,4 @@
-<!-- Test Run: 2026-04-09 12:28:07 -->
+<!-- Test Run: 2026-04-09 13:01:36 -->
 # Link2: ITGC 인터뷰 E2E 테스트 시나리오 (1-page 섹션 방식)
 
 대상: `/link2_1p` (섹션형 인터뷰 시스템 — common → apd → pc → co)
@@ -19,7 +19,7 @@
 - [x] ✅ **test_link2_sample_fill**: '샘플입력' 클릭 후 이메일 필드(`#q0`)에 값이 자동 입력되는지 확인 → **통과** (샘플입력 후 이메일 필드 값 확인: test@example.com)
 
 ## 5. 섹션 내비게이션
-- [x] ✅ **test_link2_navigation**: `common` 섹션 폼 제출 후 `apd` 섹션(`/link2_1p/section/apd`)으로 이동하는지 확인 → **통과** (common → apd 섹션 이동 확인 완료)
+- [x] ✅ **test_link2_navigation**: `common` 섹션 폼 제출 후 `apd` 섹션(`/link2_1p/section/apd`)으로 이동하는지 확인 → **통과** (테스트 통과)
 - [x] ✅ **test_link2_all_sections_accessible**: 4개 섹션(common/apd/pc/co) URL에 직접 접근 시 각 섹션 제목이 정상 표시되는지 확인 → **통과** (4개 섹션 모두 정상 접근 확인 완료)
 
 ## 6. 전체 인터뷰 완료
