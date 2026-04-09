@@ -212,7 +212,7 @@ class Link2UnitTest(PlaywrightTestBase):
             self.page.locator("#q1").fill("테스트시스템")
 
         # 제출 버튼 클릭
-        submit_btn = self.page.locator("button[type='submit']")
+        submit_btn = self.page.locator("button[value='next']")
         if submit_btn.count() == 0:
             result.fail_test("제출 버튼을 찾을 수 없습니다")
             return
@@ -261,7 +261,7 @@ class Link2UnitTest(PlaywrightTestBase):
                 sample_btn.click()
                 self.page.wait_for_timeout(500)
 
-            submit_btn = self.page.locator("button[type='submit']")
+            submit_btn = self.page.locator("button[value='next']")
             if submit_btn.count() == 0:
                 result.fail_test(f"섹션 '{section}' 에서 제출 버튼을 찾을 수 없습니다")
                 return
@@ -382,7 +382,7 @@ class Link2UnitTest(PlaywrightTestBase):
         system_field.fill(system_name)
 
         # common 섹션 제출 → apd로 이동
-        submit_btn = self.page.locator("button[type='submit']")
+        submit_btn = self.page.locator("button[value='next']")
         submit_btn.click()
         self.page.wait_for_load_state("networkidle", timeout=15000)
 
@@ -465,7 +465,11 @@ class Link2UnitTest(PlaywrightTestBase):
 
 
 def run_tests():
-    test_runner = Link2UnitTest(headless=False, slow_mo=300)
+    test_runner = Link2UnitTest(headless=True, slow_mo=100)
+    # 서버 자동 시작
+    if not test_runner.check_server_running():
+        print("❌ 테스트 서버를 시작할 수 없습니다.")
+        return
     test_runner.setup()
     try:
         test_runner.run_category("Link2 Unit Tests", [

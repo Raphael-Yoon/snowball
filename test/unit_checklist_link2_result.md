@@ -1,4 +1,4 @@
-<!-- Test Run: 2026-03-12 10:12:07 -->
+<!-- Test Run: 2026-04-09 12:28:07 -->
 # Link2: ITGC 인터뷰 E2E 테스트 시나리오 (1-page 섹션 방식)
 
 대상: `/link2_1p` (섹션형 인터뷰 시스템 — common → apd → pc → co)
@@ -8,7 +8,7 @@
 - [x] ✅ **test_link2_section_steps**: 섹션 스텝 인디케이터(`.section-steps .step`)가 4개(common/apd/pc/co) 표시되는지 확인 → **통과** (섹션 스텝 인디케이터 정상 표시)
 
 ## 2. UI 요소 확인
-- [x] ✅ **test_link2_email_field**: `common` 섹션에서 이메일 입력 필드(`#q0`)가 표시되는지 확인 → **통과** (이메일 필드 확인 완료 (placeholder: e-Mail 주소를 입력하세요))
+- [x] ✅ **test_link2_email_field**: `common` 섹션에서 이메일 입력 필드(`#q0`)가 표시되는지 확인 → **통과** (이메일 필드 확인 완료 (placeholder: example@company.com))
 - [x] ✅ **test_link2_yn_buttons**: Y/N 버튼(`#q2_yes`, `#q2_no`)이 표시되고, 클릭 시 `btn-primary` / `btn-outline-secondary` 스타일이 올바르게 전환되는지 확인 → **통과** (Y/N 버튼 토글 동작 확인 완료)
 
 ## 3. 조건부 질문 로직
@@ -16,7 +16,7 @@
 
 ## 4. 관리자 샘플입력
 - [x] ✅ **test_link2_admin_sample_button**: localhost(127.0.0.1) 접근 시 `fillAllSamples()` 샘플입력 버튼이 표시되는지 확인 → **통과** (샘플입력 버튼 표시 확인 완료)
-- [x] ✅ **test_link2_sample_fill**: '샘플입력' 클릭 후 이메일 필드(`#q0`)에 값이 자동 입력되는지 확인 → **통과** (샘플입력 후 이메일 필드 값 확인: snowball1566@gmail.com)
+- [x] ✅ **test_link2_sample_fill**: '샘플입력' 클릭 후 이메일 필드(`#q0`)에 값이 자동 입력되는지 확인 → **통과** (샘플입력 후 이메일 필드 값 확인: test@example.com)
 
 ## 5. 섹션 내비게이션
 - [x] ✅ **test_link2_navigation**: `common` 섹션 폼 제출 후 `apd` 섹션(`/link2_1p/section/apd`)으로 이동하는지 확인 → **통과** (common → apd 섹션 이동 확인 완료)

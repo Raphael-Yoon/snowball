@@ -23,8 +23,7 @@ load_dotenv(dotenv_path=env_path)
 
 from logger_config import setup_logging, get_logger
 from snowball_link1 import bp_link1
-from snowball_link2_core import bp_link2
-from snowball_link2 import bp_link2_1p
+from snowball_link2 import bp_link2
 from snowball_link3 import bp_link3
 from snowball_link4 import bp_link4
 from snowball_link5 import bp_link5
@@ -80,7 +79,6 @@ limiter.init_app(app)
 # CSRF 제외할 엔드포인트 (임시 - 향후 템플릿에 CSRF 토큰 추가 후 제거)
 # csrf.exempt(bp_link1)  # CSRF 보호 적용 완료
 csrf.exempt(bp_link2)
-csrf.exempt(bp_link2_1p)
 csrf.exempt(bp_link3)
 csrf.exempt(bp_link4)
 csrf.exempt(bp_link5)
@@ -719,7 +717,6 @@ def check_operation_evaluation(control_type):
 
 app.register_blueprint(bp_link1)
 app.register_blueprint(bp_link2)
-app.register_blueprint(bp_link2_1p)
 app.register_blueprint(bp_link3)
 app.register_blueprint(bp_link4)
 app.register_blueprint(bp_link5)
