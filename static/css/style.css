@@ -1478,7 +1478,7 @@ h2 {
     border-color: #3a3f4b;
 }
 
-/* link2_1p 섹션형 인터뷰 */
+/* itgc_interview 섹션형 인터뷰 */
 [data-bs-theme="dark"] .step {
     border-color: #3a3f4b;
     color: #6c757d;
@@ -1598,4 +1598,19 @@ h2 {
 
 [data-bs-theme="dark"] .content-area {
     background-color: #13151a;
+}
+/* 다크모드 placeholder 가독성 개선 (예시 텍스트임을 명확히 함) */
+[data-bs-theme="dark"] .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.3) !important;
+    opacity: 1 !important;
+}
+
+/* Firefox 등 일부 브라우저 지원체계 대응 */
+[data-bs-theme="dark"] .form-control::-webkit-input-placeholder { color: rgba(255, 255, 255, 0.3) !important; }
+[data-bs-theme="dark"] .form-control::-moz-placeholder { color: rgba(255, 255, 255, 0.3) !important; opacity: 1 !important; }
+[data-bs-theme="dark"] .form-control:-ms-input-placeholder { color: rgba(255, 255, 255, 0.3) !important; }
+
+[data-bs-theme="dark"] textarea::placeholder {
+    color: rgba(255, 255, 255, 0.3) !important;
+    opacity: 1 !important;
 }
