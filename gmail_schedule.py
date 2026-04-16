@@ -17,21 +17,33 @@ import sys
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-# 프로젝트 루트 및 migrations 폴더를 path에 추가 (절대 경로 사용)
+import importlib.util
+
+# 프로젝트 루트 및 migrations 폴더 설정
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 MIGRATIONS_DIR = os.path.join(PROJECT_ROOT, 'migrations')
+BACKUP_SCRIPT_PATH = os.path.join(MIGRATIONS_DIR, 'backup_mysql_to_sqlite.py')
 
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
-if MIGRATIONS_DIR not in sys.path:
-    sys.path.insert(0, MIGRATIONS_DIR)
+# backup_mysql_to_sqlite 모듈을 파일 경로에서 직접 로드
+def load_backup_module():
+    if not os.path.exists(BACKUP_SCRIPT_PATH):
+        raise FileNotFoundError(f"백업 스크립트를 찾을 수 없습니다: {BACKUP_SCRIPT_PATH}")
+    
+    spec = importlib.util.spec_from_file_location("backup_mysql_to_sqlite", BACKUP_SCRIPT_PATH)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["backup_mysql_to_sqlite"] = module
+    spec.loader.exec_module(module)
+    return module
 
-# backup_mysql_to_sqlite 모듈 import
 try:
+    backup_mod = load_backup_module()
+    run_backup = backup_mod.backup_mysql_to_sqlite
+except Exception as e:
+    print(f"!!! [ERROR] 모듈 로드 실패: {e}")
+    # 예비용으로 sys.path 방식 유지
+    if MIGRATIONS_DIR not in sys.path:
+        sys.path.insert(0, MIGRATIONS_DIR)
     from backup_mysql_to_sqlite import backup_mysql_to_sqlite as run_backup
-except ImportError:
-    # 패키지 구조로 재시도
-    from migrations.backup_mysql_to_sqlite import backup_mysql_to_sqlite as run_backup
 
 # .env 파일 로드
 load_dotenv()
