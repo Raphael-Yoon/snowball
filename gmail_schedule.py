@@ -17,11 +17,21 @@ import sys
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-# migrations 폴더를 path에 추가
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'migrations'))
+# 프로젝트 루트 및 migrations 폴더를 path에 추가 (절대 경로 사용)
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+MIGRATIONS_DIR = os.path.join(PROJECT_ROOT, 'migrations')
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+if MIGRATIONS_DIR not in sys.path:
+    sys.path.insert(0, MIGRATIONS_DIR)
 
 # backup_mysql_to_sqlite 모듈 import
-from backup_mysql_to_sqlite import backup_mysql_to_sqlite as run_backup
+try:
+    from backup_mysql_to_sqlite import backup_mysql_to_sqlite as run_backup
+except ImportError:
+    # 패키지 구조로 재시도
+    from migrations.backup_mysql_to_sqlite import backup_mysql_to_sqlite as run_backup
 
 # .env 파일 로드
 load_dotenv()
