@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 환경 변수로 DB 타입 결정 (USE_MYSQL 또는 DB_TYPE 지원)
-USE_MYSQL = os.getenv('USE_MYSQL', 'false').lower() == 'true' or os.getenv('DB_TYPE', 'sqlite').lower() == 'mysql'
+# IS_PROD 기준으로 DB 타입 결정 (db_config.py와 동일한 기준)
+USE_MYSQL = os.getenv('IS_PROD', 'false').strip().lower() == 'true'
 
 # 항상 이 파일이 위치한 디렉토리(snowball)에 DB 파일 생성
 _DB_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -180,7 +180,7 @@ def get_db():
         except ImportError as exc:
             raise RuntimeError(
                 "MySQL 연결을 사용하려면 PyMySQL 패키지가 필요합니다. "
-                "로컬에서 SQLite만 사용할 경우 USE_MYSQL 환경 변수를 false로 설정하세요."
+                "로컬에서 SQLite만 사용할 경우 IS_PROD 환경 변수를 false로 설정하세요."
             ) from exc
         # MySQL 연결
         conn = pymysql.connect(

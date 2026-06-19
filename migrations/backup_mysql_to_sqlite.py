@@ -25,10 +25,10 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(project_root, '.env'))
 
 MYSQL_CONFIG = {
-    'host':        os.getenv('MYSQL_HOST', 'itap.mysql.pythonanywhere-services.com'),
-    'user':        os.getenv('MYSQL_USER', 'itap'),
+    'host':        os.getenv('MYSQL_HOST', '127.0.0.1'),
+    'user':        os.getenv('MYSQL_USER', 'root'),
     'password':    os.getenv('MYSQL_PASSWORD', ''),
-    'database':    os.getenv('MYSQL_DATABASE', 'itap$snowball'),
+    'database':    os.getenv('MYSQL_DATABASE', 'snowball'),
     'port':        int(os.getenv('MYSQL_PORT', '3306')),
     'charset':     'utf8mb4',
     'connect_timeout': 10,

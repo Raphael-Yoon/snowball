@@ -469,8 +469,16 @@ def save_answer():
             if sess and sess['status'] == 'confirmed':
                 return jsonify({'success': False, 'message': '확정된 공시는 수정할 수 없습니다.'}), 403
 
-        # 값이 리스트인 경우 JSON으로 직렬화
+        # 리스트 값 직렬화 (table: 빈 행 필터링, checkbox: 문자열 배열 그대로 저장)
         if isinstance(value, list):
+            if value and isinstance(value[0], dict):
+                # table 타입: 빈 행 필터링 (해당없음='Y' 행은 의미 있으므로 보존)
+                value = [
+                    row for row in value
+                    if row.get('해당없음') == 'Y'
+                    or any(v not in (None, '', '-') for k, v in row.items() if k not in ('type', '해당없음'))
+                ]
+            # else: checkbox 타입 (문자열 배열) — 필터링 없이 저장
             value = json.dumps(value, ensure_ascii=False)
 
         # 숫자 필드 음수 방지 검증
@@ -774,14 +782,11 @@ def _calculate_ratios(conn, company_id, year):
             if QID.INV_IT_AMOUNT in ans:
                 try:
                     a = float(str(ans[QID.INV_IT_AMOUNT]).replace(',', ''))
-                    # 감가상각비 + 서비스비용 + 인건비 합계 계산
+                    # 감가상각비 + 서비스비용 + 인건비 합계 계산 (INV_SEC_GROUP fallback 제거)
                     b1 = float(str(ans.get(QID.INV_SEC_DEPRECIATION, 0)).replace(',', ''))
                     b2 = float(str(ans.get(QID.INV_SEC_SERVICE, 0)).replace(',', ''))
                     b3 = float(str(ans.get(QID.INV_SEC_LABOR, 0)).replace(',', ''))
-                    b_sum = b1 + b2 + b3
-
-                    # 하위 항목 합계가 있으면 우선 사용, 없으면 Group 값 사용
-                    b = b_sum if b_sum > 0 else float(str(ans.get(QID.INV_SEC_GROUP, 0)).replace(',', ''))
+                    b = b1 + b2 + b3
 
                     if a > 0:
                         ratios['investment_ratio'] = round((b / a) * 100, 2)
@@ -810,17 +815,12 @@ def _calculate_ratios(conn, company_id, year):
             external = float(str(ans.get(QID.PER_EXTERNAL, 0)).replace(',', ''))
             d_sum = internal + external
 
+            # IT인력(Q28) 없으면 fallback 없이 0 반환 (공시 규정 준수)
             if QID.PER_IT_EMPLOYEES in ans:
                 try:
                     it_total = float(str(ans[QID.PER_IT_EMPLOYEES]).replace(',', ''))
                     if it_total > 0:
                         ratios['personnel_ratio'] = round((d_sum / it_total) * 100, 2)
-                except: pass
-            elif QID.PER_TOTAL_EMPLOYEES in ans:
-                try:
-                    total = float(str(ans[QID.PER_TOTAL_EMPLOYEES]).replace(',', ''))
-                    if total > 0:
-                        ratios['personnel_ratio'] = round((d_sum / total) * 100, 2)
                 except: pass
         else:
             ratios['personnel_ratio'] = 0.0
@@ -924,6 +924,120 @@ def _is_question_skipped(q, questions_dict, answers):
             return _is_question_skipped(parent_q, questions_dict, answers)
 
     return False
+
+
+def _is_yes(val):
+    """YES 계열 값 판별 헬퍼"""
+    return str(val).strip().upper() in ('YES', 'Y', 'TRUE', '1', '예', '네')
+
+
+def _get_none_hidden_ids(questions_with_options, answers):
+    """none_hides 설정을 가진 테이블 질문 중 모든 행이 해당없음인 경우, 숨겨지는 질문 ID 세트 반환"""
+    hidden = set()
+    for q in questions_with_options:
+        opts_str = q.get('options') or ''
+        if 'none_hides' not in opts_str:
+            continue
+        try:
+            opts = json.loads(opts_str)
+            none_hides = opts.get('none_hides')
+            if not none_hides:
+                continue
+            answer = answers.get(q['id'])
+            if not answer:
+                continue
+            rows = json.loads(answer)
+            if isinstance(rows, list) and rows and all(r.get('해당없음') == 'Y' for r in rows):
+                hidden.update(none_hides)
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            pass
+    return hidden
+
+
+def _is_answer_valid(q_id, q_type, answers):
+    """답변이 실질적으로 입력된 상태인지 확인.
+    table/checkbox 타입은 유효한 JSON 배열(1개 이상)이어야 함."""
+    val = answers.get(q_id)
+    if val in (None, ''):
+        return False
+    if q_type in ('table', 'checkbox'):
+        try:
+            rows = json.loads(val) if isinstance(val, str) else val
+            return isinstance(rows, list) and len(rows) > 0
+        except (json.JSONDecodeError, TypeError):
+            return False
+    return True
+
+
+def _calc_cat_progress(all_questions, questions_dict, answers):
+    """카테고리별 진행률 계산. [{'id', 'name', 'total', 'done', 'rate'}] 반환.
+    skipped·none_hidden 질문은 분모에서 제외."""
+    none_hidden_ids = _get_none_hidden_ids(all_questions, answers)
+    cat_map = {}
+    for q in all_questions:
+        if q['type'] == 'group':
+            continue
+        if _is_question_skipped(q, questions_dict, answers) or q['id'] in none_hidden_ids:
+            continue
+        cat_id = q['category_id']
+        if cat_id not in cat_map:
+            cat_map[cat_id] = {'id': cat_id, 'name': q['category'], 'total': 0, 'done': 0}
+        cat_map[cat_id]['total'] += 1
+        if _is_question_active(q, questions_dict, answers):
+            if _is_answer_valid(q['id'], q['type'], answers):
+                cat_map[cat_id]['done'] += 1
+    result = []
+    for cat_id in sorted(cat_map):
+        c = cat_map[cat_id]
+        c['rate'] = int((c['done'] / c['total']) * 100) if c['total'] > 0 else 0
+        result.append(c)
+    return result
+
+
+def _calc_cat_progress_with_evidence(conn, all_questions, questions_dict, answers, company_id, year):
+    """카테고리별 진행률(증빙 포함) 계산. save_answer / get_progress / dashboard 공통 사용."""
+    cat_list = _calc_cat_progress(all_questions, questions_dict, answers)
+    ev_questions_all = conn.execute(
+        'SELECT id, type, category_id FROM sb_disclosure_questions WHERE evidence_list IS NOT NULL AND evidence_list != \'[]\''
+    ).fetchall()
+    uploaded_ids = {r['question_id'] for r in conn.execute(
+        'SELECT DISTINCT question_id FROM sb_disclosure_evidence WHERE company_id=? AND year=?',
+        (company_id, year)
+    ).fetchall()}
+    none_hidden_ids = _get_none_hidden_ids(all_questions, answers)
+    for cat in cat_list:
+        ev_req, ev_done = 0, 0
+        for eq in ev_questions_all:
+            if eq['category_id'] != cat['id']:
+                continue
+            if not _is_answer_valid(eq['id'], eq['type'], answers):
+                continue
+            eq_full = questions_dict.get(eq['id'])
+            if eq_full and _is_question_skipped(eq_full, questions_dict, answers):
+                continue
+            if eq['id'] in none_hidden_ids:
+                continue
+            if eq['type'] == 'number':
+                try:
+                    if float(str(answers.get(eq['id'], '0') or '0').replace(',', '')) == 0:
+                        continue
+                except ValueError:
+                    pass
+            elif eq['type'] == 'table':
+                try:
+                    rows = json.loads(answers[eq['id']])
+                    if isinstance(rows, list) and rows and all(r.get('해당없음') == 'Y' for r in rows):
+                        continue
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            ev_req += 1
+            if eq['id'] in uploaded_ids:
+                ev_done += 1
+        if ev_req > 0:
+            cat['total'] += ev_req
+            cat['done'] += ev_done
+            cat['rate'] = int((cat['done'] / cat['total']) * 100) if cat['total'] > 0 else 0
+    return cat_list
 
 
 # ============================================================================
@@ -1203,79 +1317,54 @@ def get_evidence_stats(user_id, year):
 
 @bp_link11.route('/link11/api/progress/<int:user_id>/<int:year>', methods=['GET'])
 def get_progress(user_id, year):
-    """공시 진행 상황 조회"""
+    """공시 진행 상황 조회. _update_session_progress와 동일한 공통 함수로 계산."""
     try:
         company_id = get_company_name_by_user_id(user_id)
         with get_db() as conn:
-            # 모든 질문 로드
-            cursor = conn.execute('SELECT * FROM sb_disclosure_questions ORDER BY category_id, sort_order')
-            all_questions = [dict(row) for row in cursor.fetchall()]
+            all_questions = [dict(row) for row in conn.execute(
+                'SELECT * FROM sb_disclosure_questions ORDER BY category_id, sort_order'
+            ).fetchall()]
             questions_dict = {q['id']: q for q in all_questions}
 
-            cursor = conn.execute('''
-                SELECT question_id, value FROM sb_disclosure_answers 
-                WHERE company_id = ? AND year = ? AND deleted_at IS NULL
-            ''', (company_id, year))
-            answers = {row['question_id']: row['value'] for row in cursor.fetchall()}
+            answers = {row['question_id']: row['value'] for row in conn.execute(
+                'SELECT question_id, value FROM sb_disclosure_answers WHERE company_id=? AND year=? AND deleted_at IS NULL',
+                (company_id, year)
+            ).fetchall()}
 
-            categories = {}
-            total_questions = 0
-            answered_questions = 0
-
-            # 질문별 통계 합산 (전체 질문 수 기준, 비활성화 질문도 포함)
+            # skipped·none_hidden 제외, _is_answer_valid 적용
+            none_hidden_ids = _get_none_hidden_ids(all_questions, answers)
+            total_questions, answered_questions = 0, 0
             for q in all_questions:
-                cat_name = q['category']
-                if cat_name not in categories:
-                    categories[cat_name] = {
-                        'id': q['category_id'],
-                        'total': 0,
-                        'completed': 0,
-                        'rate': 0
-                    }
-
-                # Group 유형은 입력 필드가 없으므로 통계에서 제외 (안내 문구 역할)
                 if q['type'] == 'group':
                     continue
-
-                # 전체 질문 수에 포함
-                categories[cat_name]['total'] += 1
+                if _is_question_skipped(q, questions_dict, answers) or q['id'] in none_hidden_ids:
+                    continue
                 total_questions += 1
+                if _is_question_active(q, questions_dict, answers) and _is_answer_valid(q['id'], q['type'], answers):
+                    answered_questions += 1
 
-                # 활성화 상태 확인 (재귀적)
-                is_active = _is_question_active(q, questions_dict, answers)
+            # 카테고리별 진행률 (증빙 포함) — _update_session_progress와 동일 로직
+            cat_list = _calc_cat_progress_with_evidence(conn, all_questions, questions_dict, answers, company_id, year)
+            total_steps = sum(c['total'] for c in cat_list)
+            done_steps = sum(c['done'] for c in cat_list)
+            completion_rate = int((done_steps / total_steps) * 100) if total_steps > 0 else 0
 
-                if is_active:
-                    # 활성화된 질문: 답변이 있으면 완료
-                    if q['id'] in answers and answers[q['id']] not in (None, ''):
-                        categories[cat_name]['completed'] += 1
-                        answered_questions += 1
-                else:
-                    # 비활성화 이유 구분:
-                    # - 상위 질문이 NO(건너뛰기) → 자동 완료
-                    # - 상위 질문이 미답변 → 미완료 (카운트 제외)
-                    if _is_question_skipped(q, questions_dict, answers):
-                        categories[cat_name]['completed'] += 1
-                        answered_questions += 1
+            # 프론트엔드 호환을 위해 dict 형태로 변환
+            categories = {}
+            for c in cat_list:
+                categories[c['name']] = {
+                    'id': c['id'],
+                    'total': c['total'],
+                    'completed': c['done'],
+                    'rate': c['rate']
+                }
 
-            # 각 카테고리별 퍼센트 계산
-            for cat_name in categories:
-                cat = categories[cat_name]
-                if cat['total'] > 0:
-                    cat['rate'] = round((cat['completed'] / cat['total']) * 100)
-
-            # 전체 진행률 계산
-            completion_rate = round((answered_questions / total_questions) * 100) if total_questions > 0 else 0
-
-            # 세션 조회
-            cursor = conn.execute('''
-                SELECT * FROM sb_disclosure_sessions
-                WHERE company_id = ? AND year = ?
-            ''', (company_id, year))
-            session_data = cursor.fetchone()
-
+            session_data = conn.execute(
+                'SELECT * FROM sb_disclosure_sessions WHERE company_id=? AND year=?',
+                (company_id, year)
+            ).fetchone()
             session_dict = dict(session_data) if session_data else None
 
-            # 비율 계산 (투자 비율, 인력 비율)
             ratios = _calculate_ratios(conn, company_id, year)
 
             return jsonify({
@@ -1446,69 +1535,64 @@ def _clear_na_from_dependents(conn, parent_question_id, company_id, year):
 
 
 def _update_session_progress(conn, company_id, year, user_id=None):
-    """세션 진행률 자동 업데이트 (내부 함수)"""
+    """세션 진행률 자동 업데이트 (내부 함수).
+    skipped·none_hidden 질문을 분모에서 제외하고, 증빙 포함 공통 함수로 rate 계산.
+    confirmed 상태의 세션은 status를 덮어쓰지 않음."""
     try:
-        # 전체 질문 수 (Group 유형 제외)
-        cursor = conn.execute("SELECT COUNT(*) as total FROM sb_disclosure_questions WHERE type != 'group'")
-        total_result = cursor.fetchone()
-        total = total_result['total'] if total_result else 0
-
-        # 모든 질문 및 답변 조회
-        cursor = conn.execute('SELECT * FROM sb_disclosure_questions ORDER BY category_id, sort_order')
-        all_questions = [dict(row) for row in cursor.fetchall()]
+        all_questions = [dict(r) for r in conn.execute(
+            'SELECT * FROM sb_disclosure_questions ORDER BY category_id, sort_order'
+        ).fetchall()]
         questions_dict = {q['id']: q for q in all_questions}
 
-        cursor = conn.execute('''
-            SELECT question_id, value FROM sb_disclosure_answers
-            WHERE company_id = ? AND year = ? AND deleted_at IS NULL
-        ''', (company_id, year))
-        answers = {row['question_id']: row['value'] for row in cursor.fetchall()}
+        answers = {r['question_id']: r['value'] for r in conn.execute(
+            'SELECT question_id, value FROM sb_disclosure_answers WHERE company_id=? AND year=? AND deleted_at IS NULL',
+            (company_id, year)
+        ).fetchall()}
 
-        # 완료된 질문 수 계산 (활성화된 질문의 답변 + 비활성화된 질문)
-        answered = 0
+        # 분모/분자: skipped·none_hidden 제외, _is_answer_valid 적용
+        none_hidden_ids = _get_none_hidden_ids(all_questions, answers)
+        total, answered = 0, 0
         for q in all_questions:
             if q['type'] == 'group':
                 continue
+            if _is_question_skipped(q, questions_dict, answers) or q['id'] in none_hidden_ids:
+                continue
+            total += 1
+            if _is_question_active(q, questions_dict, answers) and _is_answer_valid(q['id'], q['type'], answers):
+                answered += 1
 
-            is_active = _is_question_active(q, questions_dict, answers)
-            if is_active:
-                # 활성화된 질문: 답변이 있으면 완료
-                if q['id'] in answers and answers[q['id']] not in (None, ''):
-                    answered += 1
-            else:
-                # 비활성화 이유 구분:
-                # - 상위 질문이 NO(건너뛰기) → 자동 완료
-                # - 상위 질문이 미답변 → 미완료 (카운트 제외)
-                if _is_question_skipped(q, questions_dict, answers):
-                    answered += 1
+        # 진행률은 get_progress API와 동일한 공통 함수로 계산 (증빙 포함)
+        cat_list = _calc_cat_progress_with_evidence(conn, all_questions, questions_dict, answers, company_id, year)
+        total_steps = sum(c['total'] for c in cat_list)
+        done_steps = sum(c['done'] for c in cat_list)
+        completion_rate = int((done_steps / total_steps) * 100) if total_steps > 0 else 0
 
-        # 진행률 계산
-        completion_rate = round((answered / total) * 100) if total > 0 else 0
-
-        # 세션 존재 여부 확인
-        cursor = conn.execute('''
-            SELECT id FROM sb_disclosure_sessions
-            WHERE company_id = ? AND year = ?
-        ''', (company_id, year))
-        existing = cursor.fetchone()
+        # 이미 confirmed 상태이면 status 유지
+        existing = conn.execute(
+            'SELECT id, status FROM sb_disclosure_sessions WHERE company_id=? AND year=?',
+            (company_id, year)
+        ).fetchone()
 
         if existing:
-            # 세션 업데이트
+            existing_status = existing['status']
+            if existing_status == 'confirmed':
+                new_status = 'confirmed'
+            else:
+                new_status = 'completed' if completion_rate == 100 else ('in_progress' if answered > 0 else 'draft')
             conn.execute('''
                 UPDATE sb_disclosure_sessions
-                SET total_questions = ?, answered_questions = ?, completion_rate = ?, updated_at = CURRENT_TIMESTAMP,
-                    status = CASE WHEN ? = 100 THEN 'completed' ELSE 'in_progress' END
-                WHERE company_id = ? AND year = ?
-            ''', (total, answered, completion_rate, completion_rate, company_id, year))
+                SET total_questions=?, answered_questions=?, completion_rate=?,
+                    status=?, updated_at=CURRENT_TIMESTAMP
+                WHERE company_id=? AND year=?
+            ''', (total, answered, completion_rate, new_status, company_id, year))
         else:
-            # 세션 자동 생성
+            new_status = 'completed' if completion_rate == 100 else ('in_progress' if answered > 0 else 'draft')
             session_id = generate_uuid()
-            status = 'completed' if completion_rate == 100 else ('in_progress' if answered > 0 else 'draft')
             conn.execute('''
                 INSERT INTO sb_disclosure_sessions
                 (id, company_id, user_id, year, status, total_questions, answered_questions, completion_rate)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (session_id, company_id, user_id or '', year, status, total, answered, completion_rate))
+            ''', (session_id, company_id, user_id or '', year, new_status, total, answered, completion_rate))
 
         conn.commit()
 

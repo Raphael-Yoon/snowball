@@ -53,7 +53,7 @@ if not app.secret_key:
 # 브라우저 종료시에만 세션 만료 (permanent session 사용하지 않음)
 
 # 세션 보안 설정 - 환경에 따른 동적 설정
-is_production = os.getenv('PYTHONANYWHERE_DOMAIN') is not None or 'pythonanywhere' in os.getenv('SERVER_NAME', '')
+is_production = os.getenv('IS_PROD', 'false').strip().lower() == 'true'
 app.config.update(
     SESSION_COOKIE_SECURE=is_production,  # 운영환경(HTTPS)에서만 True
     SESSION_COOKIE_HTTPONLY=True,
@@ -97,10 +97,9 @@ logger.warning("CSRF Protection enabled with exemptions for API endpoints")
 # 시작할 질문 번호는 snowball_link2_bak.py에서 관리됨
 
 # 보안 관련 상수 (환경변수에서 로드) - 운영 환경에서만 필수
-is_production_env = os.getenv('PYTHONANYWHERE_DOMAIN') is not None
-PYTHONANYWHERE_AUTH_CODE = os.getenv('PYTHONANYWHERE_AUTH_CODE')
-if is_production_env and not PYTHONANYWHERE_AUTH_CODE:
-    raise ValueError("PYTHONANYWHERE_AUTH_CODE must be set in production environment")
+PROD_AUTH_CODE = os.getenv('PROD_AUTH_CODE')
+if is_production and not PROD_AUTH_CODE:
+    raise ValueError("PROD_AUTH_CODE must be set in production environment")
 
 # 데이터베이스 초기화는 더 이상 서버 시작 시 자동 실행되지 않습니다.
 # 마이그레이션 시스템을 사용하세요: python migrate.py upgrade
@@ -150,7 +149,7 @@ def index():
     # 로그인한 사용자만 활동 로그 기록
     host = request.headers.get('Host', '')
     # 로컬 환경에서는 로그인 로그 기록 안함
-    if is_logged_in() and host.startswith('snowball.pythonanywhere.com'):
+    if is_logged_in() and is_production:
         log_user_activity(user_info, 'PAGE_ACCESS', '메인 페이지', '/',
                           request.remote_addr, request.headers.get('User-Agent'))
 
@@ -215,10 +214,10 @@ def login():
             host = request.headers.get('Host', '')
 
             if not email:
-                return render_template('login.jsp', error="이메일을 입력해주세요.", remote_addr=request.remote_addr, show_direct_login=host.startswith('snowball.pythonanywhere.com'))
+                return render_template('login.jsp', error="이메일을 입력해주세요.", remote_addr=request.remote_addr, show_direct_login=is_production)
 
-            # snowball.pythonanywhere.com에서는 실제 OTP 발송하지 않고 고정 메시지 표시
-            if host.startswith('snowball.pythonanywhere.com'):
+            # 운영 환경에서는 실제 OTP 발송하지 않고 고정 코드 사용
+            if is_production:
                 print(f"운영서버 OTP 발송 요청 - Host: {host}, Email: {email}")
 
                 # 사용자가 존재하는지만 확인
@@ -256,11 +255,11 @@ def login():
                 print(f"필수 정보 누락 - Email: {email}")
                 return render_template('login.jsp', error="인증 코드를 입력해주세요.", remote_addr=request.remote_addr)
 
-            # snowball.pythonanywhere.com에서는 고정 코드 확인
-            if host.startswith('snowball.pythonanywhere.com'):
+            # 운영 환경에서는 고정 코드 확인
+            if is_production:
                 print(f"운영서버 로그인 시도 - Host: {host}, Email: {email}")
-                
-                if otp_code == PYTHONANYWHERE_AUTH_CODE:
+
+                if otp_code == PROD_AUTH_CODE:
                     # 사용자 정보 조회
                     user = find_user_by_email(email)
                     print(f"사용자 조회 결과: {user is not None}")
@@ -329,7 +328,7 @@ def login():
         # GET 혹은 액션 미지정 시 로그인 폼 표시
         print("GET/기본 로그인 폼 표시")
         host = request.headers.get('Host', '')
-        show_direct_login = host.startswith('snowball.pythonanywhere.com')
+        show_direct_login = is_production
         print(f"폼 렌더 - Host: {host}, show_direct_login: {show_direct_login}")
         return render_template('login.jsp', remote_addr=request.remote_addr, show_direct_login=show_direct_login)
         
@@ -387,8 +386,8 @@ def handle_exception(e):
     return "Internal Server Error: check logs", 500
 
 def main():
-    app.run(host='0.0.0.0', debug=True, port=5001, use_reloader=False)
-    #app.run(host='127.0.0.1', debug=False, port=8001)
+    port = int(os.getenv('SNOWBALL_PORT', '5001'))
+    app.run(host='0.0.0.0', debug=not is_production, port=port, use_reloader=False)
 
 @app.route('/user/design-evaluation', methods=['GET', 'POST'])
 @login_required
