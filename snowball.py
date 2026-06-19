@@ -178,15 +178,19 @@ def login():
             action = None
         
         if action == 'admin_login':
+            if is_production:
+                return render_template('login.jsp', error="운영 환경에서는 직접 관리자 로그인을 사용할 수 없습니다.", remote_addr=request.remote_addr)
             # 관리자 로그인
             client_ip = request.environ.get('REMOTE_ADDR', '')
             server_port = request.environ.get('SERVER_PORT', '')
 
+
             with get_db() as conn:
                 user = conn.execute(
                     'SELECT * FROM sb_user WHERE user_email = %s AND (effective_end_date IS NULL OR effective_end_date > CURRENT_TIMESTAMP)',
-                    ('snowball2727@naver.com',)
+                    ('snowball1566@gmail.com',)
                 ).fetchone()
+
 
                 if user:
                     user_dict = dict(user)

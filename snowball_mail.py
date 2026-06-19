@@ -14,18 +14,23 @@ from email import encoders
 def get_gmail_credentials():
     SCOPES = ['https://www.googleapis.com/auth/gmail.send']
     creds = None
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
+    _dir = os.path.dirname(os.path.abspath(__file__))
+    token_path = os.path.join(_dir, 'token.pickle')
+    credentials_path = os.path.join(_dir, 'credentials.json')
+
+    if os.path.exists(token_path):
+        with open(token_path, 'rb') as token:
             creds = pickle.load(token)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open('token.pickle', 'wb') as token:
+        with open(token_path, 'wb') as token:
             pickle.dump(creds, token)
     return creds
+
 
 # 텍스트 메일 전송
 
@@ -44,7 +49,7 @@ def send_gmail(to, subject, body, bcc=None):
     if bcc:
         message['Bcc'] = bcc
     else:
-        message['Bcc'] = 'snowball2727@naver.com'  # 기본 BCC
+        message['Bcc'] = 'snowball1566@gmail.com'  # 기본 BCC
     
     # 본문 추가
     message.attach(MIMEText(body, 'plain'))
@@ -67,7 +72,7 @@ def send_gmail_with_attachment(to, subject, body, file_stream=None, file_path=No
     message = MIMEMultipart()
     message['to'] = to
     message['subject'] = subject
-    message['Bcc'] = 'snowball2727@naver.com'
+    message['Bcc'] = 'snowball1566@gmail.com'
     message.attach(MIMEText(body, 'plain'))
 
     # 첨부파일 추가 (메모리 버퍼 우선, 없으면 파일 경로)
