@@ -1639,6 +1639,164 @@ class Link11UnitTest(PlaywrightTestBase):
         else:
             result.fail_test("참고 패널 내 상태 안내 배너가 표시되지 않음")
 
+    def test_link11_progress_consistency(self, result: UnitTestResult):
+        """11. 메인화면(세션 DB)과 get_progress API의 진행률 일치 확인"""
+        import requests as req
+
+        self._do_admin_login()
+        cookies = self.context.cookies()
+        session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
+
+        test_year = 9995
+        base_api = f"{self.base_url}/link11/api/answers"
+
+        # 답변 저장 → _update_session_progress 트리거 → 세션 DB 생성
+        save_resp = req.post(
+            base_api,
+            json={'question_id': 'Q1', 'value': 'NO', 'year': test_year},
+            cookies=session_cookie, timeout=10
+        )
+        if save_resp.status_code == 401:
+            result.skip_test("로그인 세션이 API에 전달되지 않음")
+            return
+        if save_resp.status_code not in (200, 201):
+            result.skip_test(f"답변 저장 실패 (HTTP {save_resp.status_code}) — 세션 생성 불가")
+            return
+
+        # API 진행률 조회
+        resp = req.get(
+            f"{self.base_url}/link11/api/progress/1/{test_year}",
+            cookies=session_cookie, timeout=10
+        )
+        if resp.status_code != 200 or not resp.json().get('success'):
+            result.skip_test(f"progress API 응답 오류: HTTP {resp.status_code}")
+            return
+
+        api_rate = resp.json()['progress']['completion_rate']
+        session_rate = (resp.json().get('session') or {}).get('completion_rate')
+
+        if session_rate is None:
+            result.fail_test(f"답변 저장 후에도 세션 DB 미생성 — _update_session_progress 미호출 가능성")
+        elif abs(int(session_rate) - int(api_rate)) <= 1:
+            result.pass_test(f"세션 DB와 API 진행률 일치 확인 (API={api_rate}%, DB={session_rate}%)")
+        else:
+            result.fail_test(f"진행률 불일치: API={api_rate}%, DB={session_rate}% — 공통 함수 미적용 가능성")
+
+    def test_link11_q20_checkbox_render(self, result: UnitTestResult):
+        """4. Q20 (지침/절차서) checkbox 타입 렌더링 확인 (migration 040)"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2500)
+
+        cat4 = self.page.locator(".category-card", has_text="활동").first
+        if cat4.count() == 0:
+            result.skip_test("활동 카테고리 없음")
+            return
+
+        cat4.click()
+        self.page.wait_for_selector("#questions-view", state="visible")
+        self.page.wait_for_timeout(1000)
+
+        # Q17 YES → Q20 활성화 (scroll 후 클릭)
+        q17_yes = self.page.locator("#question-Q17 .yes-no-btn.yes")
+        if q17_yes.count() > 0:
+            q17_yes.scroll_into_view_if_needed()
+            q17_yes.click()
+            self.page.wait_for_timeout(1500)
+
+        q20_elem = self.page.locator("#question-Q20")
+        if q20_elem.count() == 0:
+            result.fail_test("Q20 요소 미발견")
+            return
+
+        # checkbox 타입: input[type=checkbox] 또는 .checkbox-option 요소 확인
+        checkboxes = q20_elem.locator("input[type='checkbox'], .checkbox-option, label.form-check-label")
+        if checkboxes.count() >= 2:
+            result.pass_test(f"Q20 checkbox 타입 렌더링 확인 ({checkboxes.count()}개 옵션)")
+        else:
+            # yes_no 버튼이 남아있으면 migration 미적용
+            yn_btn = q20_elem.locator(".yes-no-btn")
+            if yn_btn.count() > 0:
+                result.fail_test("Q20가 여전히 yes_no 타입 — migration 040 미적용 확인 필요")
+            else:
+                result.warn_test(f"Q20 checkbox 요소 수 부족 ({checkboxes.count()}개) — UI 구현 확인 필요")
+
+    def test_link11_q23_select_render(self, result: UnitTestResult):
+        """5. Q23 (SBOM) select 타입 렌더링 확인 (migration 040)"""
+        self._do_admin_login()
+        self.navigate_to("/link11")
+        self.page.wait_for_timeout(2500)
+
+        cat4 = self.page.locator(".category-card", has_text="활동").first
+        if cat4.count() == 0:
+            result.skip_test("활동 카테고리 없음")
+            return
+
+        cat4.click()
+        self.page.wait_for_selector("#questions-view", state="visible")
+        self.page.wait_for_timeout(1000)
+
+        q17_yes = self.page.locator("#question-Q17 .yes-no-btn.yes")
+        if q17_yes.count() > 0:
+            q17_yes.scroll_into_view_if_needed()
+            q17_yes.click()
+            self.page.wait_for_timeout(1500)
+
+        q23_elem = self.page.locator("#question-Q23")
+        if q23_elem.count() == 0:
+            result.fail_test("Q23 요소 미발견")
+            return
+
+        # select 타입: <select> 또는 .select-option 요소 확인
+        select_el = q23_elem.locator("select, .select-input")
+        if select_el.count() > 0:
+            # 선택지 4개(전사도입/일부도입/도입검토/미도입) 확인
+            options = select_el.first.locator("option")
+            if options.count() >= 4:
+                result.pass_test(f"Q23 select 타입 렌더링 확인 ({options.count()}개 선택지)")
+            else:
+                result.warn_test(f"Q23 select 선택지 부족 ({options.count()}개) — migration 040 적용 확인")
+        else:
+            # number 입력 필드가 남아있으면 migration 미적용
+            num_input = q23_elem.locator("input[type='number'], input[type='text']")
+            if num_input.count() > 0:
+                result.fail_test("Q23가 여전히 number 타입 — migration 040 미적용 확인 필요")
+            else:
+                result.warn_test("Q23 select 요소 미발견 — UI 구현 확인 필요")
+
+    def test_link11_personnel_ratio_no_fallback(self, result: UnitTestResult):
+        """6. IT인력(Q28) 미입력 시 인력 비율 0.00 반환 확인 (fallback 제거 검증)"""
+        import requests as req
+
+        self._do_admin_login()
+        cookies = self.context.cookies()
+        session_cookie = {c['name']: c['value'] for c in cookies if 'session' in c['name'].lower()}
+
+        test_year = 9996
+
+        # Q9=YES, Q11(내부)=10, Q12(외부)=5 만 넣고 Q28(IT인력) 미입력 상태로 비율 조회
+        base_api = f"{self.base_url}/link11/api/answers"
+        req.post(base_api, json={'question_id': 'Q9', 'value': 'YES', 'year': test_year}, cookies=session_cookie, timeout=5)
+        req.post(base_api, json={'question_id': 'Q11', 'value': '10', 'year': test_year}, cookies=session_cookie, timeout=5)
+        req.post(base_api, json={'question_id': 'Q12', 'value': '5', 'year': test_year}, cookies=session_cookie, timeout=5)
+
+        resp = req.get(
+            f"{self.base_url}/link11/api/progress/1/{test_year}",
+            cookies=session_cookie, timeout=10
+        )
+        if resp.status_code == 401:
+            result.skip_test("로그인 세션이 API에 전달되지 않음")
+            return
+        if resp.status_code != 200 or not resp.json().get('success'):
+            result.skip_test(f"progress API 오류: HTTP {resp.status_code}")
+            return
+
+        personnel_ratio = resp.json().get('ratios', {}).get('personnel_ratio', -1)
+        if personnel_ratio == 0 or personnel_ratio == 0.0:
+            result.pass_test(f"IT인력(Q28) 미입력 시 인력 비율 0.00 반환 확인 (fallback 없음)")
+        else:
+            result.fail_test(f"IT인력 미입력인데 비율이 {personnel_ratio}% 반환 — fallback 로직 잔존 확인 필요")
+
     def _do_admin_login(self):
         """관리자 로그인"""
         self.page.goto(f"{self.base_url}/login")

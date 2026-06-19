@@ -5,8 +5,8 @@ SQLite와 MySQL을 환경에 따라 자동 전환
 import os
 from contextlib import contextmanager
 
-# 환경 변수에서 데이터베이스 타입 결정
-DB_TYPE = os.getenv('DB_TYPE', 'sqlite')  # 기본값: sqlite
+# IS_PROD 기준으로 DB 타입 자동 결정 (true=MySQL, false=SQLite)
+DB_TYPE = 'mysql' if os.getenv('IS_PROD', 'false').strip().lower() == 'true' else 'sqlite'
 
 # SQLite 설정
 # 항상 이 파일이 위치한 디렉토리(snowball)에 DB 파일 생성
@@ -16,10 +16,10 @@ SQLITE_DATABASE = os.getenv('SQLITE_DB_PATH', _DEFAULT_SQLITE_PATH)
 
 # MySQL 설정 (환경 변수에서 로드)
 MYSQL_CONFIG = {
-    'host': os.getenv('MYSQL_HOST', 'itap.mysql.pythonanywhere-services.com'),
-    'user': os.getenv('MYSQL_USER', 'itap'),
+    'host': os.getenv('MYSQL_HOST', '127.0.0.1'),
+    'user': os.getenv('MYSQL_USER', 'root'),
     'password': os.getenv('MYSQL_PASSWORD', ''),
-    'database': os.getenv('MYSQL_DATABASE', 'itap$snowball'),
+    'database': os.getenv('MYSQL_DATABASE', 'snowball'),
     'port': int(os.getenv('MYSQL_PORT', '3306')),
     'charset': 'utf8mb4',
     'connect_timeout': 10,
