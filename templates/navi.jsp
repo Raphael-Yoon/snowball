@@ -98,12 +98,6 @@
                             <li><a class="dropdown-item" href="{{ url_for('link4.link4') }}">
                                     <i class="fas fa-film me-2"></i>영상 가이드
                                 </a></li>
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            <li><a class="dropdown-item" href="{{ url_for('link10.index') }}">
-                                    <i class="fas fa-chart-line me-2"></i>종목 분석
-                                </a></li>
                         </ul>
                     </li>
                     {% if user_info and user_info.get('admin_flag') == 'Y' %}
@@ -133,11 +127,6 @@
                     <li class="nav-item">
                         <a href="{{ url_for('link4.link4') }}" class="nav-link">
                             <i class="fas fa-film me-1"></i>영상 가이드
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ url_for('link10.index') }}" class="nav-link">
-                            <i class="fas fa-chart-line me-1"></i>종목 분석
                         </a>
                     </li>
                     <li class="nav-item">

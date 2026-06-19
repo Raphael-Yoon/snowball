@@ -31,7 +31,6 @@ from snowball_link6 import bp_link6
 from snowball_link7 import bp_link7
 from snowball_link8 import bp_link8
 from snowball_link9 import bp_link9
-from snowball_link10 import bp_link10
 from snowball_link11 import bp_link11
 from snowball_admin import admin_bp
 from auth import send_otp, verify_otp, login_required, get_current_user, get_db, log_user_activity, find_user_by_email
@@ -86,7 +85,6 @@ csrf.exempt(bp_link6)
 csrf.exempt(bp_link7)
 csrf.exempt(bp_link8)
 csrf.exempt(bp_link9)
-csrf.exempt(bp_link10)
 csrf.exempt(bp_link11)
 
 logger.warning("CSRF Protection enabled with exemptions for API endpoints")
@@ -727,7 +725,6 @@ app.register_blueprint(bp_link6)
 app.register_blueprint(bp_link7)
 app.register_blueprint(bp_link8)
 app.register_blueprint(bp_link9)
-app.register_blueprint(bp_link10)
 app.register_blueprint(bp_link11)
 app.register_blueprint(admin_bp)
 
