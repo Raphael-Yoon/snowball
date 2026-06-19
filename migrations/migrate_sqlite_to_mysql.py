@@ -69,16 +69,33 @@ COLUMN_VARCHAR_LENGTHS = {
 
 
 def get_mysql_connection():
-    """MySQL 연결"""
+    """MySQL 연결 (DATABASE_URL 지원)"""
+    from urllib.parse import urlparse
+    db_url = os.getenv('DATABASE_URL')
+    if db_url:
+        parsed = urlparse(db_url)
+        host = parsed.hostname or 'localhost'
+        user = parsed.username or 'root'
+        password = parsed.password or ''
+        database = parsed.path.lstrip('/') if parsed.path else 'snowball'
+        port = parsed.port or 3306
+    else:
+        host = os.getenv('MYSQL_HOST', 'localhost')
+        user = os.getenv('MYSQL_USER', 'root')
+        password = os.getenv('MYSQL_PASSWORD', '')
+        database = os.getenv('MYSQL_DATABASE', 'snowball')
+        port = int(os.getenv('MYSQL_PORT', '3306'))
+
     return pymysql.connect(
-        host=os.getenv('MYSQL_HOST', 'localhost'),
-        user=os.getenv('MYSQL_USER', 'root'),
-        password=os.getenv('MYSQL_PASSWORD', ''),
-        database=os.getenv('MYSQL_DATABASE', 'snowball'),
-        port=int(os.getenv('MYSQL_PORT', '3306')),
+        host=host,
+        user=user,
+        password=password,
+        database=database,
+        port=port,
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
     )
+
 
 
 def get_sqlite_connection():

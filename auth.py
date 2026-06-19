@@ -111,7 +111,10 @@ class DatabaseConnection:
     def execute(self, query, params=None):
         """SQLite/MySQL 호환 execute 메서드"""
         if self._is_mysql:
-            # MySQL: %s 플레이스홀더 그대로 사용
+            # SQLite 스타일 파라미터(?)를 MySQL 스타일(%s)로 변환
+            if '?' in query:
+                query = query.replace('?', '%s')
+
             if params is not None:
                 if isinstance(params, list):
                     params = tuple(params)
@@ -135,6 +138,7 @@ class DatabaseConnection:
                 return self._conn.execute(query, params)
             else:
                 return self._conn.execute(query)
+
 
     def commit(self):
         """커밋"""
@@ -182,13 +186,30 @@ def get_db():
                 "MySQL 연결을 사용하려면 PyMySQL 패키지가 필요합니다. "
                 "로컬에서 SQLite만 사용할 경우 IS_PROD 환경 변수를 false로 설정하세요."
             ) from exc
-        # MySQL 연결
+        
+        # MySQL 연결 (DATABASE_URL 파싱 또는 기존 개별 환경 변수 활용)
+        from urllib.parse import urlparse
+        db_url = os.getenv('DATABASE_URL')
+        if db_url:
+            parsed = urlparse(db_url)
+            host = parsed.hostname or 'localhost'
+            user = parsed.username or 'root'
+            password = parsed.password or ''
+            database = parsed.path.lstrip('/') if parsed.path else 'snowball'
+            port = parsed.port or 3306
+        else:
+            host = os.getenv('MYSQL_HOST', 'localhost')
+            user = os.getenv('MYSQL_USER', 'root')
+            password = os.getenv('MYSQL_PASSWORD', '')
+            database = os.getenv('MYSQL_DATABASE', 'snowball')
+            port = int(os.getenv('MYSQL_PORT', '3306'))
+
         conn = pymysql.connect(
-            host=os.getenv('MYSQL_HOST', 'localhost'),
-            user=os.getenv('MYSQL_USER', 'root'),
-            password=os.getenv('MYSQL_PASSWORD', ''),
-            database=os.getenv('MYSQL_DATABASE', 'snowball'),
-            port=int(os.getenv('MYSQL_PORT', '3306')),
+            host=host,
+            user=user,
+            password=password,
+            database=database,
+            port=port,
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
         )
@@ -198,6 +219,7 @@ def get_db():
         conn = sqlite3.connect(DATABASE)
         conn.row_factory = sqlite3.Row
         return DatabaseConnection(conn, is_mysql=False)
+
 
 # init_db() 함수는 삭제되었습니다.
 # 데이터베이스 초기화는 마이그레이션 시스템을 사용하세요:

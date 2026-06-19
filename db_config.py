@@ -14,16 +14,31 @@ _DB_DIR = os.path.dirname(os.path.abspath(__file__))
 _DEFAULT_SQLITE_PATH = os.path.join(_DB_DIR, 'snowball.db')
 SQLITE_DATABASE = os.getenv('SQLITE_DB_PATH', _DEFAULT_SQLITE_PATH)
 
-# MySQL 설정 (환경 변수에서 로드)
-MYSQL_CONFIG = {
-    'host': os.getenv('MYSQL_HOST', '127.0.0.1'),
-    'user': os.getenv('MYSQL_USER', 'root'),
-    'password': os.getenv('MYSQL_PASSWORD', ''),
-    'database': os.getenv('MYSQL_DATABASE', 'snowball'),
-    'port': int(os.getenv('MYSQL_PORT', '3306')),
-    'charset': 'utf8mb4',
-    'connect_timeout': 10,
-}
+# MySQL 설정 (환경 변수에서 로드 또는 DATABASE_URL 파싱)
+from urllib.parse import urlparse
+db_url = os.getenv('DATABASE_URL')
+if db_url:
+    parsed = urlparse(db_url)
+    MYSQL_CONFIG = {
+        'host': parsed.hostname or '127.0.0.1',
+        'user': parsed.username or 'root',
+        'password': parsed.password or '',
+        'database': parsed.path.lstrip('/') if parsed.path else 'snowball',
+        'port': parsed.port or 3306,
+        'charset': 'utf8mb4',
+        'connect_timeout': 10,
+    }
+else:
+    MYSQL_CONFIG = {
+        'host': os.getenv('MYSQL_HOST', '127.0.0.1'),
+        'user': os.getenv('MYSQL_USER', 'root'),
+        'password': os.getenv('MYSQL_PASSWORD', ''),
+        'database': os.getenv('MYSQL_DATABASE', 'snowball'),
+        'port': int(os.getenv('MYSQL_PORT', '3306')),
+        'charset': 'utf8mb4',
+        'connect_timeout': 10,
+    }
+
 
 def get_db_connection():
     """
@@ -87,8 +102,9 @@ class MySQLConnection:
     def execute(self, query, params=None):
         """쿼리 실행 (SQLite 호환)"""
         # SQLite 스타일 파라미터(?)를 MySQL 스타일(%s)로 변환
-        if params and '?' in query:
+        if '?' in query:
             query = query.replace('?', '%s')
+
 
         cursor = self.conn.cursor()
         cursor.execute(query, params or ())
