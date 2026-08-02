@@ -4,8 +4,8 @@
 cd /home/raphael/Dev/pythons/snowball
 
 # 2. 깃허브 최신 코드 pull 시도
-echo "Pulling latest code from origin developer..."
-if ! git pull origin developer; then
+echo "Pulling latest code from origin master..."
+if ! git pull origin master --no-rebase --no-edit; then
     echo "ERROR: git pull failed (conflict or network error). Gunicorn will not be restarted." >&2
     exit 1
 fi
