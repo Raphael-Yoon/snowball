@@ -11,6 +11,7 @@ uploads/
 progress_data/
 .DS_Store
 logs/
+*.log
 tmpclaude-*
 deploy.sh
 
